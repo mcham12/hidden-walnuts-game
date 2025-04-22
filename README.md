@@ -1,53 +1,76 @@
 # Hidden Walnuts Game
 
-A 3D multiplayer game where players hide and seek walnuts in a daily refreshing forest environment.
+A multiplayer game where players hide and find walnuts in a virtual space. Built with Cloudflare Workers and Durable Objects.
 
 ## Features
 
-- 3D forest environment with dynamic day/night cycle
-- Multiplayer walnut hiding and seeking
-- Daily forest refresh cycle
-- Player scoring system
-- Real-time updates
+- Real-time multiplayer gameplay
+- Persistent game state using Durable Objects
+- RESTful API for game interactions
+- CORS support for web clients
 
-## Development Setup
+## API Endpoints
+
+### Game Cycle Management
+
+- `GET /api/cycle?cycleId={id}` - Get game cycle details
+- `POST /api/cycle` - Start or end a game cycle
+  - Body: `{ "action": "start" | "end" }`
+
+### Walnut Operations
+
+- `POST /api/walnut` - Hide a new walnut
+  - Body: `{ "playerId": string, "position": string }`
+- `PUT /api/walnut` - Find/collect a walnut
+  - Body: `{ "walnutId": string, "playerId": string }`
+
+### Game State
+
+- `GET /api/state` - Get current game state
+
+## Development
 
 1. Install dependencies:
-```bash
-npm install
-```
+   ```bash
+   npm install
+   ```
 
 2. Start development server:
-```bash
-npm run dev
-```
+   ```bash
+   npm run dev
+   ```
 
-3. Open http://localhost:3001 in your browser
+3. Deploy to Cloudflare:
+   ```bash
+   npm run deploy
+   ```
 
-## Controls
+## Deployment
 
-- WASD: Move around the forest
-- Click "Hide Walnut" button to hide a walnut at your current position
-- First 30 seconds are for scouting only
+### Prerequisites
 
-## Tech Stack
+1. [Cloudflare Workers](https://workers.cloudflare.com/) account
+2. [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) installed
+3. Cloudflare authentication configured
 
-- Three.js for 3D rendering
-- TypeScript for type-safe code
-- Vite for development and building
-- Cloudflare Workers for backend (coming soon)
+### Steps
 
-## Project Structure
+1. Login to Cloudflare:
+   ```bash
+   wrangler login
+   ```
 
-```
-hidden-walnuts-game/
-├── src/
-│   ├── game/           # Game logic components
-│   ├── styles/         # CSS styles
-│   └── main.ts         # Entry point
-├── worker/             # Cloudflare Worker code
-└── public/             # Static assets
-```
+2. Create a D1 database:
+   ```bash
+   wrangler d1 create hidden_walnuts_db
+   ```
+
+3. Update `wrangler.toml` with your database ID
+
+4. Deploy:
+   ```bash
+   npm run deploy
+   ```
 
 ## License
 
