@@ -1,0 +1,39 @@
+body {
+    margin: 0;
+    overflow: hidden;
+}
+
+#game-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#ui-overlay {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    color: white;
+    font-family: Arial, sans-serif;
+    z-index: 1000;
+}
+
+#score {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+#hide-walnut {
+    padding: 10px 20px;
+    background: #4CAF50;
+    border: none;
+    color: white;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+#hide-walnut:hover {
+    background: #45a049;
+} 
