@@ -1,14 +1,15 @@
-import { Scene, PerspectiveCamera, WebGLRenderer, Mesh, MeshStandardMaterial, PlaneGeometry, BoxGeometry, SphereGeometry, DirectionalLight, AmbientLight, Vector3 } from 'three';
+import { Scene, PerspectiveCamera, WebGLRenderer, DirectionalLight, AmbientLight, Vector3 } from 'three';
 import { AssetManager } from '../../engine/assets/AssetManager';
 
 /**
- * ForestScene sets up the static 3D map for the game: ground, trees, bushes, lighting, and camera.
+ * ForestScene sets up the static 3D map for the game: ground, trees, bushes, lighting, camera, and player squirrel.
  */
 export class ForestScene {
   public scene: Scene;
   public camera: PerspectiveCamera;
   public renderer: WebGLRenderer;
   public assetManager: AssetManager;
+  private squirrel?: any;
 
   constructor(renderer: WebGLRenderer) {
     this.scene = new Scene();
@@ -18,8 +19,9 @@ export class ForestScene {
     this.setup();
   }
 
-  private setup() {
-    // Ground
+  private async setup() {
+    // Ground (keep as primitive for now)
+    const { Mesh, MeshStandardMaterial, PlaneGeometry } = await import('three');
     const ground = new Mesh(
       new PlaneGeometry(100, 100),
       new MeshStandardMaterial({ color: 0x228B22 })
@@ -29,31 +31,34 @@ export class ForestScene {
     ground.receiveShadow = true;
     this.scene.add(ground);
 
-    // Trees (as boxes for now)
+    // Tree models
+    const treeModels = [
+      'Tree_01.glb', 'Tree_02.glb', 'Tree_03.glb', 'Tree_04.glb', 'Tree_05.glb'
+    ];
     for (let i = 0; i < 5; i++) {
-      const trunk = new Mesh(
-        new BoxGeometry(0.5, 3, 0.5),
-        new MeshStandardMaterial({ color: 0x8B5A2B })
-      );
-      trunk.position.set(Math.random() * 80 - 40, 1.5, Math.random() * 80 - 40);
-      this.scene.add(trunk);
-      const leaves = new Mesh(
-        new SphereGeometry(1.5, 16, 16),
-        new MeshStandardMaterial({ color: 0x228B22 })
-      );
-      leaves.position.set(trunk.position.x, trunk.position.y + 2, trunk.position.z);
-      this.scene.add(leaves);
+      const modelName = treeModels[Math.floor(Math.random() * treeModels.length)];
+      const tree = await this.assetManager.loadModel(`/assets/models/${modelName}`);
+      tree.position.set(Math.random() * 80 - 40, 0, Math.random() * 80 - 40);
+      tree.scale.set(2, 2, 2);
+      this.scene.add(tree);
     }
 
-    // Bushes (as spheres for now)
+    // Bush models
+    const bushModels = ['Bush_01.glb', 'Bush_02.glb', 'Bush_03.glb'];
     for (let i = 0; i < 8; i++) {
-      const bush = new Mesh(
-        new SphereGeometry(1, 12, 12),
-        new MeshStandardMaterial({ color: 0x2E8B57 })
-      );
-      bush.position.set(Math.random() * 90 - 45, 1, Math.random() * 90 - 45);
+      const modelName = bushModels[Math.floor(Math.random() * bushModels.length)];
+      const bush = await this.assetManager.loadModel(`/assets/models/${modelName}`);
+      bush.position.set(Math.random() * 90 - 45, 0, Math.random() * 90 - 45);
+      bush.scale.set(1.5, 1.5, 1.5);
       this.scene.add(bush);
     }
+
+    // Squirrel model (player avatar)
+    const squirrel = await this.assetManager.loadModel('/assets/models/squirrel.glb');
+    squirrel.position.set(0, 0, 0);
+    squirrel.scale.set(2, 2, 2);
+    this.scene.add(squirrel);
+    this.squirrel = squirrel;
 
     // Lighting
     const sun = new DirectionalLight(0xffffff, 1.2);
