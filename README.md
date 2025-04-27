@@ -1,6 +1,51 @@
 # Hidden Walnuts Game
 
-A modern, scalable game project using TypeScript, Three.js, and a custom ECS (Entity-Component-System) engine.
+A modern, scalable 3D online asynchronous multiplayer game using TypeScript, Three.js, and a custom ECS (Entity-Component-System) engine.
+
+## Tech Stack
+
+### Client-Side (3D World + UI)
+- **Three.js** — 3D rendering in the browser
+- **GLTFLoader** — Loads 3D models (GLTF format)
+- **HTML/CSS** — UI overlays (score, minimap, notifications)
+- **Vanilla JS/TypeScript** — Game logic, event handling, and state sync
+- **Optional:** Preact or Svelte for complex UI
+- **AssetManager** — Handles loading/caching of models, textures, and sounds
+
+### Backend (Game State & Multiplayer)
+- **Cloudflare Workers** — Serverless backend for game logic, event handling, and HTTP/WebSocket APIs
+- **Cloudflare Durable Objects** — Persistent state for each 24-hour forest cycle (walnut locations, player scores, etc.)
+- **Cloudflare R2** — Object storage for 3D models, textures, and audio assets
+- **WebSockets via Workers** — Real-time updates (e.g., Nut Rush, walnut stolen alerts)
+- **Cloudflare Pages** — Serves the front-end (static site hosting)
+- **Optional:** Cloudflare KV or D1 for player profiles or more complex data
+
+### Assets (3D Models, Textures, Audio)
+- **Blender** — For creating low-poly models (squirrel, trees, walnuts, etc.)
+- **GLTF** — Model format for efficient loading and animation
+- **PNG/JPG** — Textures for terrain, objects, UI
+- **Audio** — Sound effects and background music (optional)
+
+### Development & Deployment
+- **VS Code + Cursor** — Code editing and AI assistance
+- **Vitest** — Unit testing for engine logic
+- **ESLint/Prettier** — Linting and code formatting
+- **Git/GitHub** — Version control and collaboration
+- **Cloudflare CLI/Pages/Workers** — Deployment and management
+
+### Architecture Overview
+- **Client:**
+  - Renders the 3D world, handles player input, and communicates with backend for state sync
+  - Loads assets from Cloudflare R2 via AssetManager
+  - UI overlays for score, minimap, notifications, and events
+- **Backend:**
+  - Cloudflare Workers handle HTTP/WebSocket requests, validate actions, and update game state
+  - Durable Objects store persistent state for each forest cycle and player
+  - R2 serves static assets (models, textures, audio)
+  - WebSockets broadcast real-time events to clients
+- **Deployment:**
+  - Front-end deployed to Cloudflare Pages
+  - Backend logic and asset serving via Workers and R2
 
 ## Project Structure
 
