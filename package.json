@@ -1,7 +1,7 @@
 {
-  "name": "hidden-walnuts-game",
-  "version": "1.0.0",
-  "description": "A 3D online asynchronous multiplayer game about hiding and finding walnuts",
+  "name": "hidden-walnuts",
+  "version": "0.1.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,14 +9,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "cannon-es": "^0.20.0",
-    "three": "^0.162.0",
-    "uuid": "^9.0.1"
+    "three": "^0.161.0",
+    "zustand": "^4.5.0"
   },
   "devDependencies": {
-    "@types/three": "^0.162.0",
-    "@types/uuid": "^9.0.8",
-    "typescript": "^5.2.2",
-    "vite": "^5.0.8"
+    "@types/node": "^20.11.0",
+    "@types/three": "^0.176.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.0",
+    "vitest": "^3.1.2"
   }
 }

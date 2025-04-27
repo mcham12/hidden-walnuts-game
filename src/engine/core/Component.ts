@@ -1,22 +1,17 @@
-import { Entity } from './Entity';
+import { Entity } from './Entity'
 
 export abstract class Component {
-    protected entity: Entity | null = null;
+  protected entity: Entity | null = null
 
-    onAdd(entity: Entity): void {
-        this.entity = entity;
-    }
+  constructor() {}
 
-    onRemove(): void {
-        this.entity = null;
-    }
+  public setEntity(entity: Entity | null): void {
+    this.entity = entity
+  }
 
-    abstract update(deltaTime: number): void;
+  public getEntity(): Entity | null {
+    return this.entity
+  }
 
-    cleanup(): void {
-        this.onCleanup();
-        this.entity = null;
-    }
-
-    protected abstract onCleanup(): void;
+  public abstract update(delta: number): void
 } 
