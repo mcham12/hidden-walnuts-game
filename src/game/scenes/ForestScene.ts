@@ -9,6 +9,7 @@ export class ForestScene {
   public camera: PerspectiveCamera;
   public renderer: WebGLRenderer;
   public assetManager: AssetManager;
+  public isReady = false;
   private squirrel?: any;
 
   constructor(renderer: WebGLRenderer) {
@@ -59,6 +60,7 @@ export class ForestScene {
     squirrel.scale.set(2, 2, 2);
     this.scene.add(squirrel);
     this.squirrel = squirrel;
+    this.isReady = true;
 
     // Lighting
     const sun = new DirectionalLight(0xffffff, 1.2);
@@ -75,5 +77,9 @@ export class ForestScene {
 
   render() {
     this.renderer.render(this.scene, this.camera);
+  }
+
+  public getSquirrel() {
+    return this.squirrel;
   }
 } 

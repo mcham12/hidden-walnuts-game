@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { WebGLRenderer } from 'three';
 import { ForestScene } from './game/scenes/ForestScene';
 import { SquirrelIdManager } from './game/player/SquirrelIdManager';
+import { PlayerController } from './game/player/PlayerController';
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -19,6 +20,7 @@ camera.position.z = 5;
 
 // Create the forest scene
 const forestScene = new ForestScene(renderer);
+let playerController: PlayerController | undefined = undefined;
 
 // Squirrel ID management
 const squirrelIdManager = new SquirrelIdManager();
@@ -46,10 +48,31 @@ function displaySquirrelId(id: string) {
   overlay.textContent = `Squirrel ID: ${id}`;
 }
 
+// Animation loop
 function animate() {
   requestAnimationFrame(animate);
-  cube.rotation.x += 0.01;
-  cube.rotation.y += 0.01;
-  forestScene.render();
+  if (forestScene.isReady) {
+    if (!playerController) {
+      const squirrel = forestScene.getSquirrel();
+      if (squirrel) {
+        playerController = new PlayerController(squirrel);
+      }
+    }
+    if (playerController) {
+      playerController.update();
+      // Camera follow (third-person)
+      const squirrel = forestScene.getSquirrel();
+      if (squirrel) {
+        const camOffset = { x: 0, y: 8, z: 16 };
+        forestScene.camera.position.set(
+          squirrel.position.x + camOffset.x,
+          squirrel.position.y + camOffset.y,
+          squirrel.position.z + camOffset.z
+        );
+        forestScene.camera.lookAt(squirrel.position);
+      }
+    }
+    forestScene.render();
+  }
 }
 animate(); 
