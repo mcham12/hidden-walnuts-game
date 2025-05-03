@@ -4,6 +4,25 @@
 // Players send updates via `/report`, and this object calculates adjusted scores (score × multiplier).
 // At the end of the cycle, it returns the top players and awards cosmetic rewards.
 
+// Cloudflare Workers types
+interface DurableObjectState {
+  storage: DurableObjectStorage;
+  id: DurableObjectId;
+}
+
+interface DurableObjectStorage {
+  get<T>(key: string): Promise<T | null>;
+  put<T>(key: string, value: T): Promise<void>;
+  delete(key: string): Promise<boolean>;
+  deleteAll(): Promise<void>;
+  list<T>(options?: { prefix?: string }): Promise<Map<string, T>>;
+}
+
+interface DurableObjectId {
+  toString(): string;
+  equals(other: DurableObjectId): boolean;
+}
+
 type ScoreRecord = {
     playerId: string;
     rawScore: number;

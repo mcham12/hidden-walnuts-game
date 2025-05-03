@@ -1,6 +1,15 @@
 import { getObjectInstance } from "./objects/registry";
 import type { EnvWithBindings } from "./objects/registry";
 
+// Import the Durable Objects so we can export them
+import ForestManager from "./objects/ForestManager";
+import SquirrelSession from "./objects/SquirrelSession";
+import WalnutRegistry from "./objects/WalnutRegistry";
+import Leaderboard from "./objects/Leaderboard";
+
+// Export the Durable Objects so they can be used by the worker
+export { ForestManager, SquirrelSession, WalnutRegistry, Leaderboard };
+
 // Cloudflare Workers ExecutionContext type
 interface ExecutionContext {
   waitUntil(promise: Promise<any>): void;
@@ -75,11 +84,12 @@ export default {
         status: 404,
         headers: { "Content-Type": "application/json" }
       });
-    } catch (error) {
+    } catch (error: unknown) {
       // Handle unexpected errors
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return new Response(JSON.stringify({
         error: "Internal server error",
-        message: error.message
+        message: errorMessage
       }), { 
         status: 500,
         headers: { "Content-Type": "application/json" }

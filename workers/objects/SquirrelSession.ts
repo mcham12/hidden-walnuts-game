@@ -5,7 +5,7 @@
 // This object must persist score and session data across reconnects during the 24-hour cycle.
 
 import { POINTS, PARTICIPATION_INTERVAL_SECONDS, PARTICIPATION_MAX_MULTIPLIER, DEFAULT_POWERUPS } from "../constants";
-import type { Squirrel, Walnut } from "../types";
+import type { Squirrel, Walnut, HidingMethod } from "../types";
 import { getObjectInstance } from "./registry";
 import type { EnvWithBindings } from "./registry";
 
@@ -64,34 +64,12 @@ export default class SquirrelSession {
     if (path.endsWith("/hide")) {
       try {
         // Parse and validate request body
-        const body = await request.json();
+        const body = await request.json() as unknown;
         
-        // Validate required fields
-        if (!body.location || !body.hiddenIn) {
+        // Type guard for request body
+        if (!this.isValidHideRequest(body)) {
           return new Response(JSON.stringify({ 
             error: "Missing required fields: location and hiddenIn"
-          }), { 
-            status: 400, 
-            headers: { "Content-Type": "application/json" }
-          });
-        }
-        
-        // Validate hiding method
-        if (body.hiddenIn !== "buried" && body.hiddenIn !== "bush") {
-          return new Response(JSON.stringify({ 
-            error: "hiddenIn must be 'buried' or 'bush'"
-          }), { 
-            status: 400, 
-            headers: { "Content-Type": "application/json" }
-          });
-        }
-        
-        // Validate location has x, y, z coordinates
-        if (typeof body.location.x !== 'number' || 
-            typeof body.location.y !== 'number' || 
-            typeof body.location.z !== 'number') {
-          return new Response(JSON.stringify({ 
-            error: "location must have numeric x, y, z coordinates"
           }), { 
             status: 400, 
             headers: { "Content-Type": "application/json" }
@@ -144,11 +122,12 @@ export default class SquirrelSession {
           status: 200, 
           headers: { "Content-Type": "application/json" }
         });
-      } catch (error) {
-        // Handle JSON parsing or other errors
+      } catch (error: unknown) {
+        // Handle JSON parsing errors
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         return new Response(JSON.stringify({ 
           error: "Invalid request", 
-          details: error.message 
+          details: errorMessage 
         }), { 
           status: 400, 
           headers: { "Content-Type": "application/json" }
@@ -220,5 +199,33 @@ export default class SquirrelSession {
     
     // Save squirrel data
     await this.save();
+  }
+
+  // Type guard for hide request body
+  private isValidHideRequest(body: unknown): body is { 
+    hiddenIn: HidingMethod; 
+    location: { x: number; y: number; z: number; }
+  } {
+    if (!body || typeof body !== 'object') return false;
+    
+    const hideRequest = body as Record<string, unknown>;
+    
+    // Check required fields exist
+    if (!hideRequest.location || !hideRequest.hiddenIn) return false;
+    
+    // Validate hiding method
+    if (hideRequest.hiddenIn !== "buried" && hideRequest.hiddenIn !== "bush") return false;
+    
+    // Validate location has x, y, z numeric coordinates
+    const location = hideRequest.location as Record<string, unknown>;
+    if (typeof location !== 'object') return false;
+    
+    if (typeof location.x !== 'number' || 
+        typeof location.y !== 'number' || 
+        typeof location.z !== 'number') {
+      return false;
+    }
+    
+    return true;
   }
 }

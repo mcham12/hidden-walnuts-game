@@ -86,11 +86,12 @@ export default class WalnutRegistry {
         }), {
           headers: { "Content-Type": "application/json" }
         });
-      } catch (error) {
+      } catch (error: unknown) {
         // Handle JSON parsing errors
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         return new Response(JSON.stringify({
           error: "Failed to add walnut",
-          message: error.message
+          message: errorMessage
         }), {
           status: 400,
           headers: { "Content-Type": "application/json" }
@@ -120,11 +121,12 @@ export default class WalnutRegistry {
             "Cache-Control": "no-store"
           }
         });
-      } catch (error) {
+      } catch (error: unknown) {
         // Handle any errors that might occur
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         return new Response(JSON.stringify({
           error: "Failed to retrieve walnuts",
-          message: error.message
+          message: errorMessage
         }), {
           status: 500,
           headers: { "Content-Type": "application/json" }
