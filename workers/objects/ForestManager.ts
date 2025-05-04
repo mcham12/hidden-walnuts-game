@@ -89,11 +89,36 @@ export default class ForestManager {
     
     console.log(`[ForestManager] 🟢 New connection: ${sessionId}. Total connections: ${this.sockets.size}`);
     
+    // --- MVP 2.5 Task 7: Send at least one test walnut if mapState is empty ---
+    let mapStateToSend = this.mapState;
+    if (!mapStateToSend || mapStateToSend.length === 0) {
+      mapStateToSend = [
+        {
+          id: `test-walnut-1`,
+          ownerId: "system",
+          origin: "game",
+          hiddenIn: "buried",
+          location: { x: 10, y: 0, z: 10 },
+          found: false,
+          timestamp: Date.now()
+        },
+        {
+          id: `test-walnut-2`,
+          ownerId: "system",
+          origin: "game",
+          hiddenIn: "bush",
+          location: { x: 20, y: 0, z: 20 },
+          found: false,
+          timestamp: Date.now()
+        }
+      ];
+    }
+    // --- End Task 7 addition ---
     // Send initial state to the client
     socket.send(JSON.stringify({
       type: "init",
       sessionId,
-      mapState: this.mapState
+      mapState: mapStateToSend
     }));
     
     // Set up message handler using onmessage property
