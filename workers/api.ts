@@ -22,6 +22,21 @@ export default {
     const pathname = url.pathname;
 
     try {
+      // Handle WebSocket connections
+      if (pathname === "/ws") {
+        // Check if this is a WebSocket upgrade request
+        const upgradeHeader = request.headers.get('Upgrade');
+        if (upgradeHeader !== 'websocket') {
+          return new Response('Expected Upgrade: websocket', { status: 426 });
+        }
+
+        // Forward the WebSocket request to the ForestManager DO
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        
+        // Pass the request as-is to maintain WebSocket upgrade headers
+        return forest.fetch(request);
+      }
+
       // Handle /join route
       if (pathname === "/join") {
         // Get squirrelId from query string or generate a new one
