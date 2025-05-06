@@ -10,21 +10,41 @@
   <script>
     let socket;
 
-    function connect() {
-      const id = document.getElementById('squirrelId').value;
-      fetch('http://localhost:8787/join', {
+    async function connect() {
+      const squirrelId = document.getElementById('squirrelId').value;
+
+      const res = await fetch('http://localhost:8787/join', {
         method: 'POST',
-        body: JSON.stringify({ squirrelId: id })
-      }).then(resp => {
-        socket = new WebSocket('ws://localhost:8787/join');
-        socket.onmessage = (e) => {
-          document.getElementById('log').textContent += 'Received: ' + e.data + '\n';
-        };
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ squirrelId })
       });
+
+      const ws = res.webSocket;
+      if (!ws) {
+        document.getElementById('log').textContent += '❌ WebSocket upgrade failed.\n';
+        return;
+      }
+
+      ws.accept();
+      socket = ws;
+
+      ws.addEventListener('message', (e) => {
+        document.getElementById('log').textContent += 'Received: ' + e.data + '\n';
+      });
+
+      ws.addEventListener('close', () => {
+        document.getElementById('log').textContent += 'WebSocket closed\n';
+      });
+
+      document.getElementById('log').textContent += `✅ Joined as ${squirrelId}\n`;
     }
 
     function send() {
-      socket?.send(JSON.stringify({ type: 'rehidden', from: 'test', payload: {} }));
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'rehidden', from: 'test', payload: {} }));
+      } else {
+        document.getElementById('log').textContent += '❌ WebSocket not open\n';
+      }
     }
   </script>
 </body>

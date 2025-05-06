@@ -47,29 +47,24 @@ export default class ForestManager {
 
     const corsHeaders = {
       'Access-Control-Allow-Origin': 'http://localhost:5173',
-      'Access-Control-Allow-Headers': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
     };
 
-    // Comprehensive CORS: Handle preflight OPTIONS requests
+    // Handle preflight CORS request
     if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsHeaders });
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders,
+      });
     }
 
-    // Handle WebSocket upgrade requests
+    // Handle WebSocket upgrade requests (do NOT add CORS headers here)
     if (request.headers.get("Upgrade") === "websocket") {
       const upgradeWebSocketPair = new WebSocketPair();
       const [client, server] = Object.values(upgradeWebSocketPair);
-      
-      // Handle the WebSocket server-side - IMPORTANT: This must be done before returning the response
       this.handleSocket(server);
-      
-      // Return the client end of the WebSocket to the client
-      return new Response(null, {
-        status: 101,
-        webSocket: client,
-        headers: corsHeaders
-      });
+      return new Response(null, { status: 101, webSocket: client });
     }
 
     if (path.endsWith("/reset")) {
@@ -108,7 +103,7 @@ export default class ForestManager {
       const { squirrelId } = await request.json() as { squirrelId: string };
       const [client, server] = Object.values(new WebSocketPair());
       this.handleSocket(server);
-      return new Response(null, { status: 101, webSocket: client, headers: corsHeaders });
+      return new Response(null, { status: 101, webSocket: client });
     }
 
     if (path === "/find" && request.method === "POST") {
@@ -122,7 +117,6 @@ export default class ForestManager {
       });
       return this.handleFind(walnutId, squirrelId);
     }
-    // Handle POST /rehide
     if (path === "/rehide" && request.method === "POST") {
       const { walnutId, squirrelId, location } = await request.json() as { walnutId?: string, squirrelId?: string, location?: { x: number, y: number, z: number } };
       if (!walnutId || !squirrelId || !location) return new Response(JSON.stringify({ error: "Missing walnutId, squirrelId, or location" }), {
