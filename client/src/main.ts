@@ -4,6 +4,10 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { showRehiddenNotification } from './ui'
 import { connectToWebSocket, getLocalSquirrelId, setDebugMessages } from './ws'
 
+// Expose WebSocket functions globally for development testing
+(window as any).connectToWebSocket = connectToWebSocket;
+(window as any).getLocalSquirrelId = getLocalSquirrelId;
+
 // Scene dimensions
 const FOREST_SIZE = 100
 
