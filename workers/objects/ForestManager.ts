@@ -292,4 +292,12 @@ export default class ForestManager {
   handleRehide(walnutId: string, squirrelId: string, location: { x: number, y: number, z: number }): Response {
     return new Response(`handleRehide called with walnutId=${walnutId}, squirrelId=${squirrelId}, location=${JSON.stringify(location)}`);
   }
+
+  broadcastExceptSender(senderId: string, message: string | ArrayBuffer) {
+    for (const [id, socket] of this.sockets.entries()) {
+      if (id !== senderId && socket.readyState === WebSocket.OPEN) {
+        socket.send(message);
+      }
+    }
+  }
 }
