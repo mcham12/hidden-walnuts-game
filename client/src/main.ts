@@ -385,7 +385,7 @@ function updateWalnutPosition(id: string, position: { x: number; y: number; z: n
 }
 
 // Spawn a test walnut in the scene
-function spawnTestWalnut() {
+export function spawnTestWalnut() {
   // Create a simple test walnut mesh
   const testWalnut = new THREE.Mesh(
     new THREE.SphereGeometry(0.2),
@@ -416,9 +416,6 @@ function spawnTestWalnut() {
 
 // Initialize WebSocket connection
 ws = connectToWebSocket(crypto.randomUUID());
-
-// Spawn test walnut
-spawnTestWalnut();
 
 // Set up debug toggle
 debugToggle.onclick = () => {
