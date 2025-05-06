@@ -44,8 +44,12 @@ appContainer.appendChild(debugToggle);
 
 // Initialize the scene and all components
 function init() {
-  console.log("[init] Starting scene setup...");
   scene = new THREE.Scene();
+
+  // ✅ Move this to the very top to catch errors early
+  console.log("[init] calling spawnTestWalnut FIRST...");
+  spawnTestWalnut(scene);
+
   scene.background = new THREE.Color(0xbfd1e5); // Light blue sky
 
   // Create a camera
@@ -102,9 +106,6 @@ function init() {
   // Add simple axes for reference during development
   const axesHelper = new THREE.AxesHelper(5);
   scene.add(axesHelper);
-
-  console.log("[init] Calling spawnTestWalnut...");
-  spawnTestWalnut(scene);
 
   // Initialize WebSocket connection
   ws = connectToWebSocket(crypto.randomUUID());
