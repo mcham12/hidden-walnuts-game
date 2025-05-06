@@ -74,6 +74,18 @@ export default class ForestManager {
       return new Response(JSON.stringify(this.mapState), { headers: { "Content-Type": "application/json" } });
     }
 
+    if (path === "/find" && request.method === "POST") {
+      const { walnutId, squirrelId } = await request.json() as { walnutId?: string, squirrelId?: string };
+      if (!walnutId || !squirrelId) return new Response("Missing walnutId or squirrelId", { status: 400 });
+      return this.handleFind(walnutId, squirrelId);
+    }
+    // Handle POST /rehide
+    if (path === "/rehide" && request.method === "POST") {
+      const { walnutId, squirrelId, location } = await request.json() as { walnutId?: string, squirrelId?: string, location?: { x: number, y: number, z: number } };
+      if (!walnutId || !squirrelId || !location) return new Response("Missing walnutId, squirrelId, or location", { status: 400 });
+      return this.handleRehide(walnutId, squirrelId, location);
+    }
+
     return new Response("Not found", { status: 404 });
   }
 
@@ -221,5 +233,15 @@ export default class ForestManager {
       "zone-B": 7,
       "zone-C": 1
     };
+  }
+
+  // Stub for handleFind
+  handleFind(walnutId: string, squirrelId: string): Response {
+    return new Response(`handleFind called with walnutId=${walnutId}, squirrelId=${squirrelId}`);
+  }
+
+  // Stub for handleRehide
+  handleRehide(walnutId: string, squirrelId: string, location: { x: number, y: number, z: number }): Response {
+    return new Response(`handleRehide called with walnutId=${walnutId}, squirrelId=${squirrelId}, location=${JSON.stringify(location)}`);
   }
 }
