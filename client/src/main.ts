@@ -260,6 +260,7 @@ function renderWalnuts(walnutData: Walnut[]): void {
 
 // Fetch walnut map data from the backend
 async function fetchWalnutMap() {
+  console.log("[debug] About to execute logic near line 270");
   try {
     const response = await fetch('/map-state');
     
@@ -273,13 +274,12 @@ async function fetchWalnutMap() {
     // Render the walnuts once data is loaded
     renderWalnuts(walnuts);
     
+    console.log("[debug] Completed logic near line 270");
     return walnuts;
   } catch (error) {
-    console.error('Failed to fetch walnut map data:', error);
-    
+    console.error('[critical] Error at line 270 area:', error);
     // For development/testing: create some demo walnuts if fetch fails
     createDemoWalnuts();
-    
     return [];
   }
 }
