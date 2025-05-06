@@ -403,7 +403,6 @@ function updateWalnutPosition(id: string, position: { x: number; y: number; z: n
 
 // Spawn a test walnut in the scene
 export function spawnTestWalnut(scene: THREE.Scene) {
-  // Create a simple test walnut mesh
   const testWalnut = new THREE.Mesh(
     new THREE.SphereGeometry(0.2),
     new THREE.MeshBasicMaterial({ color: 0xffff00 })
@@ -411,22 +410,7 @@ export function spawnTestWalnut(scene: THREE.Scene) {
   testWalnut.position.set(0, 0, 0);
   scene.add(testWalnut);
 
-  // Register in walnutMap so updateWalnutPosition() can find it
   walnutMap.set("test-walnut", testWalnut);
-
-  // Also create the corresponding Walnut data structure
-  const testWalnutData: Walnut = {
-    id: "test-walnut",
-    ownerId: "system",
-    origin: "game",
-    hiddenIn: "bush",
-    location: { x: 0, y: 0, z: 0 },
-    found: false,
-    timestamp: Date.now()
-  };
-
-  // Add to walnuts array for consistency
-  walnuts.push(testWalnutData);
 
   console.log("[spawnTestWalnut] Test walnut added to scene and walnutMap");
 }
