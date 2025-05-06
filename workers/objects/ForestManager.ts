@@ -35,6 +35,7 @@ export default class ForestManager {
   
   // Track WebSocket connections directly with a Set
   sockets: Set<WebSocket> = new Set();
+  socketsBySquirrelId: Map<string, WebSocket> = new Map();
 
   constructor(state: DurableObjectState, env: Record<string, unknown>) {
     this.state = state;
@@ -63,7 +64,7 @@ export default class ForestManager {
     if (request.headers.get("Upgrade") === "websocket") {
       const upgradeWebSocketPair = new WebSocketPair();
       const [client, server] = Object.values(upgradeWebSocketPair);
-      this.handleSocket(server);
+      this.handleSocket(server, url.searchParams.get('squirrelId') ?? crypto.randomUUID());
       return new Response(null, { status: 101, webSocket: client });
     }
 
@@ -105,7 +106,7 @@ export default class ForestManager {
       const squirrelId = url.searchParams.get('squirrelId') ?? crypto.randomUUID();
       console.log(`Handling WebSocket join for: ${squirrelId}`);
       const [client, server] = Object.values(new WebSocketPair());
-      this.handleSocket(server);
+      this.handleSocket(server, squirrelId);
       return new Response(null, { status: 101, webSocket: client });
     }
 
@@ -137,9 +138,10 @@ export default class ForestManager {
     return new Response('Not Found', { status: 404 });
   }
 
-  handleSocket(socket: WebSocket): void {
+  handleSocket(socket: WebSocket, squirrelId: string): void {
     // Add the socket to our set of active sockets
     this.sockets.add(socket);
+    this.socketsBySquirrelId.set(squirrelId, socket);
     
     // Accept the WebSocket connection
     socket.accept();
@@ -213,6 +215,7 @@ export default class ForestManager {
     socket.onclose = () => {
       // Remove the socket from our set
       this.sockets.delete(socket);
+      this.socketsBySquirrelId.delete(squirrelId);
       console.log(`[ForestManager] 🔴 Disconnected. Remaining connections: ${this.sockets.size}`);
     };
     
@@ -294,7 +297,7 @@ export default class ForestManager {
   }
 
   broadcastExceptSender(senderId: string, message: string | ArrayBuffer) {
-    for (const [id, socket] of this.sockets.entries()) {
+    for (const [id, socket] of this.socketsBySquirrelId.entries()) {
       if (id !== senderId && socket.readyState === WebSocket.OPEN) {
         socket.send(message);
       }
