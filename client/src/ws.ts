@@ -1,4 +1,4 @@
-import { updateWalnutPosition } from './main';
+import { updateWalnutPosition, scene } from './main';
 import { showRehiddenNotification } from './ui';
 import * as THREE from 'three';
 
@@ -36,12 +36,27 @@ export function connectToWebSocket(squirrelId: string) {
       const { type, walnut, squirrelId } = parsed;
 
       switch (type) {
-        case "init":
+        case "init": {
           console.log("[WS INIT] Assigned squirrelId:", squirrelId);
           if (parsed.mapState) {
             console.log("[WS INIT] Received map state with", parsed.mapState.length, "walnuts");
+            for (const walnut of parsed.mapState) {
+              if (walnut.id === "test-walnut" && walnutMap.has("test-walnut")) {
+                console.log("[WS INIT] Skipped overwriting test-walnut");
+                continue;
+              }
+              // TODO: use real geometry; this is a placeholder
+              const obj = new THREE.Mesh(
+                new THREE.SphereGeometry(0.2),
+                new THREE.MeshBasicMaterial({ color: 0xaaaaaa })
+              );
+              obj.position.set(walnut.location.x, walnut.location.y, walnut.location.z);
+              scene.add(obj);
+              walnutMap.set(walnut.id, obj);
+            }
           }
           break;
+        }
 
         case "heartbeat":
           console.log("[WS HEARTBEAT] Alive from server");
