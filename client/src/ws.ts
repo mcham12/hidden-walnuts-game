@@ -3,6 +3,7 @@ import { showRehiddenNotification } from './ui';
 import * as THREE from 'three';
 
 export const walnutMap = new Map<string, THREE.Mesh>();
+(window as any).walnutMap = walnutMap;
 
 let localSquirrelId: string;
 let showDebugMessages = false;
