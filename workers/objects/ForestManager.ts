@@ -99,8 +99,8 @@ export default class ForestManager {
       });
     }
 
-    if (path === "/join" && request.method === "POST") {
-      const { squirrelId } = await request.json() as { squirrelId: string };
+    if (path === "/join" && request.method === "GET") {
+      const squirrelId = url.searchParams.get('squirrelId') ?? crypto.randomUUID();
       const [client, server] = Object.values(new WebSocketPair());
       this.handleSocket(server);
       return new Response(null, { status: 101, webSocket: client });
