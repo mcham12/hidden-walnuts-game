@@ -366,40 +366,17 @@ function showNotification(message: string, duration: number = 3000) {
 }
 
 // Update walnut position in the scene
-function updateWalnutPosition(id: string, position: { x: number; y: number; z: number }) {
-  const walnut = walnutMeshes.get(id);
+export function updateWalnutPosition(id: string, position: { x: number; y: number; z: number }) {
+  console.log("[updateWalnutPosition] Current walnuts:", Array.from(walnutMap.keys()));
+
+  const walnut = walnutMap.get(id);
   if (!walnut) {
     console.warn("[updateWalnutPosition] No walnut found with id:", id);
     return;
   }
-  
-  // Animate the position change
-  const startPosition = walnut.position.clone();
-  const endPosition = new THREE.Vector3(position.x, position.y, position.z);
-  
-  // Create animation
-  const duration = 1000; // 1 second
-  const startTime = Date.now();
-  
-  function animate() {
-    const elapsed = Date.now() - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    
-    // Ease in-out function
-    const easeProgress = progress < 0.5
-      ? 2 * progress * progress
-      : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-    
-    walnut.position.lerpVectors(startPosition, endPosition, easeProgress);
-    
-    if (progress < 1) {
-      requestAnimationFrame(animate);
-    } else {
-      console.log(`[updateWalnutPosition] Moved walnut ${id} to`, position);
-    }
-  }
-  
-  animate();
+
+  walnut.position.set(position.x, position.y, position.z);
+  console.log("[updateWalnutPosition] Moved walnut", id, "to", position);
 }
 
 // Spawn a test walnut in the scene
@@ -435,6 +412,5 @@ export {
   walnutMeshes,
   getHidingMethod, 
   createWalnutMaterial,
-  updateWalnutPosition,
   ws as socket
 };
