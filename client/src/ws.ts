@@ -9,58 +9,59 @@ export function connectToWebSocket(squirrelId: string) {
   const socket = new WebSocket(`ws://localhost:8787/join?squirrelId=${squirrelId}`);
   
   socket.onopen = () => {
-    console.log('WebSocket connection established');
+    console.log('[WS] Connection established');
   };
   
   socket.onclose = () => {
-    console.log('WebSocket connection closed');
+    console.log('[WS] Connection closed');
     // Attempt to reconnect after 5 seconds
     setTimeout(() => connectToWebSocket(squirrelId), 5000);
   };
   
   socket.onerror = (error) => {
-    console.error('WebSocket error:', error);
+    console.error('[WS ERROR]', error);
   };
   
   socket.onmessage = (event) => {
     try {
-      const message = JSON.parse(event.data);
-      
-      // Debug message display
-      if (showDebugMessages) {
-        console.log('Received message:', message);
+      const parsed = JSON.parse(event.data);
+      if (!parsed || typeof parsed !== "object") {
+        console.warn("[WS WARNING] Ignored non-object message:", parsed);
+        return;
       }
-      
-      switch (message.type) {
-        case 'init':
-          console.log('Connection initialized with session ID:', message.sessionId);
-          if (message.mapState) {
-            // Handle map state update
-            console.log('Received initial map state:', message.mapState);
+
+      const { type, walnut, squirrelId } = parsed;
+
+      switch (type) {
+        case "init":
+          console.log("[WS INIT] Assigned squirrelId:", squirrelId);
+          if (parsed.mapState) {
+            console.log("[WS INIT] Received map state with", parsed.mapState.length, "walnuts");
           }
           break;
-          
-        case 'heartbeat':
-          // Silently handle heartbeat
+
+        case "heartbeat":
+          console.log("[WS HEARTBEAT] Alive from server");
           break;
-          
-        case 'walnut-rehidden':
-          const { walnutId, location } = message.data;
-          if (walnutId && location) {
-            updateWalnutPosition(walnutId, location);
-            if (message.data.squirrelId !== getLocalSquirrelId()) {
-              showRehiddenNotification(walnutId);
-            }
+
+        case "walnut-rehidden": {
+          if (!walnut || !walnut.id || !walnut.location) {
+            console.warn("[WS WARNING] Invalid walnut-rehidden message:", walnut);
+            return;
+          }
+          const { id, location } = walnut;
+          updateWalnutPosition(id, location);
+          if (squirrelId !== getLocalSquirrelId()) {
+            showRehiddenNotification(id);
           }
           break;
-          
+        }
+
         default:
-          if (showDebugMessages) {
-            console.log('Unhandled message type:', message.type);
-          }
+          console.warn("[WS UNKNOWN TYPE]", type, parsed);
       }
-    } catch (error) {
-      console.error('Error parsing WebSocket message:', error);
+    } catch (err) {
+      console.error("[WS ERROR] Failed to parse message:", event.data, err);
     }
   };
   
