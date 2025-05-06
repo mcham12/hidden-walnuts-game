@@ -411,8 +411,9 @@ export function spawnTestWalnut(scene: THREE.Scene) {
   scene.add(testWalnut);
 
   walnutMap.set("test-walnut", testWalnut);
-
   console.log("[spawnTestWalnut] Test walnut added to scene and walnutMap");
+
+  (window as any).isReady = true;
 }
 
 // Initialize the application
