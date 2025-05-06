@@ -60,40 +60,81 @@ export default class ForestManager {
       });
     }
 
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': 'http://localhost:5173',
+      'Access-Control-Allow-Headers': '*',
+    };
+
     if (path.endsWith("/reset")) {
       await this.resetMap();
-      return jsonResponse({ message: "Map reset and walnuts respawned." }, request);
+      return new Response(JSON.stringify({ message: "Map reset and walnuts respawned." }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      });
     }
 
     if (path.endsWith("/hotzones")) {
       const zones = await this.getRecentActivity();
-      return jsonResponse(zones, request);
+      return new Response(JSON.stringify(zones), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      });
     }
 
     if (path.endsWith("/state")) {
-      return jsonResponse(this.mapState, request);
+      return new Response(JSON.stringify(this.mapState), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      });
     }
 
     if (path === "/join" && request.method === "POST") {
       const { squirrelId } = await request.json() as { squirrelId: string };
       const [client, server] = Object.values(new WebSocketPair());
       this.handleSocket(server);
-      return new Response(null, { status: 101, webSocket: client });
+      return new Response(null, { status: 101, webSocket: client, headers: { ...corsHeaders } });
     }
 
     if (path === "/find" && request.method === "POST") {
       const { walnutId, squirrelId } = await request.json() as { walnutId?: string, squirrelId?: string };
-      if (!walnutId || !squirrelId) return jsonResponse({ error: "Missing walnutId or squirrelId" }, request, 400);
+      if (!walnutId || !squirrelId) return new Response(JSON.stringify({ error: "Missing walnutId or squirrelId" }), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      });
       return this.handleFind(walnutId, squirrelId);
     }
     // Handle POST /rehide
     if (path === "/rehide" && request.method === "POST") {
       const { walnutId, squirrelId, location } = await request.json() as { walnutId?: string, squirrelId?: string, location?: { x: number, y: number, z: number } };
-      if (!walnutId || !squirrelId || !location) return jsonResponse({ error: "Missing walnutId, squirrelId, or location" }, request, 400);
+      if (!walnutId || !squirrelId || !location) return new Response(JSON.stringify({ error: "Missing walnutId, squirrelId, or location" }), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      });
       return this.handleRehide(walnutId, squirrelId, location);
     }
 
-    return jsonResponse({ error: "Not found" }, request, 404);
+    return new Response(JSON.stringify({ error: "Not found" }), {
+      status: 404,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders,
+      },
+    });
   }
 
   handleSocket(socket: WebSocket): void {
@@ -106,7 +147,7 @@ export default class ForestManager {
     // Generate a session ID for this connection
     const sessionId = crypto.randomUUID();
     
-    console.log(`[ForestManager] �� New connection: ${sessionId}. Total connections: ${this.sockets.size}`);
+    console.log(`[ForestManager] 🚀 New connection: ${sessionId}. Total connections: ${this.sockets.size}`);
     
     // --- MVP 2.5 Task 7: Send at least one test walnut if mapState is empty ---
     let mapStateToSend = this.mapState;
@@ -251,20 +292,4 @@ export default class ForestManager {
   handleRehide(walnutId: string, squirrelId: string, location: { x: number, y: number, z: number }): Response {
     return new Response(`handleRehide called with walnutId=${walnutId}, squirrelId=${squirrelId}, location=${JSON.stringify(location)}`);
   }
-}
-
-function getAllowedOrigin(request: Request): string {
-  const allowedOrigins = ["http://localhost:5173", "http://localhost:3000"];
-  const origin = request.headers.get("Origin");
-  return allowedOrigins.includes(origin || "") ? origin! : allowedOrigins[0];
-}
-
-function jsonResponse(data: any, request: Request, status: number = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "Access-Control-Allow-Origin": getAllowedOrigin(request),
-      "Content-Type": "application/json"
-    }
-  });
 }
