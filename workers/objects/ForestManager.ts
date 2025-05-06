@@ -180,6 +180,7 @@ export default class ForestManager {
     socket.send(JSON.stringify({
       type: "init",
       sessionId,
+      squirrelId,
       mapState: mapStateToSend
     }));
     
