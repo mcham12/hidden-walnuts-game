@@ -62,31 +62,38 @@ export default class ForestManager {
 
     if (path.endsWith("/reset")) {
       await this.resetMap();
-      return new Response("Map reset and walnuts respawned.");
+      return jsonResponse({ message: "Map reset and walnuts respawned." }, request);
     }
 
     if (path.endsWith("/hotzones")) {
       const zones = await this.getRecentActivity();
-      return new Response(JSON.stringify(zones), { headers: { "Content-Type": "application/json" } });
+      return jsonResponse(zones, request);
     }
 
     if (path.endsWith("/state")) {
-      return new Response(JSON.stringify(this.mapState), { headers: { "Content-Type": "application/json" } });
+      return jsonResponse(this.mapState, request);
+    }
+
+    if (path === "/join" && request.method === "POST") {
+      const { squirrelId } = await request.json() as { squirrelId: string };
+      const [client, server] = Object.values(new WebSocketPair());
+      this.handleSocket(server);
+      return new Response(null, { status: 101, webSocket: client });
     }
 
     if (path === "/find" && request.method === "POST") {
       const { walnutId, squirrelId } = await request.json() as { walnutId?: string, squirrelId?: string };
-      if (!walnutId || !squirrelId) return new Response("Missing walnutId or squirrelId", { status: 400 });
+      if (!walnutId || !squirrelId) return jsonResponse({ error: "Missing walnutId or squirrelId" }, request, 400);
       return this.handleFind(walnutId, squirrelId);
     }
     // Handle POST /rehide
     if (path === "/rehide" && request.method === "POST") {
       const { walnutId, squirrelId, location } = await request.json() as { walnutId?: string, squirrelId?: string, location?: { x: number, y: number, z: number } };
-      if (!walnutId || !squirrelId || !location) return new Response("Missing walnutId, squirrelId, or location", { status: 400 });
+      if (!walnutId || !squirrelId || !location) return jsonResponse({ error: "Missing walnutId, squirrelId, or location" }, request, 400);
       return this.handleRehide(walnutId, squirrelId, location);
     }
 
-    return new Response("Not found", { status: 404 });
+    return jsonResponse({ error: "Not found" }, request, 404);
   }
 
   handleSocket(socket: WebSocket): void {
@@ -99,7 +106,7 @@ export default class ForestManager {
     // Generate a session ID for this connection
     const sessionId = crypto.randomUUID();
     
-    console.log(`[ForestManager] 🟢 New connection: ${sessionId}. Total connections: ${this.sockets.size}`);
+    console.log(`[ForestManager] �� New connection: ${sessionId}. Total connections: ${this.sockets.size}`);
     
     // --- MVP 2.5 Task 7: Send at least one test walnut if mapState is empty ---
     let mapStateToSend = this.mapState;
@@ -244,4 +251,20 @@ export default class ForestManager {
   handleRehide(walnutId: string, squirrelId: string, location: { x: number, y: number, z: number }): Response {
     return new Response(`handleRehide called with walnutId=${walnutId}, squirrelId=${squirrelId}, location=${JSON.stringify(location)}`);
   }
+}
+
+function getAllowedOrigin(request: Request): string {
+  const allowedOrigins = ["http://localhost:5173", "http://localhost:3000"];
+  const origin = request.headers.get("Origin");
+  return allowedOrigins.includes(origin || "") ? origin! : allowedOrigins[0];
+}
+
+function jsonResponse(data: any, request: Request, status: number = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "Access-Control-Allow-Origin": getAllowedOrigin(request),
+      "Content-Type": "application/json"
+    }
+  });
 }
