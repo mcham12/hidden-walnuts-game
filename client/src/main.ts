@@ -406,16 +406,20 @@ function updateWalnutPosition(id: string, position: { x: number; y: number; z: n
 export function spawnTestWalnut(scene: THREE.Scene) {
   console.log("[spawnTestWalnut] Function entered");
 
-  const testWalnut = new THREE.Mesh(
-    new THREE.SphereGeometry(0.2),
-    new THREE.MeshBasicMaterial({ color: 0xffff00 })
-  );
-  testWalnut.position.set(0, 0, 0);
-  scene.add(testWalnut);
-  walnutMap.set("test-walnut", testWalnut);
+  try {
+    const testWalnut = new THREE.Mesh(
+      new THREE.SphereGeometry(0.2),
+      new THREE.MeshBasicMaterial({ color: 0xffff00 })
+    );
+    testWalnut.position.set(0, 0, 0);
+    scene.add(testWalnut);
+    walnutMap.set("test-walnut", testWalnut);
 
-  console.log("[spawnTestWalnut] Test walnut added to scene and walnutMap");
-  (window as any).isReady = true;
+    console.log("[spawnTestWalnut] Test walnut added to scene and walnutMap");
+    (window as any).isReady = true;
+  } catch (err) {
+    console.error("[spawnTestWalnut] ERROR:", err);
+  }
 }
 
 // Initialize the application
