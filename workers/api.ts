@@ -37,6 +37,13 @@ export default {
         return forest.fetch(request);
       }
 
+      // Route /join WebSocket requests to ForestManager Durable Object
+      if (pathname === '/join') {
+        const id = env.FOREST.idFromName('global-forest');
+        const stub = env.FOREST.get(id);
+        return stub.fetch(request);
+      }
+
       // Handle /join route
       if (pathname === "/join") {
         // Get squirrelId from query string or generate a new one
