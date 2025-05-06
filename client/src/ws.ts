@@ -1,5 +1,8 @@
 import { updateWalnutPosition } from './main';
 import { showRehiddenNotification } from './ui';
+import * as THREE from 'three';
+
+export const walnutMap = new Map<string, THREE.Mesh>();
 
 let localSquirrelId: string;
 let showDebugMessages = false;

@@ -2,7 +2,7 @@ import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { showRehiddenNotification } from './ui'
-import { connectToWebSocket, getLocalSquirrelId, setDebugMessages } from './ws'
+import { connectToWebSocket, getLocalSquirrelId, setDebugMessages, walnutMap } from './ws'
 
 // Expose WebSocket functions globally for development testing
 (window as any).connectToWebSocket = connectToWebSocket;
@@ -104,7 +104,7 @@ function init() {
   scene.add(axesHelper);
 
   // Spawn test walnut after scene setup
-  spawnTestWalnut();
+  spawnTestWalnut(scene);
 
   // Initialize WebSocket connection
   ws = connectToWebSocket(crypto.randomUUID());
@@ -402,7 +402,7 @@ function updateWalnutPosition(id: string, position: { x: number; y: number; z: n
 }
 
 // Spawn a test walnut in the scene
-export function spawnTestWalnut() {
+export function spawnTestWalnut(scene: THREE.Scene) {
   // Create a simple test walnut mesh
   const testWalnut = new THREE.Mesh(
     new THREE.SphereGeometry(0.2),
@@ -411,8 +411,8 @@ export function spawnTestWalnut() {
   testWalnut.position.set(0, 0, 0);
   scene.add(testWalnut);
 
-  // Register in walnutMeshes so updateWalnutPosition() can find it
-  walnutMeshes.set("test-walnut", testWalnut);
+  // Register in walnutMap so updateWalnutPosition() can find it
+  walnutMap.set("test-walnut", testWalnut);
 
   // Also create the corresponding Walnut data structure
   const testWalnutData: Walnut = {
@@ -428,7 +428,7 @@ export function spawnTestWalnut() {
   // Add to walnuts array for consistency
   walnuts.push(testWalnutData);
 
-  console.log("[spawnTestWalnut] Test walnut added to scene and walnutMeshes");
+  console.log("[spawnTestWalnut] Test walnut added to scene and walnutMap");
 }
 
 // Initialize the application
