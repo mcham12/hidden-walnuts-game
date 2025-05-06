@@ -45,6 +45,17 @@ export default class ForestManager {
     const url = new URL(request.url);
     const path = url.pathname;
 
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': 'http://localhost:5173',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    };
+
+    // Comprehensive CORS: Handle preflight OPTIONS requests
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
     // Handle WebSocket upgrade requests
     if (request.headers.get("Upgrade") === "websocket") {
       const upgradeWebSocketPair = new WebSocketPair();
@@ -56,14 +67,10 @@ export default class ForestManager {
       // Return the client end of the WebSocket to the client
       return new Response(null, {
         status: 101,
-        webSocket: client
+        webSocket: client,
+        headers: corsHeaders
       });
     }
-
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': 'http://localhost:5173',
-      'Access-Control-Allow-Headers': '*',
-    };
 
     if (path.endsWith("/reset")) {
       await this.resetMap();
@@ -101,7 +108,7 @@ export default class ForestManager {
       const { squirrelId } = await request.json() as { squirrelId: string };
       const [client, server] = Object.values(new WebSocketPair());
       this.handleSocket(server);
-      return new Response(null, { status: 101, webSocket: client, headers: { ...corsHeaders } });
+      return new Response(null, { status: 101, webSocket: client, headers: corsHeaders });
     }
 
     if (path === "/find" && request.method === "POST") {
