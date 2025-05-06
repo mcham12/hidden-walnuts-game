@@ -99,8 +99,11 @@ export default class ForestManager {
       });
     }
 
+    console.log(`Incoming request: ${request.method} ${url.pathname}`);
+
     if (path === "/join" && request.method === "GET") {
       const squirrelId = url.searchParams.get('squirrelId') ?? crypto.randomUUID();
+      console.log(`Handling WebSocket join for: ${squirrelId}`);
       const [client, server] = Object.values(new WebSocketPair());
       this.handleSocket(server);
       return new Response(null, { status: 101, webSocket: client });
@@ -129,13 +132,9 @@ export default class ForestManager {
       return this.handleRehide(walnutId, squirrelId, location);
     }
 
-    return new Response(JSON.stringify({ error: "Not found" }), {
-      status: 404,
-      headers: {
-        'Content-Type': 'application/json',
-        ...corsHeaders,
-      },
-    });
+    // Fallback (should not happen during WebSocket connection)
+    console.log('No matching route — returning 404');
+    return new Response('Not Found', { status: 404 });
   }
 
   handleSocket(socket: WebSocket): void {
