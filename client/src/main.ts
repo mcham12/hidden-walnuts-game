@@ -1,6 +1,7 @@
 import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { showRehiddenNotification } from './ui'
 
 // Scene dimensions
 const FOREST_SIZE = 100
@@ -300,54 +301,175 @@ function animate() {
 // Start animation loop
 animate();
 
-// WebSocket connection
-const socket = new WebSocket('ws://localhost:8787/ws');
+// WebSocket connection and message handling
+let ws: WebSocket | null = null;
+let squirrelId: string | null = null;
 
-// WebSocket event handlers
-socket.addEventListener('open', () => {
-  console.log('[WS] Connected');
-});
+// UI elements for notifications
+const notificationContainer = document.createElement('div');
+notificationContainer.style.position = 'fixed';
+notificationContainer.style.top = '20px';
+notificationContainer.style.right = '20px';
+notificationContainer.style.zIndex = '1000';
+appContainer.appendChild(notificationContainer);
 
-socket.addEventListener('message', (event) => {
-  console.log('[WS] Message:', event.data);
+// Debug UI toggle
+const debugToggle = document.createElement('button');
+debugToggle.textContent = 'Toggle Debug Messages';
+debugToggle.style.position = 'fixed';
+debugToggle.style.bottom = '20px';
+debugToggle.style.right = '20px';
+debugToggle.style.zIndex = '1000';
+let showDebugMessages = false;
+debugToggle.onclick = () => {
+  showDebugMessages = !showDebugMessages;
+  debugToggle.textContent = showDebugMessages ? 'Hide Debug Messages' : 'Show Debug Messages';
+};
+appContainer.appendChild(debugToggle);
+
+// Show notification message
+function showNotification(message: string, duration: number = 3000) {
+  const notification = document.createElement('div');
+  notification.textContent = message;
+  notification.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+  notification.style.color = 'white';
+  notification.style.padding = '10px 20px';
+  notification.style.borderRadius = '5px';
+  notification.style.marginBottom = '10px';
+  notification.style.transition = 'opacity 0.3s';
   
-  try {
-    const message = JSON.parse(event.data);
-    
-    // Handle init message with map state
-    if (message.type === 'init' && Array.isArray(message.mapState)) {
-      if (message.mapState.length === 0) {
-        // If mapState is empty, skip clearing/re-rendering and keep demo walnuts
-        console.log('[WS] Received empty map state, keeping existing walnuts.');
-        return;
-      }
-      console.log('[WS] Received initial map state with', message.mapState.length, 'walnuts');
-      walnuts = message.mapState;
-      renderWalnuts(walnuts);
-    }
-  } catch (error) {
-    console.error('[WS] Error parsing message:', error);
+  notificationContainer.appendChild(notification);
+  
+  // Fade out and remove after duration
+  setTimeout(() => {
+    notification.style.opacity = '0';
+    setTimeout(() => notification.remove(), 300);
+  }, duration);
+}
+
+// Update walnut position in the scene
+function updateWalnutPosition(id: string, position: { x: number; y: number; z: number }) {
+  const walnut = walnutMeshes.get(id);
+  if (!walnut) {
+    console.warn("[updateWalnutPosition] No walnut found with id:", id);
+    return;
   }
-});
 
-socket.addEventListener('close', () => {
-  console.log('[WS] Disconnected');
-});
+  // Animate the position change
+  const startPosition = walnut.position.clone();
+  const endPosition = new THREE.Vector3(position.x, position.y, position.z);
+  
+  // Create animation
+  const duration = 1000; // 1 second
+  const startTime = Date.now();
+  
+  function animate() {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    
+    // Ease in-out function
+    const easeProgress = progress < 0.5
+      ? 2 * progress * progress
+      : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+    
+    walnut.position.lerpVectors(startPosition, endPosition, easeProgress);
+    
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      console.log(`[updateWalnutPosition] Moved walnut ${id} to`, position);
+    }
+  }
+  
+  animate();
+}
 
-socket.addEventListener('error', (error) => {
-  console.error('[WS] Error:', error);
-});
+// Connect to WebSocket
+function connectWebSocket() {
+  // Generate a random squirrelId if not already set
+  if (!squirrelId) {
+    squirrelId = crypto.randomUUID();
+  }
+  
+  // Connect to WebSocket endpoint
+  ws = new WebSocket(`ws://localhost:8787/join?squirrelId=${squirrelId}`);
+  
+  ws.onopen = () => {
+    console.log('WebSocket connection established');
+    showNotification('Connected to game server');
+  };
+  
+  ws.onclose = () => {
+    console.log('WebSocket connection closed');
+    showNotification('Disconnected from game server');
+    
+    // Attempt to reconnect after 5 seconds
+    setTimeout(connectWebSocket, 5000);
+  };
+  
+  ws.onerror = (error) => {
+    console.error('WebSocket error:', error);
+    showNotification('Connection error - attempting to reconnect...');
+  };
+  
+  ws.onmessage = (event) => {
+    try {
+      const message = JSON.parse(event.data);
+      
+      // Debug message display
+      if (showDebugMessages) {
+        console.log('Received message:', message);
+      }
+      
+      switch (message.type) {
+        case 'init':
+          console.log('Connection initialized with session ID:', message.sessionId);
+          if (message.mapState) {
+            walnuts = message.mapState;
+            renderWalnuts(walnuts);
+          }
+          break;
+          
+        case 'heartbeat':
+          // Silently handle heartbeat
+          break;
+          
+        case 'walnut-rehidden':
+          const { walnutId, location } = message.data;
+          if (walnutId && location) {
+            // Update the walnut's position in the scene
+            updateWalnutPosition(walnutId, location);
+            
+            // Show notification if it's from another squirrel
+            if (message.data.squirrelId !== squirrelId) {
+              showRehiddenNotification(walnutId);
+            }
+          }
+          break;
+          
+        default:
+          if (showDebugMessages) {
+            console.log('Unhandled message type:', message.type);
+          }
+      }
+    } catch (error) {
+      console.error('Error parsing WebSocket message:', error);
+    }
+  };
+}
+
+// Initialize WebSocket connection
+connectWebSocket();
 
 // Export key objects for use in other functions
-export { 
-  scene, 
-  camera, 
-  renderer, 
-  FOREST_SIZE, 
-  fetchWalnutMap, 
-  walnuts, 
-  renderWalnuts, 
+export {
+  scene,
+  camera,
+  renderer,
+  controls,
+  walnuts,
+  walnutMeshes,
   getHidingMethod, 
   createWalnutMaterial,
-  socket
+  ws as socket
 };

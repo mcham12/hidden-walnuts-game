@@ -45,9 +45,9 @@ export default {
       }
 
       // Handle /join route
-      if (pathname === "/join") {
+    if (pathname === "/join") {
         // Get squirrelId from query string or generate a new one
-        const id = url.searchParams.get("squirrelId") || crypto.randomUUID();
+      const id = url.searchParams.get("squirrelId") || crypto.randomUUID();
         
         // Create a modified request with the ID in the path
         // This ensures the ID is available even if we can't modify the original request
@@ -55,16 +55,16 @@ export default {
         newUrl.pathname = "/join";
         
         // Get SquirrelSession Durable Object instance
-        const squirrel = getObjectInstance(env, "squirrel", id);
+      const squirrel = getObjectInstance(env, "squirrel", id);
         
         // Forward the request to the Durable Object
         return await squirrel.fetch(new Request(newUrl, request));
-      }
+    }
 
       // Handle /hide route
-      if (pathname === "/hide") {
+    if (pathname === "/hide") {
         // Get squirrelId from query string
-        const id = url.searchParams.get("squirrelId");
+      const id = url.searchParams.get("squirrelId");
         
         // Validate squirrelId is provided
         if (!id) {
@@ -82,21 +82,21 @@ export default {
         newUrl.pathname = "/hide";
         
         // Get SquirrelSession Durable Object instance and forward the request
-        const squirrel = getObjectInstance(env, "squirrel", id);
+      const squirrel = getObjectInstance(env, "squirrel", id);
         return await squirrel.fetch(new Request(newUrl, request));
-      }
+    }
 
       // Handle /map-state route
-      if (pathname === "/map-state") {
-        const forest = getObjectInstance(env, "forest", "daily-forest");
+    if (pathname === "/map-state") {
+      const forest = getObjectInstance(env, "forest", "daily-forest");
         return await forest.fetch(request);
-      }
+    }
 
       // Handle /leaderboard route
-      if (pathname === "/leaderboard") {
-        const leaderboard = getObjectInstance(env, "leaderboard", "global");
+    if (pathname === "/leaderboard") {
+      const leaderboard = getObjectInstance(env, "leaderboard", "global");
         return await leaderboard.fetch(request);
-      }
+    }
 
       // Handle not found case
       return new Response(JSON.stringify({
