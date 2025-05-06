@@ -199,13 +199,8 @@ export default class ForestManager {
           return;
         }
         
-        // Process other incoming messages here
-        // For now, just echo back the message with the session ID
-        socket.send(JSON.stringify({
-          type: "echo",
-          sessionId,
-          data: message
-        }));
+        // Broadcast the message to all other clients
+        this.broadcastExceptSender(squirrelId, event.data);
       } catch (error) {
         console.error(`[ForestManager] ❌ Error processing message:`, error);
       }
