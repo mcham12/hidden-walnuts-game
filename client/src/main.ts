@@ -2,6 +2,7 @@ import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { showRehiddenNotification } from './ui'
+import { connectToWebSocket, getLocalSquirrelId, setDebugMessages } from './ws'
 
 // Scene dimensions
 const FOREST_SIZE = 100
@@ -303,7 +304,6 @@ animate();
 
 // WebSocket connection and message handling
 let ws: WebSocket | null = null;
-let squirrelId: string | null = null;
 
 // UI elements for notifications
 const notificationContainer = document.createElement('div');
@@ -321,10 +321,6 @@ debugToggle.style.bottom = '20px';
 debugToggle.style.right = '20px';
 debugToggle.style.zIndex = '1000';
 let showDebugMessages = false;
-debugToggle.onclick = () => {
-  showDebugMessages = !showDebugMessages;
-  debugToggle.textContent = showDebugMessages ? 'Hide Debug Messages' : 'Show Debug Messages';
-};
 appContainer.appendChild(debugToggle);
 
 // Show notification message
@@ -354,7 +350,7 @@ function updateWalnutPosition(id: string, position: { x: number; y: number; z: n
     console.warn("[updateWalnutPosition] No walnut found with id:", id);
     return;
   }
-
+  
   // Animate the position change
   const startPosition = walnut.position.clone();
   const endPosition = new THREE.Vector3(position.x, position.y, position.z);
@@ -384,82 +380,36 @@ function updateWalnutPosition(id: string, position: { x: number; y: number; z: n
   animate();
 }
 
-// Connect to WebSocket
-function connectWebSocket() {
-  // Generate a random squirrelId if not already set
-  if (!squirrelId) {
-    squirrelId = crypto.randomUUID();
-  }
-  
-  // Connect to WebSocket endpoint
-  ws = new WebSocket(`ws://localhost:8787/join?squirrelId=${squirrelId}`);
-  
-  ws.onopen = () => {
-    console.log('WebSocket connection established');
-    showNotification('Connected to game server');
+// Spawn a test walnut in the scene
+function spawnTestWalnut() {
+  const testWalnut: Walnut = {
+    id: "test-walnut",
+    ownerId: "system",
+    origin: "game",
+    hiddenIn: "bush",
+    location: { x: 0, y: 0, z: 0 },
+    found: false,
+    timestamp: Date.now()
   };
-  
-  ws.onclose = () => {
-    console.log('WebSocket connection closed');
-    showNotification('Disconnected from game server');
-    
-    // Attempt to reconnect after 5 seconds
-    setTimeout(connectWebSocket, 5000);
-  };
-  
-  ws.onerror = (error) => {
-    console.error('WebSocket error:', error);
-    showNotification('Connection error - attempting to reconnect...');
-  };
-  
-  ws.onmessage = (event) => {
-    try {
-      const message = JSON.parse(event.data);
-      
-      // Debug message display
-      if (showDebugMessages) {
-        console.log('Received message:', message);
-      }
-      
-      switch (message.type) {
-        case 'init':
-          console.log('Connection initialized with session ID:', message.sessionId);
-          if (message.mapState) {
-            walnuts = message.mapState;
-            renderWalnuts(walnuts);
-          }
-          break;
-          
-        case 'heartbeat':
-          // Silently handle heartbeat
-          break;
-          
-        case 'walnut-rehidden':
-          const { walnutId, location } = message.data;
-          if (walnutId && location) {
-            // Update the walnut's position in the scene
-            updateWalnutPosition(walnutId, location);
-            
-            // Show notification if it's from another squirrel
-            if (message.data.squirrelId !== squirrelId) {
-              showRehiddenNotification(walnutId);
-            }
-          }
-          break;
-          
-        default:
-          if (showDebugMessages) {
-            console.log('Unhandled message type:', message.type);
-          }
-      }
-    } catch (error) {
-      console.error('Error parsing WebSocket message:', error);
-    }
-  };
+
+  const mesh = createWalnutMesh(testWalnut);
+  scene.add(mesh);
+  walnutMeshes.set(testWalnut.id, mesh);
+  console.log("[spawnTestWalnut] Test walnut added to scene and walnutMeshes");
 }
 
 // Initialize WebSocket connection
-connectWebSocket();
+ws = connectToWebSocket(crypto.randomUUID());
+
+// Spawn test walnut
+spawnTestWalnut();
+
+// Set up debug toggle
+debugToggle.onclick = () => {
+  showDebugMessages = !showDebugMessages;
+  debugToggle.textContent = showDebugMessages ? 'Hide Debug Messages' : 'Show Debug Messages';
+  setDebugMessages(showDebugMessages);
+};
 
 // Export key objects for use in other functions
 export {
@@ -471,5 +421,6 @@ export {
   walnutMeshes,
   getHidingMethod, 
   createWalnutMaterial,
+  updateWalnutPosition,
   ws as socket
 };
