@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head><title>Multiplayer Test</title></head>
+<body>
+  <input id="squirrelId" placeholder="Squirrel ID" />
+  <button onclick="connect()">Join</button>
+  <button onclick="send()">Send Test</button>
+  <pre id="log"></pre>
+
+  <script>
+    let socket;
+
+    function connect() {
+      const id = document.getElementById('squirrelId').value;
+      fetch('http://localhost:8787/join', {
+        method: 'POST',
+        body: JSON.stringify({ squirrelId: id })
+      }).then(resp => {
+        socket = new WebSocket('ws://localhost:8787/join');
+        socket.onmessage = (e) => {
+          document.getElementById('log').textContent += 'Received: ' + e.data + '\n';
+        };
+      });
+    }
+
+    function send() {
+      socket?.send(JSON.stringify({ type: 'rehidden', from: 'test', payload: {} }));
+    }
+  </script>
+</body>
+</html> 
