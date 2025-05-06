@@ -44,7 +44,7 @@ appContainer.appendChild(debugToggle);
 
 // Initialize the scene and all components
 function init() {
-  // Initialize Three.js scene
+  console.log("[init] Starting scene setup...");
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xbfd1e5); // Light blue sky
 
@@ -103,7 +103,7 @@ function init() {
   const axesHelper = new THREE.AxesHelper(5);
   scene.add(axesHelper);
 
-  // Spawn test walnut after scene setup
+  console.log("[init] Calling spawnTestWalnut...");
   spawnTestWalnut(scene);
 
   // Initialize WebSocket connection
@@ -403,16 +403,17 @@ function updateWalnutPosition(id: string, position: { x: number; y: number; z: n
 
 // Spawn a test walnut in the scene
 export function spawnTestWalnut(scene: THREE.Scene) {
+  console.log("[spawnTestWalnut] Function entered");
+
   const testWalnut = new THREE.Mesh(
     new THREE.SphereGeometry(0.2),
     new THREE.MeshBasicMaterial({ color: 0xffff00 })
   );
   testWalnut.position.set(0, 0, 0);
   scene.add(testWalnut);
-
   walnutMap.set("test-walnut", testWalnut);
-  console.log("[spawnTestWalnut] Test walnut added to scene and walnutMap");
 
+  console.log("[spawnTestWalnut] Test walnut added to scene and walnutMap");
   (window as any).isReady = true;
 }
 
