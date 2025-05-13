@@ -228,7 +228,7 @@ async function fetchWalnutMap() {
     console.error('Failed to fetch walnut map data:', error);
     
     // For development/testing: create some demo walnuts if fetch fails
-    createDemoWalnuts();
+    // createDemoWalnuts(); // Disabled for MVP 4 state syncing
     
     return [];
   }
