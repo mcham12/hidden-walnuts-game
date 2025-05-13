@@ -208,10 +208,13 @@ function renderWalnuts(walnutData: Walnut[]): void {
   console.log(`Rendered ${walnutMeshes.size} walnuts: ${buriedCount} buried, ${bushCount} in bushes`);
 }
 
+// API base for dev/prod
+const API_BASE = import.meta.env.DEV ? "http://localhost:8787" : "";
+
 // Fetch walnut map data from the backend
 async function fetchWalnutMap() {
   try {
-    const response = await fetch('/map-state');
+    const response = await fetch(`${API_BASE}/map-state`);
     
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
@@ -226,10 +229,7 @@ async function fetchWalnutMap() {
     return walnuts;
   } catch (error) {
     console.error('Failed to fetch walnut map data:', error);
-    
-    // For development/testing: create some demo walnuts if fetch fails
     // createDemoWalnuts(); // Disabled for MVP 4 state syncing
-    
     return [];
   }
 }
@@ -308,7 +308,12 @@ function animate() {
 animate();
 
 // WebSocket connection
-const socket = new WebSocket("ws://localhost:8787"); // adjust if needed
+const squirrelId = crypto.randomUUID();
+const socket = new WebSocket(`${API_BASE.replace('http', 'ws')}/join?squirrelId=${squirrelId}`);
+
+socket.addEventListener("open", () => {
+  console.log("✅ WebSocket connection established");
+});
 
 socket.addEventListener("message", (event) => {
   const data = JSON.parse(event.data);
@@ -336,6 +341,14 @@ socket.addEventListener("message", (event) => {
       console.warn(`Walnut ${walnutId} not found in walnutMap`);
     }
   }
+});
+
+socket.addEventListener("error", (event) => {
+  console.error("WebSocket error:", event);
+});
+
+socket.addEventListener("close", (event) => {
+  console.warn("WebSocket closed:", event);
 });
 
 // Export key objects for use in other functions

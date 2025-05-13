@@ -16,6 +16,12 @@ interface ExecutionContext {
   passThroughOnException(): void;
 }
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*", // For dev, allow all. For production, restrict as needed.
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type"
+};
+
 export default {
   async fetch(request: Request, env: EnvWithBindings, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -89,7 +95,11 @@ export default {
       // Handle /map-state route
       if (pathname === "/map-state") {
         const forest = getObjectInstance(env, "forest", "daily-forest");
-        return await forest.fetch(request);
+        const resp = await forest.fetch(request);
+        // Clone and add CORS headers
+        const headers = new Headers(resp.headers);
+        Object.entries(CORS_HEADERS).forEach(([k, v]) => headers.set(k, v));
+        return new Response(await resp.text(), { status: resp.status, headers });
       }
 
       // Handle /leaderboard route
@@ -104,7 +114,10 @@ export default {
         message: "The requested endpoint does not exist"
       }), { 
         status: 404,
-        headers: { "Content-Type": "application/json" }
+        headers: {
+          ...CORS_HEADERS,
+          "Content-Type": "application/json"
+        }
       });
     } catch (error: unknown) {
       // Handle unexpected errors

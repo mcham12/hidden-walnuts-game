@@ -47,8 +47,8 @@ export default class ForestManager {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': 'http://localhost:5173',
+    const CORS_HEADERS = {
+      'Access-Control-Allow-Origin': '*', // For dev, allow all. For production, restrict as needed.
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     };
@@ -57,7 +57,7 @@ export default class ForestManager {
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
-        headers: corsHeaders,
+        headers: CORS_HEADERS,
       });
     }
 
@@ -78,7 +78,7 @@ export default class ForestManager {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          ...corsHeaders,
+          ...CORS_HEADERS,
         },
       });
     }
@@ -89,17 +89,17 @@ export default class ForestManager {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          ...corsHeaders,
+          ...CORS_HEADERS,
         },
       });
     }
 
-    if (path.endsWith("/state")) {
+    if (path.endsWith("/state") || path.endsWith("/map-state")) {
       return new Response(JSON.stringify(this.mapState), {
         status: 200,
         headers: {
+          ...CORS_HEADERS,
           'Content-Type': 'application/json',
-          ...corsHeaders,
         },
       });
     }
@@ -120,7 +120,7 @@ export default class ForestManager {
         status: 400,
         headers: {
           'Content-Type': 'application/json',
-          ...corsHeaders,
+          ...CORS_HEADERS,
         },
       });
       return this.handleFind(walnutId, squirrelId);
@@ -131,7 +131,7 @@ export default class ForestManager {
         status: 400,
         headers: {
           'Content-Type': 'application/json',
-          ...corsHeaders,
+          ...CORS_HEADERS,
         },
       });
       return this.handleRehide(walnutId, squirrelId, location);
@@ -151,7 +151,13 @@ export default class ForestManager {
 
     // Fallback (should not happen during WebSocket connection)
     console.log('No matching route — returning 404');
-    return new Response('Not Found', { status: 404 });
+    return new Response('Not Found', {
+      status: 404,
+      headers: {
+        ...CORS_HEADERS,
+        'Content-Type': 'application/json',
+      },
+    });
   }
 
   handleSocket(socket: WebSocket, squirrelId: string): void {
