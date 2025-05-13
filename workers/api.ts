@@ -45,9 +45,8 @@ export default {
 
       // Route /join WebSocket requests to ForestManager Durable Object
       if (pathname === '/join') {
-        const id = env.FOREST.idFromName('global-forest');
-        const stub = env.FOREST.get(id);
-        return stub.fetch(request);
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        return await forest.fetch(request);
       }
 
       // Handle /join route
