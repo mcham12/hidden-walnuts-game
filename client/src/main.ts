@@ -223,8 +223,7 @@ async function fetchWalnutMap() {
     walnuts = await response.json();
     console.log('Walnut map data loaded:', walnuts);
     
-    // Render the walnuts once data is loaded
-    renderWalnuts(walnuts);
+    // renderWalnuts(walnuts); // No longer needed, handled by WebSocket 'init'
     
     return walnuts;
   } catch (error) {
@@ -271,7 +270,7 @@ function createDemoWalnuts() {
   }
   
   walnuts = demoWalnuts;
-  renderWalnuts(demoWalnuts);
+  // renderWalnuts(demoWalnuts); // No longer needed, handled by WebSocket 'init'
   console.log('Created demo walnuts:', demoWalnuts);
 }
 
