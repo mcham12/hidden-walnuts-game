@@ -43,6 +43,7 @@ export default class ForestManager {
   }
 
   async fetch(request: Request): Promise<Response> {
+    const upgradeHeader = request.headers.get("Upgrade") || "";
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -61,12 +62,13 @@ export default class ForestManager {
     }
 
     // Handle WebSocket upgrade requests (do NOT add CORS headers here)
-    if (request.headers.get("Upgrade") === "websocket") {
-      const [client, server] = Object.getPrototypeOf(this).webSocketPair();
-      await this.handleWebSocketConnection(server, url.searchParams.get('squirrelId') ?? crypto.randomUUID());
+    if (request.method === "GET" && upgradeHeader.toLowerCase() === "websocket") {
+      const pair = new WebSocketPair();
+      const [client, server] = Object.values(pair);
+      await this.handleWebSocket(server);
       return new Response(null, {
         status: 101,
-        webSocket: client
+        webSocket: client,
       });
     }
 
@@ -311,7 +313,8 @@ export default class ForestManager {
   }
 
   // Add the new method to the class
-  async handleWebSocketConnection(socket: WebSocket, squirrelId: string) {
-    this.handleSocket(socket, squirrelId);
+  async handleWebSocket(ws: WebSocket) {
+    ws.accept();
+    // Implement your WebSocket message handling logic here
   }
 }
