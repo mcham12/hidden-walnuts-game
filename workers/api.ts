@@ -108,6 +108,12 @@ export default {
         return await leaderboard.fetch(request);
       }
 
+      // Forward /rehide-test to ForestManager DO
+      if (pathname === "/rehide-test") {
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        return await forest.fetch(request);
+      }
+
       // Handle not found case
       return new Response(JSON.stringify({
         error: "Not found",
