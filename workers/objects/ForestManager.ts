@@ -133,6 +133,31 @@ export default class ForestManager {
       return this.handleRehide(walnutId, squirrelId, location);
     }
 
+    if (request.method === "POST" && url.pathname === "/rehide-test") {
+      const testWalnutId = "test-walnut";
+      const newLocation = {
+        x: Math.floor(Math.random() * 20),
+        y: 0,
+        z: Math.floor(Math.random() * 20)
+      };
+
+      const rehiddenMessage = JSON.stringify({
+        type: "walnut-rehidden",
+        walnutId: testWalnutId,
+        location: newLocation
+      });
+
+      for (const socket of this.sockets.values()) {
+        try {
+          socket.send(rehiddenMessage);
+        } catch (err) {
+          console.warn("Failed to send rehidden message to a session", err);
+        }
+      }
+
+      return new Response("Rehidden message sent to all clients", { status: 200 });
+    }
+
     // Fallback (should not happen during WebSocket connection)
     console.log('No matching route — returning 404');
     return new Response('Not Found', { status: 404 });
@@ -150,39 +175,23 @@ export default class ForestManager {
     const sessionId = crypto.randomUUID();
     
     console.log(`[ForestManager] 🚀 New connection: ${sessionId}. Total connections: ${this.sockets.size}`);
-    
-    // --- MVP 2.5 Task 7: Send at least one test walnut if mapState is empty ---
-    let mapStateToSend = this.mapState;
-    if (!mapStateToSend || mapStateToSend.length === 0) {
-      mapStateToSend = [
-        {
-          id: `test-walnut-1`,
-          ownerId: "system",
-          origin: "game",
-          hiddenIn: "buried",
-          location: { x: 10, y: 0, z: 10 },
-          found: false,
-          timestamp: Date.now()
-        },
-        {
-          id: `test-walnut-2`,
-          ownerId: "system",
-          origin: "game",
-          hiddenIn: "bush",
-          location: { x: 20, y: 0, z: 20 },
-          found: false,
-          timestamp: Date.now()
-        }
-      ];
-    }
-    // --- End Task 7 addition ---
-    // Send initial state to the client
+
+    // --- MVP 4: Always send the same hardcoded mapState with test-walnut ---
+    const mapState = [{
+      id: "test-walnut",
+      location: { x: 0, y: 0, z: 0 },
+      ownerId: "system",
+      origin: "game",
+      hiddenIn: "bush",
+      found: false
+    }];
+
     socket.send(JSON.stringify({
       type: "init",
-      sessionId,
-      mapState: mapStateToSend
+      mapState
     }));
-    
+    // --- End MVP 4 addition ---
+
     // Set up message handler using onmessage property
     socket.onmessage = (event) => {
       try {

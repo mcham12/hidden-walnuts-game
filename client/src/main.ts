@@ -109,6 +109,13 @@ const walnutMeshes = new Map<string, THREE.Mesh>()
 // Array to store walnut data
 let walnuts: Walnut[] = []
 
+// Walnut mesh map
+const walnutMap: Record<string, THREE.Mesh> = {};
+
+if (import.meta.env.DEV) {
+  (window as any).walnutMap = walnutMap;
+}
+
 // Helper function to determine the hiding method for a walnut
 function getHidingMethod(walnut: Walnut): 'buried' | 'bush' {
   // If hiddenIn is defined, use it
@@ -301,41 +308,34 @@ function animate() {
 animate();
 
 // WebSocket connection
-const socket = new WebSocket('ws://localhost:8787/ws');
+const socket = new WebSocket("ws://localhost:8787"); // adjust if needed
 
-// WebSocket event handlers
-socket.addEventListener('open', () => {
-  console.log('[WS] Connected');
-});
+socket.addEventListener("message", (event) => {
+  const data = JSON.parse(event.data);
 
-socket.addEventListener('message', (event) => {
-  console.log('[WS] Message:', event.data);
-  
-  try {
-    const message = JSON.parse(event.data);
-    
-    // Handle init message with map state
-    if (message.type === 'init' && Array.isArray(message.mapState)) {
-      if (message.mapState.length === 0) {
-        // If mapState is empty, skip clearing/re-rendering and keep demo walnuts
-        console.log('[WS] Received empty map state, keeping existing walnuts.');
-        return;
-      }
-      console.log('[WS] Received initial map state with', message.mapState.length, 'walnuts');
-      walnuts = message.mapState;
-      renderWalnuts(walnuts);
+  if (data.type === "init") {
+    console.log(`Received mapState with ${data.mapState.length} walnuts`);
+
+    for (const walnut of data.mapState) {
+      const mesh = createWalnutMesh(walnut); // must already exist
+      scene.add(mesh);
+      walnutMap[walnut.id] = mesh;
+      console.log(`Added walnut ${walnut.id} to scene`);
     }
-  } catch (error) {
-    console.error('[WS] Error parsing message:', error);
   }
-});
 
-socket.addEventListener('close', () => {
-  console.log('[WS] Disconnected');
-});
+  if (data.type === "walnut-rehidden") {
+    const { walnutId, location } = data;
+    console.log(`Received rehidden message for ${walnutId}`);
 
-socket.addEventListener('error', (error) => {
-  console.error('[WS] Error:', error);
+    const mesh = walnutMap[walnutId];
+    if (mesh) {
+      mesh.position.set(location.x, location.y, location.z);
+      console.log(`Moved ${walnutId} to (${location.x}, ${location.y}, ${location.z})`);
+    } else {
+      console.warn(`Walnut ${walnutId} not found in walnutMap`);
+    }
+  }
 });
 
 // Export key objects for use in other functions
