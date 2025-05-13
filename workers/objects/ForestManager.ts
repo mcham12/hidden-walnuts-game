@@ -138,16 +138,29 @@ export default class ForestManager {
       return this.handleRehide(walnutId, squirrelId, location);
     }
 
-    if (request.method === "POST" && new URL(request.url).pathname === "/rehide-test") {
-      const data = await request.json();
-      // Handle the data as needed, e.g., log or apply logic
+    if (request.method === "POST" && url.pathname === "/rehide-test") {
+      const testWalnutId = "test-walnut";
+      const newLocation = {
+        x: Math.random() * 20,
+        y: 0,
+        z: Math.random() * 20
+      };
 
-      return new Response(JSON.stringify({ status: "ok" }), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json"
-        }
+      const msg = JSON.stringify({
+        type: "walnut-rehidden",
+        walnutId: testWalnutId,
+        location: newLocation
       });
+
+      for (const session of this.sessions.values()) {
+        try {
+          session.send(msg);
+        } catch (err) {
+          console.warn("Failed to send to session:", err);
+        }
+      }
+
+      return new Response("Rehidden test message sent");
     }
 
     // Fallback (should not happen during WebSocket connection)
