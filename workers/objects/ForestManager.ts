@@ -36,6 +36,7 @@ export default class ForestManager {
   // Track WebSocket connections directly with a Set
   sockets: Set<WebSocket> = new Set();
   socketsBySquirrelId: Map<string, WebSocket> = new Map();
+  sessions: Set<WebSocket> = new Set();
 
   constructor(state: DurableObjectState, env: Record<string, unknown>) {
     this.state = state;
@@ -306,8 +307,30 @@ export default class ForestManager {
   }
 
   // Add the new method to the class
-  async handleWebSocket(ws: WebSocket) {
+  private async handleWebSocket(ws: WebSocket) {
     ws.accept();
-    // Implement your WebSocket message handling logic here
+
+    // Track the session
+    if (!this.sessions) this.sessions = new Set();
+    this.sessions.add(ws);
+
+    const mapState = [{
+      id: "test-walnut",
+      location: { x: 0, y: 0, z: 0 },
+      ownerId: "system",
+      origin: "game",
+      hiddenIn: "bush",
+      found: false
+    }];
+
+    ws.send(JSON.stringify({
+      type: "init",
+      mapState
+    }));
+
+    // Optional: handle incoming messages if needed
+    ws.addEventListener("message", (event) => {
+      // ...handle rehide etc. later...
+    });
   }
 }
