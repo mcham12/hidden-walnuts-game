@@ -139,6 +139,7 @@ export default class ForestManager {
     }
 
     if (request.method === "POST" && url.pathname === "/rehide-test") {
+      console.log("Broadcasting walnut-rehidden to", this.sessions.size, "sessions");
       const testWalnutId = "test-walnut";
       const newLocation = {
         x: Math.random() * 20,
@@ -326,6 +327,7 @@ export default class ForestManager {
     // Track the session
     if (!this.sessions) this.sessions = new Set();
     this.sessions.add(ws);
+    console.log("WebSocket accepted and added to sessions. Total sessions:", this.sessions.size);
 
     const mapState = [{
       id: "test-walnut",

@@ -315,6 +315,7 @@ socket.addEventListener("open", () => {
 });
 
 socket.addEventListener("message", (event) => {
+  console.log("Raw WS message:", event.data);
   const data = JSON.parse(event.data);
 
   if (data.type === "init") {
