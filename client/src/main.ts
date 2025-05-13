@@ -200,12 +200,12 @@ function renderWalnuts(walnutData: Walnut[]): void {
   });
   
   // Count and log walnuts by type for debugging
-  const buriedCount = Array.from(walnutMeshes.values())
-    .filter(mesh => mesh.userData.hiddenIn === 'buried').length;
-  const bushCount = Array.from(walnutMeshes.values())
-    .filter(mesh => mesh.userData.hiddenIn === 'bush').length;
+  // const buriedCount = Array.from(walnutMeshes.values())
+  //   .filter(mesh => mesh.userData.hiddenIn === 'buried').length;
+  // const bushCount = Array.from(walnutMeshes.values())
+  //   .filter(mesh => mesh.userData.hiddenIn === 'bush').length;
     
-  console.log(`Rendered ${walnutMeshes.size} walnuts: ${buriedCount} buried, ${bushCount} in bushes`);
+  // console.log(`Rendered ${walnutMeshes.size} walnuts: ${buriedCount} buried, ${bushCount} in bushes`);
 }
 
 // API base for dev/prod
@@ -221,7 +221,7 @@ async function fetchWalnutMap() {
     }
     
     walnuts = await response.json();
-    console.log('Walnut map data loaded:', walnuts);
+    // console.log('Walnut map data loaded:', walnuts);
     
     // renderWalnuts(walnuts); // No longer needed, handled by WebSocket 'init'
     
@@ -231,47 +231,6 @@ async function fetchWalnutMap() {
     // createDemoWalnuts(); // Disabled for MVP 4 state syncing
     return [];
   }
-}
-
-// Create some demo walnuts for testing when offline
-function createDemoWalnuts() {
-  const demoWalnuts: Walnut[] = [];
-  
-  // Create 20 random walnuts
-  for (let i = 0; i < 20; i++) {
-    const isGameWalnut = Math.random() > 0.5;
-    
-    // For demo purposes, leave some walnuts with undefined hiddenIn
-    let hiddenIn: 'buried' | 'bush' | undefined;
-    const randomValue = Math.random();
-    
-    if (randomValue < 0.4) {
-      hiddenIn = 'buried';
-    } else if (randomValue < 0.8) {
-      hiddenIn = 'bush';
-    } else {
-      // Leave hiddenIn undefined for 20% of walnuts to test our handling
-      hiddenIn = undefined;
-    }
-    
-    demoWalnuts.push({
-      id: `demo-${i}`,
-      ownerId: isGameWalnut ? 'system' : 'demo-player',
-      origin: isGameWalnut ? 'game' : 'player',
-      hiddenIn: hiddenIn,
-      location: {
-        x: (Math.random() - 0.5) * FOREST_SIZE,
-        y: 0,
-        z: (Math.random() - 0.5) * FOREST_SIZE
-      },
-      found: false,
-      timestamp: Date.now()
-    });
-  }
-  
-  walnuts = demoWalnuts;
-  // renderWalnuts(demoWalnuts); // No longer needed, handled by WebSocket 'init'
-  console.log('Created demo walnuts:', demoWalnuts);
 }
 
 // Load walnut data when the app starts

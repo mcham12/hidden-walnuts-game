@@ -11,7 +11,7 @@ Gameplay Summary:
 - Players join anytime, get 3 walnuts to hide (under bushes or buried).
 - Players search for walnuts hidden by others or the system.
 - Points awarded based on type/location, with time-based multipliers.
-- Dynamic events (e.g., Nut Rush) and mini-interactions (e.g., “Squirrel Chatter”).
+- Dynamic events (e.g., Nut Rush) and mini-interactions (e.g., "Squirrel Chatter").
 - Power-ups, predators, leaderboard, and social mechanics included.
 
 Project Structure (Simplified for AI-Focused Dev):
@@ -100,3 +100,9 @@ Final Notes:
 This repo is designed to support vibe coding: you describe the game system, and AI implements it incrementally using structured, modular code. When AI loses focus during a refactor, return to this file to re-anchor structure and gameplay goals.
 
 Happy hiding. 🐿️🌰
+
+## MVP 4: Multiplayer World State Sync
+
+- Implemented WebSocket-based state synchronization.
+- Clients receive and render walnut map state upon connection.
+- Real-time updates handled via 'walnut-rehidden' messages.
