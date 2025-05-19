@@ -204,27 +204,23 @@ function renderWalnuts(walnutData: Walnut[]): void {
   // console.log(`Rendered ${walnutMeshes.size} walnuts: ${buriedCount} buried, ${bushCount} in bushes`);
 }
 
-// API base for dev/prod
+// Unified API base URL logic
 const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:8787" : "");
+if (!import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
+  throw new Error("VITE_API_URL must be set in production!");
+}
 
 // Fetch walnut map data from the backend
 async function fetchWalnutMap() {
   try {
     const response = await fetch(`${API_BASE}/map-state`);
-    
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
-    
     walnuts = await response.json();
-    // console.log('Walnut map data loaded:', walnuts);
-    
-    // renderWalnuts(walnuts); // No longer needed, handled by WebSocket 'init'
-    
     return walnuts;
   } catch (error) {
     console.error('Failed to fetch walnut map data:', error);
-    // createDemoWalnuts(); // Disabled for MVP 4 state syncing
     return [];
   }
 }
@@ -262,9 +258,8 @@ function animate() {
 animate();
 
 // WebSocket connection
-const apiUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:8787" : "");
-const wsProtocol = apiUrl.startsWith('https') ? 'wss' : 'ws';
-const wsHost = apiUrl.replace(/^https?:\/\//, '');
+const wsProtocol = API_BASE.startsWith('https') ? 'wss' : 'ws';
+const wsHost = API_BASE.replace(/^https?:\/\//, '');
 const squirrelId = crypto.randomUUID();
 const wsUrl = `${wsProtocol}://${wsHost}/join?squirrelId=${squirrelId}`;
 const socket = new WebSocket(wsUrl);
