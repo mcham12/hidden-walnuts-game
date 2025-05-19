@@ -112,10 +112,6 @@ let walnuts: Walnut[] = []
 // Walnut mesh map
 const walnutMap: Record<string, THREE.Mesh> = {};
 
-if (import.meta.env.DEV) {
-  (window as any).walnutMap = walnutMap;
-}
-
 // Helper function to determine the hiding method for a walnut
 function getHidingMethod(walnut: Walnut): 'buried' | 'bush' {
   // If hiddenIn is defined, use it
@@ -209,7 +205,7 @@ function renderWalnuts(walnutData: Walnut[]): void {
 }
 
 // API base for dev/prod
-const API_BASE = import.meta.env.DEV ? "http://localhost:8787" : "";
+const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:8787" : "");
 
 // Fetch walnut map data from the backend
 async function fetchWalnutMap() {
@@ -267,7 +263,7 @@ animate();
 
 // WebSocket connection
 const squirrelId = crypto.randomUUID();
-const socket = new WebSocket(`${API_BASE.replace('http', 'ws')}/join?squirrelId=${squirrelId}`);
+const socket = new WebSocket(`${API_BASE.replace('http', 'ws').replace('https', 'wss')}/join?squirrelId=${squirrelId}`);
 
 socket.addEventListener("open", () => {
   console.log("✅ WebSocket connection established");

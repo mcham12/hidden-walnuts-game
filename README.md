@@ -106,3 +106,43 @@ Happy hiding. 🐿️🌰
 - Implemented WebSocket-based state synchronization.
 - Clients receive and render walnut map state upon connection.
 - Real-time updates handled via 'walnut-rehidden' messages.
+
+## Building the Frontend for Production
+
+1. Navigate to the `client/` directory.
+2. Ensure all dependencies are installed by running `npm install`.
+3. Run the build script with `npm run build`.
+4. Verify that a `dist/` directory is created, containing `index.html`, bundled JS, and assets.
+5. If there are any build errors, resolve them by checking dependencies and configurations.
+
+## API Endpoint Configuration
+
+- The production API endpoint is `https://api.hiddenwalnuts.com`.
+- Developers should set the `VITE_API_URL` environment variable to this URL for production builds.
+- For local development, the default is `http://localhost:8787`.
+
+## Environment Configuration
+
+- **VITE_API_URL**: Set this environment variable to `https://api.hiddenwalnuts.com` for production builds. For local development, it defaults to `http://localhost:8787`.
+
+## Deployment Configuration
+
+- **Frontend**: Deployed to Cloudflare Pages at `game.hiddenwalnuts.com`.
+- **Backend**: Deployed to Cloudflare Workers at `api.hiddenwalnuts.com`.
+
+## Deployment Checklist
+
+1. **Environment Variables:**
+   - Ensure `VITE_API_URL` is set correctly for the target environment.
+   - Verify any other required environment variables are configured.
+
+2. **Frontend Deployment:**
+   - Build the frontend using `npm run build` in the `client/` directory.
+   - Deploy the `dist/` directory to Cloudflare Pages.
+
+3. **Backend Deployment:**
+   - Deploy the Cloudflare Worker and Durable Objects to production.
+   - Verify all routes and bindings are correctly configured.
+
+4. **Testing:**
+   - Test the application on the production URLs to ensure everything is functioning as expected.
