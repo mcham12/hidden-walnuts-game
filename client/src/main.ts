@@ -263,7 +263,8 @@ animate();
 
 // WebSocket connection
 const squirrelId = crypto.randomUUID();
-const socket = new WebSocket(`${API_BASE.replace('http', 'ws').replace('https', 'wss')}/join?squirrelId=${squirrelId}`);
+const wsProtocol = API_BASE.startsWith('https') ? 'wss' : 'ws';
+const socket = new WebSocket(`${wsProtocol}://${API_BASE.replace(/^https?:\/\//, '')}/join?squirrelId=${squirrelId}`);
 
 socket.addEventListener("open", () => {
   console.log("✅ WebSocket connection established");

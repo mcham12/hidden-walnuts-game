@@ -94,7 +94,9 @@ export default {
       // Handle /map-state route
       if (pathname === "/map-state") {
         const forest = getObjectInstance(env, "forest", "daily-forest");
+        console.log("Fetching map state from ForestManager");
         const resp = await forest.fetch(request);
+        console.log("Map state response:", await resp.text());
         // Clone and add CORS headers
         const headers = new Headers(resp.headers);
         Object.entries(CORS_HEADERS).forEach(([k, v]) => headers.set(k, v));
