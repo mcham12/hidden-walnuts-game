@@ -262,9 +262,12 @@ function animate() {
 animate();
 
 // WebSocket connection
+const apiUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:8787" : "");
+const wsProtocol = apiUrl.startsWith('https') ? 'wss' : 'ws';
+const wsHost = apiUrl.replace(/^https?:\/\//, '');
 const squirrelId = crypto.randomUUID();
-const wsProtocol = API_BASE.startsWith('https') ? 'wss' : 'ws';
-const socket = new WebSocket(`${wsProtocol}://${API_BASE.replace(/^https?:\/\//, '')}/join?squirrelId=${squirrelId}`);
+const wsUrl = `${wsProtocol}://${wsHost}/join?squirrelId=${squirrelId}`;
+const socket = new WebSocket(wsUrl);
 
 socket.addEventListener("open", () => {
   console.log("✅ WebSocket connection established");
