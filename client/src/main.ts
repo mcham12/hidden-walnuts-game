@@ -1,3 +1,7 @@
+// Debug: Log VITE_API_URL at runtime
+// eslint-disable-next-line no-console
+console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
+
 import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
