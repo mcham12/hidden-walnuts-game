@@ -1,5 +1,5 @@
 // Add type imports for Durable Object types
-import { DurableObject, DurableObjectStorage, DurableObjectState, Request as CfRequest, Response as CfResponse } from '@cloudflare/workers-types';
+import { DurableObject, DurableObjectStorage, DurableObjectState, Request as CfRequest, Response as CfResponse, DurableObjectId } from '@cloudflare/workers-types';
 
 // Add an empty export to make this file a module
 export {};
@@ -8,9 +8,11 @@ export {};
 export class ForestManager implements DurableObject {
   private mapState: any[] = [];
   private storage: DurableObjectStorage;
+  private id: DurableObjectId;
 
   constructor(state: DurableObjectState) {
     this.storage = state.storage;
+    this.id = state.id;
   }
 
   // Async initialization method to load mapState from storage
@@ -49,6 +51,7 @@ export class ForestManager implements DurableObject {
 
   // Example fetch handler
   async fetch(request: CfRequest): Promise<CfResponse> {
+    console.log('DO ID:', this.id.toString(), 'mapState:', this.mapState);
     await this.initialize();
     // ... existing fetch logic ...
     // After any update to mapState, call persistMapState
@@ -58,6 +61,7 @@ export class ForestManager implements DurableObject {
 
   // Example WebSocket message handler
   async handleWebSocketMessage(message: any): Promise<void> {
+    console.log('DO ID:', this.id.toString(), 'mapState:', this.mapState);
     await this.initialize();
     // ... existing WebSocket message logic ...
     // After any update to mapState, call persistMapState
