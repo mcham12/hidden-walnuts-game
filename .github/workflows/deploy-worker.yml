@@ -24,7 +24,12 @@ jobs:
 
       - run: npm run build:worker
 
-      - run: ls -R dist/worker
+      # NEW: Explicitly show file output so we can verify dist/worker content
+      - name: Show build output structure
+        run: |
+          echo "::group::dist/worker contents"
+          ls -R dist/worker
+          echo "::endgroup::"
 
       - uses: cloudflare/wrangler-action@v3
         with:
