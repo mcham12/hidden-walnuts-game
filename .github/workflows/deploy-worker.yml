@@ -25,6 +25,10 @@ jobs:
       - run: npm run build:worker
 
       - name: Debug: Show all build output
-        run: find dist/worker
+        run: |
+          find dist/worker
 
       - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: deploy dist/worker/src/index.js
