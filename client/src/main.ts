@@ -219,10 +219,19 @@ function renderWalnuts(walnutData: Walnut[]): void {
 }
 
 // Unified API base URL logic
-const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:8787" : "");
-if (!import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
-  throw new Error("VITE_API_URL must be set in production!");
+let API_BASE: string;
+if (import.meta.env.PROD) {
+  if (!import.meta.env.VITE_API_URL) {
+    throw new Error("VITE_API_URL must be set in production!");
+  }
+  API_BASE = import.meta.env.VITE_API_URL;
+} else {
+  API_BASE = "http://localhost:8787";
 }
+
+// Debug: Log the final API base URL
+// eslint-disable-next-line no-console
+console.log('Using API base URL:', API_BASE);
 
 // Fetch walnut map data from the backend
 async function fetchWalnutMap() {
@@ -276,6 +285,8 @@ const wsProtocol = API_BASE.startsWith('https') ? 'wss' : 'ws';
 const wsHost = API_BASE.replace(/^https?:\/\//, '');
 const squirrelId = crypto.randomUUID();
 const wsUrl = `${wsProtocol}://${wsHost}/join?squirrelId=${squirrelId}`;
+// eslint-disable-next-line no-console
+console.log('Connecting to WebSocket:', wsUrl);
 const socket = new WebSocket(wsUrl);
 
 socket.addEventListener("open", () => {
