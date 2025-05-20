@@ -1,3 +1,7 @@
+import './style.css'
+import * as THREE from 'three'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+
 // ===== DEBUG LOGS =====
 console.log('%c🔍 Environment Variables', 'font-size: 16px; font-weight: bold; color: #4CAF50;');
 console.log({
@@ -12,9 +16,20 @@ console.log({
 // eslint-disable-next-line no-console
 console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
 
-import './style.css'
-import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+// Unified API base URL logic
+let API_BASE: string;
+if (import.meta.env.PROD) {
+  if (!import.meta.env.VITE_API_URL) {
+    console.error('%c❌ VITE_API_URL is not set in production!', 'color: red; font-weight: bold;');
+    throw new Error("VITE_API_URL must be set in production!");
+  }
+  API_BASE = import.meta.env.VITE_API_URL;
+} else {
+  API_BASE = "http://localhost:8787";
+}
+
+// Debug: Log the final API base URL
+console.log('%c🌐 Using API base URL:', 'font-weight: bold;', API_BASE);
 
 // Scene dimensions
 const FOREST_SIZE = 100
@@ -218,21 +233,6 @@ function renderWalnuts(walnutData: Walnut[]): void {
   // console.log(`Rendered ${walnutMeshes.size} walnuts: ${buriedCount} buried, ${bushCount} in bushes`);
 }
 
-// Unified API base URL logic
-let API_BASE: string;
-if (import.meta.env.PROD) {
-  if (!import.meta.env.VITE_API_URL) {
-    console.error('%c❌ VITE_API_URL is not set in production!', 'color: red; font-weight: bold;');
-    throw new Error("VITE_API_URL must be set in production!");
-  }
-  API_BASE = import.meta.env.VITE_API_URL;
-} else {
-  API_BASE = "http://localhost:8787";
-}
-
-// Debug: Log the final API base URL
-console.log('%c🌐 Using API base URL:', 'font-weight: bold;', API_BASE);
-
 // Fetch walnut map data from the backend
 async function fetchWalnutMap() {
   try {
@@ -280,13 +280,6 @@ function animate() {
 // Start animation loop
 animate();
 
-// WebSocket connection
-const wsProtocol = API_BASE.startsWith('https') ? 'wss' : 'ws';
-const wsHost = API_BASE.replace(/^https?:\/\//, '');
-const squirrelId = crypto.randomUUID();
-const wsUrl = `${wsProtocol}://${wsHost}/join?squirrelId=${squirrelId}`;
-console.log('%c🌐 Using API base URL:', 'font-weight: bold;', API_BASE);
-
 // WebSocket heartbeat setup
 let heartbeatInterval: number | null = null;
 const HEARTBEAT_INTERVAL = 20000; // 20 seconds
@@ -309,6 +302,11 @@ function stopHeartbeat() {
   }
 }
 
+// WebSocket connection
+const wsProtocol = API_BASE.startsWith('https') ? 'wss' : 'ws';
+const wsHost = API_BASE.replace(/^https?:\/\//, '');
+const squirrelId = crypto.randomUUID();
+const wsUrl = `${wsProtocol}://${wsHost}/join?squirrelId=${squirrelId}`;
 const socket = new WebSocket(wsUrl);
 
 socket.addEventListener("open", () => {
