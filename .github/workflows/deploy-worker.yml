@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - mvp-4.5  # add/remove branches as needed
+      - mvp-*
 
 jobs:
   deploy:
