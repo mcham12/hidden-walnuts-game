@@ -1,21 +1,19 @@
-import { DurableObject, DurableObjectState, WebSocketPair } from '@cloudflare/workers-types';
+import { DurableObject, DurableObjectState, Request as CfRequest, Response as CfResponse, WebSocketPair } from '@cloudflare/workers-types';
 
 export class SquirrelSession implements DurableObject {
-  private socket: WebSocket | null;
+  private socket: WebSocket | null = null;
 
-  constructor(state: DurableObjectState) {
-    this.socket = null;
-  }
+  constructor(private state: DurableObjectState) {}
 
-  async fetch(request: Request) {
+  async fetch(request: CfRequest): Promise<CfResponse> {
     if (request.headers.get('Upgrade') !== 'websocket') {
-      return new Response('Expected Upgrade: websocket', { status: 426 });
+      return new CfResponse('Expected Upgrade: websocket', { status: 426 });
     }
 
     const pair = new WebSocketPair();
-    const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
+    const [client, server] = Object.values(pair) as unknown as [WebSocket, WebSocket];
 
-    server.accept();
+    (server as any).accept?.();
 
     server.addEventListener('message', async (event) => {
       try {
@@ -33,9 +31,9 @@ export class SquirrelSession implements DurableObject {
       }
     });
 
-    return new Response(null, {
+    return new CfResponse(null, {
       status: 101,
       webSocket: client,
-    } as ResponseInit);
+    } as any);
   }
 } 
