@@ -15,14 +15,10 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
-      
       - run: npm install --save-dev @cloudflare/workers-types
-
       - run: npm run build
-
       - run: npm run build:worker
-
-     - uses: cloudflare/wrangler-action@v3
-       with:
-         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-         command: deploy dist/worker/index.js
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: deploy dist/worker/index.js
