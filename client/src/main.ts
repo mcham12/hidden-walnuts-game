@@ -147,7 +147,7 @@ const walnutMeshes = new Map<string, THREE.Mesh>()
 let walnuts: Walnut[] = []
 
 // Walnut mesh map
-const walnutMap: Record<string, THREE.Mesh> = {};
+let walnutMap: Record<string, THREE.Mesh> = {};
 
 // Helper function to determine the hiding method for a walnut
 function getHidingMethod(walnut: Walnut): 'buried' | 'bush' {
@@ -249,6 +249,10 @@ async function fetchWalnutMap() {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
     walnuts = await response.json();
+    // Only render walnuts if we haven't received them via WebSocket yet
+    if (Object.keys(walnutMap).length === 0) {
+      renderWalnuts(walnuts);
+    }
     return walnuts;
   } catch (error) {
     console.error('Failed to fetch walnut map data:', error);
@@ -335,9 +339,15 @@ socket.addEventListener("message", (event) => {
 
   if (data.type === "init") {
     console.log(`Received mapState with ${data.mapState.length} walnuts`);
+    
+    // Clear existing walnuts before adding new ones
+    Object.values(walnutMap).forEach(mesh => {
+      scene.remove(mesh);
+    });
+    walnutMap = {};
 
     for (const walnut of data.mapState) {
-      const mesh = createWalnutMesh(walnut); // must already exist
+      const mesh = createWalnutMesh(walnut);
       scene.add(mesh);
       walnutMap[walnut.id] = mesh;
       console.log(`Added walnut ${walnut.id} to scene`);
