@@ -24,7 +24,7 @@ jobs:
 
       - run: npm run build:worker
 
-      - name: Debug: Show all build output
+      - name: Debug output
         run: find dist/worker
 
       - uses: cloudflare/wrangler-action@v3
