@@ -7,7 +7,7 @@
     "dev": "wrangler dev",
     "build": "tsc",
     "deploy": "wrangler deploy",
-    "build:worker": "tsc --project tsconfig.json --outDir dist/worker"
+    "build:worker": "tsc --project tsconfig.json"
   },
   "dependencies": {
     "uuid": "^9.0.1"
