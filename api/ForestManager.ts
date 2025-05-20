@@ -15,7 +15,11 @@ export class ForestManager implements DurableObject {
 
   // Async initialization method to load mapState from storage
   private async initialize(): Promise<void> {
-    this.mapState = (await this.storage.get('mapState')) || [];
+    const storedMapState = await this.storage.get('mapState');
+    if (storedMapState) {
+      this.mapState = Array.isArray(storedMapState) ? storedMapState : [];
+      console.log('Loaded mapState from storage:', this.mapState);
+    }
     if (this.mapState.length === 0) {
       // Seed test walnut if still empty (dev only)
       this.mapState.push({
@@ -34,7 +38,13 @@ export class ForestManager implements DurableObject {
 
   // Persist mapState after any update
   private async persistMapState(): Promise<void> {
-    await this.storage.put('mapState', this.mapState);
+    this.mapState = [...this.mapState];
+    const serializedMapState = this.mapState.map(walnut => ({
+      ...walnut,
+      timestamp: walnut.timestamp instanceof Date ? walnut.timestamp.toISOString() : walnut.timestamp
+    }));
+    await this.storage.put('mapState', serializedMapState);
+    console.log('Persisted mapState to storage:', serializedMapState);
   }
 
   // Example fetch handler
