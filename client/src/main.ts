@@ -1,6 +1,6 @@
-// Debug: Log environment variables and build info
-// eslint-disable-next-line no-console
-console.log('Environment check:', {
+// ===== DEBUG LOGS =====
+console.log('%c🔍 Environment Variables', 'font-size: 16px; font-weight: bold; color: #4CAF50;');
+console.log({
   VITE_API_URL: import.meta.env.VITE_API_URL,
   MODE: import.meta.env.MODE,
   DEV: import.meta.env.DEV,
@@ -222,6 +222,7 @@ function renderWalnuts(walnutData: Walnut[]): void {
 let API_BASE: string;
 if (import.meta.env.PROD) {
   if (!import.meta.env.VITE_API_URL) {
+    console.error('%c❌ VITE_API_URL is not set in production!', 'color: red; font-weight: bold;');
     throw new Error("VITE_API_URL must be set in production!");
   }
   API_BASE = import.meta.env.VITE_API_URL;
@@ -230,8 +231,7 @@ if (import.meta.env.PROD) {
 }
 
 // Debug: Log the final API base URL
-// eslint-disable-next-line no-console
-console.log('Using API base URL:', API_BASE);
+console.log('%c🌐 Using API base URL:', 'font-weight: bold;', API_BASE);
 
 // Fetch walnut map data from the backend
 async function fetchWalnutMap() {
