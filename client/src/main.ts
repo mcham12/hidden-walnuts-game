@@ -1,3 +1,13 @@
+// Debug: Log environment variables and build info
+// eslint-disable-next-line no-console
+console.log('Environment check:', {
+  VITE_API_URL: import.meta.env.VITE_API_URL,
+  MODE: import.meta.env.MODE,
+  DEV: import.meta.env.DEV,
+  PROD: import.meta.env.PROD,
+  BASE_URL: import.meta.env.BASE_URL
+});
+
 // Debug: Log VITE_API_URL at runtime
 // eslint-disable-next-line no-console
 console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
