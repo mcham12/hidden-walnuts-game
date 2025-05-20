@@ -27,6 +27,7 @@ export class ForestManager implements DurableObject {
         found: false,
         timestamp: Date.now()
       });
+      // Persist mapState to storage immediately after seeding
       await this.storage.put('mapState', this.mapState);
     }
   }

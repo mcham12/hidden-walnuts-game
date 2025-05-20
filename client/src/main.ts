@@ -285,17 +285,47 @@ const wsProtocol = API_BASE.startsWith('https') ? 'wss' : 'ws';
 const wsHost = API_BASE.replace(/^https?:\/\//, '');
 const squirrelId = crypto.randomUUID();
 const wsUrl = `${wsProtocol}://${wsHost}/join?squirrelId=${squirrelId}`;
-// eslint-disable-next-line no-console
-console.log('Connecting to WebSocket:', wsUrl);
+console.log('%c🌐 Using API base URL:', 'font-weight: bold;', API_BASE);
+
+// WebSocket heartbeat setup
+let heartbeatInterval: number | null = null;
+const HEARTBEAT_INTERVAL = 20000; // 20 seconds
+
+function startHeartbeat() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+  }
+  heartbeatInterval = window.setInterval(() => {
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'ping' }));
+    }
+  }, HEARTBEAT_INTERVAL);
+}
+
+function stopHeartbeat() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
+}
+
 const socket = new WebSocket(wsUrl);
 
 socket.addEventListener("open", () => {
   console.log("✅ WebSocket connection established");
+  startHeartbeat();
 });
 
 socket.addEventListener("message", (event) => {
   console.log("Raw WS message:", event.data);
   const data = JSON.parse(event.data);
+
+  // Handle pong response
+  if (data.type === "pong") {
+    // Optionally log successful heartbeat
+    console.debug("💓 Heartbeat acknowledged");
+    return;
+  }
 
   if (data.type === "init") {
     console.log(`Received mapState with ${data.mapState.length} walnuts`);
@@ -324,10 +354,12 @@ socket.addEventListener("message", (event) => {
 
 socket.addEventListener("error", (event) => {
   console.error("WebSocket error:", event);
+  stopHeartbeat();
 });
 
 socket.addEventListener("close", (event) => {
   console.warn("WebSocket closed:", event);
+  stopHeartbeat();
 });
 
 // Export key objects for use in other functions
