@@ -19,8 +19,6 @@ jobs:
           node-version: 20
       - run: npm install -g wrangler
       - run: npm install
-        working-directory: ./api  # or your Worker directory
       - run: wrangler deploy
-        working-directory: ./api  # or your Worker directory
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
