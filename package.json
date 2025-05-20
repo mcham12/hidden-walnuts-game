@@ -7,7 +7,7 @@
     "dev": "wrangler dev",
     "build": "tsc",
     "deploy": "wrangler deploy",
-    "build:worker": "tsc src/index.ts --outDir dist/worker --module esnext --target es2020 --esModuleInterop"
+    "build:worker": "tsc --project tsconfig.json --outDir dist/worker"
   },
   "dependencies": {
     "uuid": "^9.0.1"
