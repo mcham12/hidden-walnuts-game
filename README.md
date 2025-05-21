@@ -101,6 +101,9 @@ This repo is designed to support vibe coding: you describe the game system, and 
 
 Happy hiding. 🐿️🌰
 
+## Documentation
+- [Game Vision](GameVision.md): Detailed game design and architecture, outlining gameplay mechanics, technical architecture, and implementation notes.
+
 ## MVP 4: Multiplayer World State Sync
 
 - Implemented WebSocket-based state synchronization.
