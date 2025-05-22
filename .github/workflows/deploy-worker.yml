@@ -3,7 +3,8 @@ name: Deploy Cloudflare Worker
 on:
   push:
     branches:
-      - mvp-4.5
+      - mvp-*  # All MVP branches (e.g., mvp-4.5, mvp-5)
+      - main
 
 jobs:
   deploy:
@@ -22,7 +23,7 @@ jobs:
         working-directory: workers
 
       - name: Ensure Wrangler is installed
-        run: npm install wrangler@4.16.1  # Update to latest version
+        run: npm install wrangler@4.16.1
         working-directory: workers
 
       - name: Build Worker
@@ -39,5 +40,10 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: npx wrangler deploy ../../dist/worker/api.js --env production  # Adjust path relative to workers/
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            npx wrangler deploy ../../dist/worker/api.js --env production
+          else
+            npx wrangler deploy ../../dist/worker/api.js --env preview
+          fi
         working-directory: workers
