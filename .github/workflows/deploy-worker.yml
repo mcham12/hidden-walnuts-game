@@ -27,13 +27,13 @@ jobs:
 
       - name: Build Worker
         run: npm run build
-        working-directory: workers
+        working-directory: .
         env:
           VITE_API_URL: https://api.hiddenwalnuts.com
 
       - name: Debug output
-        run: find dist/worker
-        working-directory: workers
+        run: find dist/worker || echo "dist/worker not found"
+        working-directory: .
 
       - name: Deploy to Cloudflare
         uses: cloudflare/wrangler-action@v3
