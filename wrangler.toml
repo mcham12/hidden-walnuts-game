@@ -1,0 +1,38 @@
+[build]
+command = "npm run build"
+
+# Durable Object bindings
+[durable_objects]
+bindings = [
+  { name = "FOREST", class_name = "ForestManager" },
+  { name = "SQUIRREL", class_name = "SquirrelSession" },
+  { name = "WALNUTS", class_name = "WalnutRegistry" },
+  { name = "LEADERBOARD", class_name = "Leaderboard" }
+]
+
+# Durable Objects migrations
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = [
+  "ForestManager",
+  "SquirrelSession",
+  "WalnutRegistry",
+  "Leaderboard"
+]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["ForestManager"]
+
+# Environment variables
+[vars]
+CYCLE_DURATION_SECONDS = "86400"  # 24 hours
+
+[env.preview]
+# Placeholder for preview environment
+
+[env.production]
+# Placeholder for production environment
+
+# Specify the main entry point
+main = "dist/worker/api.js"
