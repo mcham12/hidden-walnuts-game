@@ -3,31 +3,41 @@ name: Deploy Cloudflare Worker
 on:
   push:
     branches:
-      - main
-      - mvp-*
+      - mvp-4.5
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
 
-      - run: npm ci
+      - name: Install dependencies
+        run: npm ci
+        working-directory: workers
 
-      - run: npm install --save-dev @cloudflare/workers-types
+      - name: Ensure Wrangler is installed
+        run: npm install wrangler@3.15.0
+        working-directory: workers
 
-      - run: npm run build
-
-      - run: npm run build:worker
+      - name: Build Worker
+        run: npm run build
+        working-directory: workers
+        env:
+          VITE_API_URL: https://api.hiddenwalnuts.com
 
       - name: Debug output
         run: find dist/worker
+        working-directory: workers
 
-      - uses: cloudflare/wrangler-action@v3
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: deploy dist/worker/index.js
+          command: deploy dist/worker/api.js --env production
+          workingDirectory: workers
