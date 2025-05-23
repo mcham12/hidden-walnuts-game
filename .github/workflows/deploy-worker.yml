@@ -38,7 +38,7 @@ jobs:
 
       - name: Deploy to Cloudflare
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}  # Match your secret name
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
@@ -46,4 +46,4 @@ jobs:
           else
             npx wrangler deploy --env preview
           fi
-        working-directory: workers
+        working-directory: .
