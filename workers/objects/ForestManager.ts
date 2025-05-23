@@ -165,7 +165,7 @@ export default class ForestManager {
           found: false,
           timestamp: Date.now()
         });
-      }
+    }
 
       // Persist the updated mapState
       await this.persistMapState();

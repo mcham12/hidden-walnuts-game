@@ -18,9 +18,9 @@ interface ExecutionContext {
 
 // Ensure CORS headers are applied consistently
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*', // Allow all origins (adjust for production if needed)
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  "Access-Control-Allow-Origin": "*", // Allow all origins (adjust for production if needed)
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type"
 };
 
 export default {
@@ -28,12 +28,10 @@ export default {
     const url = new URL(request.url);
     const pathname = url.pathname;
 
-    // Handle preflight CORS requests
+    // Handle preflight CORS requests globally
     if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        status: 204,
-        headers: CORS_HEADERS
-      });
+      console.log('Handling OPTIONS request for', url.pathname);
+      return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
 
     try {
@@ -47,14 +45,14 @@ export default {
 
         // Forward the WebSocket request to the ForestManager DO
         const forest = getObjectInstance(env, "forest", "daily-forest");
-        
-        // Pass the request as-is to maintain WebSocket upgrade headers
+        console.log('Forwarding WebSocket request to ForestManager');
         return forest.fetch(request);
       }
 
       // Route /join WebSocket requests to ForestManager Durable Object
       if (pathname === '/join') {
         const forest = getObjectInstance(env, "forest", "daily-forest");
+        console.log('Forwarding /join request to ForestManager');
         return await forest.fetch(request);
       }
 
@@ -64,6 +62,7 @@ export default {
         const id = url.searchParams.get("squirrelId") || crypto.randomUUID();
         
         // Create a modified request with the ID in the path
+        // This ensures the ID is available even if we can't modify the original request
         const newUrl = new URL(request.url);
         newUrl.pathname = "/join";
         
@@ -104,26 +103,41 @@ export default {
         const forest = getObjectInstance(env, "forest", "daily-forest");
         console.log("Fetching map state from ForestManager");
         const resp = await forest.fetch(request);
-        console.log("Map state response:", await resp.text());
-        // Clone and add CORS headers
-        const headers = new Headers(resp.headers);
-        Object.entries(CORS_HEADERS).forEach(([k, v]) => headers.set(k, v));
-        return new Response(await resp.text(), { status: resp.status, headers });
+        const result = await resp.text();
+        console.log("Map state response:", result);
+        return new Response(result, { 
+          status: resp.status, 
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "application/json"
+          }
+        });
       }
 
       // Handle /leaderboard route
       if (pathname === "/leaderboard") {
         const leaderboard = getObjectInstance(env, "leaderboard", "global");
+        console.log("Fetching leaderboard data");
         return await leaderboard.fetch(request);
       }
 
       // Forward /rehide-test to ForestManager DO
       if (pathname === "/rehide-test") {
         const forest = getObjectInstance(env, "forest", "daily-forest");
-        return await forest.fetch(request);
+        console.log("Forwarding /rehide-test request to ForestManager");
+        const response = await forest.fetch(request);
+        const result = await response.json();
+        return new Response(JSON.stringify(result), {
+          status: response.status,
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "application/json"
+          }
+        });
       }
 
       // Handle not found case
+      console.log("No matching route for:", pathname);
       return new Response(JSON.stringify({
         error: "Not found",
         message: "The requested endpoint does not exist"
@@ -135,17 +149,21 @@ export default {
         }
       });
     } catch (error: unknown) {
-      // Handle unexpected errors
+      // Handle unexpected errors with detailed logging
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Error handling request:', error);
+      console.error('Error handling request:', {
+        path: pathname,
+        error: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined
+      });
       return new Response(JSON.stringify({
         error: "Internal server error",
         message: errorMessage
       }), { 
         status: 500,
-        headers: { 
+        headers: {
           ...CORS_HEADERS,
-          "Content-Type": "application/json" 
+          "Content-Type": "application/json"
         }
       });
     }
