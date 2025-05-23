@@ -16,11 +16,69 @@ interface ExecutionContext {
   passThroughOnException(): void;
 }
 
+// @ts-ignore
+import { app } from './app.js';
+// @ts-ignore
+import type { Context } from 'hono';
+
+// Ensure CORS headers are applied consistently
 const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*", // For dev, allow all. For production, restrict as needed.
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type"
+  'Access-Control-Allow-Origin': '*', // Allow all origins (adjust for production if needed)
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
 };
+
+// Handle preflight CORS requests globally
+app.options('*', (c: any) => {
+  console.log('Handling OPTIONS request for', c.req.url);
+  return c.json({}, 204, CORS_HEADERS);
+});
+
+// DEV/TEST ONLY: POST /rehide-test endpoint for manual walnut testing
+app.post('/rehide-test', async (c: any) => {
+  try {
+    const id = c.env.FOREST_MANAGER.idFromName('forest');
+    console.log('DO ID for /rehide-test:', id.toString());
+    const forestManager = c.env.FOREST_MANAGER.get(id);
+    const response = await forestManager.fetch('http://internal/rehide-test');
+    const result = await response.json();
+    return c.json(result, 200, CORS_HEADERS);
+  } catch (error: unknown) {
+    console.error('Error in /rehide-test:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: 'Internal Server Error', message: errorMessage }, 500, CORS_HEADERS);
+  }
+});
+
+app.get('/map-state', async (c: any) => {
+  try {
+    const id = c.env.FOREST_MANAGER.idFromName('forest');
+    console.log('DO ID for /map-state:', id.toString());
+    const forestManager = c.env.FOREST_MANAGER.get(id);
+    const response = await forestManager.fetch('http://internal/map-state');
+    const result = await response.json();
+    return c.json(result, 200, CORS_HEADERS);
+  } catch (error: unknown) {
+    console.error('Error in /map-state:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: 'Internal Server Error', message: errorMessage }, 500, CORS_HEADERS);
+  }
+});
+
+app.get('/join', async (c: any) => {
+  try {
+    const id = c.env.FOREST_MANAGER.idFromName('forest');
+    console.log('DO ID for /join:', id.toString());
+    const forestManager = c.env.FOREST_MANAGER.get(id);
+    const response = await forestManager.fetch('http://internal/join');
+    const result = await response.json();
+    return c.json(result, 200, CORS_HEADERS);
+  } catch (error: unknown) {
+    console.error('Error in /join:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: 'Internal Server Error', message: errorMessage }, 500, CORS_HEADERS);
+  }
+});
 
 export default {
   async fetch(request: Request, env: EnvWithBindings, ctx: ExecutionContext): Promise<Response> {
