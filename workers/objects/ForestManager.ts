@@ -141,7 +141,7 @@ export default class ForestManager {
 
     if (path === "/rehide-test" && request.method === "POST") {
       console.log("Handling /rehide-test for DO ID:", this.state.id.toString());
-      await this.initialize(); // Ensure mapState is loaded
+      await this.initialize();
 
       const testWalnutId = "test-walnut";
       const newLocation = {
@@ -150,27 +150,28 @@ export default class ForestManager {
         z: Math.random() * 20
       };
 
-      // Find and update the test walnut in mapState
+      // Ensure only one test-walnut exists in mapState
       const walnutIndex = this.mapState.findIndex(w => w.id === testWalnutId);
       if (walnutIndex !== -1) {
+        // Update existing walnut's location
         this.mapState[walnutIndex].location = newLocation;
+        console.log(`Updated test-walnut location to:`, newLocation);
       } else {
-        // If not found, add a new test walnut
-        this.mapState.push({
+        // Add new test walnut if none exists
+        this.mapState = [{ // Replace mapState to ensure only one test-walnut
           id: testWalnutId,
           ownerId: "system",
-          origin: "game" as WalnutOrigin,
-          hiddenIn: "buried" as HidingMethod,
+          origin: "game",
+          hiddenIn: "bush",
           location: newLocation,
           found: false,
           timestamp: Date.now()
-        });
-    }
+        }];
+        console.log(`Added new test-walnut with location:`, newLocation);
+      }
 
-      // Persist the updated mapState
       await this.persistMapState();
 
-      // Broadcast the update to all connected clients
       const msg = JSON.stringify({
         type: "walnut-rehidden",
         walnutId: testWalnutId,
@@ -180,6 +181,7 @@ export default class ForestManager {
       for (const session of this.sessions.values()) {
         try {
           session.send(msg);
+          console.log(`Sent walnut-rehidden message to session:`, msg);
         } catch (err) {
           console.warn("Failed to send to session:", err);
         }

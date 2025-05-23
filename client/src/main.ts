@@ -328,7 +328,6 @@ socket.addEventListener("message", (event) => {
 
   // Handle pong response
   if (data.type === "pong") {
-    // Optionally log successful heartbeat
     console.debug("💓 Heartbeat acknowledged");
     return;
   }
@@ -352,15 +351,28 @@ socket.addEventListener("message", (event) => {
 
   if (data.type === "walnut-rehidden") {
     const { walnutId, location } = data;
-    console.log(`Received rehidden message for ${walnutId}`);
+    console.log(`Received rehidden message for ${walnutId} at location:`, location);
 
-    const mesh = walnutMap[walnutId];
-    if (mesh) {
-      mesh.position.set(location.x, location.y, location.z);
-      console.log(`Moved ${walnutId} to (${location.x}, ${location.y}, ${location.z})`);
-    } else {
-      console.warn(`Walnut ${walnutId} not found in walnutMap`);
+    // Ensure walnutMap only has one entry for this walnut
+    const existingMesh = walnutMap[walnutId];
+    if (existingMesh) {
+      scene.remove(existingMesh);
     }
+
+    // Create a new mesh for the rehidden walnut
+    const walnutData: Walnut = {
+      id: walnutId,
+      ownerId: "system",
+      origin: "game" as const,
+      hiddenIn: "bush" as const,
+      location: location,
+      found: false,
+      timestamp: Date.now()
+    };
+    const newMesh = createWalnutMesh(walnutData);
+    scene.add(newMesh);
+    walnutMap[walnutId] = newMesh;
+    console.log(`Updated ${walnutId} position to (${location.x}, ${location.y}, ${location.z})`);
   }
 });
 
