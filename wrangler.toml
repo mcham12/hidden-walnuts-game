@@ -25,7 +25,8 @@ new_sqlite_classes = [
 
 [[migrations]]
 tag = "v2"
-new_sqlite_classes = ["ForestManager"]  # Changed from new_classes to new_sqlite_classes
+# Removed ForestManager redefinition to avoid conflict
+# If new Durable Objects are needed, add them here with new_sqlite_classes
 
 # Environment variables
 [vars]
