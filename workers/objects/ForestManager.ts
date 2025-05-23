@@ -96,6 +96,7 @@ export default class ForestManager {
     }
 
     if (path.endsWith("/state") || path.endsWith("/map-state")) {
+      await this.initialize(); // Ensure mapState is loaded
       return new Response(JSON.stringify(this.mapState), {
         status: 200,
         headers: {
@@ -138,9 +139,10 @@ export default class ForestManager {
       return this.handleRehide(walnutId, squirrelId, location);
     }
 
-    if (request.method === "POST" && url.pathname === "/rehide-test") {
-      console.log("Broadcasting walnut-rehidden to", this.sessions.size, "sessions");
-      console.log("DO ID for /rehide-test:", this.state.id.toString());
+    if (path === "/rehide-test" && request.method === "POST") {
+      console.log("Handling /rehide-test for DO ID:", this.state.id.toString());
+      await this.initialize(); // Ensure mapState is loaded
+
       const testWalnutId = "test-walnut";
       const newLocation = {
         x: Math.random() * 20,
@@ -148,6 +150,27 @@ export default class ForestManager {
         z: Math.random() * 20
       };
 
+      // Find and update the test walnut in mapState
+      const walnutIndex = this.mapState.findIndex(w => w.id === testWalnutId);
+      if (walnutIndex !== -1) {
+        this.mapState[walnutIndex].location = newLocation;
+      } else {
+        // If not found, add a new test walnut
+        this.mapState.push({
+          id: testWalnutId,
+          ownerId: "system",
+          origin: "game",
+          hiddenIn: "bush",
+          location: newLocation,
+          found: false,
+          timestamp: Date.now()
+        });
+      }
+
+      // Persist the updated mapState
+      await this.persistMapState();
+
+      // Broadcast the update to all connected clients
       const msg = JSON.stringify({
         type: "walnut-rehidden",
         walnutId: testWalnutId,
@@ -162,7 +185,13 @@ export default class ForestManager {
         }
       }
 
-      return new Response("Rehidden test message sent");
+      return new Response(JSON.stringify({ message: "Rehidden test message sent", newLocation }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...CORS_HEADERS,
+        },
+      });
     }
 
     // Fallback (should not happen during WebSocket connection)
@@ -331,23 +360,28 @@ export default class ForestManager {
     console.log("WebSocket accepted and added to sessions. Total sessions:", this.sessions.size);
     console.log("DO ID for WebSocket:", this.state.id.toString());
 
-    const mapState = [{
-      id: "test-walnut",
-      location: { x: 0, y: 0, z: 0 },
-      ownerId: "system",
-      origin: "game",
-      hiddenIn: "bush",
-      found: false
-    }];
+    // Load the current mapState
+    await this.initialize();
 
+    // Send the actual mapState instead of hardcoded data
     ws.send(JSON.stringify({
       type: "init",
-      mapState
+      mapState: this.mapState
     }));
 
-    // Optional: handle incoming messages if needed
+    // Handle incoming messages if needed
     ws.addEventListener("message", (event) => {
       // ...handle rehide etc. later...
     });
+  }
+
+  private async initialize(): Promise<void> {
+    if (this.mapState.length === 0) {
+      this.mapState = await this.storage.get("mapState") || this.generateWalnuts();
+    }
+  }
+
+  private async persistMapState(): Promise<void> {
+    await this.storage.put("mapState", this.mapState);
   }
 }
