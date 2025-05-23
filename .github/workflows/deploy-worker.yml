@@ -34,8 +34,11 @@ jobs:
             if [ "${{ github.ref }}" == "refs/heads/main" ]; then
               echo "https://api.hiddenwalnuts.com"
             else
-              echo "https://hidden-walnuts-preview.<your-subdomain>.workers.dev"
+              echo "https://hidden-walnuts-preview.mattmcarroll.workers.dev"
             fi
+
+      - name: Log VITE_API_URL
+        run: echo "VITE_API_URL is set to $VITE_API_URL"
 
       - name: Debug output
         run: find dist/worker || echo "dist/worker not found"
