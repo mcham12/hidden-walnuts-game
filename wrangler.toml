@@ -1,3 +1,6 @@
+name = "hidden-walnuts"  # Add Worker name
+compatibility_date = "2025-05-23"  # Add compatibility date
+
 [build]
 command = "npm run build"
 
@@ -29,10 +32,28 @@ new_classes = ["ForestManager"]
 CYCLE_DURATION_SECONDS = "86400"  # 24 hours
 
 [env.preview]
-# Placeholder for preview environment
+# Duplicate vars and durable_objects for preview
+[env.preview.vars]
+CYCLE_DURATION_SECONDS = "86400"  # Same as top-level, but must be explicit
+[env.preview.durable_objects]
+bindings = [
+  { name = "FOREST", class_name = "ForestManager" },
+  { name = "SQUIRREL", class_name = "SquirrelSession" },
+  { name = "WALNUTS", class_name = "WalnutRegistry" },
+  { name = "LEADERBOARD", class_name = "Leaderboard" }
+]
 
 [env.production]
-# Placeholder for production environment
+# Duplicate vars and durable_objects for production
+[env.production.vars]
+CYCLE_DURATION_SECONDS = "86400"  # Same as top-level, but must be explicit
+[env.production.durable_objects]
+bindings = [
+  { name = "FOREST", class_name = "ForestManager" },
+  { name = "SQUIRREL", class_name = "SquirrelSession" },
+  { name = "WALNUTS", class_name = "WalnutRegistry" },
+  { name = "LEADERBOARD", class_name = "Leaderboard" }
+]
 
 # Specify the main entry point
 main = "dist/worker/api.js"
