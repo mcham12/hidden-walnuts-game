@@ -6,7 +6,7 @@
 // This object should also maintain a list of walnut spawn locations and recent actions.
 
 import { POINTS, CYCLE_DURATION_SECONDS, NUT_RUSH_INTERVAL_HOURS, NUT_RUSH_DURATION_MINUTES } from "../constants";
-import type { Walnut } from "../types";
+import type { Walnut, WalnutOrigin, HidingMethod } from "../types";
 
 // Cloudflare Workers types
 interface DurableObjectState {
@@ -159,8 +159,8 @@ export default class ForestManager {
         this.mapState.push({
           id: testWalnutId,
           ownerId: "system",
-          origin: "game",
-          hiddenIn: "bush",
+          origin: "game" as WalnutOrigin,
+          hiddenIn: "buried" as HidingMethod,
           location: newLocation,
           found: false,
           timestamp: Date.now()
@@ -223,8 +223,8 @@ export default class ForestManager {
       id: "test-walnut",
       location: { x: 0, y: 0, z: 0 },
       ownerId: "system",
-      origin: "game",
-      hiddenIn: "bush",
+      origin: "game" as WalnutOrigin,
+      hiddenIn: "buried" as HidingMethod,
       found: false
     }];
 
@@ -309,8 +309,8 @@ export default class ForestManager {
       walnuts.push({
         id: `sys-${crypto.randomUUID()}`,
         ownerId: "system",
-        origin: "game",
-        hiddenIn: Math.random() < 0.5 ? "buried" : "bush",
+        origin: "game" as WalnutOrigin,
+        hiddenIn: Math.random() < 0.5 ? "buried" as HidingMethod : "bush" as HidingMethod,
         location: {
           x: Math.random() * 100,
           y: 0,
@@ -376,8 +376,28 @@ export default class ForestManager {
   }
 
   private async initialize(): Promise<void> {
-    if (this.mapState.length === 0) {
-      this.mapState = await this.storage.get("mapState") || this.generateWalnuts();
+    const storedMapState = await this.storage.get('mapState');
+    if (storedMapState) {
+      this.mapState = Array.isArray(storedMapState) ? storedMapState : [];
+      console.log('Loaded mapState from storage:', this.mapState);
+    }
+    if (this.mapState.length === 0 || !this.mapState.some(w => w.id === "test-walnut")) {
+      const testWalnut: Walnut = {
+        id: "test-walnut",
+        ownerId: "system",
+        origin: "game" as WalnutOrigin,
+        hiddenIn: "buried" as HidingMethod,
+        location: { x: 0, y: 0, z: 0 },
+        found: false,
+        timestamp: Date.now()
+      };
+      if (this.mapState.length === 0) {
+        this.mapState = [testWalnut];
+      } else {
+        this.mapState.push(testWalnut);
+      }
+      await this.storage.put('mapState', this.mapState);
+      console.log('Seeded test walnut:', testWalnut);
     }
   }
 
