@@ -1,5 +1,5 @@
-name = "hidden-walnuts"  # Add Worker name
-compatibility_date = "2025-05-23"  # Add compatibility date
+name = "hidden-walnuts"  # Ensure Worker name is present
+compatibility_date = "2025-05-23"  # Ensure compatibility date is present
 
 [build]
 command = "npm run build"
@@ -34,7 +34,7 @@ CYCLE_DURATION_SECONDS = "86400"  # 24 hours
 [env.preview]
 # Duplicate vars and durable_objects for preview
 [env.preview.vars]
-CYCLE_DURATION_SECONDS = "86400"  # Same as top-level, but must be explicit
+CYCLE_DURATION_SECONDS = "86400"
 [env.preview.durable_objects]
 bindings = [
   { name = "FOREST", class_name = "ForestManager" },
@@ -46,7 +46,7 @@ bindings = [
 [env.production]
 # Duplicate vars and durable_objects for production
 [env.production.vars]
-CYCLE_DURATION_SECONDS = "86400"  # Same as top-level, but must be explicit
+CYCLE_DURATION_SECONDS = "86400"
 [env.production.durable_objects]
 bindings = [
   { name = "FOREST", class_name = "ForestManager" },
