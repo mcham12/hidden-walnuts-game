@@ -55,3 +55,6 @@ export const DEFAULT_POWERUPS = ["ScentSniff", "FastDig", "DecoyNut"];
 
 export const TERRAIN_SIZE = 200; // Terrain width and depth in units
 export const TERRAIN_HEIGHT = 20; // Maximum terrain height in units
+
+export const TREE_COUNT = 50; // Number of trees in the forest
+export const SHRUB_COUNT = 100; // Number of shrubs in the forest

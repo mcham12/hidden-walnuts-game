@@ -83,3 +83,12 @@ export interface Squirrel {
 export interface TerrainData {
   seed: number; // Random seed for Perlin noise
 }
+
+export interface ForestObject {
+  id: string;
+  type: 'tree' | 'shrub';
+  x: number;
+  y: number;
+  z: number;
+  scale: number;
+}

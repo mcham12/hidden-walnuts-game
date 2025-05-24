@@ -5,8 +5,8 @@
 // Each day is identified by a cycle key like "2025-05-03".
 // This object should also maintain a list of walnut spawn locations and recent actions.
 
-import { POINTS, CYCLE_DURATION_SECONDS, NUT_RUSH_INTERVAL_HOURS, NUT_RUSH_DURATION_MINUTES } from "../constants";
-import type { Walnut, WalnutOrigin, HidingMethod } from "../types";
+import { POINTS, CYCLE_DURATION_SECONDS, NUT_RUSH_INTERVAL_HOURS, NUT_RUSH_DURATION_MINUTES, TREE_COUNT, SHRUB_COUNT, TERRAIN_SIZE } from "../constants";
+import type { Walnut, WalnutOrigin, HidingMethod, ForestObject } from "../types";
 
 // Cloudflare Workers types
 interface DurableObjectState {
@@ -33,6 +33,7 @@ export default class ForestManager {
   cycleStartTime: number = 0;
   mapState: Walnut[] = [];
   terrainSeed: number = 0;
+  forestObjects: ForestObject[] = [];
   
   // Use only sessions for WebSocket management
   sessions: Set<WebSocket> = new Set();
@@ -134,6 +135,17 @@ export default class ForestManager {
     if (path.endsWith("/terrain-seed")) {
       await this.initialize();
       return new Response(JSON.stringify({ seed: this.terrainSeed }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...CORS_HEADERS,
+        },
+      });
+    }
+
+    if (path.endsWith("/forest-objects")) {
+      await this.initialize();
+      return new Response(JSON.stringify(this.forestObjects), {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
@@ -355,12 +367,39 @@ export default class ForestManager {
       found: false,
       timestamp: Date.now()
     }];
+    this.forestObjects = this.generateForestObjects();
     await this.storage.put("cycleStart", this.cycleStartTime);
     await this.storage.put("terrainSeed", this.terrainSeed);
     await this.storage.put("mapState", this.mapState);
-    
-    // Notify all connected clients about the map reset 
+    await this.storage.put("forestObjects", this.forestObjects);
     this.broadcast("map_reset", { mapState: this.mapState });
+  }
+
+  generateForestObjects(): ForestObject[] {
+    const objects: ForestObject[] = [];
+    // Generate trees
+    for (let i = 0; i < TREE_COUNT; i++) {
+      objects.push({
+        id: `tree-${crypto.randomUUID()}`,
+        type: "tree",
+        x: (Math.random() - 0.5) * TERRAIN_SIZE,
+        y: 0, // y set by client
+        z: (Math.random() - 0.5) * TERRAIN_SIZE,
+        scale: 0.8 + Math.random() * 0.4 // 0.8 to 1.2
+      });
+    }
+    // Generate shrubs
+    for (let i = 0; i < SHRUB_COUNT; i++) {
+      objects.push({
+        id: `shrub-${crypto.randomUUID()}`,
+        type: "shrub",
+        x: (Math.random() - 0.5) * TERRAIN_SIZE,
+        y: 0, // y set by client
+        z: (Math.random() - 0.5) * TERRAIN_SIZE,
+        scale: 0.7 + Math.random() * 0.3 // 0.7 to 1.0
+      });
+    }
+    return objects;
   }
 
   generateWalnuts(count: number = 100): Walnut[] {
@@ -416,6 +455,15 @@ export default class ForestManager {
       this.terrainSeed = Math.random() * 1000;
       await this.storage.put('terrainSeed', this.terrainSeed);
       console.log('Initialized new terrainSeed:', this.terrainSeed);
+    }
+    const storedForestObjects = await this.storage.get('forestObjects');
+    if (storedForestObjects) {
+      this.forestObjects = Array.isArray(storedForestObjects) ? storedForestObjects : [];
+      console.log('Loaded forestObjects from storage:', this.forestObjects);
+    } else {
+      this.forestObjects = this.generateForestObjects();
+      await this.storage.put('forestObjects', this.forestObjects);
+      console.log('Initialized forestObjects:', this.forestObjects);
     }
     if (this.mapState.length === 0 || !this.mapState.some(w => w.id === "test-walnut")) {
       const testWalnut: Walnut = {

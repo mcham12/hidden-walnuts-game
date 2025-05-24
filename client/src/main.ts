@@ -2,6 +2,7 @@ import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { createTerrain } from './terrain'
+import { createForest } from './forest'
 
 // ===== DEBUG LOGS =====
 console.log('%c🔍 Environment Variables', 'font-size: 16px; font-weight: bold; color: #4CAF50;');
@@ -91,14 +92,20 @@ directionalLight.shadow.camera.top = FOREST_SIZE
 directionalLight.shadow.camera.bottom = -FOREST_SIZE
 scene.add(directionalLight)
 
-// Terrain setup
+// Terrain and forest setup
 let terrain: THREE.Mesh;
+let forestMeshes: THREE.Object3D[] = [];
 createTerrain().then((mesh) => {
   terrain = mesh;
   scene.add(terrain);
   console.log('Terrain added to scene');
-  // Fetch and render walnuts after terrain is loaded
+  // Fetch and render walnuts and forest after terrain is loaded
   fetchWalnutMap();
+  createForest().then((meshes) => {
+    forestMeshes = meshes;
+    meshes.forEach((mesh) => scene.add(mesh));
+    console.log('Forest added to scene');
+  });
 });
 
 // Add simple axes for reference during development
@@ -388,6 +395,12 @@ socket.addEventListener("message", (event) => {
       scene.remove(mesh);
     });
     walnutMeshes.clear();
+    // Clear forest meshes
+    forestMeshes.forEach(mesh => {
+      scene.remove(mesh);
+    });
+    forestMeshes = [];
+    // Re-render walnuts and forest
     for (const walnut of mapState) {
       if (!walnut.found) {
         const mesh = createWalnutMesh(walnut);
@@ -397,6 +410,11 @@ socket.addEventListener("message", (event) => {
         console.log(`Added walnut ${walnut.id} to scene after map_reset`);
       }
     }
+    createForest().then((meshes) => {
+      forestMeshes = meshes;
+      meshes.forEach((mesh) => scene.add(mesh));
+      console.log('Forest re-added to scene after map_reset');
+    });
     return;
   }
 
@@ -459,5 +477,6 @@ export {
   createWalnutMaterial,
   socket,
   terrain,
-  getTerrainHeight // Add for future use
+  getTerrainHeight,
+  forestMeshes
 };

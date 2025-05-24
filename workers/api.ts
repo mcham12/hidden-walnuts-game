@@ -172,8 +172,23 @@ export default {
         return new Response(result, {
           status: resp.status,
           headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+      }
+
+      // Handle /forest-objects route
+      if (pathname === "/forest-objects") {
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        console.log("Fetching forest objects from ForestManager");
+        const resp = await forest.fetch(request);
+        const result = await resp.text();
+        console.log("Forest objects response:", result);
+        return new Response(result, {
+          status: resp.status,
+          headers: {
             ...CORS_HEADERS,
-            "Content-Type": "application/json"
+            'Content-Type': 'application/json'
           }
         });
       }
