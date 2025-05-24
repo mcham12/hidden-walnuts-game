@@ -323,25 +323,20 @@ socket.addEventListener("open", () => {
 });
 
 socket.addEventListener("message", (event) => {
-  console.log("Raw WS message:", event.data);
+  console.log("Raw WS message received:", event.data);
   const data = JSON.parse(event.data);
 
-  // Handle pong response
   if (data.type === "pong") {
     console.debug("💓 Heartbeat acknowledged");
     return;
   }
 
-  // Handle map_reset to update scene in real-time
   if (data.type === "map_reset") {
     console.log(`Received map_reset with ${data.mapState.length} walnuts`);
-    // Clear existing walnuts
     Object.values(walnutMap).forEach(mesh => {
       scene.remove(mesh);
     });
     walnutMap = {};
-
-    // Render new walnuts
     for (const walnut of data.mapState) {
       if (!walnut.found) {
         const mesh = createWalnutMesh(walnut);
@@ -355,13 +350,10 @@ socket.addEventListener("message", (event) => {
 
   if (data.type === "init") {
     console.log(`Received mapState with ${data.mapState.length} walnuts`);
-    
-    // Clear existing walnuts before adding new ones
     Object.values(walnutMap).forEach(mesh => {
       scene.remove(mesh);
     });
     walnutMap = {};
-
     for (const walnut of data.mapState) {
       if (!walnut.found) {
         const mesh = createWalnutMesh(walnut);
@@ -375,14 +367,10 @@ socket.addEventListener("message", (event) => {
   if (data.type === "walnut-rehidden") {
     const { walnutId, location } = data;
     console.log(`Received rehidden message for ${walnutId} at location:`, location);
-
-    // Remove all existing walnuts and re-render
     Object.values(walnutMap).forEach(mesh => {
       scene.remove(mesh);
     });
     walnutMap = {};
-
-    // Fetch the latest mapState to ensure sync
     fetchWalnutMap().then(updatedWalnuts => {
       for (const walnut of updatedWalnuts) {
         if (!walnut.found) {
