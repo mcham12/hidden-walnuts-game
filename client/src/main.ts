@@ -436,6 +436,7 @@ window.addEventListener('mousedown', (event) => {
 const velocity = new THREE.Vector3()
 const damping = 0.05 // Smoother movement
 const speed = 0.3 // Adjusted movement speed
+const yLerpFactor = 0.1 // Smooth y-position transitions
 
 function animate() {
   requestAnimationFrame(animate)
@@ -469,14 +470,18 @@ function animate() {
       camera.position.x = Math.max(-100, Math.min(100, camera.position.x))
       camera.position.z = Math.max(-100, Math.min(100, camera.position.z))
 
-      // Adjust camera y to stay above terrain
+      // Smoothly adjust camera y to stay above terrain
       const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z)
-      const minHeight = Math.max(terrainHeight + 3, 3) // 3 units above terrain or fallback
-      camera.position.y = Math.max(camera.position.y, minHeight)
+      const targetHeight = Math.max(terrainHeight + 3, 3) // 3 units above terrain or fallback
+      camera.position.y = THREE.MathUtils.lerp(
+        camera.position.y,
+        targetHeight,
+        yLerpFactor
+      )
       console.log('Camera moved via WASD:', {
         position: camera.position.toArray(),
         terrainHeight,
-        minHeight,
+        targetHeight,
         direction: direction.toArray(),
         velocity: velocity.toArray()
       })
@@ -486,17 +491,19 @@ function animate() {
   // Update OrbitControls and prevent clipping
   if (controls.enabled) {
     controls.update()
-    // Adjust camera y after orbiting
+    // Smoothly adjust camera y after orbiting
     const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z)
-    const minHeight = Math.max(terrainHeight + 3, 3) // 3 units above terrain or fallback
-    if (camera.position.y < minHeight) {
-      camera.position.y = minHeight
-      console.log('Camera adjusted post-orbit:', {
-        position: camera.position.toArray(),
-        terrainHeight,
-        minHeight
-      })
-    }
+    const targetHeight = Math.max(terrainHeight + 3, 3) // 3 units above terrain or fallback
+    camera.position.y = THREE.MathUtils.lerp(
+      camera.position.y,
+      targetHeight,
+      yLerpFactor
+    )
+    console.log('Camera adjusted post-orbit:', {
+      position: camera.position.toArray(),
+      terrainHeight,
+      targetHeight
+    })
   }
   
   // Add subtle walnut rotation
