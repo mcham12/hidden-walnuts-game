@@ -192,8 +192,7 @@ function createWalnutMaterial(walnut: Walnut, hidingMethod: 'buried' | 'bush'): 
   });
 }
 
-// Ensure getTerrainHeight handles bounds correctly and caps height changes
-let lastTerrainHeight = 0 // Track last frame's height for smoothing
+// Ensure getTerrainHeight handles bounds correctly without capping height changes
 function getTerrainHeight(x: number, z: number): number {
   if (!terrain || !terrain.geometry) {
     console.warn('Terrain or geometry not available in getTerrainHeight');
@@ -239,16 +238,9 @@ function getTerrainHeight(x: number, z: number): number {
   const tz = zNorm - z0;
   const h0 = h00 + (h01 - h00) * tx;
   const h1 = h10 + (h11 - h10) * tx;
-  const rawHeight = h0 + (h1 - h0) * tz;
-
-  // Cap height changes to smooth steep slopes
-  const maxHeightChange = 1.0; // Maximum height change per frame
-  const cappedHeight = Math.abs(rawHeight - lastTerrainHeight) > maxHeightChange
-    ? lastTerrainHeight + Math.sign(rawHeight - lastTerrainHeight) * maxHeightChange
-    : rawHeight;
-
-  lastTerrainHeight = cappedHeight;
-  return cappedHeight;
+  const height = h0 + (h1 - h0) * tz;
+  console.log('getTerrainHeight:', { x, z, height });
+  return height;
 }
 
 // Create a 3D sphere to represent a walnut
@@ -446,8 +438,8 @@ window.addEventListener('mousedown', (event) => {
 const velocity = new THREE.Vector3()
 const damping = 0.05 // Smoother movement
 const speed = 0.3 // Adjusted movement speed
-const yLerpFactor = 0.1 // Slower, smoother y-transitions
-const velocityDampingFactor = 0.1 // Smooth velocity transitions
+const yLerpFactor = 0.05 // Slower, smoother y-transitions
+const velocityDampingFactor = 0.2 // Smooth velocity transitions
 let targetY = 0 // Track target height for smooth transitions
 
 function animate() {
