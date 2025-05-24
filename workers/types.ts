@@ -79,3 +79,7 @@ export interface Squirrel {
   /** Whether player has achieved the first finder bonus (first to find 10 walnuts) */
   firstFinderAchieved: boolean;
 }
+
+export interface TerrainData {
+  seed: number; // Random seed for Perlin noise
+}

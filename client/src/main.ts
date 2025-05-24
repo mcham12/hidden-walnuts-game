@@ -1,6 +1,7 @@
 import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { createTerrain } from './terrain'
 
 // ===== DEBUG LOGS =====
 console.log('%c🔍 Environment Variables', 'font-size: 16px; font-weight: bold; color: #4CAF50;');
@@ -35,6 +36,9 @@ try {
   throw error;
 }
 
+// Export API_BASE for use in other modules
+export { API_BASE };
+
 // Scene dimensions
 const FOREST_SIZE = 100
 
@@ -55,7 +59,7 @@ const camera = new THREE.PerspectiveCamera(
   0.1, // Near clipping plane
   1000 // Far clipping plane
 )
-camera.position.set(20, 30, 40)
+camera.position.set(20, 50, 40)
 camera.lookAt(0, 0, 0)
 
 // Create renderer
@@ -87,17 +91,13 @@ directionalLight.shadow.camera.top = FOREST_SIZE
 directionalLight.shadow.camera.bottom = -FOREST_SIZE
 scene.add(directionalLight)
 
-// Create a plane for the forest floor
-const floorGeometry = new THREE.PlaneGeometry(FOREST_SIZE * 2, FOREST_SIZE * 2)
-const floorMaterial = new THREE.MeshStandardMaterial({ 
-  color: 0x3a8335, // Green
-  roughness: 0.8, 
-  metalness: 0.2
-})
-const floor = new THREE.Mesh(floorGeometry, floorMaterial)
-floor.rotation.x = -Math.PI / 2 // Rotate to be horizontal
-floor.receiveShadow = true
-scene.add(floor)
+// Replace floor with terrain
+let terrain: THREE.Mesh;
+createTerrain().then((mesh) => {
+  terrain = mesh;
+  scene.add(terrain);
+  console.log('Terrain added to scene');
+});
 
 // Add simple axes for reference during development
 const axesHelper = new THREE.AxesHelper(5)
@@ -401,7 +401,7 @@ socket.addEventListener("close", (event) => {
   stopHeartbeat();
 });
 
-// Export key objects for use in other functions
+// Update exports
 export { 
   scene, 
   camera, 
@@ -412,5 +412,6 @@ export {
   renderWalnuts, 
   getHidingMethod, 
   createWalnutMaterial,
-  socket
+  socket,
+  terrain // Add terrain for future use
 };

@@ -162,6 +162,22 @@ export default {
         });
       }
 
+      // Handle /terrain-seed route
+      if (pathname === "/terrain-seed") {
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        console.log("Fetching terrain seed from ForestManager");
+        const resp = await forest.fetch(request);
+        const result = await resp.text();
+        console.log("Terrain seed response:", result);
+        return new Response(result, {
+          status: resp.status,
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "application/json"
+          }
+        });
+      }
+
       // Handle not found case
       console.log("No matching route for:", pathname);
       return new Response(JSON.stringify({

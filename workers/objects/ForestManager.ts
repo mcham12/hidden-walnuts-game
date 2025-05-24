@@ -32,6 +32,7 @@ export default class ForestManager {
   storage: DurableObjectStorage;
   cycleStartTime: number = 0;
   mapState: Walnut[] = [];
+  terrainSeed: number = 0;
   
   // Use only sessions for WebSocket management
   sessions: Set<WebSocket> = new Set();
@@ -128,6 +129,17 @@ export default class ForestManager {
           },
         });
       }
+    }
+
+    if (path.endsWith("/terrain-seed")) {
+      await this.initialize();
+      return new Response(JSON.stringify({ seed: this.terrainSeed }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...CORS_HEADERS,
+        },
+      });
     }
 
     console.log(`Incoming request: ${request.method} ${url.pathname}`);
@@ -333,8 +345,10 @@ export default class ForestManager {
 
   async resetMap(): Promise<void> {
     this.cycleStartTime = Date.now();
+    this.terrainSeed = Math.random() * 1000;
     this.mapState = this.generateWalnuts();
     await this.storage.put("cycleStart", this.cycleStartTime);
+    await this.storage.put("terrainSeed", this.terrainSeed);
     await this.storage.put("mapState", this.mapState);
     
     // Notify all connected clients about the map reset 
@@ -385,6 +399,15 @@ export default class ForestManager {
     if (storedMapState) {
       this.mapState = Array.isArray(storedMapState) ? storedMapState : [];
       console.log('Loaded mapState from storage:', this.mapState);
+    }
+    const storedSeed = await this.storage.get('terrainSeed');
+    if (storedSeed !== null && typeof storedSeed === 'number') {
+      this.terrainSeed = storedSeed;
+      console.log('Loaded terrainSeed from storage:', this.terrainSeed);
+    } else {
+      this.terrainSeed = Math.random() * 1000;
+      await this.storage.put('terrainSeed', this.terrainSeed);
+      console.log('Initialized new terrainSeed:', this.terrainSeed);
     }
     if (this.mapState.length === 0 || !this.mapState.some(w => w.id === "test-walnut")) {
       const testWalnut: Walnut = {

@@ -52,3 +52,6 @@ export const POINTS = {
  * Default power-ups given to players when they join
  */
 export const DEFAULT_POWERUPS = ["ScentSniff", "FastDig", "DecoyNut"];
+
+export const TERRAIN_SIZE = 200; // Terrain width and depth in units
+export const TERRAIN_HEIGHT = 20; // Maximum terrain height in units
