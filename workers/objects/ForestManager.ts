@@ -74,7 +74,21 @@ export default class ForestManager {
     }
 
     if (path.endsWith("/reset")) {
-      await this.resetMap();
+      console.log("Handling /reset for DO ID:", this.state.id.toString());
+      this.cycleStartTime = Date.now();
+      // Reset mapState to a single test-walnut at origin
+      this.mapState = [{
+        id: "test-walnut",
+        ownerId: "system",
+        origin: "game" as WalnutOrigin,
+        hiddenIn: "buried" as HidingMethod,
+        location: { x: 0, y: 0, z: 0 },
+        found: false,
+        timestamp: Date.now()
+      }];
+      await this.storage.put("cycleStart", this.cycleStartTime);
+      await this.storage.put("mapState", this.mapState);
+      this.broadcast("map_reset", { mapState: this.mapState });
       return new Response(JSON.stringify({ message: "Map reset and walnuts respawned." }), {
         status: 200,
         headers: {
