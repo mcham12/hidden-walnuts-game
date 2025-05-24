@@ -353,26 +353,27 @@ socket.addEventListener("message", (event) => {
     const { walnutId, location } = data;
     console.log(`Received rehidden message for ${walnutId} at location:`, location);
 
-    // Ensure walnutMap only has one entry for this walnut
+    // Update existing walnut or create new if not found
     const existingMesh = walnutMap[walnutId];
     if (existingMesh) {
-      scene.remove(existingMesh);
+      existingMesh.position.set(location.x, location.y, location.z);
+      console.log(`Updated ${walnutId} position to (${location.x}, ${location.y}, ${location.z})`);
+    } else {
+      // Create a new mesh for the rehidden walnut
+      const walnutData: Walnut = {
+        id: walnutId,
+        ownerId: "system",
+        origin: "game" as const,
+        hiddenIn: "bush" as const,
+        location: location,
+        found: false,
+        timestamp: Date.now()
+      };
+      const newMesh = createWalnutMesh(walnutData);
+      scene.add(newMesh);
+      walnutMap[walnutId] = newMesh;
+      console.log(`Added new ${walnutId} at position (${location.x}, ${location.y}, ${location.z})`);
     }
-
-    // Create a new mesh for the rehidden walnut
-    const walnutData: Walnut = {
-      id: walnutId,
-      ownerId: "system",
-      origin: "game" as const,
-      hiddenIn: "bush" as const,
-      location: location,
-      found: false,
-      timestamp: Date.now()
-    };
-    const newMesh = createWalnutMesh(walnutData);
-    scene.add(newMesh);
-    walnutMap[walnutId] = newMesh;
-    console.log(`Updated ${walnutId} position to (${location.x}, ${location.y}, ${location.z})`);
   }
 });
 

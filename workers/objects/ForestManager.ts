@@ -157,16 +157,16 @@ export default class ForestManager {
         this.mapState[walnutIndex].location = newLocation;
         console.log(`Updated test-walnut location to:`, newLocation);
       } else {
-        // Add new test walnut if none exists
-        this.mapState = [{ // Replace mapState to ensure only one test-walnut
+        // Add new test walnut without replacing mapState
+        this.mapState.push({
           id: testWalnutId,
           ownerId: "system",
-          origin: "game",
-          hiddenIn: "bush",
+          origin: "game" as WalnutOrigin,
+          hiddenIn: "bush" as HidingMethod,
           location: newLocation,
           found: false,
           timestamp: Date.now()
-        }];
+        });
         console.log(`Added new test-walnut with location:`, newLocation);
       }
 
@@ -220,22 +220,15 @@ export default class ForestManager {
     
     console.log(`[ForestManager] 🚀 New connection: ${sessionId}. Total connections: ${this.sockets.size}`);
 
-    // --- MVP 4: Always send the same hardcoded mapState with test-walnut ---
-    const mapState = [{
-      id: "test-walnut",
-      location: { x: 0, y: 0, z: 0 },
-      ownerId: "system",
-      origin: "game" as WalnutOrigin,
-      hiddenIn: "buried" as HidingMethod,
-      found: false
-    }];
-
-    socket.send(JSON.stringify({
-      type: "init",
-      mapState
-    }));
-    // --- End MVP 4 addition ---
-
+    // Load the current mapState
+    this.initialize().then(() => {
+      // Send the actual mapState instead of hardcoded data
+      socket.send(JSON.stringify({
+        type: "init",
+        mapState: this.mapState
+      }));
+    });
+    
     // Set up message handler using onmessage property
     socket.onmessage = (event) => {
       try {
