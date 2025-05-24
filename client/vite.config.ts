@@ -23,6 +23,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
+    publicDir: 'public', // Explicitly set public directory
     build: {
       outDir: 'dist',
       // Add source maps for better debugging

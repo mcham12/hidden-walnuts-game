@@ -1,4 +1,4 @@
-// AI NOTE: Modified for MVP-5 to fix tree/shrub visibility by using relative GLTF paths and adding debug logs for loading errors.
+// AI NOTE: Modified for MVP-5 to fix tree/shrub visibility by using absolute GLTF paths and enhancing debug logs for Cloudflare Pages.
 // Loads GLTF models and places them at positions fetched from /forest-objects, adjusted to terrain height.
 
 import * as THREE from 'three';
@@ -22,7 +22,7 @@ export async function createForest(): Promise<THREE.Object3D[]> {
   try {
     const response = await fetch(`${API_BASE}/forest-objects`);
     console.log(`Fetching forest objects from ${API_BASE}/forest-objects, status: ${response.status}`);
-    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}, Response: ${await response.text()}`);
     const data = await response.json();
     if (!Array.isArray(data)) throw new Error('Invalid forest objects data: not an array');
     forestObjects.push(...data);
@@ -36,22 +36,38 @@ export async function createForest(): Promise<THREE.Object3D[]> {
   
   // Load models
   let treeModel, shrubModel;
-  const treePath = 'assets/models/Tree_01.glb';
-  const shrubPath = 'assets/models/Bush_01.glb';
+  const treePath = '/assets/models/Tree_01.glb';
+  const shrubPath = '/assets/models/Bush_01.glb';
+  const treeUrl = `${window.location.origin}${treePath}`;
+  const shrubUrl = `${window.location.origin}${shrubPath}`;
   try {
-    console.log(`Loading GLTF model: ${treePath}`);
+    console.log(`Loading GLTF model: ${treeUrl} (path: ${treePath})`);
     treeModel = await loader.loadAsync(treePath);
     console.log(`Loaded ${treePath} successfully`);
   } catch (error) {
-    console.error(`Failed to load ${treePath}:`, error);
+    console.error(`Failed to load ${treeUrl}:`, error);
+    try {
+      const response = await fetch(treeUrl);
+      const responseText = await response.text();
+      console.log(`Tree GLTF fetch status: ${response.status}, Response: ${responseText.slice(0, 100)}`);
+    } catch (fetchError) {
+      console.error(`Failed to fetch ${treeUrl} for debugging:`, fetchError);
+    }
     return [];
   }
   try {
-    console.log(`Loading GLTF model: ${shrubPath}`);
+    console.log(`Loading GLTF model: ${shrubUrl} (path: ${shrubPath})`);
     shrubModel = await loader.loadAsync(shrubPath);
     console.log(`Loaded ${shrubPath} successfully`);
   } catch (error) {
-    console.error(`Failed to load ${shrubPath}:`, error);
+    console.error(`Failed to load ${shrubUrl}:`, error);
+    try {
+      const response = await fetch(shrubUrl);
+      const responseText = await response.text();
+      console.log(`Shrub GLTF fetch status: ${response.status}, Response: ${responseText.slice(0, 100)}`);
+    } catch (fetchError) {
+      console.error(`Failed to fetch ${shrubUrl} for debugging:`, fetchError);
+    }
     return [];
   }
 
