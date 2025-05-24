@@ -332,6 +332,27 @@ socket.addEventListener("message", (event) => {
     return;
   }
 
+  // Handle map_reset to update scene in real-time
+  if (data.type === "map_reset") {
+    console.log(`Received map_reset with ${data.mapState.length} walnuts`);
+    // Clear existing walnuts
+    Object.values(walnutMap).forEach(mesh => {
+      scene.remove(mesh);
+    });
+    walnutMap = {};
+
+    // Render new walnuts
+    for (const walnut of data.mapState) {
+      if (!walnut.found) {
+        const mesh = createWalnutMesh(walnut);
+        scene.add(mesh);
+        walnutMap[walnut.id] = mesh;
+        console.log(`Added walnut ${walnut.id} to scene after map_reset`);
+      }
+    }
+    return;
+  }
+
   if (data.type === "init") {
     console.log(`Received mapState with ${data.mapState.length} walnuts`);
     
@@ -342,10 +363,12 @@ socket.addEventListener("message", (event) => {
     walnutMap = {};
 
     for (const walnut of data.mapState) {
-      const mesh = createWalnutMesh(walnut);
-      scene.add(mesh);
-      walnutMap[walnut.id] = mesh;
-      console.log(`Added walnut ${walnut.id} to scene`);
+      if (!walnut.found) {
+        const mesh = createWalnutMesh(walnut);
+        scene.add(mesh);
+        walnutMap[walnut.id] = mesh;
+        console.log(`Added walnut ${walnut.id} to scene`);
+      }
     }
   }
 
@@ -353,27 +376,23 @@ socket.addEventListener("message", (event) => {
     const { walnutId, location } = data;
     console.log(`Received rehidden message for ${walnutId} at location:`, location);
 
-    // Update existing walnut or create new if not found
-    const existingMesh = walnutMap[walnutId];
-    if (existingMesh) {
-      existingMesh.position.set(location.x, location.y, location.z);
-      console.log(`Updated ${walnutId} position to (${location.x}, ${location.y}, ${location.z})`);
-    } else {
-      // Create a new mesh for the rehidden walnut
-      const walnutData: Walnut = {
-        id: walnutId,
-        ownerId: "system",
-        origin: "game" as const,
-        hiddenIn: "bush" as const,
-        location: location,
-        found: false,
-        timestamp: Date.now()
-      };
-      const newMesh = createWalnutMesh(walnutData);
-      scene.add(newMesh);
-      walnutMap[walnutId] = newMesh;
-      console.log(`Added new ${walnutId} at position (${location.x}, ${location.y}, ${location.z})`);
-    }
+    // Remove all existing walnuts and re-render
+    Object.values(walnutMap).forEach(mesh => {
+      scene.remove(mesh);
+    });
+    walnutMap = {};
+
+    // Fetch the latest mapState to ensure sync
+    fetchWalnutMap().then(updatedWalnuts => {
+      for (const walnut of updatedWalnuts) {
+        if (!walnut.found) {
+          const mesh = createWalnutMesh(walnut);
+          scene.add(mesh);
+          walnutMap[walnut.id] = mesh;
+          console.log(`Synced walnut ${walnut.id} at position (${walnut.location.x}, ${walnut.location.y}, ${walnut.location.z})`);
+        }
+      }
+    });
   }
 });
 
