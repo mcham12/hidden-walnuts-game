@@ -332,17 +332,23 @@ socket.addEventListener("message", (event) => {
   }
 
   if (data.type === "map_reset") {
-    const mapState = data.data.mapState; // Access nested mapState
+    const mapState = data.data.mapState;
     console.log(`Received map_reset with ${mapState.length} walnuts`);
+    // Clear both walnutMap and walnutMeshes
     Object.values(walnutMap).forEach(mesh => {
       scene.remove(mesh);
     });
     walnutMap = {};
+    walnutMeshes.forEach(mesh => {
+      scene.remove(mesh);
+    });
+    walnutMeshes.clear();
     for (const walnut of mapState) {
       if (!walnut.found) {
         const mesh = createWalnutMesh(walnut);
         scene.add(mesh);
         walnutMap[walnut.id] = mesh;
+        walnutMeshes.set(walnut.id, mesh);
         console.log(`Added walnut ${walnut.id} to scene after map_reset`);
       }
     }
