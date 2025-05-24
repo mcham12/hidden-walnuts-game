@@ -448,8 +448,15 @@ function animate() {
     camera.getWorldDirection(forward).negate() // Forward is -z
     const right = new THREE.Vector3().crossVectors(camera.up, forward).normalize() // Right is perpendicular
 
-    if (keys.w) direction.add(forward) // Forward
-    if (keys.s) direction.sub(forward) // Backward
+    // Log direction vectors for debugging
+    console.log('Movement vectors:', {
+      forward: forward.toArray(),
+      right: right.toArray(),
+      cameraDirection: camera.getWorldDirection(new THREE.Vector3()).toArray()
+    })
+
+    if (keys.w) direction.sub(forward) // Forward (-z)
+    if (keys.s) direction.add(forward) // Backward (+z)
     if (keys.a) direction.sub(right) // Left
     if (keys.d) direction.add(right) // Right
 
@@ -466,7 +473,13 @@ function animate() {
       const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z)
       const minHeight = Math.max(terrainHeight + 3, 3) // 3 units above terrain or fallback
       camera.position.y = Math.max(camera.position.y, minHeight)
-      console.log('Camera moved via WASD:', camera.position, { terrainHeight, minHeight })
+      console.log('Camera moved via WASD:', {
+        position: camera.position.toArray(),
+        terrainHeight,
+        minHeight,
+        direction: direction.toArray(),
+        velocity: velocity.toArray()
+      })
     }
   }
 
@@ -478,7 +491,11 @@ function animate() {
     const minHeight = Math.max(terrainHeight + 3, 3) // 3 units above terrain or fallback
     if (camera.position.y < minHeight) {
       camera.position.y = minHeight
-      console.log('Camera adjusted post-orbit:', camera.position, { terrainHeight, minHeight })
+      console.log('Camera adjusted post-orbit:', {
+        position: camera.position.toArray(),
+        terrainHeight,
+        minHeight
+      })
     }
   }
   
