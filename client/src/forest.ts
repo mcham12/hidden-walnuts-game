@@ -1,4 +1,4 @@
-// AI NOTE: Modified for MVP-5 to fix tree/shrub visibility by adding debug logs and handling invalid /forest-objects responses.
+// AI NOTE: Modified for MVP-5 to fix tree/shrub visibility by using relative GLTF paths and adding debug logs for loading errors.
 // Loads GLTF models and places them at positions fetched from /forest-objects, adjusted to terrain height.
 
 import * as THREE from 'three';
@@ -21,6 +21,7 @@ export async function createForest(): Promise<THREE.Object3D[]> {
   // Fetch forest object positions from backend
   try {
     const response = await fetch(`${API_BASE}/forest-objects`);
+    console.log(`Fetching forest objects from ${API_BASE}/forest-objects, status: ${response.status}`);
     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
     const data = await response.json();
     if (!Array.isArray(data)) throw new Error('Invalid forest objects data: not an array');
@@ -35,13 +36,22 @@ export async function createForest(): Promise<THREE.Object3D[]> {
   
   // Load models
   let treeModel, shrubModel;
+  const treePath = 'assets/models/Tree_01.glb';
+  const shrubPath = 'assets/models/Bush_01.glb';
   try {
-    treeModel = await loader.loadAsync('/assets/models/Tree_01.glb');
-    console.log('Loaded Tree_01.glb');
-    shrubModel = await loader.loadAsync('/assets/models/Bush_01.glb');
-    console.log('Loaded Bush_01.glb');
+    console.log(`Loading GLTF model: ${treePath}`);
+    treeModel = await loader.loadAsync(treePath);
+    console.log(`Loaded ${treePath} successfully`);
   } catch (error) {
-    console.error('Failed to load GLTF models:', error);
+    console.error(`Failed to load ${treePath}:`, error);
+    return [];
+  }
+  try {
+    console.log(`Loading GLTF model: ${shrubPath}`);
+    shrubModel = await loader.loadAsync(shrubPath);
+    console.log(`Loaded ${shrubPath} successfully`);
+  } catch (error) {
+    console.error(`Failed to load ${shrubPath}:`, error);
     return [];
   }
 

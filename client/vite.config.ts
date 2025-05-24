@@ -32,7 +32,9 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: undefined
         }
-      }
+      },
+      // Ensure public assets are copied to dist
+      assetsInclude: ['**/*.glb']
     },
     // Explicitly define environment variables
     define: {
