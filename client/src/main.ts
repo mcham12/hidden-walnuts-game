@@ -192,7 +192,8 @@ function createWalnutMaterial(walnut: Walnut, hidingMethod: 'buried' | 'bush'): 
   });
 }
 
-// Ensure getTerrainHeight handles bounds correctly
+// Ensure getTerrainHeight handles bounds correctly and caps height changes
+let lastTerrainHeight = 0 // Track last frame's height for smoothing
 function getTerrainHeight(x: number, z: number): number {
   if (!terrain || !terrain.geometry) {
     console.warn('Terrain or geometry not available in getTerrainHeight');
@@ -238,7 +239,16 @@ function getTerrainHeight(x: number, z: number): number {
   const tz = zNorm - z0;
   const h0 = h00 + (h01 - h00) * tx;
   const h1 = h10 + (h11 - h10) * tx;
-  return h0 + (h1 - h0) * tz;
+  const rawHeight = h0 + (h1 - h0) * tz;
+
+  // Cap height changes to smooth steep slopes
+  const maxHeightChange = 1.0; // Maximum height change per frame
+  const cappedHeight = Math.abs(rawHeight - lastTerrainHeight) > maxHeightChange
+    ? lastTerrainHeight + Math.sign(rawHeight - lastTerrainHeight) * maxHeightChange
+    : rawHeight;
+
+  lastTerrainHeight = cappedHeight;
+  return cappedHeight;
 }
 
 // Create a 3D sphere to represent a walnut
@@ -436,7 +446,8 @@ window.addEventListener('mousedown', (event) => {
 const velocity = new THREE.Vector3()
 const damping = 0.05 // Smoother movement
 const speed = 0.3 // Adjusted movement speed
-const yLerpFactor = 0.2 // Smoother y-transitions for WASD
+const yLerpFactor = 0.1 // Slower, smoother y-transitions
+const velocityDampingFactor = 0.1 // Smooth velocity transitions
 let targetY = 0 // Track target height for smooth transitions
 
 function animate() {
@@ -473,7 +484,7 @@ function animate() {
 
       // Update target height based on current position
       const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z)
-      targetY = Math.max(terrainHeight + 3, 3) // 3 units above terrain or fallback
+      targetY = Math.max(terrainHeight + 4, 4) // 4 units above terrain or fallback
 
       // Smoothly adjust camera y to target height
       camera.position.y = THREE.MathUtils.lerp(
@@ -491,8 +502,29 @@ function animate() {
       })
     }
   } else {
-    // Zero velocity when no keys are pressed to prevent jumps
-    velocity.set(0, 0, 0)
+    // Smoothly lerp velocity to zero when no keys are pressed
+    velocity.lerp(new THREE.Vector3(), velocityDampingFactor)
+    if (velocity.length() > 0.01) { // Only apply if velocity is significant
+      camera.position.add(velocity)
+      
+      // Update height during velocity damping
+      const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z)
+      targetY = Math.max(terrainHeight + 4, 4)
+      camera.position.y = THREE.MathUtils.lerp(
+        camera.position.y,
+        targetY,
+        yLerpFactor
+      )
+
+      console.log('Velocity damping:', {
+        velocity: velocity.toArray(),
+        position: camera.position.toArray(),
+        terrainHeight,
+        targetY
+      })
+    } else {
+      velocity.set(0, 0, 0) // Reset velocity when very small
+    }
   }
 
   // Update OrbitControls and prevent clipping
@@ -500,9 +532,10 @@ function animate() {
     controls.update()
     // Immediately adjust camera y after orbiting to prevent clipping
     const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z)
-    const minHeight = Math.max(terrainHeight + 3, 3) // 3 units above terrain or fallback
+    const minHeight = Math.max(terrainHeight + 4, 4) // 4 units above terrain or fallback
     if (camera.position.y < minHeight) {
       camera.position.y = minHeight
+      targetY = minHeight // Sync targetY with OrbitControls height
       console.log('Camera adjusted post-orbit:', {
         position: camera.position.toArray(),
         terrainHeight,
