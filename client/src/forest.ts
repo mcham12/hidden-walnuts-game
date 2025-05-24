@@ -1,4 +1,4 @@
-// AI NOTE: Modified for MVP-5 to fix tree/shrub visibility by using absolute GLTF paths and enhancing debug logs for Cloudflare Pages.
+// AI NOTE: Modified for MVP-5 to fix tree/shrub visibility by enhancing debug logs for GLTF loading and maintaining absolute paths.
 // Loads GLTF models and places them at positions fetched from /forest-objects, adjusted to terrain height.
 
 import * as THREE from 'three';
@@ -49,11 +49,20 @@ export async function createForest(): Promise<THREE.Object3D[]> {
     try {
       const response = await fetch(treeUrl);
       const responseText = await response.text();
-      console.log(`Tree GLTF fetch status: ${response.status}, Response: ${responseText.slice(0, 100)}`);
+      console.log(`Tree GLTF fetch status: ${response.status}, Response: ${responseText.slice(0, 200)}`);
     } catch (fetchError) {
       console.error(`Failed to fetch ${treeUrl} for debugging:`, fetchError);
     }
-    return [];
+    // Test alternative case variations
+    const altTreePath = '/assets/models/tree_01.glb';
+    try {
+      console.log(`Trying alternative case: ${altTreePath}`);
+      treeModel = await loader.loadAsync(altTreePath);
+      console.log(`Loaded ${altTreePath} successfully`);
+    } catch (altError) {
+      console.error(`Failed to load alternative ${altTreePath}:`, altError);
+    }
+    if (!treeModel) return [];
   }
   try {
     console.log(`Loading GLTF model: ${shrubUrl} (path: ${shrubPath})`);
@@ -64,11 +73,20 @@ export async function createForest(): Promise<THREE.Object3D[]> {
     try {
       const response = await fetch(shrubUrl);
       const responseText = await response.text();
-      console.log(`Shrub GLTF fetch status: ${response.status}, Response: ${responseText.slice(0, 100)}`);
+      console.log(`Shrub GLTF fetch status: ${response.status}, Response: ${responseText.slice(0, 200)}`);
     } catch (fetchError) {
       console.error(`Failed to fetch ${shrubUrl} for debugging:`, fetchError);
     }
-    return [];
+    // Test alternative case variations
+    const altShrubPath = '/assets/models/bush_01.glb';
+    try {
+      console.log(`Trying alternative case: ${altShrubPath}`);
+      shrubModel = await loader.loadAsync(altShrubPath);
+      console.log(`Loaded ${altShrubPath} successfully`);
+    } catch (altError) {
+      console.error(`Failed to load alternative ${altShrubPath}:`, altError);
+    }
+    if (!shrubModel) return [];
   }
 
   for (const obj of forestObjects) {

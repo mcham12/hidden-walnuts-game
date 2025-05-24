@@ -1,4 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
+import { readdirSync } from 'fs';
+import { join } from 'path';
 
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current directory.
@@ -15,6 +17,11 @@ export default defineConfig(({ mode }) => {
       .filter(([key]) => key.startsWith('VITE_'))
       .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {})
   });
+
+  // Log public assets to verify copying
+  const publicDir = join(process.cwd(), 'public');
+  const publicAssets = readdirSync(publicDir, { recursive: true });
+  console.log('Public assets found:', publicAssets);
 
   // Ensure VITE_API_URL is set in production
   if (mode === 'production' && !env.VITE_API_URL) {
