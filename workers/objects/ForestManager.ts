@@ -108,14 +108,26 @@ export default class ForestManager {
     }
 
     if (path.endsWith("/state") || path.endsWith("/map-state")) {
-      await this.initialize(); // Ensure mapState is loaded
-      return new Response(JSON.stringify(this.mapState), {
-        status: 200,
-        headers: {
-          ...CORS_HEADERS,
-          'Content-Type': 'application/json',
-        },
-      });
+      try {
+        await this.initialize();
+        console.log('Returning mapState for /map-state:', JSON.stringify(this.mapState));
+        return new Response(JSON.stringify(this.mapState), {
+          status: 200,
+          headers: {
+            ...CORS_HEADERS,
+            'Content-Type': 'application/json',
+          },
+        });
+      } catch (error: any) {
+        console.error('Error in /map-state handler:', error);
+        return new Response(JSON.stringify({ error: 'Internal Server Error', message: error?.message || 'Unknown error' }), {
+          status: 500,
+          headers: {
+            ...CORS_HEADERS,
+            'Content-Type': 'application/json',
+          },
+        });
+      }
     }
 
     console.log(`Incoming request: ${request.method} ${url.pathname}`);

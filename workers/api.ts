@@ -100,18 +100,29 @@ export default {
 
       // Handle /map-state route
       if (pathname === "/map-state") {
-        const forest = getObjectInstance(env, "forest", "daily-forest");
-        console.log("Fetching map state from ForestManager");
-        const resp = await forest.fetch(request);
-        const result = await resp.text();
-        console.log("Map state response:", result);
-        return new Response(result, { 
-          status: resp.status, 
-          headers: {
-            ...CORS_HEADERS,
-            "Content-Type": "application/json"
-          }
-        });
+        try {
+          const forest = getObjectInstance(env, "forest", "daily-forest");
+          console.log("Fetching map state from ForestManager");
+          const resp = await forest.fetch(request);
+          const result = await resp.text();
+          console.log("Map state response:", result);
+          return new Response(result, { 
+            status: resp.status, 
+            headers: {
+              ...CORS_HEADERS,
+              "Content-Type": "application/json"
+            }
+          });
+        } catch (error: any) {
+          console.error('Error in /map-state route:', error);
+          return new Response(JSON.stringify({ error: 'Internal Server Error', message: error?.message || 'Unknown error' }), {
+            status: 500,
+            headers: {
+              ...CORS_HEADERS,
+              "Content-Type": "application/json"
+            }
+          });
+        }
       }
 
       // Handle /leaderboard route
