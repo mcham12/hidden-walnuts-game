@@ -1,7 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import { readdirSync } from 'fs';
 import { join } from 'path';
-import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current directory.
@@ -20,9 +19,14 @@ export default defineConfig(({ mode }) => {
   });
 
   // Log public assets to verify copying
-  const publicDir = join(process.cwd(), 'public');
-  const publicAssets = readdirSync(publicDir, { recursive: true });
-  console.log('Public assets found:', publicAssets);
+  const publicDir = join(process.cwd(), '../public');
+  let publicAssets;
+  try {
+    publicAssets = readdirSync(publicDir, { recursive: true });
+    console.log('Public assets found in ../public:', publicAssets);
+  } catch (error) {
+    console.error('Failed to read ../public:', error);
+  }
 
   // Ensure VITE_API_URL is set in production
   if (mode === 'production' && !env.VITE_API_URL) {
@@ -31,17 +35,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    publicDir: 'public', // Explicitly set public directory
-    plugins: [
-      viteStaticCopy({
-        targets: [
-          {
-            src: 'public/assets/models/*.glb',
-            dest: 'assets/models'
-          }
-        ]
-      })
-    ],
+    publicDir: '../public', // Point to game root's public directory
     build: {
       outDir: 'dist',
       // Add source maps for better debugging
@@ -53,7 +47,7 @@ export default defineConfig(({ mode }) => {
         }
       },
       // Ensure public assets are copied to dist
-      assetsInclude: ['**/*.glb']
+      assetsInclude: ['**/*.glb', '**/*.txt']
     },
     // Explicitly define environment variables
     define: {

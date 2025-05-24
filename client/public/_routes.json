@@ -1,5 +1,5 @@
 {
   "version": 1,
   "include": ["/*"],
-  "exclude": ["/*.glb", "/assets/models/*"]
+  "exclude": ["/*.glb", "/*.txt", "/assets/models/*"]
 } 
