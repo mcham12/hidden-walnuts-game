@@ -7,7 +7,7 @@ import SquirrelSession from "./objects/SquirrelSession";
 import WalnutRegistry from "./objects/WalnutRegistry";
 import Leaderboard from "./objects/Leaderboard";
 
-// Export the Durable Objects so they can be used by the worker.....
+// Export the Durable Objects so they can be used by the worker......
 export { ForestManager, SquirrelSession, WalnutRegistry, Leaderboard };
 
 // Cloudflare Workers ExecutionContext type
