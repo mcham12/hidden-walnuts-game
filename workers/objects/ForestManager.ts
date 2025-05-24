@@ -33,9 +33,7 @@ export default class ForestManager {
   cycleStartTime: number = 0;
   mapState: Walnut[] = [];
   
-  // Track WebSocket connections directly with a Set
-  sockets: Set<WebSocket> = new Set();
-  socketsBySquirrelId: Map<string, WebSocket> = new Map();
+  // Use only sessions for WebSocket management
   sessions: Set<WebSocket> = new Set();
 
   constructor(state: DurableObjectState, env: Record<string, unknown>) {
@@ -222,84 +220,103 @@ export default class ForestManager {
   }
 
   handleSocket(socket: WebSocket, squirrelId: string): void {
-    // Add the socket to our set of active sockets
-    this.sockets.add(socket);
-    this.socketsBySquirrelId.set(squirrelId, socket);
+    this.sessions.add(socket);
     
-    // Accept the WebSocket connection
     socket.accept();
     
-    // Generate a session ID for this connection
-    const sessionId = crypto.randomUUID();
-    
-    console.log(`[ForestManager] 🚀 New connection: ${sessionId}. Total connections: ${this.sockets.size}`);
+    console.log(`[ForestManager] 🚀 New connection: ${squirrelId}. Total connections: ${this.sessions.size}`);
 
-    // Load the current mapState
+    socket.addEventListener("open", () => {
+      console.log(`[ForestManager] WebSocket opened for ${squirrelId}`);
+    });
+
     this.initialize().then(() => {
-      // Send the actual mapState instead of hardcoded data
       socket.send(JSON.stringify({
         type: "init",
         mapState: this.mapState
       }));
     });
     
-    // Set up message handler using onmessage property
     socket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data as string);
-        
         console.log(`[ForestManager] 📩 Received message: ${JSON.stringify(message)}`);
         
-        // Handle ping message for testing WebSocket functionality
         if (message.type === "ping") {
           console.log(`[ForestManager] 🏓 Ping received: ${JSON.stringify(message.data)}`);
-          
-          // Broadcast pong message to all connected clients
           this.broadcast("pong", message.data);
           return;
         }
         
-        // Broadcast the message to all other clients
         this.broadcastExceptSender(squirrelId, event.data);
       } catch (error) {
         console.error(`[ForestManager] ❌ Error processing message:`, error);
       }
     };
     
-    // Set up close handler using onclose property
     socket.onclose = () => {
-      // Remove the socket from our set
-      this.sockets.delete(socket);
-      this.socketsBySquirrelId.delete(squirrelId);
-      console.log(`[ForestManager] 🔴 Disconnected. Remaining connections: ${this.sockets.size}`);
+      this.sessions.delete(socket);
+      console.log(`[ForestManager] 🔴 Disconnected. Remaining connections: ${this.sessions.size}`);
     };
     
-    // Set up error handler using onerror property
     socket.onerror = (event) => {
       console.error(`[ForestManager] ⚠️ WebSocket error:`, event);
-      // The socket will automatically be closed by Cloudflare on error
     };
   }
-  
-  // Broadcast an event with type and data to all connected clients
+
+  private async handleWebSocket(ws: WebSocket) {
+    ws.accept();
+    this.sessions.add(ws);
+    console.log("WebSocket accepted and added to sessions. Total sessions:", this.sessions.size);
+    console.log("DO ID for WebSocket:", this.state.id.toString());
+
+    ws.addEventListener("open", () => {
+      console.log(`[ForestManager] WebSocket opened`);
+    });
+
+    await this.initialize();
+    ws.send(JSON.stringify({
+      type: "init",
+      mapState: this.mapState
+    }));
+
+    ws.addEventListener("message", (event) => {});
+    ws.onclose = () => {
+      this.sessions.delete(ws);
+      console.log(`[ForestManager] 🔴 Disconnected. Remaining connections: ${this.sessions.size}`);
+    };
+  }
+
   broadcast(type: string, data: object): void {
     const message = { type, data };
     const serializedMessage = JSON.stringify(message);
     
-    console.log(`[ForestManager] 📢 Broadcasting '${type}' event to ${this.sockets.size} connections`);
+    console.log(`[ForestManager] 📢 Broadcasting '${type}' event to ${this.sessions.size} connections`);
     
     let successCount = 0;
-    for (const socket of this.sockets) {
+    for (const socket of this.sessions) {
       try {
-        socket.send(serializedMessage);
-        successCount++;
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(serializedMessage);
+          successCount++;
+          console.log(`[ForestManager] Successfully sent '${type}' to a session`);
+        } else {
+          console.warn(`[ForestManager] Socket is not open (state: ${socket.readyState})`);
+        }
       } catch (error) {
-        console.error(`[ForestManager] ❌ Error broadcasting to socket:`, error);
-        // The socket will be removed in the onclose handler when it fails
+        console.error(`[ForestManager] ❌ Error broadcasting:`, error);
       }
     }
     
-    console.log(`[ForestManager] ✅ Broadcast complete: ${successCount}/${this.sockets.size} connections received '${type}'`);
+    console.log(`[ForestManager] ✅ Broadcast complete: ${successCount}/${this.sessions.size} connections received '${type}'`);
+  }
+
+  broadcastExceptSender(senderId: string, message: string | ArrayBuffer) {
+    for (const socket of this.sessions) {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(message);
+      }
+    }
   }
 
   async resetMap(): Promise<void> {
@@ -349,39 +366,6 @@ export default class ForestManager {
   // Stub for handleRehide
   handleRehide(walnutId: string, squirrelId: string, location: { x: number, y: number, z: number }): Response {
     return new Response(`handleRehide called with walnutId=${walnutId}, squirrelId=${squirrelId}, location=${JSON.stringify(location)}`);
-  }
-
-  broadcastExceptSender(senderId: string, message: string | ArrayBuffer) {
-    for (const [id, socket] of this.socketsBySquirrelId.entries()) {
-      if (id !== senderId && socket.readyState === WebSocket.OPEN) {
-        socket.send(message);
-      }
-    }
-  }
-
-  // Add the new method to the class
-  private async handleWebSocket(ws: WebSocket) {
-    ws.accept();
-
-    // Track the session
-    if (!this.sessions) this.sessions = new Set();
-    this.sessions.add(ws);
-    console.log("WebSocket accepted and added to sessions. Total sessions:", this.sessions.size);
-    console.log("DO ID for WebSocket:", this.state.id.toString());
-
-    // Load the current mapState
-    await this.initialize();
-
-    // Send the actual mapState instead of hardcoded data
-    ws.send(JSON.stringify({
-      type: "init",
-      mapState: this.mapState
-    }));
-
-    // Handle incoming messages if needed
-    ws.addEventListener("message", (event) => {
-      // ...handle rehide etc. later...
-    });
   }
 
   private async initialize(): Promise<void> {
