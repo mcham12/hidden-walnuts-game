@@ -136,6 +136,21 @@ export default {
         });
       }
 
+      // Add route for /reset
+      if (pathname === "/reset") {
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        console.log("Resetting forest");
+        const response = await forest.fetch(request);
+        const result = await response.json();
+        return new Response(JSON.stringify(result), {
+          status: response.status,
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "application/json"
+          }
+        });
+      }
+
       // Handle not found case
       console.log("No matching route for:", pathname);
       return new Response(JSON.stringify({
