@@ -60,8 +60,9 @@ const camera = new THREE.PerspectiveCamera(
   0.1, // Near clipping plane
   1000 // Far clipping plane
 )
-camera.position.set(20, 50, 40)
+camera.position.set(30, 60, 50) // Higher vantage point for terrain view
 camera.lookAt(0, 0, 0)
+console.log('Camera initialized at:', camera.position)
 
 // Create renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true })
@@ -73,7 +74,16 @@ appContainer.appendChild(renderer.domElement) // Append to #app instead of body
 const controls = new OrbitControls(camera, renderer.domElement)
 controls.enableDamping = true
 controls.dampingFactor = 0.05
-controls.maxPolarAngle = Math.PI / 2 - 0.1 // Prevent camera from going below the ground
+controls.minDistance = 10 // Prevent zooming too close
+controls.maxDistance = 100 // Limit zoom-out
+controls.minPolarAngle = 0.1 // Prevent camera from going too high
+controls.maxPolarAngle = Math.PI / 2 - 0.1 // Prevent camera from going below terrain
+console.log('OrbitControls configured:', {
+  minDistance: controls.minDistance,
+  maxDistance: controls.maxDistance,
+  minPolarAngle: controls.minPolarAngle,
+  maxPolarAngle: controls.maxPolarAngle
+})
 
 // Add lights
 const ambientLight = new THREE.AmbientLight(0x404040, 1)
@@ -321,20 +331,90 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// WASD movement controls
+const keys = {
+  w: false,
+  a: false,
+  s: false,
+  d: false
+}
+
+window.addEventListener('keydown', (event) => {
+  switch (event.key.toLowerCase()) {
+    case 'w': keys.w = true; break
+    case 'a': keys.a = true; break
+    case 's': keys.s = true; break
+    case 'd': keys.d = true; break
+  }
+  console.log('Key down:', event.key, keys)
+})
+
+window.addEventListener('keyup', (event) => {
+  switch (event.key.toLowerCase()) {
+    case 'w': keys.w = false; break
+    case 'a': keys.a = false; break
+    case 's': keys.s = false; break
+    case 'd': keys.d = false; break
+  }
+  console.log('Key up:', event.key, keys)
+})
+
+// Add click detection for walnuts
+const raycaster = new THREE.Raycaster()
+const mouse = new THREE.Vector2()
+
+window.addEventListener('mousedown', (event) => {
+  // Normalize mouse coordinates to [-1, 1]
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+
+  // Update raycaster
+  raycaster.setFromCamera(mouse, camera)
+
+  // Check intersections with walnut meshes
+  const intersects = raycaster.intersectObjects(Array.from(walnutMeshes.values()))
+  if (intersects.length > 0) {
+    const clickedMesh = intersects[0].object
+    const walnutId = clickedMesh.userData.walnutId
+    console.log(`Clicked walnut: ${walnutId}`, clickedMesh.userData)
+  }
+})
+
 // Animation loop
 function animate() {
-  requestAnimationFrame(animate);
+  requestAnimationFrame(animate)
   
+  // Update WASD movement
+  const speed = 0.5 // Camera movement speed
+  const direction = new THREE.Vector3()
+  if (keys.w) direction.z -= 1 // Forward
+  if (keys.s) direction.z += 1 // Backward
+  if (keys.a) direction.x -= 1 // Left
+  if (keys.d) direction.x += 1 // Right
+
+  if (direction.length() > 0) {
+    direction.normalize().multiplyScalar(speed)
+    camera.position.add(direction)
+
+    // Adjust camera y to stay above terrain
+    const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z)
+    const minHeight = terrainHeight + 2 // 2 units above terrain to avoid foliage
+    if (camera.position.y < minHeight) {
+      camera.position.y = minHeight
+    }
+    console.log('Camera moved via WASD:', camera.position, { terrainHeight, minHeight })
+  }
+
   // Update controls
-  controls.update();
+  controls.update()
   
   // Add subtle walnut rotation
   walnutMeshes.forEach(mesh => {
-    mesh.rotation.y += 0.002; // Very slow rotation for visual interest
-  });
+    mesh.rotation.y += 0.002 // Very slow rotation for visual interest
+  })
   
   // Render scene
-  renderer.render(scene, camera);
+  renderer.render(scene, camera)
 }
 
 // Start animation loop
