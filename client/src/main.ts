@@ -436,7 +436,8 @@ window.addEventListener('mousedown', (event) => {
 const velocity = new THREE.Vector3()
 const damping = 0.05 // Smoother movement
 const speed = 0.3 // Adjusted movement speed
-const yLerpFactor = 0.1 // Smooth y-position transitions
+const yLerpFactor = 0.2 // Smoother y-transitions for WASD
+let targetY = 0 // Track target height for smooth transitions
 
 function animate() {
   requestAnimationFrame(animate)
@@ -470,40 +471,44 @@ function animate() {
       camera.position.x = Math.max(-100, Math.min(100, camera.position.x))
       camera.position.z = Math.max(-100, Math.min(100, camera.position.z))
 
-      // Smoothly adjust camera y to stay above terrain
+      // Update target height based on current position
       const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z)
-      const targetHeight = Math.max(terrainHeight + 3, 3) // 3 units above terrain or fallback
+      targetY = Math.max(terrainHeight + 3, 3) // 3 units above terrain or fallback
+
+      // Smoothly adjust camera y to target height
       camera.position.y = THREE.MathUtils.lerp(
         camera.position.y,
-        targetHeight,
+        targetY,
         yLerpFactor
       )
+
       console.log('Camera moved via WASD:', {
         position: camera.position.toArray(),
         terrainHeight,
-        targetHeight,
+        targetY,
         direction: direction.toArray(),
         velocity: velocity.toArray()
       })
     }
+  } else {
+    // Zero velocity when no keys are pressed to prevent jumps
+    velocity.set(0, 0, 0)
   }
 
   // Update OrbitControls and prevent clipping
   if (controls.enabled) {
     controls.update()
-    // Smoothly adjust camera y after orbiting
+    // Immediately adjust camera y after orbiting to prevent clipping
     const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z)
-    const targetHeight = Math.max(terrainHeight + 3, 3) // 3 units above terrain or fallback
-    camera.position.y = THREE.MathUtils.lerp(
-      camera.position.y,
-      targetHeight,
-      yLerpFactor
-    )
-    console.log('Camera adjusted post-orbit:', {
-      position: camera.position.toArray(),
-      terrainHeight,
-      targetHeight
-    })
+    const minHeight = Math.max(terrainHeight + 3, 3) // 3 units above terrain or fallback
+    if (camera.position.y < minHeight) {
+      camera.position.y = minHeight
+      console.log('Camera adjusted post-orbit:', {
+        position: camera.position.toArray(),
+        terrainHeight,
+        minHeight
+      })
+    }
   }
   
   // Add subtle walnut rotation
