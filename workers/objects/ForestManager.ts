@@ -144,14 +144,26 @@ export default class ForestManager {
     }
 
     if (path.endsWith("/forest-objects")) {
-      await this.initialize();
-      return new Response(JSON.stringify(this.forestObjects), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          ...CORS_HEADERS,
-        },
-      });
+      try {
+        await this.initialize();
+        console.log(`Serving ${this.forestObjects.length} forest objects`, this.forestObjects);
+        return new Response(JSON.stringify(this.forestObjects), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            ...CORS_HEADERS,
+          },
+        });
+      } catch (error) {
+        console.error('Error serving /forest-objects:', error);
+        return new Response(JSON.stringify({ error: 'Failed to fetch forest objects' }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            ...CORS_HEADERS,
+          },
+        });
+      }
     }
 
     console.log(`Incoming request: ${request.method} ${url.pathname}`);
@@ -372,6 +384,7 @@ export default class ForestManager {
     await this.storage.put("terrainSeed", this.terrainSeed);
     await this.storage.put("mapState", this.mapState);
     await this.storage.put("forestObjects", this.forestObjects);
+    console.log('Reset map with forestObjects:', this.forestObjects);
     this.broadcast("map_reset", { mapState: this.mapState });
   }
 

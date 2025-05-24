@@ -179,18 +179,29 @@ export default {
 
       // Handle /forest-objects route
       if (pathname === "/forest-objects") {
-        const forest = getObjectInstance(env, "forest", "daily-forest");
-        console.log("Fetching forest objects from ForestManager");
-        const resp = await forest.fetch(request);
-        const result = await resp.text();
-        console.log("Forest objects response:", result);
-        return new Response(result, {
-          status: resp.status,
-          headers: {
-            ...CORS_HEADERS,
-            'Content-Type': 'application/json'
-          }
-        });
+        try {
+          const forest = getObjectInstance(env, "forest", "daily-forest");
+          console.log("Fetching forest objects from ForestManager");
+          const resp = await forest.fetch(request);
+          const result = await resp.text();
+          console.log("Forest objects response:", result);
+          return new Response(result, {
+            status: resp.status,
+            headers: {
+              ...CORS_HEADERS,
+              "Content-Type": "application/json"
+            }
+          });
+        } catch (error) {
+          console.error('Error in /forest-objects route:', error);
+          return new Response(JSON.stringify({ error: 'Internal server error' }), {
+            status: 500,
+            headers: {
+              ...CORS_HEADERS,
+              "Content-Type": "application/json"
+            }
+          });
+        }
       }
 
       // Handle not found case
