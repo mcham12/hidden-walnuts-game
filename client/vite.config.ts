@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
 import { readdirSync } from 'fs';
 import { join } from 'path';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current directory.
@@ -31,6 +32,16 @@ export default defineConfig(({ mode }) => {
 
   return {
     publicDir: 'public', // Explicitly set public directory
+    plugins: [
+      viteStaticCopy({
+        targets: [
+          {
+            src: 'public/assets/models/*.glb',
+            dest: 'assets/models'
+          }
+        ]
+      })
+    ],
     build: {
       outDir: 'dist',
       // Add source maps for better debugging

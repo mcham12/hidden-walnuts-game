@@ -1,4 +1,4 @@
-// AI NOTE: Modified for MVP-5 to fix tree/shrub visibility by enhancing debug logs for GLTF loading and maintaining absolute paths.
+// AI NOTE: Modified for MVP-5 to fix tree/shrub visibility by enhancing debug logs for GLTF and test asset loading.
 // Loads GLTF models and places them at positions fetched from /forest-objects, adjusted to terrain height.
 
 import * as THREE from 'three';
@@ -34,6 +34,18 @@ export async function createForest(): Promise<THREE.Object3D[]> {
 
   const meshes: THREE.Object3D[] = [];
   
+  // Test asset serving with a simple text file
+  try {
+    const testPath = '/assets/models/test.txt';
+    const testUrl = `${window.location.origin}${testPath}`;
+    console.log(`Testing asset serving: ${testUrl}`);
+    const response = await fetch(testUrl);
+    const responseText = await response.text();
+    console.log(`Test asset fetch status: ${response.status}, Response: ${responseText}`);
+  } catch (error) {
+    console.error('Failed to fetch test asset:', error);
+  }
+
   // Load models
   let treeModel, shrubModel;
   const treePath = '/assets/models/Tree_01.glb';
@@ -53,16 +65,7 @@ export async function createForest(): Promise<THREE.Object3D[]> {
     } catch (fetchError) {
       console.error(`Failed to fetch ${treeUrl} for debugging:`, fetchError);
     }
-    // Test alternative case variations
-    const altTreePath = '/assets/models/tree_01.glb';
-    try {
-      console.log(`Trying alternative case: ${altTreePath}`);
-      treeModel = await loader.loadAsync(altTreePath);
-      console.log(`Loaded ${altTreePath} successfully`);
-    } catch (altError) {
-      console.error(`Failed to load alternative ${altTreePath}:`, altError);
-    }
-    if (!treeModel) return [];
+    return [];
   }
   try {
     console.log(`Loading GLTF model: ${shrubUrl} (path: ${shrubPath})`);
@@ -77,16 +80,7 @@ export async function createForest(): Promise<THREE.Object3D[]> {
     } catch (fetchError) {
       console.error(`Failed to fetch ${shrubUrl} for debugging:`, fetchError);
     }
-    // Test alternative case variations
-    const altShrubPath = '/assets/models/bush_01.glb';
-    try {
-      console.log(`Trying alternative case: ${altShrubPath}`);
-      shrubModel = await loader.loadAsync(altShrubPath);
-      console.log(`Loaded ${altShrubPath} successfully`);
-    } catch (altError) {
-      console.error(`Failed to load alternative ${altShrubPath}:`, altError);
-    }
-    if (!shrubModel) return [];
+    return [];
   }
 
   for (const obj of forestObjects) {
