@@ -91,12 +91,14 @@ directionalLight.shadow.camera.top = FOREST_SIZE
 directionalLight.shadow.camera.bottom = -FOREST_SIZE
 scene.add(directionalLight)
 
-// Replace floor with terrain
+// Terrain setup
 let terrain: THREE.Mesh;
 createTerrain().then((mesh) => {
   terrain = mesh;
   scene.add(terrain);
   console.log('Terrain added to scene');
+  // Fetch and render walnuts after terrain is loaded
+  fetchWalnutMap();
 });
 
 // Add simple axes for reference during development
@@ -184,15 +186,32 @@ function getTerrainHeight(x: number, z: number): number {
   // Normalize x, z to terrain coordinates (-size/2 to size/2)
   const xNorm = (x + size / 2) / size * segments;
   const zNorm = (z + size / 2) / size * segments;
-  const xIndex = Math.floor(xNorm);
-  const zIndex = Math.floor(zNorm);
+  const x0 = Math.floor(xNorm);
+  const z0 = Math.floor(zNorm);
+  const x1 = Math.min(x0 + 1, segments);
+  const z1 = Math.min(z0 + 1, segments);
 
   // Ensure indices are within bounds
-  if (xIndex < 0 || xIndex >= segments || zIndex < 0 || zIndex >= segments) return 0;
+  if (x0 < 0 || x0 >= segments || z0 < 0 || z0 >= segments) return 0;
 
-  // Get vertex index (vertices are stored as x, y, z triples)
-  const index = (zIndex * (segments + 1) + xIndex) * 3;
-  return vertices[index + 2] || 0;
+  // Get vertex indices
+  const index00 = (z0 * (segments + 1) + x0) * 3;
+  const index01 = (z0 * (segments + 1) + x1) * 3;
+  const index10 = (z1 * (segments + 1) + x0) * 3;
+  const index11 = (z1 * (segments + 1) + x1) * 3;
+
+  // Get heights at four corners
+  const h00 = vertices[index00 + 2] || 0;
+  const h01 = vertices[index01 + 2] || 0;
+  const h10 = vertices[index10 + 2] || 0;
+  const h11 = vertices[index11 + 2] || 0;
+
+  // Bilinear interpolation
+  const tx = xNorm - x0;
+  const tz = zNorm - z0;
+  const h0 = h00 + (h01 - h00) * tx;
+  const h1 = h10 + (h11 - h10) * tx;
+  return h0 + (h1 - h0) * tz;
 }
 
 // Create a 3D sphere to represent a walnut
@@ -212,10 +231,16 @@ function createWalnutMesh(walnut: Walnut): THREE.Mesh {
   
   // Create mesh and position it
   const mesh = new THREE.Mesh(geometry, material);
-  const terrainHeight = getTerrainHeight(walnut.location.x, walnut.location.z);
+  let terrainHeight = getTerrainHeight(walnut.location.x, walnut.location.z);
+  if (terrainHeight <= 0) {
+    terrainHeight = 5; // Fallback to ensure visibility
+    console.warn(`Invalid terrain height at (${walnut.location.x}, ${walnut.location.z}), using fallback y=5`);
+  }
+  const yPosition = terrainHeight + WALNUT_CONFIG.height[hidingMethod];
+  console.log(`Walnut ${walnut.id}: terrainHeight=${terrainHeight}, yPosition=${yPosition}`);
   mesh.position.set(
     walnut.location.x,
-    terrainHeight + WALNUT_CONFIG.height[hidingMethod], // Adjust y to terrain height + offset
+    yPosition, // Terrain height + offset
     walnut.location.z
   );
   
@@ -278,9 +303,6 @@ async function fetchWalnutMap() {
     return [];
   }
 }
-
-// Load walnut data when the app starts
-fetchWalnutMap();
 
 // Handle window resize
 window.addEventListener('resize', () => {
