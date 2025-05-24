@@ -346,7 +346,15 @@ export default class ForestManager {
   async resetMap(): Promise<void> {
     this.cycleStartTime = Date.now();
     this.terrainSeed = Math.random() * 1000;
-    this.mapState = this.generateWalnuts();
+    this.mapState = [{
+      id: "test-walnut",
+      ownerId: "system",
+      origin: "game" as WalnutOrigin,
+      hiddenIn: "buried" as HidingMethod,
+      location: { x: 0, y: 0, z: 0 },
+      found: false,
+      timestamp: Date.now()
+    }];
     await this.storage.put("cycleStart", this.cycleStartTime);
     await this.storage.put("terrainSeed", this.terrainSeed);
     await this.storage.put("mapState", this.mapState);

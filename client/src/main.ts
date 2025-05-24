@@ -173,6 +173,28 @@ function createWalnutMaterial(walnut: Walnut, hidingMethod: 'buried' | 'bush'): 
   });
 }
 
+// Helper function to get terrain height at x, z coordinates
+function getTerrainHeight(x: number, z: number): number {
+  if (!terrain || !terrain.geometry) return 0;
+  const geometry = terrain.geometry as THREE.PlaneGeometry;
+  const vertices = geometry.attributes.position.array;
+  const size = 200; // TERRAIN_SIZE
+  const segments = 200;
+
+  // Normalize x, z to terrain coordinates (-size/2 to size/2)
+  const xNorm = (x + size / 2) / size * segments;
+  const zNorm = (z + size / 2) / size * segments;
+  const xIndex = Math.floor(xNorm);
+  const zIndex = Math.floor(zNorm);
+
+  // Ensure indices are within bounds
+  if (xIndex < 0 || xIndex >= segments || zIndex < 0 || zIndex >= segments) return 0;
+
+  // Get vertex index (vertices are stored as x, y, z triples)
+  const index = (zIndex * (segments + 1) + xIndex) * 3;
+  return vertices[index + 2] || 0;
+}
+
 // Create a 3D sphere to represent a walnut
 function createWalnutMesh(walnut: Walnut): THREE.Mesh {
   // Determine hiding method (handles undefined case)
@@ -190,9 +212,10 @@ function createWalnutMesh(walnut: Walnut): THREE.Mesh {
   
   // Create mesh and position it
   const mesh = new THREE.Mesh(geometry, material);
+  const terrainHeight = getTerrainHeight(walnut.location.x, walnut.location.z);
   mesh.position.set(
     walnut.location.x,
-    WALNUT_CONFIG.height[hidingMethod], // Use height based on hiding method
+    terrainHeight + WALNUT_CONFIG.height[hidingMethod], // Adjust y to terrain height + offset
     walnut.location.z
   );
   
@@ -413,5 +436,6 @@ export {
   getHidingMethod, 
   createWalnutMaterial,
   socket,
-  terrain // Add terrain for future use
+  terrain,
+  getTerrainHeight // Add for future use
 };
