@@ -283,9 +283,8 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-const keys = { w: false, a: false, s: false, d: false }
-let isRotating = false
-let lastMouseX = 0
+let isRotating = false;
+let lastMouseX = 0;
 
 window.addEventListener('mousedown', (event) => {
   if (event.button === 2) {
@@ -330,8 +329,8 @@ window.addEventListener('keyup', (event) => {
   }
 });
 
-const raycaster = new THREE.Raycaster()
-const mouse = new THREE.Vector2()
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
 
 window.addEventListener('mousedown', (event) => {
   if (event.button === 0) {
@@ -346,9 +345,6 @@ window.addEventListener('mousedown', (event) => {
     }
   }
 });
-
-const speed = 0.15  // Reduced speed for smoother height transitions
-let wasMoving = false  // Track previous movement state
 
 let lastTime = performance.now();
 async function animate() {
