@@ -15,7 +15,6 @@ console.log({
 });
 
 // Debug: Log VITE_API_URL at runtime
-// eslint-disable-next-line no-console
 console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
 
 // Unified API base URL logic with enhanced error handling
@@ -26,18 +25,13 @@ try {
     throw new Error("VITE_API_URL must be set!");
   }
   API_BASE = import.meta.env.VITE_API_URL;
-
-  // Validate API_BASE URL format
   new URL(API_BASE);
-  
-  // Debug: Log the final API base URL
   console.log('%c🌐 Using API base URL:', 'font-weight: bold;', API_BASE);
 } catch (error) {
   console.error('%c❌ Error setting up API base URL:', 'color: red; font-weight: bold;', error);
   throw error;
 }
 
-// Export API_BASE for use in other modules
 export { API_BASE };
 
 // Scene dimensions
@@ -51,16 +45,15 @@ if (!appContainer) {
 
 // Initialize Three.js scene
 const scene = new THREE.Scene()
-scene.background = new THREE.Color(0xbfd1e5) // Light blue sky
+scene.background = new THREE.Color(0xbfd1e5)
 
-// Create a camera
 const camera = new THREE.PerspectiveCamera(
-  75, // Field of view
-  window.innerWidth / window.innerHeight, // Aspect ratio
-  0.1, // Near clipping plane
-  1000 // Far clipping plane
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
 )
-camera.position.set(30, 60, 50) // Higher vantage point for terrain view
+camera.position.set(30, 60, 50)
 camera.lookAt(0, 0, 0)
 console.log('Camera initialized at:', camera.position)
 
@@ -68,16 +61,15 @@ console.log('Camera initialized at:', camera.position)
 const renderer = new THREE.WebGLRenderer({ antialias: true })
 renderer.setSize(window.innerWidth, window.innerHeight)
 renderer.shadowMap.enabled = true
-appContainer.appendChild(renderer.domElement) // Append to #app instead of body
+appContainer.appendChild(renderer.domElement)
 
-// Create orbit controls
 const controls = new OrbitControls(camera, renderer.domElement)
 controls.enableDamping = true
 controls.dampingFactor = 0.05
-controls.minDistance = 10 // Prevent zooming too close
-controls.maxDistance = 100 // Limit zoom-out
-controls.minPolarAngle = 0.1 // Prevent camera from going too high
-controls.maxPolarAngle = Math.PI / 2 - 0.1 // Prevent camera from going below terrain
+controls.minDistance = 10
+controls.maxDistance = 100
+controls.minPolarAngle = 0.1
+controls.maxPolarAngle = Math.PI / 2 - 0.1
 console.log('OrbitControls configured:', {
   minDistance: controls.minDistance,
   maxDistance: controls.maxDistance,
@@ -109,7 +101,6 @@ createTerrain().then((mesh) => {
   terrain = mesh;
   scene.add(terrain);
   console.log('Terrain added to scene');
-  // Fetch and render walnuts and forest after terrain is loaded
   fetchWalnutMap();
   createForest().then((meshes) => {
     forestMeshes = meshes;
@@ -118,96 +109,61 @@ createTerrain().then((mesh) => {
   });
 });
 
-// Add simple axes for reference during development
 const axesHelper = new THREE.AxesHelper(5)
 scene.add(axesHelper)
 
-// Define interface for walnut data structure
 interface Walnut {
   id: string
   ownerId: string
   origin: 'game' | 'player'
-  hiddenIn?: 'buried' | 'bush'  // Make hiddenIn optional as it could be undefined
-  location: {
-    x: number
-    y: number
-    z: number
-  }
+  hiddenIn?: 'buried' | 'bush'
+  location: { x: number; y: number; z: number }
   found: boolean
   timestamp: number
 }
 
-// Walnut visualization config - enhanced for Task 5.5
 const WALNUT_CONFIG = {
   radius: 0.5,
   segments: 16,
   colors: {
-    buried: 0x8B4513,    // Updated to the specified brown color
-    bush: 0x228B22,      // Updated to the specified green color
-    origin: {
-      game: 0xffd700,    // Gold tint for game walnuts
-      player: 0xb87333   // Copper tint for player walnuts
-    }
+    buried: 0x8B4513,
+    bush: 0x228B22,
+    origin: { game: 0xffd700, player: 0xb87333 }
   },
-  height: {
-    buried: 0.2,         // Buried walnuts are lower to the ground
-    bush: 0.8            // Bush walnuts are higher (as if in a bush)
-  }
+  height: { buried: 0.2, bush: 0.8 }
 }
 
-// Store all walnut meshes for later reference
 const walnutMeshes = new Map<string, THREE.Mesh>()
-
-// Array to store walnut data
 let walnuts: Walnut[] = []
-
-// Walnut mesh map
 let walnutMap: Record<string, THREE.Mesh> = {};
 
-// Helper function to determine the hiding method for a walnut
 function getHidingMethod(walnut: Walnut): 'buried' | 'bush' {
-  // If hiddenIn is defined, use it
-  if (walnut.hiddenIn) {
-    return walnut.hiddenIn;
-  }
-  
-  // If undefined (e.g., game-hidden walnuts), assign randomly for now
-  // In the future, this will be replaced with spatial logic based on proximity to bushes
-  return Math.random() > 0.5 ? 'buried' : 'bush';
+  return walnut.hiddenIn || (Math.random() > 0.5 ? 'buried' : 'bush');
 }
 
-// Helper function to create material for a walnut based on its properties
 function createWalnutMaterial(walnut: Walnut, hidingMethod: 'buried' | 'bush'): THREE.Material {
-  // Get the base color based on hiding method
   const baseColor = WALNUT_CONFIG.colors[hidingMethod];
-  
-  // Create the material with appropriate properties
   return new THREE.MeshStandardMaterial({
     color: baseColor,
-    roughness: hidingMethod === 'buried' ? 0.9 : 0.7, // Buried walnuts are rougher
-    metalness: walnut.origin === 'game' ? 0.5 : 0.2,  // Game walnuts are more shiny
-    // Add slight emissive glow to game walnuts to make them more noticeable
+    roughness: hidingMethod === 'buried' ? 0.9 : 0.7,
+    metalness: walnut.origin === 'game' ? 0.5 : 0.2,
     emissive: walnut.origin === 'game' ? new THREE.Color(0x331100) : new THREE.Color(0x000000),
     emissiveIntensity: walnut.origin === 'game' ? 0.2 : 0
   });
 }
 
-// Ensure getTerrainHeight handles bounds correctly without capping height changes
 function getTerrainHeight(x: number, z: number): number {
   if (!terrain || !terrain.geometry) {
-    console.warn('Terrain or geometry not available in getTerrainHeight');
+    console.warn('Terrain or geometry not available');
     return 0;
   }
   const geometry = terrain.geometry as THREE.PlaneGeometry;
   const vertices = geometry.attributes.position.array;
-  const size = 200; // TERRAIN_SIZE
+  const size = 200;
   const segments = 200;
 
-  // Clamp x, z to terrain bounds (-100 to 100)
   const clampedX = Math.max(-size / 2, Math.min(size / 2, x));
   const clampedZ = Math.max(-size / 2, Math.min(size / 2, z));
-
-  // Normalize to terrain coordinates (0 to segments)
   const xNorm = (clampedX + size / 2) / size * segments;
   const zNorm = (clampedZ + size / 2) / size * segments;
   const x0 = Math.floor(xNorm);
@@ -215,117 +171,73 @@ function getTerrainHeight(x: number, z: number): number {
   const x1 = Math.min(x0 + 1, segments);
   const z1 = Math.min(z0 + 1, segments);
 
-  // Ensure indices are within bounds
   if (x0 < 0 || x0 >= segments || z0 < 0 || z0 >= segments) {
-    console.warn(`Out-of-bounds coordinates in getTerrainHeight: x=${x}, z=${z}`);
+    console.warn(`Out-of-bounds coordinates: x=${x}, z=${z}`);
     return 0;
   }
 
-  // Get vertex indices
   const index00 = (z0 * (segments + 1) + x0) * 3;
   const index01 = (z0 * (segments + 1) + x1) * 3;
   const index10 = (z1 * (segments + 1) + x0) * 3;
   const index11 = (z1 * (segments + 1) + x1) * 3;
 
-  // Get heights at four corners
   const h00 = vertices[index00 + 2] || 0;
   const h01 = vertices[index01 + 2] || 0;
   const h10 = vertices[index10 + 2] || 0;
   const h11 = vertices[index11 + 2] || 0;
 
-  // Bilinear interpolation
   const tx = xNorm - x0;
   const tz = zNorm - z0;
   const h0 = h00 + (h01 - h00) * tx;
   const h1 = h10 + (h11 - h10) * tx;
-  const height = h0 + (h1 - h0) * tz;
-  console.log('getTerrainHeight:', { x, z, height });
-  return height;
+  return h0 + (h1 - h0) * tz;
 }
 
-// Create a 3D sphere to represent a walnut
 function createWalnutMesh(walnut: Walnut): THREE.Mesh {
-  // Determine hiding method (handles undefined case)
   const hidingMethod = getHidingMethod(walnut);
-  
-  // Create geometry - small sphere for walnut
   const geometry = new THREE.SphereGeometry(
-    WALNUT_CONFIG.radius, 
-    WALNUT_CONFIG.segments, 
+    WALNUT_CONFIG.radius,
+    WALNUT_CONFIG.segments,
     WALNUT_CONFIG.segments
   );
-  
-  // Get material using the helper function
   const material = createWalnutMaterial(walnut, hidingMethod);
-  
-  // Create mesh and position it
   const mesh = new THREE.Mesh(geometry, material);
   let terrainHeight = getTerrainHeight(walnut.location.x, walnut.location.z);
   if (terrainHeight <= 0) {
-    terrainHeight = 5; // Fallback to ensure visibility
+    terrainHeight = 5;
     console.warn(`Invalid terrain height at (${walnut.location.x}, ${walnut.location.z}), using fallback y=5`);
   }
   const yPosition = terrainHeight + WALNUT_CONFIG.height[hidingMethod];
-  console.log(`Walnut ${walnut.id}: terrainHeight=${terrainHeight}, yPosition=${yPosition}`);
-  mesh.position.set(
-    walnut.location.x,
-    yPosition, // Terrain height + offset
-    walnut.location.z
-  );
-  
-  // Enable shadows
+  mesh.position.set(walnut.location.x, yPosition, walnut.location.z);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
-  
-  // Add custom properties for later reference
   mesh.userData = {
     walnutId: walnut.id,
     hiddenIn: hidingMethod,
     origin: walnut.origin,
     ownerId: walnut.ownerId
   };
-  
   return mesh;
 }
 
-// Render all walnuts in the scene
 function renderWalnuts(walnutData: Walnut[]): void {
-  // Clear any existing walnut meshes
-  walnutMeshes.forEach(mesh => {
-    scene.remove(mesh);
-  });
+  walnutMeshes.forEach(mesh => scene.remove(mesh));
   walnutMeshes.clear();
-  
-  // Create and add new meshes
   walnutData.forEach(walnut => {
-    if (!walnut.found) { // Only render unfound walnuts
+    if (!walnut.found) {
       const mesh = createWalnutMesh(walnut);
       scene.add(mesh);
       walnutMeshes.set(walnut.id, mesh);
     }
   });
-  
-  // Count and log walnuts by type for debugging
-  // const buriedCount = Array.from(walnutMeshes.values())
-  //   .filter(mesh => mesh.userData.hiddenIn === 'buried').length;
-  // const bushCount = Array.from(walnutMeshes.values())
-  //   .filter(mesh => mesh.userData.hiddenIn === 'bush').length;
-    
-  // console.log(`Rendered ${walnutMeshes.size} walnuts: ${buriedCount} buried, ${bushCount} in bushes`);
 }
 
-// Fetch walnut map data from the backend
 async function fetchWalnutMap() {
   try {
     const response = await fetch(`${API_BASE}/map-state`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
     walnuts = await response.json();
-    // Only render walnuts if we haven't received them via WebSocket yet
-    if (Object.keys(walnutMap).length === 0) {
-      renderWalnuts(walnuts);
-    }
+    if (Object.keys(walnutMap).length === 0) renderWalnuts(walnuts);
     return walnuts;
   } catch (error) {
     console.error('Failed to fetch walnut map data:', error);
@@ -333,219 +245,133 @@ async function fetchWalnutMap() {
   }
 }
 
-// Handle window resize
 window.addEventListener('resize', () => {
-  // Update camera aspect ratio
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-  
-  // Update renderer size
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// WASD movement controls
-const keys = {
-  w: false,
-  a: false,
-  s: false,
-  d: false
-}
-
-let isRotating = false // Track right-click for mouse rotation
+const keys = { w: false, a: false, s: false, d: false }
+let isRotating = false
 let lastMouseX = 0
 
 window.addEventListener('mousedown', (event) => {
-  if (event.button === 2) { // Right-click
-    isRotating = true
-    lastMouseX = event.clientX
-    controls.enabled = false // Disable OrbitControls during rotation
-    console.log('Mouse rotation started')
+  if (event.button === 2) {
+    isRotating = true;
+    lastMouseX = event.clientX;
+    controls.enabled = false;
+    console.log('Mouse rotation started');
   }
-})
+});
 
 window.addEventListener('mouseup', (event) => {
   if (event.button === 2) {
-    isRotating = false
-    controls.enabled = true // Re-enable OrbitControls
-    console.log('Mouse rotation stopped')
+    isRotating = false;
+    controls.enabled = true;
+    console.log('Mouse rotation stopped');
   }
-})
+});
 
 window.addEventListener('mousemove', (event) => {
   if (isRotating) {
-    const deltaX = event.clientX - lastMouseX
-    const rotationSpeed = 0.005 // Adjust sensitivity
-    camera.rotation.y -= deltaX * rotationSpeed // Adjust yaw
-    lastMouseX = event.clientX
-    console.log('Camera rotation updated:', camera.rotation.y)
+    const deltaX = event.clientX - lastMouseX;
+    const rotationSpeed = 0.005;
+    camera.rotation.y -= deltaX * rotationSpeed;
+    lastMouseX = event.clientX;
+    console.log('Camera rotation updated:', camera.rotation.y);
   }
-})
+});
 
-window.addEventListener('contextmenu', (event) => {
-  event.preventDefault() // Prevent right-click context menu
-})
+window.addEventListener('contextmenu', (event) => event.preventDefault());
 
 window.addEventListener('keydown', (event) => {
   switch (event.key.toLowerCase()) {
-    case 'w': keys.w = true; break
-    case 'a': keys.a = true; break
-    case 's': keys.s = true; break
-    case 'd': keys.d = true; break
+    case 'w': keys.w = true; break;
+    case 'a': keys.a = true; break;
+    case 's': keys.s = true; break;
+    case 'd': keys.d = true; break;
   }
   if (keys.w || keys.a || keys.s || keys.d) {
-    controls.enabled = false // Disable OrbitControls during WASD
-    console.log('Key down:', event.key, keys)
+    controls.enabled = false;
+    console.log('Key down:', event.key, keys);
   }
-})
+});
 
 window.addEventListener('keyup', (event) => {
   switch (event.key.toLowerCase()) {
-    case 'w': keys.w = false; break
-    case 'a': keys.a = false; break
-    case 's': keys.s = false; break
-    case 'd': keys.d = false; break
+    case 'w': keys.w = false; break;
+    case 'a': keys.a = false; break;
+    case 's': keys.s = false; break;
+    case 'd': keys.d = false; break;
   }
   if (!keys.w && !keys.a && !keys.s && !keys.d) {
-    controls.enabled = true // Re-enable OrbitControls when no keys pressed
-    console.log('Key up:', event.key, keys)
+    controls.enabled = true;
+    console.log('Key up:', event.key, keys);
   }
-})
+});
 
-// Add click detection for walnuts (left-click)
 const raycaster = new THREE.Raycaster()
 const mouse = new THREE.Vector2()
 
 window.addEventListener('mousedown', (event) => {
-  if (event.button === 0) { // Left-click for walnut selection
-    // Normalize mouse coordinates to [-1, 1]
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
-
-    // Update raycaster
-    raycaster.setFromCamera(mouse, camera)
-
-    // Check intersections with walnut meshes
-    const intersects = raycaster.intersectObjects(Array.from(walnutMeshes.values()))
+  if (event.button === 0) {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(Array.from(walnutMeshes.values()));
     if (intersects.length > 0) {
-      const clickedMesh = intersects[0].object
-      const walnutId = clickedMesh.userData.walnutId
-      console.log(`Clicked walnut: ${walnutId}`, clickedMesh.userData)
+      const clickedMesh = intersects[0].object;
+      const walnutId = clickedMesh.userData.walnutId;
+      console.log(`Clicked walnut: ${walnutId}`, clickedMesh.userData);
     }
   }
-})
+});
 
-// Animation loop
-const velocity = new THREE.Vector3()
-const damping = 0.05 // Smoother movement
-const speed = 0.3 // Adjusted movement speed
-const yLerpFactor = 0.05 // Slower, smoother y-transitions
-const velocityDampingFactor = 0.2 // Smooth velocity transitions
-let targetY = 0 // Track target height for smooth transitions
+const speed = 0.25
 
 function animate() {
-  requestAnimationFrame(animate)
-  
-  // Update WASD movement in local camera space
-  const direction = new THREE.Vector3()
+  requestAnimationFrame(animate);
+
   if (keys.w || keys.a || keys.s || keys.d) {
-    // Get camera's forward direction (negative z-axis)
-    const forward = new THREE.Vector3()
-    camera.getWorldDirection(forward).negate() // Forward is -z
-    const right = new THREE.Vector3().crossVectors(camera.up, forward).normalize() // Right is perpendicular
+    const forward = new THREE.Vector3();
+    camera.getWorldDirection(forward).negate();
+    const right = new THREE.Vector3().crossVectors(camera.up, forward).normalize();
+    const direction = new THREE.Vector3();
 
-    // Log direction vectors for debugging
-    console.log('Movement vectors:', {
-      forward: forward.toArray(),
-      right: right.toArray(),
-      cameraDirection: camera.getWorldDirection(new THREE.Vector3()).toArray()
-    })
-
-    if (keys.w) direction.sub(forward) // Forward (-z)
-    if (keys.s) direction.add(forward) // Backward (+z)
-    if (keys.a) direction.sub(right) // Left
-    if (keys.d) direction.add(right) // Right
+    if (keys.w) direction.add(forward);
+    if (keys.s) direction.sub(forward);
+    if (keys.a) direction.sub(right);
+    if (keys.d) direction.add(right);
 
     if (direction.length() > 0) {
-      direction.normalize().multiplyScalar(speed)
-      velocity.lerp(direction, damping) // Smooth movement
-      camera.position.add(velocity)
-
-      // Clamp x, z to terrain bounds
-      camera.position.x = Math.max(-100, Math.min(100, camera.position.x))
-      camera.position.z = Math.max(-100, Math.min(100, camera.position.z))
-
-      // Update target height based on current position
-      const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z)
-      targetY = Math.max(terrainHeight + 4, 4) // 4 units above terrain or fallback
-
-      // Smoothly adjust camera y to target height
-      camera.position.y = THREE.MathUtils.lerp(
-        camera.position.y,
-        targetY,
-        yLerpFactor
-      )
-
+      direction.normalize().multiplyScalar(speed);
+      camera.position.add(direction);
+      camera.position.x = Math.max(-100, Math.min(100, camera.position.x));
+      camera.position.z = Math.max(-100, Math.min(100, camera.position.z));
+      const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z);
+      camera.position.y = terrainHeight + 4;
       console.log('Camera moved via WASD:', {
         position: camera.position.toArray(),
         terrainHeight,
-        targetY,
-        direction: direction.toArray(),
-        velocity: velocity.toArray()
-      })
-    }
-  } else {
-    // Smoothly lerp velocity to zero when no keys are pressed
-    velocity.lerp(new THREE.Vector3(), velocityDampingFactor)
-    if (velocity.length() > 0.01) { // Only apply if velocity is significant
-      camera.position.add(velocity)
-      
-      // Update height during velocity damping
-      const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z)
-      targetY = Math.max(terrainHeight + 4, 4)
-      camera.position.y = THREE.MathUtils.lerp(
-        camera.position.y,
-        targetY,
-        yLerpFactor
-      )
-
-      console.log('Velocity damping:', {
-        velocity: velocity.toArray(),
-        position: camera.position.toArray(),
-        terrainHeight,
-        targetY
-      })
-    } else {
-      velocity.set(0, 0, 0) // Reset velocity when very small
+        direction: direction.toArray()
+      });
     }
   }
 
-  // Update OrbitControls and prevent clipping
   if (controls.enabled) {
-    controls.update()
-    // Immediately adjust camera y after orbiting to prevent clipping
-    const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z)
-    const minHeight = Math.max(terrainHeight + 4, 4) // 4 units above terrain or fallback
-    if (camera.position.y < minHeight) {
-      camera.position.y = minHeight
-      targetY = minHeight // Sync targetY with OrbitControls height
-      console.log('Camera adjusted post-orbit:', {
-        position: camera.position.toArray(),
-        terrainHeight,
-        minHeight
-      })
-    }
+    controls.update();
+    const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z);
+    camera.position.y = Math.max(terrainHeight + 4, 4);
+    console.log('Camera adjusted post-orbit:', {
+      position: camera.position.toArray(),
+      terrainHeight
+    });
   }
-  
-  // Add subtle walnut rotation
-  walnutMeshes.forEach(mesh => {
-    mesh.rotation.y += 0.002 // Very slow rotation for visual interest
-  })
-  
-  // Render scene
-  renderer.render(scene, camera)
+
+  walnutMeshes.forEach(mesh => { mesh.rotation.y += 0.002; });
+  renderer.render(scene, camera);
 }
 
-// Start animation loop
 animate();
 
 // WebSocket heartbeat setup
