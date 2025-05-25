@@ -109,6 +109,28 @@ export function updateSquirrelMovement(deltaTime: number) {
   });
 }
 
+export function updateSquirrelCamera(camera: THREE.PerspectiveCamera) {
+  if (!avatar) return;
+
+  const mesh = avatar.mesh;
+  const offsetDistance = 5; // Units behind
+  const offsetHeight = 3; // Units above
+  const direction = new THREE.Vector3();
+  
+  // Get squirrel's facing direction
+  mesh.getWorldDirection(direction);
+  direction.y = 0;
+  direction.normalize();
+  
+  // Position camera behind and above
+  const cameraPosition = mesh.position.clone()
+    .addScaledVector(direction, -offsetDistance) // Behind
+    .setY(mesh.position.y + offsetHeight); // Above
+  
+  camera.position.lerp(cameraPosition, 0.1); // Smooth transition
+  camera.lookAt(mesh.position); // Look at squirrel
+}
+
 export function getSquirrelAvatar(): SquirrelAvatar | null {
   return avatar;
 } 

@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { createTerrain } from './terrain'
 import { createForest } from './forest'
-import { loadSquirrelAvatar, updateSquirrelMovement } from './avatar'
+import { loadSquirrelAvatar, updateSquirrelMovement, updateSquirrelCamera } from './avatar'
 
 // AI NOTE: Export DEBUG for use in other modules
 export const DEBUG = false;
@@ -355,12 +355,9 @@ async function animate() {
   lastTime = currentTime;
 
   updateSquirrelMovement(deltaTime);
+  updateSquirrelCamera(camera);
 
-  if (controls.enabled) {
-    controls.update();
-    const terrainHeight = await getTerrainHeight(camera.position.x, camera.position.z);
-    camera.position.y = Math.max(terrainHeight + 4, 4);
-  }
+  controls.enabled = false; // Disable OrbitControls during movement
 
   walnutMeshes.forEach(mesh => { mesh.rotation.y += 0.002; });
   renderer.render(scene, camera);
