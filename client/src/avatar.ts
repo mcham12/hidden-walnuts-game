@@ -86,14 +86,14 @@ export function updateSquirrelMovement(deltaTime: number) {
   // Handle movement (W/S)
   const direction = new THREE.Vector3();
   mesh.getWorldDirection(direction); // Get facing direction
-  direction.y = 0; // Keep movement horizontal
+  direction.y = 0;
   direction.normalize();
 
   if (moveState.forward) {
-    mesh.position.addScaledVector(direction, -moveSpeed * deltaTime); // Forward (opposite direction)
+    mesh.position.addScaledVector(direction, moveSpeed * deltaTime); // Forward (W)
   }
   if (moveState.backward) {
-    mesh.position.addScaledVector(direction, moveSpeed * deltaTime); // Backward
+    mesh.position.addScaledVector(direction, -moveSpeed * deltaTime); // Backward (S)
   }
 
   // Clamp position to terrain bounds
