@@ -5,8 +5,8 @@ import { createTerrain } from './terrain'
 import { createForest } from './forest'
 import { loadSquirrelAvatar } from './avatar'
 
-// AI NOTE: Add DEBUG flag for controlling movement logs
-const DEBUG = false;
+// AI NOTE: Export DEBUG for use in other modules
+export const DEBUG = false;
 
 // ===== DEBUG LOGS =====
 console.log('%c🔍 Environment Variables', 'font-size: 16px; font-weight: bold; color: #4CAF50;');

@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { API_BASE, getTerrainHeight } from './main';
+import { API_BASE, getTerrainHeight, DEBUG } from './main';
 
 interface ForestObject {
   id: string;
@@ -97,7 +97,9 @@ export async function createForest(): Promise<THREE.Object3D[]> {
       });
       model.userData = { id: obj.id, type: obj.type };
       meshes.push(model);
-      console.log(`Created mesh for ${obj.type} ${obj.id} at (${obj.x}, ${terrainHeight}, ${obj.z})`);
+      if (DEBUG) {
+        console.log(`Created mesh for ${obj.type} ${obj.id} at (${obj.x}, ${terrainHeight}, ${obj.z})`);
+      }
     } catch (error) {
       console.error(`Failed to create mesh for ${obj.id}:`, error);
     }

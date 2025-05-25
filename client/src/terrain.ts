@@ -7,7 +7,7 @@ import { API_BASE } from './main';
 
 export async function createTerrain(): Promise<THREE.Mesh> {
   const size = 200; // Matches TERRAIN_SIZE from constants.ts
-  const height = 20; // Matches TERRAIN_HEIGHT from constants.ts
+  const height = 5; // Reduced from 20 to 5 for flatter terrain
   const segments = 200;
 
   // Fetch terrain seed from backend
@@ -34,7 +34,7 @@ export async function createTerrain(): Promise<THREE.Mesh> {
       const xNorm = x / segments;
       const zNorm = z / segments;
       const noiseValue = Math.sin(xNorm * 10 + seed) * Math.cos(zNorm * 10 + seed);
-      vertices[i + 2] = (noiseValue + 1) * (height / 2); // Scale to 0 to TERRAIN_HEIGHT
+      vertices[i + 2] = (noiseValue + 1) * (height / 2); // Scale to 0–5 units
       i += 3;
     }
   }
@@ -53,5 +53,6 @@ export async function createTerrain(): Promise<THREE.Mesh> {
   terrain.rotation.x = -Math.PI / 2; // Lay flat
   terrain.receiveShadow = true;
 
+  console.log('[Log] Terrain setup complete: 200x200, height 0–5 units');
   return terrain;
 } 
