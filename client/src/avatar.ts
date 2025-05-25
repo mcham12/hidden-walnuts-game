@@ -1,7 +1,7 @@
 // AI NOTE: This file handles squirrel avatar loading and rendering for MVP 6.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { getTerrainHeight } from './terrain';
+import { getTerrainHeight } from './main';
 import type { SquirrelAvatar } from './types';
 
 let avatar: SquirrelAvatar | null = null;
