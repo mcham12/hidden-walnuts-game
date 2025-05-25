@@ -5,6 +5,9 @@ import { createTerrain } from './terrain'
 import { createForest } from './forest'
 import { loadSquirrelAvatar } from './avatar'
 
+// AI NOTE: Add DEBUG flag for controlling movement logs
+const DEBUG = false;
+
 // ===== DEBUG LOGS =====
 console.log('%c🔍 Environment Variables', 'font-size: 16px; font-weight: bold; color: #4CAF50;');
 console.log({
@@ -339,10 +342,12 @@ let wasMoving = false  // Track previous movement state
 function animate() {
   requestAnimationFrame(animate);
 
-  console.log('Before movement:', {
-    position: camera.position.toArray(),
-    terrainHeight: getTerrainHeight(camera.position.x, camera.position.z)
-  });
+  if (DEBUG) {
+    console.log('Before movement:', {
+      position: camera.position.toArray(),
+      terrainHeight: getTerrainHeight(camera.position.x, camera.position.z)
+    });
+  }
 
   const isMoving = keys.w || keys.a || keys.s || keys.d;
 
@@ -374,19 +379,23 @@ function animate() {
     wasMoving = false;
   }
 
-  console.log('After movement:', {
-    position: camera.position.toArray(),
-    terrainHeight: getTerrainHeight(camera.position.x, camera.position.z)
-  });
+  if (DEBUG) {
+    console.log('After movement:', {
+      position: camera.position.toArray(),
+      terrainHeight: getTerrainHeight(camera.position.x, camera.position.z)
+    });
+  }
 
   if (controls.enabled) {
     controls.update();
     const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z);
     camera.position.y = Math.max(terrainHeight + 4, 4);
-    console.log('Camera adjusted post-orbit:', {
-      position: camera.position.toArray(),
-      terrainHeight
-    });
+    if (DEBUG) {
+      console.log('Camera adjusted post-orbit:', {
+        position: camera.position.toArray(),
+        terrainHeight
+      });
+    }
   }
 
   walnutMeshes.forEach(mesh => { mesh.rotation.y += 0.002; });
