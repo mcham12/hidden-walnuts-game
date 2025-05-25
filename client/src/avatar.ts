@@ -11,10 +11,11 @@ export async function loadSquirrelAvatar(scene: THREE.Scene): Promise<SquirrelAv
   const gltf = await loader.loadAsync('/assets/models/squirrel.glb');
   
   const mesh = gltf.scene;
-  mesh.scale.set(0.5, 0.5, 0.5); // Adjust scale for visibility
-  const x = 50, z = 50; // Place in flatter terrain area
-  mesh.position.set(x, z, getTerrainHeight(x, z) + 0.5); // Ground with offset
-  mesh.rotation.y = Math.PI; // Face forward
+  mesh.scale.set(0.5, 0.5, 0.5);
+  const x = 50, z = 50;
+  const terrainHeight = await getTerrainHeight(x, z);
+  mesh.position.set(x, z, terrainHeight + 0.2); // Reduced offset
+  mesh.rotation.y = Math.PI;
   
   scene.add(mesh);
   avatar = { mesh, gltf };

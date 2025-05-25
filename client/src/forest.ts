@@ -21,12 +21,11 @@ export async function createForest(): Promise<THREE.Object3D[]> {
   // Fetch forest object positions from backend
   try {
     const response = await fetch(`${API_BASE}/forest-objects`);
-    console.log(`Fetching forest objects from ${API_BASE}/forest-objects, status: ${response.status}`);
     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}, Response: ${await response.text()}`);
     const data = await response.json();
     if (!Array.isArray(data)) throw new Error('Invalid forest objects data: not an array');
     forestObjects.push(...data);
-    console.log(`Fetched ${forestObjects.length} forest objects`, forestObjects);
+    console.log(`[Log] Fetched ${forestObjects.length} forest objects`);
   } catch (error) {
     console.error('Failed to fetch forest objects:', error);
     return [];
@@ -35,15 +34,17 @@ export async function createForest(): Promise<THREE.Object3D[]> {
   const meshes: THREE.Object3D[] = [];
   
   // Test asset serving with a simple text file
-  try {
-    const testPath = '/assets/models/test.txt';
-    const testUrl = `${window.location.origin}${testPath}`;
-    console.log(`Testing asset serving: ${testUrl}`);
-    const response = await fetch(testUrl);
-    const responseText = await response.text();
-    console.log(`Test asset fetch status: ${response.status}, Response: ${responseText}`);
-  } catch (error) {
-    console.error('Failed to fetch test asset:', error);
+  if (DEBUG) {
+    try {
+      const testPath = '/assets/models/test.txt';
+      const testUrl = `${window.location.origin}${testPath}`;
+      console.log(`[Log] Testing asset serving: ${testUrl}`);
+      const response = await fetch(testUrl);
+      const responseText = await response.text();
+      console.log(`[Log] Test asset fetch status: ${response.status}, Response: ${responseText}`);
+    } catch (error) {
+      console.error('Failed to fetch test asset:', error);
+    }
   }
 
   // Load models
@@ -53,32 +54,36 @@ export async function createForest(): Promise<THREE.Object3D[]> {
   const treeUrl = `${window.location.origin}${treePath}`;
   const shrubUrl = `${window.location.origin}${shrubPath}`;
   try {
-    console.log(`Loading GLTF model: ${treeUrl} (path: ${treePath})`);
+    if (DEBUG) console.log(`[Log] Loading GLTF model: ${treeUrl} (path: ${treePath})`);
     treeModel = await loader.loadAsync(treePath);
-    console.log(`Loaded ${treePath} successfully`);
+    if (DEBUG) console.log(`[Log] Loaded ${treePath} successfully`);
   } catch (error) {
     console.error(`Failed to load ${treeUrl}:`, error);
-    try {
-      const response = await fetch(treeUrl);
-      const responseText = await response.text();
-      console.log(`Tree GLTF fetch status: ${response.status}, Response: ${responseText.slice(0, 200)}`);
-    } catch (fetchError) {
-      console.error(`Failed to fetch ${treeUrl} for debugging:`, fetchError);
+    if (DEBUG) {
+      try {
+        const response = await fetch(treeUrl);
+        const responseText = await response.text();
+        console.log(`[Log] Tree GLTF fetch status: ${response.status}, Response: ${responseText.slice(0, 200)}`);
+      } catch (fetchError) {
+        console.error(`Failed to fetch ${treeUrl} for debugging:`, fetchError);
+      }
     }
     return [];
   }
   try {
-    console.log(`Loading GLTF model: ${shrubUrl} (path: ${shrubPath})`);
+    if (DEBUG) console.log(`[Log] Loading GLTF model: ${shrubUrl} (path: ${shrubPath})`);
     shrubModel = await loader.loadAsync(shrubPath);
-    console.log(`Loaded ${shrubPath} successfully`);
+    if (DEBUG) console.log(`[Log] Loaded ${shrubPath} successfully`);
   } catch (error) {
     console.error(`Failed to load ${shrubUrl}:`, error);
-    try {
-      const response = await fetch(shrubUrl);
-      const responseText = await response.text();
-      console.log(`Shrub GLTF fetch status: ${response.status}, Response: ${responseText.slice(0, 200)}`);
-    } catch (fetchError) {
-      console.error(`Failed to fetch ${shrubUrl} for debugging:`, fetchError);
+    if (DEBUG) {
+      try {
+        const response = await fetch(shrubUrl);
+        const responseText = await response.text();
+        console.log(`[Log] Shrub GLTF fetch status: ${response.status}, Response: ${responseText.slice(0, 200)}`);
+      } catch (fetchError) {
+        console.error(`Failed to fetch ${shrubUrl} for debugging:`, fetchError);
+      }
     }
     return [];
   }
@@ -86,7 +91,7 @@ export async function createForest(): Promise<THREE.Object3D[]> {
   for (const obj of forestObjects) {
     try {
       const model = obj.type === 'tree' ? treeModel.scene.clone() : shrubModel.scene.clone();
-      const terrainHeight = getTerrainHeight(obj.x, obj.z);
+      const terrainHeight = await getTerrainHeight(obj.x, obj.z);
       model.position.set(obj.x, terrainHeight, obj.z);
       model.scale.set(obj.scale, obj.scale, obj.scale);
       model.traverse((child) => {
@@ -98,13 +103,13 @@ export async function createForest(): Promise<THREE.Object3D[]> {
       model.userData = { id: obj.id, type: obj.type };
       meshes.push(model);
       if (DEBUG) {
-        console.log(`Created mesh for ${obj.type} ${obj.id} at (${obj.x}, ${terrainHeight}, ${obj.z})`);
+        console.log(`[Log] Created mesh for ${obj.type} ${obj.id} at (${obj.x}, ${terrainHeight}, ${obj.z})`);
       }
     } catch (error) {
       console.error(`Failed to create mesh for ${obj.id}:`, error);
     }
   }
 
-  console.log(`Created ${meshes.length} forest meshes`);
+  console.log(`[Log] Created ${meshes.length} forest meshes`);
   return meshes;
 } 

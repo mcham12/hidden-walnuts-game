@@ -41,6 +41,44 @@ export { API_BASE };
 // Scene dimensions
 const FOREST_SIZE = 100
 
+// AI NOTE: Fetch terrain seed for consistent height calculations
+let terrainSeed = Math.random() * 1000; // Initialize with random seed
+async function fetchTerrainSeed(): Promise<number> {
+  try {
+    const response = await fetch(`${API_BASE}/terrain-seed`);
+    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    const data = await response.json();
+    terrainSeed = data.seed;
+    console.log(`[Log] Fetched terrain seed: ${terrainSeed}`);
+    return terrainSeed;
+  } catch (error) {
+    console.error('Failed to fetch terrain seed:', error);
+    console.log(`[Log] Using fallback terrain seed: ${terrainSeed}`);
+    return terrainSeed;
+  }
+}
+
+async function getTerrainHeight(x: number, z: number): Promise<number> {
+  const size = 200;
+  const height = 5; // Match terrain.ts
+  const seed = await fetchTerrainSeed();
+  
+  const xNorm = (x + size / 2) / size; // Normalize to 0–1
+  const zNorm = (z + size / 2) / size;
+  const noiseValue = Math.sin(xNorm * 10 + seed) * Math.cos(zNorm * 10 + seed);
+  const terrainHeight = (noiseValue + 1) * (height / 2); // Scale to 0–5 units
+  
+  if (terrainHeight < 0 || terrainHeight > 5) {
+    console.warn(`Invalid terrain height at (${x}, ${z}): ${terrainHeight}, clamping to 0`);
+    return 0;
+  }
+  
+  if (DEBUG) {
+    console.log(`[Log] Terrain height at (${x}, ${z}): ${terrainHeight}`);
+  }
+  return terrainHeight;
+}
+
 // Get the app container
 const appContainer = document.getElementById('app')
 if (!appContainer) {
@@ -111,9 +149,11 @@ createTerrain().then((mesh) => {
     meshes.forEach((mesh) => scene.add(mesh));
     console.log('Forest added to scene');
   });
-  // Load squirrel avatar after terrain is created
-  loadSquirrelAvatar(scene).then(() => {
+  // Load squirrel avatar and log height
+  loadSquirrelAvatar(scene).then(async () => {
     console.log('Squirrel avatar loaded');
+    const avatarHeight = await getTerrainHeight(50, 50);
+    console.log(`[Log] Squirrel avatar terrain height at (50, 50): ${avatarHeight}`);
   });
 });
 
@@ -160,48 +200,6 @@ function createWalnutMaterial(walnut: Walnut, hidingMethod: 'buried' | 'bush'): 
   });
 }
 
-function getTerrainHeight(x: number, z: number): number {
-  if (!terrain || !terrain.geometry) {
-    console.warn('Terrain or geometry not available');
-    return 0;
-  }
-  const geometry = terrain.geometry as THREE.PlaneGeometry;
-  const vertices = geometry.attributes.position.array;
-  const size = 200;
-  const segments = 200;
-
-  const clampedX = Math.max(-size / 2, Math.min(size / 2, x));
-  const clampedZ = Math.max(-size / 2, Math.min(size / 2, z));
-  const xNorm = (clampedX + size / 2) / size * segments;
-  const zNorm = (clampedZ + size / 2) / size * segments;
-  const x0 = Math.floor(xNorm);
-  const z0 = Math.floor(zNorm);
-  const x1 = Math.min(x0 + 1, segments);
-  const z1 = Math.min(z0 + 1, segments);
-
-  if (x0 < 0 || x0 >= segments || z0 < 0 || z0 >= segments) {
-    console.warn(`Out-of-bounds coordinates: x=${x}, z=${z}`);
-    return 0;
-  }
-
-  const index00 = (z0 * (segments + 1) + x0) * 3;
-  const index01 = (z0 * (segments + 1) + x1) * 3;
-  const index10 = (z1 * (segments + 1) + x0) * 3;
-  const index11 = (z1 * (segments + 1) + x1) * 3;
-
-  const h00 = vertices[index00 + 2] || 0;
-  const h01 = vertices[index01 + 2] || 0;
-  const h10 = vertices[index10 + 2] || 0;
-  const h11 = vertices[index11 + 2] || 0;
-
-  const tx = xNorm - x0;
-  const tz = zNorm - z0;
-  const h0 = h00 + (h01 - h00) * tx;
-  const h1 = h10 + (h11 - h10) * tx;
-  const height = h0 + (h1 - h0) * tz;
-  return height;
-}
-
 function createWalnutMesh(walnut: Walnut): THREE.Mesh {
   const hidingMethod = getHidingMethod(walnut);
   const geometry = new THREE.SphereGeometry(
@@ -211,13 +209,15 @@ function createWalnutMesh(walnut: Walnut): THREE.Mesh {
   );
   const material = createWalnutMaterial(walnut, hidingMethod);
   const mesh = new THREE.Mesh(geometry, material);
-  let terrainHeight = getTerrainHeight(walnut.location.x, walnut.location.z);
-  if (terrainHeight <= 0) {
-    terrainHeight = 5;
-    console.warn(`Invalid terrain height at (${walnut.location.x}, ${walnut.location.z}), using fallback y=5`);
-  }
-  const yPosition = terrainHeight + WALNUT_CONFIG.height[hidingMethod];
-  mesh.position.set(walnut.location.x, yPosition, walnut.location.z);
+  getTerrainHeight(walnut.location.x, walnut.location.z).then((terrainHeight) => {
+    if (terrainHeight <= 0) {
+      terrainHeight = 5;
+      console.warn(`Invalid terrain height at (${walnut.location.x}, ${walnut.location.z}), using fallback y=5`);
+    }
+    const yPosition = terrainHeight + WALNUT_CONFIG.height[hidingMethod];
+    mesh.position.set(walnut.location.x, yPosition, walnut.location.z);
+    console.log(`[Log] Walnut ${walnut.id} positioned at (${walnut.location.x}, ${yPosition}, ${walnut.location.z}), terrain height: ${terrainHeight}`);
+  });
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   mesh.userData = {
@@ -269,7 +269,7 @@ window.addEventListener('mousedown', (event) => {
     isRotating = true;
     lastMouseX = event.clientX;
     controls.enabled = false;
-    console.log('Mouse rotation started');
+    if (DEBUG) console.log('[Log] Mouse rotation started');
   }
 });
 
@@ -277,7 +277,7 @@ window.addEventListener('mouseup', (event) => {
   if (event.button === 2) {
     isRotating = false;
     controls.enabled = true;
-    console.log('Mouse rotation stopped');
+    if (DEBUG) console.log('[Log] Mouse rotation stopped');
   }
 });
 
@@ -287,35 +287,39 @@ window.addEventListener('mousemove', (event) => {
     const rotationSpeed = 0.005;
     camera.rotation.y -= deltaX * rotationSpeed;
     lastMouseX = event.clientX;
-    console.log('Camera rotation updated:', camera.rotation.y);
+    if (DEBUG) console.log('[Log] Camera rotation updated:', camera.rotation.y);
   }
 });
 
 window.addEventListener('contextmenu', (event) => event.preventDefault());
 
 window.addEventListener('keydown', (event) => {
-  switch (event.key.toLowerCase()) {
+  const key = event.key.toLowerCase();
+  const prevState = { ...keys };
+  switch (key) {
     case 'w': keys.w = true; break;
     case 'a': keys.a = true; break;
     case 's': keys.s = true; break;
     case 'd': keys.d = true; break;
   }
-  if (keys.w || keys.a || keys.s || keys.d) {
+  if ((keys.w || keys.a || keys.s || keys.d) && JSON.stringify(prevState) !== JSON.stringify(keys)) {
     controls.enabled = false;
-    console.log('Key down:', event.key, keys);
+    if (DEBUG) console.log('[Log] Key down:', key, keys);
   }
 });
 
 window.addEventListener('keyup', (event) => {
-  switch (event.key.toLowerCase()) {
+  const key = event.key.toLowerCase();
+  const prevState = { ...keys };
+  switch (key) {
     case 'w': keys.w = false; break;
     case 'a': keys.a = false; break;
     case 's': keys.s = false; break;
     case 'd': keys.d = false; break;
   }
-  if (!keys.w && !keys.a && !keys.s && !keys.d) {
+  if (!keys.w && !keys.a && !keys.s && !keys.d && JSON.stringify(prevState) !== JSON.stringify(keys)) {
     controls.enabled = true;
-    console.log('Key up:', event.key, keys);
+    if (DEBUG) console.log('[Log] Key up:', key, keys);
   }
 });
 
@@ -343,9 +347,11 @@ function animate() {
   requestAnimationFrame(animate);
 
   if (DEBUG) {
-    console.log('Before movement:', {
-      position: camera.position.toArray(),
-      terrainHeight: getTerrainHeight(camera.position.x, camera.position.z)
+    getTerrainHeight(camera.position.x, camera.position.z).then(height => {
+      console.log('Before movement:', {
+        position: camera.position.toArray(),
+        terrainHeight: height
+      });
     });
   }
 
@@ -367,35 +373,40 @@ function animate() {
       camera.position.add(direction);
       camera.position.x = Math.max(-100, Math.min(100, camera.position.x));
       camera.position.z = Math.max(-100, Math.min(100, camera.position.z));
-      const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z);
-      camera.position.y = terrainHeight + 4;
+      getTerrainHeight(camera.position.x, camera.position.z).then(terrainHeight => {
+        camera.position.y = terrainHeight + 4;
+      });
     }
     wasMoving = true;
   } else if (wasMoving) {
     // Smooth transition when stopping
-    const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z);
-    const targetY = terrainHeight + 4;
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.5);
+    getTerrainHeight(camera.position.x, camera.position.z).then(terrainHeight => {
+      const targetY = terrainHeight + 4;
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.5);
+    });
     wasMoving = false;
   }
 
   if (DEBUG) {
-    console.log('After movement:', {
-      position: camera.position.toArray(),
-      terrainHeight: getTerrainHeight(camera.position.x, camera.position.z)
+    getTerrainHeight(camera.position.x, camera.position.z).then(height => {
+      console.log('After movement:', {
+        position: camera.position.toArray(),
+        terrainHeight: height
+      });
     });
   }
 
   if (controls.enabled) {
     controls.update();
-    const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z);
-    camera.position.y = Math.max(terrainHeight + 4, 4);
-    if (DEBUG) {
-      console.log('Camera adjusted post-orbit:', {
-        position: camera.position.toArray(),
-        terrainHeight
-      });
-    }
+    getTerrainHeight(camera.position.x, camera.position.z).then(terrainHeight => {
+      camera.position.y = Math.max(terrainHeight + 4, 4);
+      if (DEBUG) {
+        console.log('Camera adjusted post-orbit:', {
+          position: camera.position.toArray(),
+          terrainHeight
+        });
+      }
+    });
   }
 
   walnutMeshes.forEach(mesh => { mesh.rotation.y += 0.002; });
@@ -529,15 +540,15 @@ socket.addEventListener("close", (event) => {
 });
 
 // Update exports
-export { 
-  scene, 
-  camera, 
-  renderer, 
-  FOREST_SIZE, 
-  fetchWalnutMap, 
-  walnuts, 
-  renderWalnuts, 
-  getHidingMethod, 
+export {
+  scene,
+  camera,
+  renderer,
+  FOREST_SIZE,
+  fetchWalnutMap,
+  walnuts,
+  renderWalnuts,
+  getHidingMethod,
   createWalnutMaterial,
   socket,
   terrain,
