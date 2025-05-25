@@ -25,14 +25,19 @@ const CORS_HEADERS = {
 
 export default {
   async fetch(request: Request, env: EnvWithBindings, ctx: ExecutionContext): Promise<Response> {
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Max-Age': '86400',
+        },
+      });
+    }
+
     const url = new URL(request.url);
     const pathname = url.pathname;
-
-    // Handle preflight CORS requests globally
-    if (request.method === 'OPTIONS') {
-      console.log('Handling OPTIONS request for', url.pathname);
-      return new Response(null, { status: 204, headers: CORS_HEADERS });
-    }
 
     try {
       // Handle WebSocket connections

@@ -41,19 +41,34 @@ export { API_BASE };
 // Scene dimensions
 const FOREST_SIZE = 100
 
-// AI NOTE: Fetch terrain seed for consistent height calculations
+// AI NOTE: Cache terrain seed in sessionStorage and limit fallback seed logs
 let terrainSeed = Math.random() * 1000; // Initialize with random seed
+let hasLoggedFallback = false;
+
 async function fetchTerrainSeed(): Promise<number> {
+  const cachedSeed = sessionStorage.getItem('terrainSeed');
+  if (cachedSeed) {
+    terrainSeed = parseFloat(cachedSeed);
+    console.log(`[Log] Using cached terrain seed: ${terrainSeed}`);
+    return terrainSeed;
+  }
+
   try {
     const response = await fetch(`${API_BASE}/terrain-seed`);
     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
     const data = await response.json();
     terrainSeed = data.seed;
+    sessionStorage.setItem('terrainSeed', terrainSeed.toString());
     console.log(`[Log] Fetched terrain seed: ${terrainSeed}`);
     return terrainSeed;
   } catch (error) {
     console.error('Failed to fetch terrain seed:', error);
-    console.log(`[Log] Using fallback terrain seed: ${terrainSeed}`);
+    terrainSeed = Math.random() * 1000;
+    sessionStorage.setItem('terrainSeed', terrainSeed.toString());
+    if (!hasLoggedFallback) {
+      console.log(`[Log] Using fallback terrain seed: ${terrainSeed}`);
+      hasLoggedFallback = true;
+    }
     return terrainSeed;
   }
 }
@@ -553,5 +568,6 @@ export {
   socket,
   terrain,
   getTerrainHeight,
-  forestMeshes
+  forestMeshes,
+  fetchTerrainSeed
 };
