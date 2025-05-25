@@ -177,6 +177,7 @@ export default {
         return new Response(result, {
           status: resp.status,
           headers: {
+            ...CORS_HEADERS,
             'Content-Type': 'application/json',
           }
         });

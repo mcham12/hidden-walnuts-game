@@ -91,7 +91,17 @@ export async function createForest(): Promise<THREE.Object3D[]> {
   for (const obj of forestObjects) {
     try {
       const model = obj.type === 'tree' ? treeModel.scene.clone() : shrubModel.scene.clone();
-      const terrainHeight = await getTerrainHeight(obj.x, obj.z);
+      let terrainHeight;
+      try {
+        terrainHeight = await getTerrainHeight(obj.x, obj.z);
+        if (terrainHeight < 0 || terrainHeight > 5) {
+          console.warn(`Invalid terrain height for ${obj.type} ${obj.id} at (${obj.x}, ${obj.z}): ${terrainHeight}, using 0`);
+          terrainHeight = 0;
+        }
+      } catch (error) {
+        console.error(`[Log] Failed to get terrain height for ${obj.type} ${obj.id}:`, error);
+        terrainHeight = 0;
+      }
       model.position.set(obj.x, terrainHeight, obj.z);
       model.scale.set(obj.scale, obj.scale, obj.scale);
       model.traverse((child) => {
@@ -106,7 +116,7 @@ export async function createForest(): Promise<THREE.Object3D[]> {
         console.log(`[Log] Created mesh for ${obj.type} ${obj.id} at (${obj.x}, ${terrainHeight}, ${obj.z})`);
       }
     } catch (error) {
-      console.error(`Failed to create mesh for ${obj.id}:`, error);
+      console.error(`[Log] Failed to create mesh for ${obj.id}:`, error);
     }
   }
 

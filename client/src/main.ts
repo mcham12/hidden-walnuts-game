@@ -41,56 +41,64 @@ export { API_BASE };
 // Scene dimensions
 const FOREST_SIZE = 100
 
-// AI NOTE: Cache terrain seed in sessionStorage and limit fallback seed logs
+// AI NOTE: Memoize terrain seed/height, limit seed logs, initialize seed early
 let terrainSeed = Math.random() * 1000; // Initialize with random seed
-let hasLoggedFallback = false;
+let hasLoggedSeed = false;
+const heightCache: Map<string, number> = new Map();
 
-async function fetchTerrainSeed(): Promise<number> {
+async function initializeTerrainSeed(): Promise<number> {
   const cachedSeed = sessionStorage.getItem('terrainSeed');
   if (cachedSeed) {
     terrainSeed = parseFloat(cachedSeed);
-    console.log(`[Log] Using cached terrain seed: ${terrainSeed}`);
+    if (!hasLoggedSeed) {
+      console.log(`[Log] Using cached terrain seed: ${terrainSeed}`);
+      hasLoggedSeed = true;
+    }
     return terrainSeed;
   }
-
   try {
     const response = await fetch(`${API_BASE}/terrain-seed`);
     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
     const data = await response.json();
     terrainSeed = data.seed;
     sessionStorage.setItem('terrainSeed', terrainSeed.toString());
-    console.log(`[Log] Fetched terrain seed: ${terrainSeed}`);
+    if (!hasLoggedSeed) {
+      console.log(`[Log] Fetched terrain seed: ${terrainSeed}`);
+      hasLoggedSeed = true;
+    }
     return terrainSeed;
   } catch (error) {
     console.error('Failed to fetch terrain seed:', error);
     terrainSeed = Math.random() * 1000;
     sessionStorage.setItem('terrainSeed', terrainSeed.toString());
-    if (!hasLoggedFallback) {
+    if (!hasLoggedSeed) {
       console.log(`[Log] Using fallback terrain seed: ${terrainSeed}`);
-      hasLoggedFallback = true;
+      hasLoggedSeed = true;
     }
     return terrainSeed;
   }
 }
 
 async function getTerrainHeight(x: number, z: number): Promise<number> {
-  const size = 200;
-  const height = 5; // Match terrain.ts
-  const seed = await fetchTerrainSeed();
+  const key = `${x.toFixed(2)},${z.toFixed(2)}`;
+  if (heightCache.has(key)) return heightCache.get(key)!;
   
-  const xNorm = (x + size / 2) / size; // Normalize to 0–1
+  const size = 200;
+  const height = 5;
+  const seed = await initializeTerrainSeed();
+  
+  const xNorm = (x + size / 2) / size;
   const zNorm = (z + size / 2) / size;
   const noiseValue = Math.sin(xNorm * 10 + seed) * Math.cos(zNorm * 10 + seed);
-  const terrainHeight = (noiseValue + 1) * (height / 2); // Scale to 0–5 units
+  let terrainHeight = (noiseValue + 1) * (height / 2);
   
   if (terrainHeight < 0 || terrainHeight > 5) {
-    console.warn(`Invalid terrain height at (${x}, ${z}): ${terrainHeight}, clamping to 0`);
-    return 0;
+    console.warn(`Invalid terrain height at (${x}, ${z}): ${terrainHeight}, using 0`);
+    terrainHeight = 0;
   }
   
-  if (DEBUG) {
-    console.log(`[Log] Terrain height at (${x}, ${z}): ${terrainHeight}`);
-  }
+  heightCache.set(key, terrainHeight);
+  if (DEBUG) console.log(`[Log] Terrain height at (${x}, ${z}): ${terrainHeight}`);
   return terrainHeight;
 }
 
@@ -569,5 +577,5 @@ export {
   terrain,
   getTerrainHeight,
   forestMeshes,
-  fetchTerrainSeed
+  initializeTerrainSeed
 };
