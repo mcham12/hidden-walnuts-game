@@ -5,7 +5,7 @@ import { getTerrainHeight } from './main';
 import type { SquirrelAvatar } from './types';
 
 let avatar: SquirrelAvatar | null = null;
-const moveState = { forward: false, backward: false, left: false, right: false };
+const moveState = { forward: false, backward: false, turnLeft: false, turnRight: false };
 
 export async function loadSquirrelAvatar(scene: THREE.Scene): Promise<SquirrelAvatar> {
   const loader = new GLTFLoader();
@@ -50,8 +50,8 @@ export async function loadSquirrelAvatar(scene: THREE.Scene): Promise<SquirrelAv
     switch (key) {
       case 'w': moveState.forward = true; break;
       case 's': moveState.backward = true; break;
-      case 'a': moveState.left = true; break;
-      case 'd': moveState.right = true; break;
+      case 'a': moveState.turnLeft = true; break;
+      case 'd': moveState.turnRight = true; break;
     }
   });
 
@@ -60,8 +60,8 @@ export async function loadSquirrelAvatar(scene: THREE.Scene): Promise<SquirrelAv
     switch (key) {
       case 'w': moveState.forward = false; break;
       case 's': moveState.backward = false; break;
-      case 'a': moveState.left = false; break;
-      case 'd': moveState.right = false; break;
+      case 'a': moveState.turnLeft = false; break;
+      case 'd': moveState.turnRight = false; break;
     }
   });
 
@@ -71,31 +71,42 @@ export async function loadSquirrelAvatar(scene: THREE.Scene): Promise<SquirrelAv
 export function updateSquirrelMovement(deltaTime: number) {
   if (!avatar) return;
 
-  const speed = 5; // Units per second
+  const moveSpeed = 5; // Units per second
+  const turnSpeed = Math.PI; // Radians per second
   const mesh = avatar.mesh;
-  const direction = new THREE.Vector3();
 
-  if (moveState.forward) direction.z -= 1;
-  if (moveState.backward) direction.z += 1;
-  if (moveState.left) direction.x -= 1;
-  if (moveState.right) direction.x += 1;
-
-  if (direction.length() > 0) {
-    direction.normalize().multiplyScalar(speed * deltaTime);
-    mesh.position.add(direction);
-    
-    // Clamp position to terrain bounds
-    mesh.position.x = Math.max(-100, Math.min(100, mesh.position.x));
-    mesh.position.z = Math.max(-100, Math.min(100, mesh.position.z));
-    
-    // Update y-position to stay grounded
-    getTerrainHeight(mesh.position.x, mesh.position.z).then((terrainHeight) => {
-      mesh.position.y = terrainHeight;
-    }).catch((error) => {
-      console.error('[Log] Failed to update squirrel height:', error);
-      mesh.position.y = 2; // Fallback
-    });
+  // Handle rotation (A/D)
+  if (moveState.turnLeft) {
+    mesh.rotation.y += turnSpeed * deltaTime;
   }
+  if (moveState.turnRight) {
+    mesh.rotation.y -= turnSpeed * deltaTime;
+  }
+
+  // Handle movement (W/S)
+  const direction = new THREE.Vector3();
+  mesh.getWorldDirection(direction); // Get facing direction
+  direction.y = 0; // Keep movement horizontal
+  direction.normalize();
+
+  if (moveState.forward) {
+    mesh.position.addScaledVector(direction, -moveSpeed * deltaTime); // Forward (opposite direction)
+  }
+  if (moveState.backward) {
+    mesh.position.addScaledVector(direction, moveSpeed * deltaTime); // Backward
+  }
+
+  // Clamp position to terrain bounds
+  mesh.position.x = Math.max(-100, Math.min(100, mesh.position.x));
+  mesh.position.z = Math.max(-100, Math.min(100, mesh.position.z));
+
+  // Update y-position to stay grounded
+  getTerrainHeight(mesh.position.x, mesh.position.z).then((terrainHeight) => {
+    mesh.position.y = terrainHeight;
+  }).catch((error) => {
+    console.error('[Log] Failed to update squirrel height:', error);
+    mesh.position.y = 2; // Fallback
+  });
 }
 
 export function getSquirrelAvatar(): SquirrelAvatar | null {
