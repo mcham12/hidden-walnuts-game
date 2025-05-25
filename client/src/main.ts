@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { createTerrain } from './terrain'
 import { createForest } from './forest'
+import { loadSquirrelAvatar } from './avatar'
 
 // ===== DEBUG LOGS =====
 console.log('%c🔍 Environment Variables', 'font-size: 16px; font-weight: bold; color: #4CAF50;');
@@ -106,6 +107,10 @@ createTerrain().then((mesh) => {
     forestMeshes = meshes;
     meshes.forEach((mesh) => scene.add(mesh));
     console.log('Forest added to scene');
+  });
+  // Load squirrel avatar after terrain is created
+  loadSquirrelAvatar(scene).then(() => {
+    console.log('Squirrel avatar loaded');
   });
 });
 

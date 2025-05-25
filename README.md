@@ -39,8 +39,8 @@
    ```
 
 ## Deployment
-- **Frontend**: Deployed to Cloudflare Pages via GitHub Actions (`deploy-pages.yml`).
-- **Backend**: Deployed to Cloudflare Workers via `wrangler deploy`.
+- **Frontend**: Deployed to Cloudflare Pages via GitHub integration 
+- **Backend**: Deployed to Cloudflare Workers via GitHub Actions (`deploy-pages.yml`).
 - **Assets**: Served from `<game-root>/public/` (e.g., `Tree_01.glb`, `Bush_01.glb`).
 - **Routes**: `_routes.json` excludes `.glb` and `.txt` from SPA fallback.
 
@@ -58,55 +58,47 @@
 - Squirrel avatar model.
 - WASD movement for avatar.
 - Third-person camera following player.
-- **Estimated Time**: 2-3 weeks
+
 
 ### MVP 7: Walnut Hiding Mechanics
 - Walnut pickup and hiding with visual indicators.
 - Persistent walnut positions in backend.
 - Optimize walnut rendering (update only changed walnuts).
 - Implement level of detail (LOD) for walnuts.
-- **Estimated Time**: 3-4 weeks
 
 ### MVP 8: Multiplayer Synchronization
 - WebSocket for real-time communication.
 - Synchronize walnut and player positions.
 - Streamline WebSocket handlers.
-- **Estimated Time**: 3-4 weeks
 
 ### MVP 9: Walnut Seeking and Scoring
 - Find and collect hidden walnuts.
 - Points system for finds and hides.
 - Real-time leaderboard.
-- **Estimated Time**: 2-3 weeks
 
 ### MVP 10: Daily Map Reset
 - 24-hour map reset cycle.
 - Seed 100 game-hidden walnuts at reset.
 - Reset scores and walnut positions.
-- **Estimated Time**: 1-2 weeks
 
 ### MVP 11: Power-Ups
 - **Scent Sniff** and **Fast Dig** power-ups.
 - Spawning and usage mechanics.
-- **Estimated Time**: 2-3 weeks
 
 ### MVP 12: Predators
 - Hawk and wolf predator models.
 - Patrol and chase AI.
 - Player evasion mechanics.
-- **Estimated Time**: 3-4 weeks
 
 ### MVP 13: Dynamic Events
 - **Nut Rush** event with extra walnuts.
 - Random event triggers.
 - Dynamic lighting for events.
-- **Estimated Time**: 2-3 weeks
 
 ### MVP 14: Social Interactions
 - Pre-set messages and notifications.
 - Basic friend system or tagging.
 - Add DEBUG flag for production logs.
-- **Estimated Time**: 2-3 weeks
 
 ## Risks and Mitigations
 - **Multiplayer Sync**: Test WebSocket early, optimize handlers.
@@ -115,6 +107,3 @@
 
 ## Contributing
 See `conventions.md` for coding standards and contribution guidelines.
-
-## License
-MIT License
