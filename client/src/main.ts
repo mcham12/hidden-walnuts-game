@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { createTerrain } from './terrain'
 import { createForest } from './forest'
-import { loadSquirrelAvatar } from './avatar'
+import { loadSquirrelAvatar, updateSquirrelMovement } from './avatar'
 
 // AI NOTE: Export DEBUG for use in other modules
 export const DEBUG = false;
@@ -318,31 +318,15 @@ window.addEventListener('contextmenu', (event) => event.preventDefault());
 
 window.addEventListener('keydown', (event) => {
   const key = event.key.toLowerCase();
-  const prevState = { ...keys };
-  switch (key) {
-    case 'w': keys.w = true; break;
-    case 'a': keys.a = true; break;
-    case 's': keys.s = true; break;
-    case 'd': keys.d = true; break;
-  }
-  if ((keys.w || keys.a || keys.s || keys.d) && JSON.stringify(prevState) !== JSON.stringify(keys)) {
+  if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
     controls.enabled = false;
-    if (DEBUG) console.log('[Log] Key down:', key, keys);
   }
 });
 
 window.addEventListener('keyup', (event) => {
   const key = event.key.toLowerCase();
-  const prevState = { ...keys };
-  switch (key) {
-    case 'w': keys.w = false; break;
-    case 'a': keys.a = false; break;
-    case 's': keys.s = false; break;
-    case 'd': keys.d = false; break;
-  }
-  if (!keys.w && !keys.a && !keys.s && !keys.d && JSON.stringify(prevState) !== JSON.stringify(keys)) {
+  if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
     controls.enabled = true;
-    if (DEBUG) console.log('[Log] Key up:', key, keys);
   }
 });
 
@@ -366,70 +350,20 @@ window.addEventListener('mousedown', (event) => {
 const speed = 0.15  // Reduced speed for smoother height transitions
 let wasMoving = false  // Track previous movement state
 
-function animate() {
+let lastTime = performance.now();
+async function animate() {
   requestAnimationFrame(animate);
 
-  if (DEBUG) {
-    getTerrainHeight(camera.position.x, camera.position.z).then(height => {
-      console.log('Before movement:', {
-        position: camera.position.toArray(),
-        terrainHeight: height
-      });
-    });
-  }
+  const currentTime = performance.now();
+  const deltaTime = (currentTime - lastTime) / 1000;
+  lastTime = currentTime;
 
-  const isMoving = keys.w || keys.a || keys.s || keys.d;
-
-  if (isMoving) {
-    const forward = new THREE.Vector3();
-    camera.getWorldDirection(forward).negate();
-    const right = new THREE.Vector3().crossVectors(camera.up, forward).normalize();
-    const direction = new THREE.Vector3();
-
-    if (keys.w) direction.sub(forward);
-    if (keys.s) direction.add(forward);
-    if (keys.a) direction.sub(right);
-    if (keys.d) direction.add(right);
-
-    if (direction.length() > 0) {
-      direction.normalize().multiplyScalar(speed);
-      camera.position.add(direction);
-      camera.position.x = Math.max(-100, Math.min(100, camera.position.x));
-      camera.position.z = Math.max(-100, Math.min(100, camera.position.z));
-      getTerrainHeight(camera.position.x, camera.position.z).then(terrainHeight => {
-        camera.position.y = terrainHeight + 4;
-      });
-    }
-    wasMoving = true;
-  } else if (wasMoving) {
-    // Smooth transition when stopping
-    getTerrainHeight(camera.position.x, camera.position.z).then(terrainHeight => {
-      const targetY = terrainHeight + 4;
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.5);
-    });
-    wasMoving = false;
-  }
-
-  if (DEBUG) {
-    getTerrainHeight(camera.position.x, camera.position.z).then(height => {
-      console.log('After movement:', {
-        position: camera.position.toArray(),
-        terrainHeight: height
-      });
-    });
-  }
+  updateSquirrelMovement(deltaTime);
 
   if (controls.enabled) {
     controls.update();
-    getTerrainHeight(camera.position.x, camera.position.z).then(terrainHeight => {
-      camera.position.y = Math.max(terrainHeight + 4, 4);
-      if (DEBUG) {
-        console.log('Camera adjusted post-orbit:', {
-          position: camera.position.toArray(),
-          terrainHeight
-        });
-      }
-    });
+    const terrainHeight = await getTerrainHeight(camera.position.x, camera.position.z);
+    camera.position.y = Math.max(terrainHeight + 4, 4);
   }
 
   walnutMeshes.forEach(mesh => { mesh.rotation.y += 0.002; });
