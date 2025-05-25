@@ -190,7 +190,8 @@ function getTerrainHeight(x: number, z: number): number {
   const tz = zNorm - z0;
   const h0 = h00 + (h01 - h00) * tx;
   const h1 = h10 + (h11 - h10) * tx;
-  return h0 + (h1 - h0) * tz;
+  const height = h0 + (h1 - h0) * tz;
+  return height;
 }
 
 function createWalnutMesh(walnut: Walnut): THREE.Mesh {
@@ -327,12 +328,20 @@ window.addEventListener('mousedown', (event) => {
   }
 });
 
-const speed = 0.25
+const speed = 0.15  // Reduced speed for smoother height transitions
+let wasMoving = false  // Track previous movement state
 
 function animate() {
   requestAnimationFrame(animate);
 
-  if (keys.w || keys.a || keys.s || keys.d) {
+  console.log('Before movement:', {
+    position: camera.position.toArray(),
+    terrainHeight: getTerrainHeight(camera.position.x, camera.position.z)
+  });
+
+  const isMoving = keys.w || keys.a || keys.s || keys.d;
+
+  if (isMoving) {
     const forward = new THREE.Vector3();
     camera.getWorldDirection(forward).negate();
     const right = new THREE.Vector3().crossVectors(camera.up, forward).normalize();
@@ -350,13 +359,20 @@ function animate() {
       camera.position.z = Math.max(-100, Math.min(100, camera.position.z));
       const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z);
       camera.position.y = terrainHeight + 4;
-      console.log('Camera moved via WASD:', {
-        position: camera.position.toArray(),
-        terrainHeight,
-        direction: direction.toArray()
-      });
     }
+    wasMoving = true;
+  } else if (wasMoving) {
+    // Smooth transition when stopping
+    const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z);
+    const targetY = terrainHeight + 4;
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.5); // Adjust lerp factor as needed
+    wasMoving = false;
   }
+
+  console.log('After movement:', {
+    position: camera.position.toArray(),
+    terrainHeight: getTerrainHeight(camera.position.x, camera.position.z)
+  });
 
   if (controls.enabled) {
     controls.update();
