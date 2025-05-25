@@ -1,30 +1,37 @@
-# Hidden Walnuts – AI Coding Context
+# Hidden Walnuts AI Usage
 
-This project is a 3D online synchronous multiplayer game using:
-- Three.js frontend (in /client)
-- Cloudflare Workers as API backend (/workers/api.ts)
-- Durable Objects as stateful entities (/workers/objects/)
-- Registry pattern for accessing Durable Objects
+This document details how AI tools, including Cursor AI and Grok, are used in the development of *Hidden Walnuts*. It covers past and planned AI contributions, focusing on code generation, debugging, and optimization.
 
-Each player is a "squirrel" with a SquirrelSession Durable Object.
-The forest map and walnut logic are coordinated through ForestManager and WalnutRegistry Durable Objects.
+## AI Usage in MVP 5 (Completed)
+- **Terrain Generation**: Grok assisted in designing the `sin/cos`-based heightmap in `client/src/terrain.ts`, ensuring smooth hills and integration with backend seed fetching.
+- **Camera Navigation**: Grok provided multiple iterations of WASD movement logic in `client/src/main.ts`, debugging jumping issues and implementing OrbitControls to prevent terrain clipping. Cursor AI is handling the final W/S key reversal fix.
+- **Foliage Rendering**: Grok suggested optimizations for tree and shrub placement in `client/src/forest.ts`, ensuring grounding via `getTerrainHeight`.
+- **Code Structure**: AI enforced vibe-coding conventions (e.g., `// AI NOTE:` comments, types from `types.ts`).
+- **Debugging**: Grok analyzed logs to diagnose persistence bugs and camera issues, proposing fixes integrated into Cloudflare deployments.
 
-### Coding Principles for AI
+## Planned AI Usage in MVP 6 (In Progress)
+- **Squirrel Avatar**:
+  - AI will assist in generating or refining a 3D squirrel model (e.g., suggesting `.glb` asset creation or sourcing).
+  - Tasks include rigging the model for animations (e.g., running, digging).
+- **WASD Movement**:
+  - Grok will support smooth avatar movement, leveraging lessons from MVP 5 to avoid issues like jumping.
+  - AI will propose physics-based movement (e.g., terrain collision) for the squirrel.
+- **Third-Person Camera**:
+  - AI will design a camera system following the avatar, with adjustable offset and collision detection to avoid clipping.
+  - Suggestions for smooth transitions (e.g., damping) will be provided.
+- **Code Optimization**:
+  - AI will recommend performance tweaks (e.g., reducing draw calls for avatar rendering).
+  - Enforce conventions for new assets (e.g., `Squirrel.glb` naming).
 
-- Always route Durable Object access via registry.ts
-- Do not put fetch logic outside api.ts
-- Use the types in types.ts for Squirrel and Walnut shape
-- Use constants.ts for any point values, durations, or feature flags
-- Use `// AI NOTE:` comments to mark data models, assumptions, and interactions
+## Future AI Roles
+- **Multiplayer (MVP 8)**: Optimize WebSocket event handling, suggest efficient synchronization algorithms.
+- **AI Mechanics (MVP 12)**: Design predator AI behaviors (patrol, chase) using pathfinding.
+- **Visuals (MVP 5, 7, 13)**: Generate noise functions, textures, and dynamic lighting shaders.
+- **Code Quality (MVP 14)**: Implement debug log toggling and refactor suggestions.
 
-### Durable Objects
+## AI Workflow
+- **Tools**: Cursor AI for code generation and debugging, Grok for analysis and planning.
+- **Process**: AI generates code snippets, which are reviewed and integrated via Git commits. Debug logs are analyzed to refine solutions.
+- **Conventions**: AI adheres to `conventions.md` (e.g., `// AI NOTE:`, TypeScript types, snake_case for files).
 
-| Name           | Purpose                                |
-|----------------|----------------------------------------|
-| ForestManager  | Daily map cycle, walnut spawning       |
-| SquirrelSession| Per-player state (score, power-ups)    |
-| WalnutRegistry | Track all walnut states and ownership  |
-| Leaderboard    | Manage leaderboard and bonuses         |
-
-Start all new functionality inside the appropriate Durable Object.
-If routing logic is needed, first add it to api.ts.
+This ensures AI contributions are targeted, efficient, and aligned with the project’s goals.

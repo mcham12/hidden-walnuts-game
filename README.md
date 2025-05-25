@@ -1,151 +1,120 @@
-# Hidden Walnuts – Multiplayer 3D Squirrel Game
+# Hidden Walnuts
 
-Hidden Walnuts is an online, synchronous 3D multiplayer game built using:
-- Three.js for rendering a persistent forest world
-- Cloudflare Workers + Durable Objects for backend logic
-- Cloudflare Pages for frontend hosting
-- Vibe-driven development (AI-assisted coding via Cursor + ChatGPT)
+*Hidden Walnuts* is a 3D multiplayer game where players hide and seek walnuts in a persistent forest environment. The game features a dynamic forest with terrain, trees, shrubs, and walnuts, with plans for player avatars, real-time synchronization, scoring, power-ups, predators, events, and social interactions.
 
-Gameplay Summary:
-- Persistent forest map resets every 24 hours.
-- Players join anytime, get 3 walnuts to hide (under bushes or buried).
-- Players search for walnuts hidden by others or the system.
-- Points awarded based on type/location, with time-based multipliers.
-- Dynamic events (e.g., Nut Rush) and mini-interactions (e.g., "Squirrel Chatter").
-- Power-ups, predators, leaderboard, and social mechanics included.
+## Project Status
+- **Current MVP**: MVP 5 completed (Basic Forest Environment).
+- **Next MVP**: MVP 6 (Player Avatar and Movement, in progress).
+- **Deployment**: Hosted on Cloudflare (Workers for backend, Pages for frontend).
 
-Project Structure (Simplified for AI-Focused Dev):
+## MVP 5 Achievements
+- Deployed to Cloudflare with persistent walnut positions (MVP 4.5).
+- Implemented a navigable 200x200 terrain with hills (0–20 units height) using sin/cos noise.
+- Added 50 trees and 100 shrubs, grounded on terrain.
+- Rendered a walnut model with click detection (not yet hidden).
+- Fixed camera movement issues (WASD navigation, OrbitControls) to prevent jumping and clipping.
 
-hidden-walnuts-game/
-├── public/assets/           → 3D models, textures
-├── client/                  → Three.js logic (game entry point, input, rendering)
-├── workers/                 → Cloudflare Workers + Durable Objects
-│   ├── api.ts               → Main API router
-│   └── objects/
-│       ├── ForestManager.ts
-│       ├── SquirrelSession.ts
-│       ├── WalnutRegistry.ts
-│       ├── Leaderboard.ts
-│       └── registry.ts      → Central helper for DO routing
-├── wrangler.toml            → DO bindings and config
-├── package.json             → Worker deps and build
-└── README.md                → ← this file
+## MVP 6 Goals
+- Create a squirrel avatar model.
+- Implement WASD movement for the avatar.
+- Add a third-person camera following the player.
 
-Cloudflare Deployment Strategy:
+## Installation
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-repo/hidden-walnuts.git
+   cd hidden-walnuts
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Set environment variables in `.env`:
+   ```env
+   VITE_API_URL=https://hidden-walnuts-api.yourdomain.workers.dev
+   ```
+4. Run locally:
+   ```bash
+   npm run dev
+   ```
 
-Local Dev (Fast Iteration)
-Use `wrangler dev` for rapid testing of:
-- API logic (via api.ts)
-- Individual Durable Object behavior
-- Basic HTTP routes (/join, /hide, /state, etc.)
+## Deployment
+- **Frontend**: Deployed to Cloudflare Pages via GitHub Actions (`deploy-pages.yml`).
+- **Backend**: Deployed to Cloudflare Workers via `wrangler deploy`.
+- **Assets**: Served from `<game-root>/public/` (e.g., `Tree_01.glb`, `Bush_01.glb`).
+- **Routes**: `_routes.json` excludes `.glb` and `.txt` from SPA fallback.
 
-Note: Local Durable Object simulation is limited. Use:
-wrangler dev --remote
-to simulate more realistic Durable Object behavior.
+## Revised MVP Plan
 
-Preview Deploys (Multiplayer Testing)
-Use preview deploys for:
-- Accurate Durable Object placement & concurrency
-- Player-to-player interactions
-- Persistent state and map updates
+### MVP 4.5: Deployment and Bug Fixing (Completed)
+- Deployed to Cloudflare.
+- Fixed walnut location persistence using Durable Objects.
 
-Deploy with:
-wrangler deploy --env preview
+### MVP 5: Basic Forest Environment (Completed)
+- Navigable terrain with hills, trees, and shrubs.
+- Optimized terrain height calculations and rendering.
 
-Vibe Coding Guidelines (AI Dev Principles):
+### MVP 6: Player Avatar and Movement (In Progress)
+- Squirrel avatar model.
+- WASD movement for avatar.
+- Third-person camera following player.
+- **Estimated Time**: 2-3 weeks
 
-1. Centralize routing logic
-   Always route Durable Object access through registry.ts
+### MVP 7: Walnut Hiding Mechanics
+- Walnut pickup and hiding with visual indicators.
+- Persistent walnut positions in backend.
+- Optimize walnut rendering (update only changed walnuts).
+- Implement level of detail (LOD) for walnuts.
+- **Estimated Time**: 3-4 weeks
 
-2. Modularize Durable Objects
-   One file per object (ForestManager, SquirrelSession, etc.)
+### MVP 8: Multiplayer Synchronization
+- WebSocket for real-time communication.
+- Synchronize walnut and player positions.
+- Streamline WebSocket handlers.
+- **Estimated Time**: 3-4 weeks
 
-3. Comment context for AI
-   Use `// AI NOTE:` comments to preserve structure across prompts
+### MVP 9: Walnut Seeking and Scoring
+- Find and collect hidden walnuts.
+- Points system for finds and hides.
+- Real-time leaderboard.
+- **Estimated Time**: 2-3 weeks
 
-4. Avoid scattered logic
-   Keep all fetch routing inside api.ts
+### MVP 10: Daily Map Reset
+- 24-hour map reset cycle.
+- Seed 100 game-hidden walnuts at reset.
+- Reset scores and walnut positions.
+- **Estimated Time**: 1-2 weeks
 
-5. Refactor deliberately
-   Use prompts like:
-   "Refactor X to move Y into Z and update all routing, bindings, and registry."
+### MVP 11: Power-Ups
+- **Scent Sniff** and **Fast Dig** power-ups.
+- Spawning and usage mechanics.
+- **Estimated Time**: 2-3 weeks
 
-6. Durable Object bindings must match
-   Keep wrangler.toml, env access, and class_name definitions synced
+### MVP 12: Predators
+- Hawk and wolf predator models.
+- Patrol and chase AI.
+- Player evasion mechanics.
+- **Estimated Time**: 3-4 weeks
 
-Starter Prompts to Use with Cursor AI:
+### MVP 13: Dynamic Events
+- **Nut Rush** event with extra walnuts.
+- Random event triggers.
+- Dynamic lighting for events.
+- **Estimated Time**: 2-3 weeks
 
-- Create a new power-up called Scent Sniff that highlights nearby walnuts
-- Modify SquirrelSession.ts to track hidden walnut locations per player
-- Update ForestManager to reset the map every 24h and spawn 100 walnuts
-- In api.ts, add a route to claim bonus points when the cycle ends
-- Add a Nut Rush mini-event every 4 hours that temporarily doubles points and spawns 20 extra walnuts
+### MVP 14: Social Interactions
+- Pre-set messages and notifications.
+- Basic friend system or tagging.
+- Add DEBUG flag for production logs.
+- **Estimated Time**: 2-3 weeks
 
-Future Enhancements (Vision):
+## Risks and Mitigations
+- **Multiplayer Sync**: Test WebSocket early, optimize handlers.
+- **Over-Scoping**: Start with simple implementations, iterate.
+- **Resources**: Prioritize high-impact tasks, integrate optimizations incrementally.
 
-- Persistent leaderboard (exported to R2 or Logpush)
-- WebSocket support for real-time movement or quick-time events
-- Procedural terrain generator or daily theme variation
-- Nut Rush event handler (every 4 hours)
-- Asset preloading and optimization
+## Contributing
+See `conventions.md` for coding standards and contribution guidelines.
 
-Optional External Services:
-
-- Cloudflare R2: for large asset storage (models, audio, textures)
-- Analytics: Cloudflare Logpush or event hooks
-- Backup/export: Supabase, KV, or downloadable JSON dumps
-
-Final Notes:
-
-This repo is designed to support vibe coding: you describe the game system, and AI implements it incrementally using structured, modular code. When AI loses focus during a refactor, return to this file to re-anchor structure and gameplay goals.
-
-Happy hiding. 🐿️🌰
-
-## Documentation
-- [Game Vision](GameVision.md): Detailed game design and architecture, outlining gameplay mechanics, technical architecture, and implementation notes.
-
-## MVP 4: Multiplayer World State Sync
-
-- Implemented WebSocket-based state synchronization.
-- Clients receive and render walnut map state upon connection.
-- Real-time updates handled via 'walnut-rehidden' messages.
-
-## Building the Frontend for Production
-
-1. Navigate to the `client/` directory.
-2. Ensure all dependencies are installed by running `npm install`.
-3. Run the build script with `npm run build`.
-4. Verify that a `dist/` directory is created, containing `index.html`, bundled JS, and assets.
-5. If there are any build errors, resolve them by checking dependencies and configurations.
-
-## API Endpoint Configuration
-
-- The production API endpoint is `https://api.hiddenwalnuts.com`.
-- Developers should set the `VITE_API_URL` environment variable to this URL for production builds.
-- For local development, the default is `http://localhost:8787`.
-
-## Environment Configuration
-
-- **VITE_API_URL**: Set this environment variable to `https://api.hiddenwalnuts.com` for production builds. For local development, it defaults to `http://localhost:8787`.
-
-## Deployment Configuration
-
-- **Frontend**: Deployed to Cloudflare Pages at `game.hiddenwalnuts.com`.
-- **Backend**: Deployed to Cloudflare Workers at `api.hiddenwalnuts.com`.
-
-## Deployment Checklist
-
-1. **Environment Variables:**
-   - Ensure `VITE_API_URL` is set correctly for the target environment.
-   - Verify any other required environment variables are configured.
-
-2. **Frontend Deployment:**
-   - Build the frontend using `npm run build` in the `client/` directory.
-   - Deploy the `dist/` directory to Cloudflare Pages.
-
-3. **Backend Deployment:**
-   - Deploy the Cloudflare Worker and Durable Objects to production.
-   - Verify all routes and bindings are correctly configured.
-
-4. **Testing:**
-   - Test the application on the production URLs to ensure everything is functioning as expected..
+## License
+MIT License

@@ -21,7 +21,7 @@ This document outlines the revised MVP stages for *Hidden Walnuts*, integrating 
 
 ## MVP Stages with Integrated Optimizations
 
-### MVP 4.5: Deployment and Bug Fixing (In Progress)
+### MVP 4.5: Deployment and Bug Fixing (Complete)
 - **Tasks**:
   - Deploy the game to Cloudflare (Workers for backend, Pages for frontend).
   - Fix the walnut location persistence bug:
@@ -32,7 +32,7 @@ This document outlines the revised MVP stages for *Hidden Walnuts*, integrating 
 
 ---
 
-### MVP 5: Basic Forest Environment
+### MVP 5: Basic Forest Environment (complete)
 - **Tasks**:
   - Create navigable terrain with hills and flat areas.
     - **Optimization**: Cache terrain height calculations (e.g., 2D grid) for performance.
