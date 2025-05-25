@@ -347,8 +347,8 @@ function animate() {
     const right = new THREE.Vector3().crossVectors(camera.up, forward).normalize();
     const direction = new THREE.Vector3();
 
-    if (keys.w) direction.add(forward);
-    if (keys.s) direction.sub(forward);
+    if (keys.w) direction.sub(forward);
+    if (keys.s) direction.add(forward);
     if (keys.a) direction.sub(right);
     if (keys.d) direction.add(right);
 
@@ -365,7 +365,7 @@ function animate() {
     // Smooth transition when stopping
     const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z);
     const targetY = terrainHeight + 4;
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.5); // Adjust lerp factor as needed
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.5);
     wasMoving = false;
   }
 
