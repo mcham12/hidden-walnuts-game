@@ -1,5 +1,16 @@
 import { getObjectInstance } from "./objects/registry";
 import type { EnvWithBindings } from "./objects/registry";
+import { EnvWithBindings as OldEnvWithBindings } from './registry';
+import type { 
+  DurableObject, 
+  DurableObjectState, 
+  DurableObjectStorage, 
+  DurableObjectId,
+  Request as CfRequest,
+  Response as CfResponse,
+  WebSocket as CfWebSocket
+} from '@cloudflare/workers-types';
+import { WebSocketPair } from '@cloudflare/workers-types';
 
 // Import the Durable Objects so we can export them
 import ForestManager from "./objects/ForestManager";
@@ -23,8 +34,32 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type"
 };
 
+interface Env extends EnvWithBindings {
+  SQUIRREL: DurableObjectNamespace;
+  FOREST: DurableObjectNamespace;
+  WALNUT: DurableObjectNamespace;
+  LEADERBOARD: DurableObjectNamespace;
+}
+
 export default {
-  async fetch(request: Request, env: EnvWithBindings, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: CfRequest, env: Env): Promise<CfResponse> {
+    const url = new URL(request.url);
+    const pathname = url.pathname;
+
+    if (pathname === '/join') {
+      const id = url.searchParams.get('squirrelId') || crypto.randomUUID();
+      const token = crypto.randomUUID();
+      const squirrel = env.SQUIRREL.get(env.SQUIRREL.idFromName(id));
+      const joinUrl = new URL(request.url);
+      joinUrl.pathname = '/join';
+      joinUrl.searchParams.set('token', token);
+      const response = await squirrel.fetch(new Request(joinUrl, request));
+      const data = await response.json();
+      return new Response(JSON.stringify({ ...data, token }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         headers: {
@@ -35,9 +70,6 @@ export default {
         },
       });
     }
-
-    const url = new URL(request.url);
-    const pathname = url.pathname;
 
     try {
       // Handle WebSocket connections

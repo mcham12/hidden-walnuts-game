@@ -7,498 +7,178 @@
 
 import { POINTS, CYCLE_DURATION_SECONDS, NUT_RUSH_INTERVAL_HOURS, NUT_RUSH_DURATION_MINUTES, TREE_COUNT, SHRUB_COUNT, TERRAIN_SIZE } from "../constants";
 import type { Walnut, WalnutOrigin, HidingMethod, ForestObject } from "../types";
+import { EnvWithBindings } from '../registry';
+import type { 
+  DurableObject, 
+  DurableObjectState, 
+  DurableObjectStorage, 
+  DurableObjectId,
+  Request as CfRequest,
+  Response as CfResponse,
+  WebSocket as CfWebSocket
+} from '@cloudflare/workers-types';
+import { WebSocketPair } from '@cloudflare/workers-types';
 
-// Cloudflare Workers types
-interface DurableObjectState {
-  storage: DurableObjectStorage;
-  id: DurableObjectId;
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+} as const;
+
+interface PlayerData {
+  squirrelId: string;
+  position: { x: number; y: number; z: number };
+  rotationY: number;
+  lastUpdate: number;
 }
 
-interface DurableObjectStorage {
-  get<T>(key: string): Promise<T | null>;
-  put<T>(key: string, value: T): Promise<void>;
-  delete(key: string): Promise<boolean>;
-  deleteAll(): Promise<void>;
-  list<T>(options?: { prefix?: string }): Promise<Map<string, T>>;
-}
-
-interface DurableObjectId {
-  toString(): string;
-  equals(other: DurableObjectId): boolean;
-}
-
-export default class ForestManager {
+export class ForestManagerDO implements DurableObject {
   state: DurableObjectState;
-  storage: DurableObjectStorage;
-  cycleStartTime: number = 0;
-  mapState: Walnut[] = [];
-  terrainSeed: number = 0;
-  forestObjects: ForestObject[] = [];
-  
-  // Use only sessions for WebSocket management
-  sessions: Set<WebSocket> = new Set();
+  env: EnvWithBindings;
+  players: Map<string, PlayerData> = new Map();
+  walnuts: Map<string, any> = new Map();
+  sessions: Map<string, CfWebSocket> = new Map();
 
-  constructor(state: DurableObjectState, env: Record<string, unknown>) {
+  constructor(state: DurableObjectState, env: EnvWithBindings) {
     this.state = state;
-    this.storage = state.storage;
+    this.env = env;
   }
 
-  async fetch(request: Request): Promise<Response> {
-    const upgradeHeader = request.headers.get("Upgrade") || "";
+  async fetch(request: CfRequest): Promise<CfResponse> {
     const url = new URL(request.url);
-    const path = url.pathname;
+    const pathname = url.pathname;
 
-    const CORS_HEADERS = {
-      'Access-Control-Allow-Origin': '*', // For dev, allow all. For production, restrict as needed.
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    };
-
-    // Handle preflight CORS request
-    if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        status: 204,
-        headers: CORS_HEADERS,
-      });
-    }
-
-    // Handle WebSocket upgrade requests (do NOT add CORS headers here)
-    if (request.method === "GET" && upgradeHeader.toLowerCase() === "websocket") {
+    if (pathname === '/join' && request.method === 'GET') {
+      const squirrelId = url.searchParams.get('squirrelId');
+      const token = url.searchParams.get('token');
+      if (!squirrelId || !token) {
+        return new Response('Missing squirrelId or token', { status: 400, headers: CORS_HEADERS }) as unknown as CfResponse;
+      }
       const pair = new WebSocketPair();
-      const [client, server] = Object.values(pair);
-      await this.handleWebSocket(server);
-      return new Response(null, {
-        status: 101,
-        webSocket: client,
-      });
+      const [client, server] = Object.values(pair) as [CfWebSocket, CfWebSocket];
+      await this.handleSocket(server, squirrelId, token);
+      return new Response(null, { status: 101, webSocket: client }) as unknown as CfResponse;
     }
 
-    if (path.endsWith("/reset")) {
-      console.log("Handling /reset for DO ID:", this.state.id.toString());
-      this.cycleStartTime = Date.now();
-      // Reset mapState to a single test-walnut at origin
-      this.mapState = [{
-        id: "test-walnut",
-        ownerId: "system",
-        origin: "game" as WalnutOrigin,
-        hiddenIn: "buried" as HidingMethod,
-        location: { x: 0, y: 0, z: 0 },
-        found: false,
-        timestamp: Date.now()
-      }];
-      await this.storage.put("cycleStart", this.cycleStartTime);
-      await this.storage.put("mapState", this.mapState);
-      this.broadcast("map_reset", { mapState: this.mapState });
-      return new Response(JSON.stringify({ message: "Map reset and walnuts respawned." }), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          ...CORS_HEADERS,
-        },
-      });
-    }
-
-    if (path.endsWith("/hotzones")) {
-      const zones = await this.getRecentActivity();
-      return new Response(JSON.stringify(zones), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          ...CORS_HEADERS,
-        },
-      });
-    }
-
-    if (path.endsWith("/state") || path.endsWith("/map-state")) {
-      try {
-        await this.initialize();
-        console.log('Returning mapState for /map-state:', JSON.stringify(this.mapState));
-        return new Response(JSON.stringify(this.mapState), {
-          status: 200,
-          headers: {
-            ...CORS_HEADERS,
-            'Content-Type': 'application/json',
-          },
-        });
-      } catch (error: any) {
-        console.error('Error in /map-state handler:', error);
-        return new Response(JSON.stringify({ error: 'Internal Server Error', message: error?.message || 'Unknown error' }), {
-          status: 500,
-          headers: {
-            ...CORS_HEADERS,
-            'Content-Type': 'application/json',
-          },
-        });
-      }
-    }
-
-    if (path.endsWith("/terrain-seed")) {
-      await this.initialize();
-      return new Response(JSON.stringify({ seed: this.terrainSeed }), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          ...CORS_HEADERS,
-        },
-      });
-    }
-
-    if (path.endsWith("/forest-objects")) {
-      try {
-        await this.initialize();
-        console.log(`Serving ${this.forestObjects.length} forest objects`, this.forestObjects);
-        return new Response(JSON.stringify(this.forestObjects), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            ...CORS_HEADERS,
-          },
-        });
-      } catch (error) {
-        console.error('Error serving /forest-objects:', error);
-        return new Response(JSON.stringify({ error: 'Failed to fetch forest objects' }), {
-          status: 500,
-          headers: {
-            'Content-Type': 'application/json',
-            ...CORS_HEADERS,
-          },
-        });
-      }
-    }
-
-    console.log(`Incoming request: ${request.method} ${url.pathname}`);
-
-    if (path === "/join" && request.method === "GET") {
-      const squirrelId = url.searchParams.get('squirrelId') ?? crypto.randomUUID();
-      console.log(`Handling WebSocket join for: ${squirrelId}`);
-      const [client, server] = Object.values(new WebSocketPair());
-      this.handleSocket(server, squirrelId);
-      return new Response(null, { status: 101, webSocket: client });
-    }
-
-    if (path === "/find" && request.method === "POST") {
-      const { walnutId, squirrelId } = await request.json() as { walnutId?: string, squirrelId?: string };
-      if (!walnutId || !squirrelId) return new Response(JSON.stringify({ error: "Missing walnutId or squirrelId" }), {
-        status: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          ...CORS_HEADERS,
-        },
-      });
-      return this.handleFind(walnutId, squirrelId);
-    }
-    if (path === "/rehide" && request.method === "POST") {
-      const { walnutId, squirrelId, location } = await request.json() as { walnutId?: string, squirrelId?: string, location?: { x: number, y: number, z: number } };
-      if (!walnutId || !squirrelId || !location) return new Response(JSON.stringify({ error: "Missing walnutId, squirrelId, or location" }), {
-        status: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          ...CORS_HEADERS,
-        },
-      });
-      return this.handleRehide(walnutId, squirrelId, location);
-    }
-
-    if (path === "/rehide-test" && request.method === "POST") {
-      console.log("Handling /rehide-test for DO ID:", this.state.id.toString());
-      await this.initialize();
-
-      const testWalnutId = "test-walnut";
-      const newLocation = {
-        x: Math.random() * 20,
-        y: 0,
-        z: Math.random() * 20
-      };
-
-      // Ensure only one test-walnut exists in mapState
-      const walnutIndex = this.mapState.findIndex(w => w.id === testWalnutId);
-      if (walnutIndex !== -1) {
-        // Update existing walnut's location
-        this.mapState[walnutIndex].location = newLocation;
-        console.log(`Updated test-walnut location to:`, newLocation);
-      } else {
-        // Add new test walnut without replacing mapState
-        this.mapState.push({
-          id: testWalnutId,
-          ownerId: "system",
-          origin: "game" as WalnutOrigin,
-          hiddenIn: "bush" as HidingMethod,
-          location: newLocation,
-          found: false,
-          timestamp: Date.now()
-        });
-        console.log(`Added new test-walnut with location:`, newLocation);
-      }
-
-      await this.persistMapState();
-
-      const msg = JSON.stringify({
-        type: "walnut-rehidden",
-        walnutId: testWalnutId,
-        location: newLocation
-      });
-
-      for (const session of this.sessions.values()) {
-        try {
-          session.send(msg);
-          console.log(`Sent walnut-rehidden message to session:`, msg);
-        } catch (err) {
-          console.warn("Failed to send to session:", err);
-        }
-      }
-
-      return new Response(JSON.stringify({ message: "Rehidden test message sent", newLocation }), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          ...CORS_HEADERS,
-        },
-      });
-    }
-
-    // Fallback (should not happen during WebSocket connection)
-    console.log('No matching route — returning 404');
-    return new Response('Not Found', {
-      status: 404,
-      headers: {
-        ...CORS_HEADERS,
-        'Content-Type': 'application/json',
-      },
-    });
+    return new Response('Not Found', { status: 404, headers: CORS_HEADERS }) as unknown as CfResponse;
   }
 
-  handleSocket(socket: WebSocket, squirrelId: string): void {
-    this.sessions.add(socket);
-    
+  async handleSocket(socket: CfWebSocket, squirrelId: string, token: string): Promise<void> {
+    this.sessions.set(squirrelId, socket);
     socket.accept();
-    
-    console.log(`[ForestManager] 🚀 New connection: ${squirrelId}. Total connections: ${this.sessions.size}`);
 
-    socket.addEventListener("open", () => {
-      console.log(`[ForestManager] WebSocket opened for ${squirrelId}`);
+    // Broadcast new player to all other players
+    this.broadcastExcept(squirrelId, {
+      type: 'player_join',
+      squirrelId,
+      position: this.players.get(squirrelId)?.position || { x: 0, y: 0, z: 0 }
     });
 
-    this.initialize().then(() => {
-      socket.send(JSON.stringify({
-        type: "init",
-        mapState: this.mapState
-      }));
-    });
-    
-    socket.onmessage = (event) => {
+    socket.addEventListener('message', async (event) => {
       try {
-        const message = JSON.parse(event.data as string);
-        console.log(`[ForestManager] 📩 Received message: ${JSON.stringify(message)}`);
-        
-        if (message.type === "ping") {
-          console.log(`[ForestManager] 🏓 Ping received: ${JSON.stringify(message.data)}`);
-          this.broadcast("pong", message.data);
-          return;
+        const data = JSON.parse(event.data as string);
+        if (data.type === 'heartbeat') {
+          socket.send(JSON.stringify({ type: 'pong' }));
+          await this.cleanupStalePlayers();
+        } else if (data.type === 'player_update') {
+          // Validate token before processing update
+          const squirrel = this.env.squirrels.get(this.env.squirrels.idFromName(squirrelId));
+          const validationResponse = await squirrel.fetch(
+            new Request('https://internal/validate', {
+              method: 'POST',
+              body: JSON.stringify({ token })
+            })
+          );
+          if (validationResponse.status !== 200) {
+            console.log('Invalid token for squirrelId:', squirrelId);
+            return;
+          }
+          await this.handlePlayerUpdate(squirrelId, data.position, data.rotationY);
+          // Broadcast position update to all other players
+          this.broadcastExcept(squirrelId, {
+            type: 'player_update',
+            squirrelId,
+            position: data.position
+          });
+        } else if (data.type === 'walnut_place') {
+          await this.handleWalnutPlace(data.walnut);
         }
-        
-        this.broadcastExceptSender(squirrelId, event.data);
       } catch (error) {
-        console.error(`[ForestManager] ❌ Error processing message:`, error);
+        console.error('Error processing message:', error);
       }
-    };
-    
-    socket.onclose = () => {
-      this.sessions.delete(socket);
-      console.log(`[ForestManager] 🔴 Disconnected. Remaining connections: ${this.sessions.size}`);
-    };
-    
-    socket.onerror = (event) => {
-      console.error(`[ForestManager] ⚠️ WebSocket error:`, event);
-    };
-  }
-
-  private async handleWebSocket(ws: WebSocket) {
-    ws.accept();
-    this.sessions.add(ws);
-    console.log("WebSocket accepted and added to sessions. Total sessions:", this.sessions.size);
-    console.log("DO ID for WebSocket:", this.state.id.toString());
-
-    ws.addEventListener("open", () => {
-      console.log(`[ForestManager] WebSocket opened`);
     });
 
-    await this.initialize();
-    ws.send(JSON.stringify({
-      type: "init",
-      mapState: this.mapState
-    }));
+    socket.addEventListener('close', () => this.handlePlayerLeave(squirrelId));
+    socket.addEventListener('error', () => this.handlePlayerLeave(squirrelId));
 
-    ws.addEventListener("message", (event) => {});
-    ws.onclose = () => {
-      this.sessions.delete(ws);
-      console.log(`[ForestManager] 🔴 Disconnected. Remaining connections: ${this.sessions.size}`);
-    };
+    await this.handlePlayerJoin(squirrelId);
   }
 
-  broadcast(type: string, data: object): void {
-    const message = { type, data };
+  private async cleanupStalePlayers(): Promise<void> {
+    const now = Date.now();
+    const staleTimeout = 30000; // 30 seconds
+
+    for (const [squirrelId, player] of this.players.entries()) {
+      if (now - player.lastUpdate > staleTimeout) {
+        await this.handlePlayerLeave(squirrelId);
+      }
+    }
+  }
+
+  private async handlePlayerJoin(squirrelId: string): Promise<void> {
+    console.log(`Player joined: ${squirrelId}`);
+    // Initialize player data if needed
+  }
+
+  private async handlePlayerLeave(squirrelId: string): Promise<void> {
+    console.log(`Player left: ${squirrelId}`);
+    this.players.delete(squirrelId);
+    this.sessions.delete(squirrelId);
+    
+    // Broadcast player leave to all other players
+    this.broadcast({
+      type: 'player_leave',
+      squirrelId
+    });
+  }
+
+  private async handlePlayerUpdate(squirrelId: string, position: { x: number; y: number; z: number }, rotationY: number): Promise<void> {
+    this.players.set(squirrelId, {
+      squirrelId,
+      position,
+      rotationY,
+      lastUpdate: Date.now()
+    });
+  }
+
+  private async handleWalnutPlace(walnut: any): Promise<void> {
+    // Handle walnut placement logic
+    console.log('Walnut placed:', walnut);
+  }
+
+  private broadcast(message: any): void {
     const serializedMessage = JSON.stringify(message);
-    
-    console.log(`[ForestManager] 📢 Broadcasting '${type}' event to ${this.sessions.size} connections`);
-    
-    let successCount = 0;
-    for (const socket of this.sessions) {
+    for (const socket of this.sessions.values()) {
       try {
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(serializedMessage);
-          successCount++;
-          console.log(`[ForestManager] Successfully sent '${type}' to a session`);
-        } else {
-          console.warn(`[ForestManager] Socket is not open (state: ${socket.readyState})`);
         }
       } catch (error) {
-        console.error(`[ForestManager] ❌ Error broadcasting:`, error);
-      }
-    }
-    
-    console.log(`[ForestManager] ✅ Broadcast complete: ${successCount}/${this.sessions.size} connections received '${type}'`);
-  }
-
-  broadcastExceptSender(senderId: string, message: string | ArrayBuffer) {
-    for (const socket of this.sessions) {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.send(message);
+        console.error('Error broadcasting message:', error);
       }
     }
   }
 
-  async resetMap(): Promise<void> {
-    this.cycleStartTime = Date.now();
-    this.terrainSeed = Math.random() * 1000;
-    this.mapState = [{
-      id: "test-walnut",
-      ownerId: "system",
-      origin: "game" as WalnutOrigin,
-      hiddenIn: "buried" as HidingMethod,
-      location: { x: 0, y: 0, z: 0 },
-      found: false,
-      timestamp: Date.now()
-    }];
-    this.forestObjects = this.generateForestObjects();
-    await this.storage.put("cycleStart", this.cycleStartTime);
-    await this.storage.put("terrainSeed", this.terrainSeed);
-    await this.storage.put("mapState", this.mapState);
-    await this.storage.put("forestObjects", this.forestObjects);
-    console.log('Reset map with forestObjects:', this.forestObjects);
-    this.broadcast("map_reset", { mapState: this.mapState });
-  }
-
-  generateForestObjects(): ForestObject[] {
-    const objects: ForestObject[] = [];
-    // Generate trees
-    for (let i = 0; i < TREE_COUNT; i++) {
-      objects.push({
-        id: `tree-${crypto.randomUUID()}`,
-        type: "tree",
-        x: (Math.random() - 0.5) * TERRAIN_SIZE,
-        y: 0, // y set by client
-        z: (Math.random() - 0.5) * TERRAIN_SIZE,
-        scale: 0.8 + Math.random() * 0.4 // 0.8 to 1.2
-      });
-    }
-    // Generate shrubs
-    for (let i = 0; i < SHRUB_COUNT; i++) {
-      objects.push({
-        id: `shrub-${crypto.randomUUID()}`,
-        type: "shrub",
-        x: (Math.random() - 0.5) * TERRAIN_SIZE,
-        y: 0, // y set by client
-        z: (Math.random() - 0.5) * TERRAIN_SIZE,
-        scale: 0.7 + Math.random() * 0.3 // 0.7 to 1.0
-      });
-    }
-    return objects;
-  }
-
-  generateWalnuts(count: number = 100): Walnut[] {
-    const walnuts: Walnut[] = [];
-    for (let i = 0; i < count; i++) {
-      walnuts.push({
-        id: `sys-${crypto.randomUUID()}`,
-        ownerId: "system",
-        origin: "game" as WalnutOrigin,
-        hiddenIn: Math.random() < 0.5 ? "buried" as HidingMethod : "bush" as HidingMethod,
-        location: {
-          x: Math.random() * 100,
-          y: 0,
-          z: Math.random() * 100
-        },
-        found: false,
-        timestamp: Date.now()
-      });
-    }
-    return walnuts;
-  }
-
-  async getRecentActivity(): Promise<Record<string, number>> {
-    // TODO: Track found/hide timestamps and calculate activity density per zone
-    return {
-      "zone-A": 3,
-      "zone-B": 7,
-      "zone-C": 1
-    };
-  }
-
-  // Stub for handleFind
-  handleFind(walnutId: string, squirrelId: string): Response {
-    return new Response(`handleFind called with walnutId=${walnutId}, squirrelId=${squirrelId}`);
-  }
-
-  // Stub for handleRehide
-  handleRehide(walnutId: string, squirrelId: string, location: { x: number, y: number, z: number }): Response {
-    return new Response(`handleRehide called with walnutId=${walnutId}, squirrelId=${squirrelId}, location=${JSON.stringify(location)}`);
-  }
-
-  private async initialize(): Promise<void> {
-    const storedMapState = await this.storage.get('mapState');
-    if (storedMapState) {
-      this.mapState = Array.isArray(storedMapState) ? storedMapState : [];
-      console.log('Loaded mapState from storage:', this.mapState);
-    }
-    const storedSeed = await this.storage.get('terrainSeed');
-    if (storedSeed !== null && typeof storedSeed === 'number') {
-      this.terrainSeed = storedSeed;
-      console.log('Loaded terrainSeed from storage:', this.terrainSeed);
-    } else {
-      this.terrainSeed = Math.random() * 1000;
-      await this.storage.put('terrainSeed', this.terrainSeed);
-      console.log('Initialized new terrainSeed:', this.terrainSeed);
-    }
-    const storedForestObjects = await this.storage.get('forestObjects');
-    if (storedForestObjects) {
-      this.forestObjects = Array.isArray(storedForestObjects) ? storedForestObjects : [];
-      console.log('Loaded forestObjects from storage:', this.forestObjects);
-    } else {
-      this.forestObjects = this.generateForestObjects();
-      await this.storage.put('forestObjects', this.forestObjects);
-      console.log('Initialized forestObjects:', this.forestObjects);
-    }
-    if (this.mapState.length === 0 || !this.mapState.some(w => w.id === "test-walnut")) {
-      const testWalnut: Walnut = {
-        id: "test-walnut",
-        ownerId: "system",
-        origin: "game" as WalnutOrigin,
-        hiddenIn: "buried" as HidingMethod,
-        location: { x: 0, y: 0, z: 0 },
-        found: false,
-        timestamp: Date.now()
-      };
-      if (this.mapState.length === 0) {
-        this.mapState = [testWalnut];
-      } else {
-        this.mapState.push(testWalnut);
+  private broadcastExcept(excludeSquirrelId: string, message: any): void {
+    const serializedMessage = JSON.stringify(message);
+    for (const [squirrelId, socket] of this.sessions.entries()) {
+      if (squirrelId !== excludeSquirrelId && socket.readyState === WebSocket.OPEN) {
+        try {
+          socket.send(serializedMessage);
+        } catch (error) {
+          console.error(`Error broadcasting to ${squirrelId}:`, error);
+        }
       }
-      await this.storage.put('mapState', this.mapState);
-      console.log('Seeded test walnut:', testWalnut);
     }
-  }
-
-  private async persistMapState(): Promise<void> {
-    await this.storage.put("mapState", this.mapState);
   }
 }

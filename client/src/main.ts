@@ -5,6 +5,93 @@ import { createTerrain } from './terrain'
 import { createForest } from './forest'
 import { loadSquirrelAvatar, updateSquirrelMovement, updateSquirrelCamera } from './avatar'
 
+// WebSocket Configuration
+const WS_URL = 'wss://api.hiddenwalnuts.com/ws';
+let ws: WebSocket | null = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+
+// Player state and movement
+interface PlayerState {
+  position: THREE.Vector3;
+  rotationY: number;
+  velocity: THREE.Vector3;
+  isMoving: boolean;
+}
+
+const playerState: PlayerState = {
+  position: new THREE.Vector3(0, 0, 0),
+  rotationY: 0,
+  velocity: new THREE.Vector3(0, 0, 0),
+  isMoving: false
+};
+
+// Movement constants
+const MOVEMENT_SPEED = 10;
+const ROTATION_SPEED = 2;
+const GRAVITY = -9.8;
+const JUMP_FORCE = 5;
+let isJumping = false;
+
+// Input state
+const keys = {
+  w: false,
+  a: false,
+  s: false,
+  d: false,
+  space: false
+};
+
+function connectWebSocket() {
+  ws = new WebSocket(WS_URL);
+  
+  ws.onopen = () => {
+    console.log('Connected to WebSocket at wss://api.hiddenwalnuts.com/ws');
+    reconnectAttempts = 0;
+    startPositionSync();
+  };
+  
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      switch (data.type) {
+        case 'player_update':
+          updateOtherPlayer(data.squirrelId, data.position);
+          break;
+        case 'player_join':
+          console.log(`Player joined: ${data.squirrelId}`);
+          updateOtherPlayer(data.squirrelId, data.position);
+          break;
+        case 'player_leave':
+          console.log(`Player left: ${data.squirrelId}`);
+          removeOtherPlayer(data.squirrelId);
+          break;
+        case 'pong':
+          console.debug('💓 Heartbeat acknowledged');
+          break;
+        default:
+          console.log('Unknown message type:', data.type);
+      }
+    } catch (error) {
+      console.error('Error parsing WebSocket message:', error);
+    }
+  };
+  
+  ws.onclose = (event) => {
+    console.log('WebSocket disconnected:', event.code, event.reason);
+    stopPositionSync();
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      setTimeout(connectWebSocket, 1000 * (reconnectAttempts + 1));
+      reconnectAttempts++;
+    }
+  };
+  
+  ws.onerror = (error) => console.error('WebSocket error:', error);
+}
+
+// Initialize WebSocket connection
+connectWebSocket();
+
 // AI NOTE: Export DEBUG for use in other modules
 export const DEBUG = false;
 
@@ -506,3 +593,139 @@ export {
   forestMeshes,
   initializeTerrainSeed
 };
+
+// Set up position sync interval
+let positionSyncInterval: number | null = null;
+
+function startPositionSync() {
+  if (positionSyncInterval) return;
+  
+  positionSyncInterval = window.setInterval(() => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      const position = getPlayerPosition();
+      ws.send(JSON.stringify({
+        type: 'player_update',
+        position,
+        token: localStorage.getItem('token'),
+        squirrelId: localStorage.getItem('squirrelId')
+      }));
+    }
+  }, 50); // 20 times per second
+}
+
+function stopPositionSync() {
+  if (positionSyncInterval) {
+    clearInterval(positionSyncInterval);
+    positionSyncInterval = null;
+  }
+}
+
+// Update local player position (client-side prediction)
+function updateLocalPlayer(deltaTime: number) {
+  // Calculate movement direction
+  const moveDirection = new THREE.Vector3(0, 0, 0);
+  if (keys.w) moveDirection.z -= 1;
+  if (keys.s) moveDirection.z += 1;
+  if (keys.a) moveDirection.x -= 1;
+  if (keys.d) moveDirection.x += 1;
+  moveDirection.normalize();
+
+  // Apply rotation
+  if (moveDirection.length() > 0) {
+    playerState.rotationY = Math.atan2(moveDirection.x, moveDirection.z);
+  }
+
+  // Calculate velocity
+  playerState.velocity.set(
+    moveDirection.x * MOVEMENT_SPEED,
+    playerState.velocity.y,
+    moveDirection.z * MOVEMENT_SPEED
+  );
+
+  // Apply gravity
+  if (playerState.position.y > 0 || isJumping) {
+    playerState.velocity.y += GRAVITY * deltaTime;
+  }
+
+  // Handle jumping
+  if (keys.space && !isJumping && playerState.position.y <= 0) {
+    playerState.velocity.y = JUMP_FORCE;
+    isJumping = true;
+  }
+
+  // Update position
+  playerState.position.addScaledVector(playerState.velocity, deltaTime);
+
+  // Ground collision
+  if (playerState.position.y < 0) {
+    playerState.position.y = 0;
+    playerState.velocity.y = 0;
+    isJumping = false;
+  }
+
+  // Update player mesh position and rotation
+  if (playerMesh) {
+    playerMesh.position.copy(playerState.position);
+    playerMesh.rotation.y = playerState.rotationY;
+  }
+}
+
+// Get current player position
+function getPlayerPosition() {
+  return {
+    x: playerState.position.x,
+    y: playerState.position.y,
+    z: playerState.position.z,
+    rotationY: playerState.rotationY
+  };
+}
+
+// Player mesh and other players
+let playerMesh: THREE.Mesh | null = null;
+const otherPlayers = new Map<string, THREE.Mesh>();
+
+// Update other players' positions
+function updateOtherPlayer(squirrelId: string, position: { x: number; y: number; z: number; rotationY: number }) {
+  if (squirrelId === localStorage.getItem('squirrelId')) return; // Skip local player
+
+  let playerMesh = otherPlayers.get(squirrelId);
+  if (!playerMesh) {
+    // Create new player mesh if it doesn't exist
+    const geometry = new THREE.BoxGeometry(1, 2, 1);
+    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+    playerMesh = new THREE.Mesh(geometry, material);
+    playerMesh.castShadow = true;
+    scene.add(playerMesh);
+    otherPlayers.set(squirrelId, playerMesh);
+  }
+
+  // Update position and rotation
+  playerMesh.position.set(position.x, position.y, position.z);
+  playerMesh.rotation.y = position.rotationY;
+}
+
+// Remove other player's avatar
+function removeOtherPlayer(squirrelId: string) {
+  const playerMesh = otherPlayers.get(squirrelId);
+  if (playerMesh) {
+    scene.remove(playerMesh);
+    otherPlayers.delete(squirrelId);
+    console.log(`Removed player ${squirrelId}`);
+  }
+}
+
+// Initialize local player mesh
+function initializePlayer() {
+  const geometry = new THREE.BoxGeometry(1, 2, 1);
+  const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+  playerMesh = new THREE.Mesh(geometry, material);
+  playerMesh.castShadow = true;
+  scene.add(playerMesh);
+  
+  // Set initial position
+  playerMesh.position.copy(playerState.position);
+  playerMesh.rotation.y = playerState.rotationY;
+}
+
+// Call initializePlayer after scene setup
+initializePlayer();

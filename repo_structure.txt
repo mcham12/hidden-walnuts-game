@@ -22,10 +22,12 @@
 │   │       └── models
 │   │           └── test.txt
 │   ├── src
+│   │   ├── avatar.ts
 │   │   ├── forest.ts
 │   │   ├── main.ts
 │   │   ├── style.css
 │   │   ├── terrain.ts
+│   │   ├── types.ts
 │   │   └── vite-env.d.ts
 │   ├── test-multiplayer.html
 │   ├── tsconfig.json
@@ -70,7 +72,6 @@
 ├── Revised_MVP_Plan_Hidden_Walnuts.md
 ├── src
 │   └── index.ts
-├── tree_output.txt
 ├── tsconfig.json
 ├── workers
 │   ├── api.ts
