@@ -17,7 +17,7 @@ import type {
   Response as CfResponse,
   WebSocket as CfWebSocket
 } from '@cloudflare/workers-types';
-import { WebSocketPair } from '@cloudflare/workers-types';
+
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
