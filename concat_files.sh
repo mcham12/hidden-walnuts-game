@@ -27,7 +27,6 @@ files=(
     "client/src/terrain.ts"
     "client/src/forest.ts"
     "client/src/types.ts"
-    "client/src/constants.ts"
     "workers/api.ts"
     "workers/objects/ForestManager.ts"
     "workers/objects/SquirrelSession.ts"
