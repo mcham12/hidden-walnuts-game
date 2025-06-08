@@ -478,7 +478,7 @@ function stopHeartbeat() {
 const wsProtocol = API_BASE.startsWith('https') ? 'wss' : 'ws';
 const wsHost = API_BASE.replace(/^https?:\/\//, '');
 const squirrelId = crypto.randomUUID();
-const wsUrl = `${wsProtocol}://${wsHost}/join?squirrelId=${squirrelId}`;
+const wsUrl = `${wsProtocol}://${wsHost}/ws?squirrelId=${squirrelId}`;
 const socket = new WebSocket(wsUrl);
 
 socket.addEventListener("open", () => {

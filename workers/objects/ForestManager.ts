@@ -61,6 +61,27 @@ export class ForestManagerDO implements DurableObject {
       return new Response(null, { status: 101, webSocket: client }) as unknown as CfResponse;
     }
 
+    if (pathname === '/terrain-seed') {
+      const terrainSeed = await this.getTerrainSeed();
+      return new Response(JSON.stringify({ seed: terrainSeed }), {
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      }) as unknown as CfResponse;
+    }
+
+    if (pathname === '/forest-objects') {
+      const forestObjects = await this.getForestObjects();
+      return new Response(JSON.stringify(forestObjects), {
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      }) as unknown as CfResponse;
+    }
+
+    if (pathname === '/map-state') {
+      const mapState = await this.getMapState();
+      return new Response(JSON.stringify(mapState), {
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      }) as unknown as CfResponse;
+    }
+
     return new Response('Not Found', { status: 404, headers: CORS_HEADERS }) as unknown as CfResponse;
   }
 
@@ -179,5 +200,80 @@ export class ForestManagerDO implements DurableObject {
       })
     );
     return validationResponse.status === 200;
+  }
+
+  private async getTerrainSeed(): Promise<number> {
+    // Get or generate terrain seed for the current day
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    let terrainSeed = await this.state.storage.get<number>(`terrain-seed-${today}`);
+    
+    if (!terrainSeed) {
+      terrainSeed = Math.random() * 1000;
+      await this.state.storage.put(`terrain-seed-${today}`, terrainSeed);
+    }
+    
+    return terrainSeed;
+  }
+
+  private async getForestObjects(): Promise<any[]> {
+    // Get or generate forest objects for the current day
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    let forestObjects = await this.state.storage.get<any[]>(`forest-objects-${today}`);
+    
+    if (!forestObjects) {
+      // Generate forest objects (trees, bushes, etc.)
+      forestObjects = this.generateForestObjects();
+      await this.state.storage.put(`forest-objects-${today}`, forestObjects);
+    }
+    
+    return forestObjects;
+  }
+
+  private async getMapState(): Promise<any[]> {
+    // Get current map state with walnuts
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    let mapState = await this.state.storage.get<any[]>(`map-state-${today}`);
+    
+    if (!mapState) {
+      // Initialize empty map state
+      mapState = [];
+      await this.state.storage.put(`map-state-${today}`, mapState);
+    }
+    
+    return mapState;
+  }
+
+  private generateForestObjects(): any[] {
+    // Generate trees and bushes for the forest
+    const objects = [];
+    const terrainSize = 200;
+    
+    // Generate trees
+    for (let i = 0; i < TREE_COUNT; i++) {
+      objects.push({
+        type: 'tree',
+        id: `tree-${i}`,
+        position: {
+          x: (Math.random() - 0.5) * terrainSize,
+          y: 0,
+          z: (Math.random() - 0.5) * terrainSize
+        }
+      });
+    }
+    
+    // Generate bushes
+    for (let i = 0; i < SHRUB_COUNT; i++) {
+      objects.push({
+        type: 'bush',
+        id: `bush-${i}`,
+        position: {
+          x: (Math.random() - 0.5) * terrainSize,
+          y: 0,
+          z: (Math.random() - 0.5) * terrainSize
+        }
+      });
+    }
+    
+    return objects;
   }
 }
