@@ -1,25 +1,11 @@
-import { getObjectInstance } from "./objects/registry";
-import type { EnvWithBindings } from "./objects/registry";
-import { EnvWithBindings as OldEnvWithBindings } from './registry';
-import type { 
-  DurableObject, 
-  DurableObjectState, 
-  DurableObjectStorage, 
-  DurableObjectId,
-  Request as CfRequest,
-  Response as CfResponse,
-  WebSocket as CfWebSocket
-} from '@cloudflare/workers-types';
-import { WebSocketPair } from '@cloudflare/workers-types';
-
-// Import the Durable Objects so we can export them
-import ForestManager from "./objects/ForestManager";
+import { ForestManagerDO } from './objects/ForestManager';
+import { getObjectInstance, EnvWithBindings } from './objects/registry';
 import SquirrelSession from "./objects/SquirrelSession";
 import WalnutRegistry from "./objects/WalnutRegistry";
 import Leaderboard from "./objects/Leaderboard";
 
 // Export the Durable Objects so they can be used by the worker......
-export { ForestManager, SquirrelSession, WalnutRegistry, Leaderboard };
+export { ForestManagerDO, SquirrelSession, WalnutRegistry, Leaderboard };
 
 // Cloudflare Workers ExecutionContext type
 interface ExecutionContext {
@@ -29,10 +15,10 @@ interface ExecutionContext {
 
 // Ensure CORS headers are applied consistently
 const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*", // Allow all origins (adjust for production if needed)
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type"
-};
+  "Access-Control-Allow-Headers": "Content-Type",
+} as const;
 
 interface Env extends EnvWithBindings {
   SQUIRREL: DurableObjectNamespace;
@@ -42,21 +28,17 @@ interface Env extends EnvWithBindings {
 }
 
 export default {
-  async fetch(request: CfRequest, env: Env): Promise<CfResponse> {
+  async fetch(request: Request, env: EnvWithBindings): Promise<Response> {
     const url = new URL(request.url);
     const pathname = url.pathname;
 
-    if (pathname === '/join') {
-      const id = url.searchParams.get('squirrelId') || crypto.randomUUID();
-      const token = crypto.randomUUID();
+    if (pathname === "/join") {
+      const id = url.searchParams.get("squirrelId") || crypto.randomUUID();
       const squirrel = env.SQUIRREL.get(env.SQUIRREL.idFromName(id));
-      const joinUrl = new URL(request.url);
-      joinUrl.pathname = '/join';
-      joinUrl.searchParams.set('token', token);
-      const response = await squirrel.fetch(new Request(joinUrl, request));
-      const data = await response.json();
-      return new Response(JSON.stringify({ ...data, token }), {
-        headers: { 'Content-Type': 'application/json' }
+      const tokenResponse = await squirrel.fetch("https://internal/generate-token");
+      const token = await tokenResponse.text();
+      return new Response(JSON.stringify({ squirrelId: id, token }), {
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
       });
     }
 
@@ -91,23 +73,6 @@ export default {
         const forest = getObjectInstance(env, "forest", "daily-forest");
         console.log('Forwarding /join request to ForestManager');
         return await forest.fetch(request);
-      }
-
-      // Handle /join route
-      if (pathname === "/join") {
-        // Get squirrelId from query string or generate a new one
-        const id = url.searchParams.get("squirrelId") || crypto.randomUUID();
-        
-        // Create a modified request with the ID in the path
-        // This ensures the ID is available even if we can't modify the original request
-        const newUrl = new URL(request.url);
-        newUrl.pathname = "/join";
-        
-        // Get SquirrelSession Durable Object instance
-        const squirrel = getObjectInstance(env, "squirrel", id);
-        
-        // Forward the request to the Durable Object
-        return await squirrel.fetch(new Request(newUrl, request));
       }
 
       // Handle /hide route

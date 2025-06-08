@@ -7,7 +7,7 @@
 
 import { POINTS, CYCLE_DURATION_SECONDS, NUT_RUSH_INTERVAL_HOURS, NUT_RUSH_DURATION_MINUTES, TREE_COUNT, SHRUB_COUNT, TERRAIN_SIZE } from "../constants";
 import type { Walnut, WalnutOrigin, HidingMethod, ForestObject } from "../types";
-import { EnvWithBindings } from '../registry';
+import { getObjectInstance, EnvWithBindings } from './registry';
 import type { 
   DurableObject, 
   DurableObjectState, 
@@ -33,11 +33,12 @@ interface PlayerData {
 }
 
 export class ForestManagerDO implements DurableObject {
-  state: DurableObjectState;
+  private sessions = new Map<string, WebSocket>();
+  private socketToPlayer = new Map<WebSocket, string>();
+  private state: DurableObjectState;
   env: EnvWithBindings;
   players: Map<string, PlayerData> = new Map();
   walnuts: Map<string, any> = new Map();
-  sessions: Map<string, CfWebSocket> = new Map();
 
   constructor(state: DurableObjectState, env: EnvWithBindings) {
     this.state = state;
@@ -55,7 +56,7 @@ export class ForestManagerDO implements DurableObject {
         return new Response('Missing squirrelId or token', { status: 400, headers: CORS_HEADERS }) as unknown as CfResponse;
       }
       const pair = new WebSocketPair();
-      const [client, server] = Object.values(pair) as [CfWebSocket, CfWebSocket];
+      const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
       await this.handleSocket(server, squirrelId, token);
       return new Response(null, { status: 101, webSocket: client }) as unknown as CfResponse;
     }
@@ -63,8 +64,14 @@ export class ForestManagerDO implements DurableObject {
     return new Response('Not Found', { status: 404, headers: CORS_HEADERS }) as unknown as CfResponse;
   }
 
-  async handleSocket(socket: CfWebSocket, squirrelId: string, token: string): Promise<void> {
+  async handleSocket(socket: WebSocket, squirrelId: string, token: string): Promise<void> {
+    const isValid = await this.validateToken(squirrelId, token);
+    if (!isValid) {
+      socket.close(1008, "Invalid token");
+      return;
+    }
     this.sessions.set(squirrelId, socket);
+    this.socketToPlayer.set(socket, squirrelId);
     socket.accept();
 
     // Broadcast new player to all other players
@@ -75,29 +82,19 @@ export class ForestManagerDO implements DurableObject {
     });
 
     socket.addEventListener('message', async (event) => {
+      const playerId = this.socketToPlayer.get(socket);
+      if (!playerId) return;
       try {
         const data = JSON.parse(event.data as string);
         if (data.type === 'heartbeat') {
           socket.send(JSON.stringify({ type: 'pong' }));
           await this.cleanupStalePlayers();
         } else if (data.type === 'player_update') {
-          // Validate token before processing update
-          const squirrel = this.env.squirrels.get(this.env.squirrels.idFromName(squirrelId));
-          const validationResponse = await squirrel.fetch(
-            new Request('https://internal/validate', {
-              method: 'POST',
-              body: JSON.stringify({ token })
-            })
-          );
-          if (validationResponse.status !== 200) {
-            console.log('Invalid token for squirrelId:', squirrelId);
-            return;
-          }
-          await this.handlePlayerUpdate(squirrelId, data.position, data.rotationY);
+          await this.handlePlayerUpdate(playerId, data.position, data.rotationY);
           // Broadcast position update to all other players
-          this.broadcastExcept(squirrelId, {
+          this.broadcastExcept(playerId, {
             type: 'player_update',
-            squirrelId,
+            squirrelId: playerId,
             position: data.position
           });
         } else if (data.type === 'walnut_place') {
@@ -130,16 +127,12 @@ export class ForestManagerDO implements DurableObject {
     // Initialize player data if needed
   }
 
-  private async handlePlayerLeave(squirrelId: string): Promise<void> {
-    console.log(`Player left: ${squirrelId}`);
-    this.players.delete(squirrelId);
+  private handlePlayerLeave(squirrelId: string): void {
+    const socket = this.sessions.get(squirrelId);
+    if (socket) {
+      this.socketToPlayer.delete(socket);
+    }
     this.sessions.delete(squirrelId);
-    
-    // Broadcast player leave to all other players
-    this.broadcast({
-      type: 'player_leave',
-      squirrelId
-    });
   }
 
   private async handlePlayerUpdate(squirrelId: string, position: { x: number; y: number; z: number }, rotationY: number): Promise<void> {
@@ -169,16 +162,22 @@ export class ForestManagerDO implements DurableObject {
     }
   }
 
-  private broadcastExcept(excludeSquirrelId: string, message: any): void {
-    const serializedMessage = JSON.stringify(message);
-    for (const [squirrelId, socket] of this.sessions.entries()) {
-      if (squirrelId !== excludeSquirrelId && socket.readyState === WebSocket.OPEN) {
-        try {
-          socket.send(serializedMessage);
-        } catch (error) {
-          console.error(`Error broadcasting to ${squirrelId}:`, error);
-        }
+  private broadcastExcept(senderId: string, message: object): void {
+    for (const [id, socket] of this.sessions) {
+      if (id !== senderId) {
+        socket.send(JSON.stringify(message));
       }
     }
+  }
+
+  async validateToken(squirrelId: string, token: string): Promise<boolean> {
+    const squirrel = this.env.SQUIRREL.get(this.env.SQUIRREL.idFromName(squirrelId));
+    const validationResponse = await squirrel.fetch(
+      new Request("https://internal/validate", {
+        method: "POST",
+        body: JSON.stringify({ token }),
+      })
+    );
+    return validationResponse.status === 200;
   }
 }

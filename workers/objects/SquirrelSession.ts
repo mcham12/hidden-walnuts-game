@@ -26,6 +26,10 @@ interface DurableObjectId {
   equals(other: DurableObjectId): boolean;
 }
 
+interface ValidateBody {
+  token: string;
+}
+
 export default class SquirrelSession {
   state: DurableObjectState;
   storage: DurableObjectStorage;
@@ -141,6 +145,18 @@ export default class SquirrelSession {
       return new Response("Participation updated");
     }
 
+    if (path === "/generate-token") {
+      const token = await this.generateToken();
+      return new Response(token);
+    }
+
+    if (path === "/validate" && request.method === "POST") {
+      const body = await request.json() as ValidateBody;
+      const providedToken = body.token;
+      const isValid = await this.validateToken(providedToken);
+      return new Response(isValid ? "Valid" : "Invalid", { status: isValid ? 200 : 401 });
+    }
+
     return new Response("Not found", { status: 404 });
   }
 
@@ -227,5 +243,16 @@ export default class SquirrelSession {
     }
     
     return true;
+  }
+
+  async generateToken(): Promise<string> {
+    const token = crypto.randomUUID();
+    await this.storage.put("token", token);
+    return token;
+  }
+
+  async validateToken(providedToken: string): Promise<boolean> {
+    const storedToken = await this.storage.get<string>("token");
+    return storedToken === providedToken;
   }
 }
