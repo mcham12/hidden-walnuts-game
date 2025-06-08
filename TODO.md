@@ -14,7 +14,9 @@ This file tracks pending tasks for *Hidden Walnuts* development to ensure they a
    - Potential Tools: Playwright or Puppeteer for browser automation.
    - Reference: `README_AI.md`, `conventions.md`.
 
-3. **Rig `squirrel.glb` for Animations**:
+3. ** Add a client/src/constants.ts file and refactor code to use it
+
+4. **Rig `squirrel.glb` for Animations**:
    - Add animations (e.g., running, digging) to `client/public/assets/models/squirrel.glb` using tools like Blender.
    - Priority: Medium (enhances visual polish for future MVPs).
    - Reference: `README_AI.md`.
