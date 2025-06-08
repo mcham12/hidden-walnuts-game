@@ -16,58 +16,50 @@ These conventions ensure consistency and maintainability in the *Hidden Walnuts*
 
 ## Frontend (Three.js)
 - **Scene Setup**: Initialize in `main.ts` (scene, camera, renderer, lights).
-- **Assets**: Store in `<game-root>/public/assets/models/` (e.g., `Tree_01.glb`).
+- **Assets**: Store in `client/public/assets/models/` (e.g., `Tree_01.glb`).
 - **Movement**: Use WASD for avatar control, OrbitControls for mouse navigation (disabled during WASD).
 - **Rendering**: Optimize draw calls (e.g., reuse geometries, update only changed objects).
 
 ## Backend (Cloudflare Workers)
 - **API**: Route requests via `api.ts` (e.g., `/map-state`, `/terrain-seed`).
 - **Persistence**: Use Durable Objects in `registry.ts` for walnut and map state.
-- **WebSocket**: Handle events (e.g., `map_reset`, `walnut-rehidden`) with minimal data transfer.
+- **WebSocket**: Handle events (e.g., `player-join`, `player-move`) with minimal data transfer.
+
+## Deployment Conventions
+- **Cloudflare Pages**:
+  - Project: `hidden-walnuts-game`.
+  - Domains: `hidden-walnuts-game.pages.dev`, `game.hiddenwalnuts.com`.
+  - Build: `npm run build:preview` (Vite, output to `client/dist`).
+- **Cloudflare Worker**:
+  - Name: `hidden-walnuts-api`.
+  - Route: `api.hiddenwalnuts.com/*`.
+  - Preview: `hidden-walnuts-api.mattmcarroll.workers.dev`.
+  - Durable Objects: Defined in `workers/wrangler.toml` (e.g., `FOREST`, `SQUIRREL`).
+- **GitHub Actions**:
+  - Workflow: `deploy-worker.yml` for Worker builds (`main` for production, `mvp-*` for preview).
+  - Pages: Automatic builds via GitHub integration.
+- See `deployment_setup.md` for detailed configurations.
 
 ## Debug Logging
 - **Format**: Use `console.log` with descriptive prefixes (e.g., `[Log] Camera moved via WASD`).
-- **Production**: Toggle logs with a `DEBUG` flag (planned for MVP 14).
+- **Production**: Toggle logs with a `DEBUG` flag (planned for MVP 16).
 - **Examples**:
   - `console.log('Camera position:', camera.position.toArray())`
-  - `console.log('Walnut added:', walnut.id, mesh.position)`
+  - `console.log('Player joined:', player.id, position)`
 
 ## Testing
-- **MVP 6 Tasks**:
-  - Verify squirrel avatar rendering (`Squirrel.glb`) and animations.
-  - Test WASD movement for smoothness, ensuring no terrain clipping.
-  - Confirm third-person camera follows avatar with proper offset.
+- **Current**: Manual testing on Cloudflare preview (`hidden-walnuts-game.pages.dev`, `hidden-walnuts-api.mattmcarroll.workers.dev`) via deployment URLs.
+- **Future**: Develop automated testing script for inputs (e.g., WebSocket events, player movements).
+- **MVP 7 Tasks**:
+  - Verify secure WebSocket connections and event handling.
+  - Test multi-player avatar synchronization across browsers.
+  - Confirm token-based authentication and error handling.
 - **Tools**: Use browser dev tools for logs, Cloudflare dashboard for deployment checks.
-- **Workflow**: Test locally (`npm run dev`), then deploy to Cloudflare Pages for production validation.
+- **Workflow**: Test on preview deployments, validate via build logs.
+- See `MVP_Plan_Hidden_Walnuts.md` for MVP-specific testing goals.
 
 ## Contribution Workflow
-- **Branches**: Use `mvp-<number>` (e.g., `mvp-6`) for feature development.
-- **Commits**: Prefix with MVP number (e.g., `MVP-6: Add squirrel avatar`).
+- **Branches**: Use `mvp-<number>` (e.g., `mvp-7`) for feature development.
+- **Commits**: Prefix with MVP number (e.g., `MVP-7: Add WebSocket events`).
 - **PRs**: Include test results and logs in descriptions.
-- **AI Usage**: Document AI contributions in `README_AI.md` (e.g., code generation, debugging).
-
-## Example File Structure
-```
-hidden-walnuts/
-├── client/
-│   ├── src/
-│   │   ├── main.ts
-│   │   ├── terrain.ts
-│   │   ├── forest.ts
-│   │   ├── types.ts
-│   │   ├── constants.ts
-│   ├── public/
-│   │   ├── assets/
-│   │   │   ├── models/
-│   │   │   │   ├── Tree_01.glb
-│   │   │   │   ├── Bush_01.glb
-│   │   │   │   ├── Squirrel.glb
-├── workers/
-│   ├── api.ts
-│   ├── registry.ts
-├── README.md
-├── README_AI.md
-├── conventions.md
-```
-
-These conventions guide development for MVP 6 and beyond, ensuring a consistent and scalable codebase.
+- **AI Usage**: Document AI contributions in `README_AI.md`.

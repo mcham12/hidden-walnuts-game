@@ -1,109 +1,61 @@
 # Hidden Walnuts
 
-*Hidden Walnuts* is a 3D multiplayer game where players hide and seek walnuts in a persistent forest environment. The game features a dynamic forest with terrain, trees, shrubs, and walnuts, with plans for player avatars, real-time synchronization, scoring, power-ups, predators, events, and social interactions.
+*Hidden Walnuts* is a 3D multiplayer game where players hide and seek walnuts in a persistent forest environment. The game features a dynamic forest with terrain, trees, shrubs, and player avatars, with real-time synchronization, scoring, and planned features like power-ups, predators, and social interactions.
 
 ## Project Status
-- **Current MVP**: MVP 5 completed (Basic Forest Environment).
-- **Next MVP**: MVP 6 (Player Avatar and Movement, in progress).
+- **Current MVP**: MVP 7 (Multiplayer Foundation, in progress).
 - **Deployment**: Hosted on Cloudflare (Workers for backend, Pages for frontend).
-
-## MVP 5 Achievements
-- Deployed to Cloudflare with persistent walnut positions (MVP 4.5).
-- Implemented a navigable 200x200 terrain with hills (0–20 units height) using sin/cos noise.
-- Added 50 trees and 100 shrubs, grounded on terrain.
-- Rendered a walnut model with click detection (not yet hidden).
-- Fixed camera movement issues (WASD navigation, OrbitControls) to prevent jumping and clipping.
-
-## MVP 6 Goals
-- Create a squirrel avatar model.
-- Implement WASD movement for the avatar.
-- Add a third-person camera following the player.
+- See `MVP_Plan_Hidden_Walnuts.md` for the detailed development roadmap.
 
 ## Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-repo/hidden-walnuts.git
-   cd hidden-walnuts
+   git clone https://github.com/mcham12/hidden-walnuts-game.git
+   cd hidden-walnuts-game
    ```
 2. Install dependencies:
    ```bash
    npm install
+   cd client && npm install
+   cd ../workers && npm install
    ```
-3. Set environment variables in `.env`:
+3. Set environment variables in `client/.env` (update for preview or production):
    ```env
-   VITE_API_URL=https://hidden-walnuts-api.yourdomain.workers.dev
+   VITE_API_URL=https://api.hiddenwalnuts.com  # For production
+   # Use https://hidden-walnuts-api.mattmcarroll.workers.dev for preview
    ```
-4. Run locally:
+4. Run locally (optional, primary testing on Cloudflare preview):
    ```bash
-   npm run dev
+   npm run dev  # In client directory
    ```
 
 ## Deployment
-- **Frontend**: Deployed to Cloudflare Pages via GitHub integration 
-- **Backend**: Deployed to Cloudflare Workers via GitHub Actions (`deploy-pages.yml`).
-- **Assets**: Served from `<game-root>/public/` (e.g., `Tree_01.glb`, `Bush_01.glb`).
-- **Routes**: `_routes.json` excludes `.glb` and `.txt` from SPA fallback.
+- **Frontend**: Deployed to Cloudflare Pages (`hidden-walnuts-game`) via GitHub integration.
+- **Backend**: Deployed to Cloudflare Workers (`hidden-walnuts-api`) via GitHub Actions (`deploy-worker.yml`).
+- **Assets**: Served from `client/public/assets/models/` (e.g., `Tree_01.glb`, `squirrel.glb`).
+- **Routes**: `client/public/_routes.json` excludes `.glb` and `.txt` from SPA fallback.
+- See `deployment_setup.md` for detailed Cloudflare and GitHub configurations.
 
-## Revised MVP Plan
+### Deployment Details
+- **Cloudflare Pages**:
+  - Domains: `hidden-walnuts-game.pages.dev`, `game.hiddenwalnuts.com`.
+  - Build command: `npm run build:preview` (Vite build, output to `client/dist`).
+  - Root directory: `client`.
+  - Environment variable: `VITE_API_URL` (set in `client/.env.preview` or `client/.env.production`).
+- **Cloudflare Worker**:
+  - Route: `api.hiddenwalnuts.com/*`.
+  - Preview URL: `hidden-walnuts-api.mattmcarroll.workers.dev`.
+  - Durable Objects: `FOREST` (`ForestManager`), `SQUIRREL` (`SquirrelSession`), `WALNUTS` (`WalnutRegistry`), `LEADERBOARD` (`Leaderboard`).
+  - Configuration: Defined in `workers/wrangler.toml`.
+- **GitHub Actions**:
+  - Workflow: `deploy-worker.yml` builds and deploys Worker on `main` (production) and `mvp-*` (preview) branches.
+  - Pages: Automatic builds via GitHub integration.
 
-### MVP 4.5: Deployment and Bug Fixing (Completed)
-- Deployed to Cloudflare.
-- Fixed walnut location persistence using Durable Objects.
-
-### MVP 5: Basic Forest Environment (Completed)
-- Navigable terrain with hills, trees, and shrubs.
-- Optimized terrain height calculations and rendering.
-
-### MVP 6: Player Avatar and Movement (In Progress)
-- Squirrel avatar model.
-- WASD movement for avatar.
-- Third-person camera following player.
-
-
-### MVP 7: Walnut Hiding Mechanics
-- Walnut pickup and hiding with visual indicators.
-- Persistent walnut positions in backend.
-- Optimize walnut rendering (update only changed walnuts).
-- Implement level of detail (LOD) for walnuts.
-
-### MVP 8: Multiplayer Synchronization
-- WebSocket for real-time communication.
-- Synchronize walnut and player positions.
-- Streamline WebSocket handlers.
-
-### MVP 9: Walnut Seeking and Scoring
-- Find and collect hidden walnuts.
-- Points system for finds and hides.
-- Real-time leaderboard.
-
-### MVP 10: Daily Map Reset
-- 24-hour map reset cycle.
-- Seed 100 game-hidden walnuts at reset.
-- Reset scores and walnut positions.
-
-### MVP 11: Power-Ups
-- **Scent Sniff** and **Fast Dig** power-ups.
-- Spawning and usage mechanics.
-
-### MVP 12: Predators
-- Hawk and wolf predator models.
-- Patrol and chase AI.
-- Player evasion mechanics.
-
-### MVP 13: Dynamic Events
-- **Nut Rush** event with extra walnuts.
-- Random event triggers.
-- Dynamic lighting for events.
-
-### MVP 14: Social Interactions
-- Pre-set messages and notifications.
-- Basic friend system or tagging.
-- Add DEBUG flag for production logs.
-
-## Risks and Mitigations
-- **Multiplayer Sync**: Test WebSocket early, optimize handlers.
-- **Over-Scoping**: Start with simple implementations, iterate.
-- **Resources**: Prioritize high-impact tasks, integrate optimizations incrementally.
+## Testing
+- **Primary Method**: Manual testing on Cloudflare preview (`hidden-walnuts-game.pages.dev`, `hidden-walnuts-api.mattmcarroll.workers.dev`) via deployment URLs.
+- **Process**: Access preview URLs via Cloudflare dashboard, validate features (e.g., avatar movement, WebSocket events).
+- **Future Plans**: Develop automated testing script for simulating inputs (e.g., player movements, walnut hiding).
+- **Debugging**: Monitor build logs in Cloudflare Pages and Worker dashboards.
 
 ## Contributing
-See `conventions.md` for coding standards and contribution guidelines.
+See `conventions.md` for coding standards and contribution guidelines. Document AI contributions in `README_AI.md`.
