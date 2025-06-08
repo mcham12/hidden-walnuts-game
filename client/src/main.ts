@@ -26,9 +26,10 @@ const playerState: PlayerState = {
   isMoving: false
 };
 
-// Movement constants
+// Movement constants - Currently unused but may be needed later
+/*
 const MOVEMENT_SPEED = 10;
-const ROTATION_SPEED = 2;
+// const ROTATION_SPEED = 2; // Currently unused but may be needed later
 const GRAVITY = -9.8;
 const JUMP_FORCE = 5;
 let isJumping = false;
@@ -41,6 +42,7 @@ const keys = {
   d: false,
   space: false
 };
+*/
 
 function connectWebSocket() {
   ws = new WebSocket(WS_URL);
@@ -172,7 +174,8 @@ async function getTerrainHeight(x: number, z: number): Promise<number> {
   
   const size = 200;
   const height = 5;
-  const seed = await initializeTerrainSeed();
+  const s = await initializeTerrainSeed();
+  const seed = s || Math.random() * 1000; // Use fallback if s is undefined
   
   const xNorm = (x + size / 2) / size;
   const zNorm = (z + size / 2) / size;
@@ -620,8 +623,8 @@ function stopPositionSync() {
   }
 }
 
-// Update local player position (client-side prediction)
-function updateLocalPlayer(deltaTime: number) {
+// Update local player position (client-side prediction) - Currently unused but may be needed later
+/* function updateLocalPlayer(deltaTime: number) {
   // Calculate movement direction
   const moveDirection = new THREE.Vector3(0, 0, 0);
   if (keys.w) moveDirection.z -= 1;
@@ -669,6 +672,7 @@ function updateLocalPlayer(deltaTime: number) {
     playerMesh.rotation.y = playerState.rotationY;
   }
 }
+*/
 
 // Get current player position
 function getPlayerPosition() {
