@@ -5,7 +5,7 @@ import WalnutRegistry from "./objects/WalnutRegistry";
 import Leaderboard from "./objects/Leaderboard";
 
 // Export the Durable Objects so they can be used by the worker......
-export { ForestManagerDO, SquirrelSession, WalnutRegistry, Leaderboard };
+export { ForestManagerDO as ForestManager, SquirrelSession, WalnutRegistry, Leaderboard };
 
 // Cloudflare Workers ExecutionContext type
 interface ExecutionContext {
