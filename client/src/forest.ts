@@ -8,10 +8,11 @@ import { API_BASE, getTerrainHeight, DEBUG } from './main';
 interface ForestObject {
   id: string;
   type: 'tree' | 'shrub';
-  x: number;
-  y: number;
-  z: number;
+  x?: number;
+  y?: number;
+  z?: number;
   scale: number;
+  position?: { x: number; y: number; z: number };
 }
 
 export async function createForest(): Promise<THREE.Object3D[]> {
@@ -89,24 +90,29 @@ export async function createForest(): Promise<THREE.Object3D[]> {
   }
 
   for (const obj of forestObjects) {
-    if (typeof obj.x !== 'number' || typeof obj.z !== 'number' || isNaN(obj.x) || isNaN(obj.z)) {
+    // Handle both direct x/z and nested position properties
+    const x = obj.x !== undefined ? obj.x : obj.position?.x;
+    const z = obj.z !== undefined ? obj.z : obj.position?.z;
+    
+    if (typeof x !== 'number' || typeof z !== 'number' || isNaN(x) || isNaN(z)) {
       console.error(`[Log] Skipping invalid forest object ${obj.id}:`, obj);
       continue;
     }
+    
     try {
       const model = obj.type === 'tree' ? treeModel.scene.clone() : shrubModel.scene.clone();
       let terrainHeight;
       try {
-        terrainHeight = await getTerrainHeight(obj.x, obj.z);
+        terrainHeight = await getTerrainHeight(x, z);
         if (terrainHeight < 0 || terrainHeight > 5) {
-          console.warn(`Invalid terrain height for ${obj.type} ${obj.id} at (${obj.x}, ${obj.z}): ${terrainHeight}, using 0`);
+          console.warn(`Invalid terrain height for ${obj.type} ${obj.id} at (${x}, ${z}): ${terrainHeight}, using 0`);
           terrainHeight = 0;
         }
       } catch (error) {
         console.error(`[Log] Failed to get terrain height for ${obj.type} ${obj.id}:`, error);
         terrainHeight = 0;
       }
-      model.position.set(obj.x, terrainHeight, obj.z);
+      model.position.set(x, terrainHeight, z);
       model.scale.set(obj.scale, obj.scale, obj.scale);
       model.traverse((child) => {
         if (child instanceof THREE.Mesh) {
@@ -117,7 +123,7 @@ export async function createForest(): Promise<THREE.Object3D[]> {
       model.userData = { id: obj.id, type: obj.type };
       meshes.push(model);
       if (DEBUG) {
-        console.log(`[Log] Created mesh for ${obj.type} ${obj.id} at (${obj.x}, ${terrainHeight}, ${obj.z})`);
+        console.log(`[Log] Created mesh for ${obj.type} ${obj.id} at (${x}, ${terrainHeight}, ${z})`);
       }
     } catch (error) {
       console.error(`[Log] Failed to create mesh for ${obj.id}:`, error);

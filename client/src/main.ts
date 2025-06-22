@@ -74,13 +74,13 @@ async function initializeGame(): Promise<{ squirrelId: string, token: string }> 
     const response = await fetch(`${API_BASE}/join?squirrelId=${squirrelId}`);
     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
     const data = await response.json();
-    console.log('[Log] Received token from /join:', data.token);
-    if (!data.token || data.token === "Must join first") {
+    console.log('[Log] Received token from /join:', data.id);
+    if (!data.id || data.id === "Must join first") {
       throw new Error("Invalid token received from /join");
     }
     localStorage.setItem('squirrelId', squirrelId);
-    localStorage.setItem('token', data.token);
-    return { squirrelId, token: data.token };
+    localStorage.setItem('token', data.id);
+    return { squirrelId, token: data.id };
   } catch (error) {
     console.error('[Error] Game initialization failed:', error);
     throw error;
@@ -95,17 +95,19 @@ const wsProtocol = API_BASE.startsWith("https") ? "wss" : "ws";
 const wsHost = API_BASE.replace(/^https?:\/\//, "");
 
 async function connectWebSocket(squirrelId: string, token: string) {
-  const wsUrl = `${wsProtocol}://${wsHost}/join?squirrelId=${squirrelId}&token=${token}`;
+  // Use /ws endpoint instead of /join for WebSocket
+  const wsUrl = `${wsProtocol}://${wsHost}/ws?squirrelId=${squirrelId}&token=${token}`;
   socket = new WebSocket(wsUrl);
 
   socket.onopen = () => {
-    console.log("✅ WebSocket connection established");
+    console.log("[Log] WebSocket connected");
     reconnectAttempts = 0;
     startHeartbeat();
     startPositionSync();
   };
 
   socket.onmessage = (event) => {
+    console.log('[Log] WebSocket message received:', event.data);
     const data = JSON.parse(event.data);
     if (data.type === "pong") {
       console.debug("💓 Heartbeat acknowledged");
@@ -164,16 +166,17 @@ async function connectWebSocket(squirrelId: string, token: string) {
     }
   };
 
-  socket.onerror = (event) => {
-    console.error("WebSocket error:", event);
+  socket.onerror = (error) => {
+    console.error('[Error] WebSocket error:', error);
     stopHeartbeat();
     stopPositionSync();
   };
 
   socket.onclose = () => {
-    console.warn("WebSocket closed");
+    console.warn('[Warning] WebSocket closed');
     stopHeartbeat();
     stopPositionSync();
+    // Attempt to reconnect after a delay
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       reconnectAttempts++;
       setTimeout(() => connectWebSocket(squirrelId, token), RECONNECT_DELAY * reconnectAttempts);

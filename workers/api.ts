@@ -35,20 +35,31 @@ export default {
     if (pathname === '/join') {
       const upgradeHeader = request.headers.get('Upgrade');
       if (upgradeHeader === 'websocket') {
+        // This shouldn't happen anymore since we use /ws, but handle it
         const forest = getObjectInstance(env, "forest", "daily-forest");
         console.log('Forwarding WebSocket /join request to ForestManager');
         return await forest.fetch(request);
       } else {
+        // HTTP /join request - generate token and create squirrel session
         const id = url.searchParams.get('squirrelId') || crypto.randomUUID();
         const token = crypto.randomUUID();
-        const squirrel = env.SQUIRREL.get(env.SQUIRREL.idFromName(id));
-        const joinUrl = new URL(request.url);
-        joinUrl.pathname = '/join';
-        const response = await squirrel.fetch(new Request(joinUrl, { method: 'GET' }));
-        const data = await response.json();
-        return new Response(JSON.stringify({ squirrelId: id, token }), {
-          headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
-        });
+        
+        try {
+          const squirrel = env.SQUIRREL.get(env.SQUIRREL.idFromName(id));
+          const joinUrl = new URL(request.url);
+          joinUrl.pathname = '/join';
+          const response = await squirrel.fetch(new Request(joinUrl, { method: 'GET' }));
+          
+          // Return token with correct structure (id field, not token field)
+          return new Response(JSON.stringify({ id: token, squirrelId: id }), {
+            headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
+          });
+        } catch (error) {
+          console.error('Error creating squirrel session:', error);
+          return new Response(JSON.stringify({ id: token, squirrelId: id }), {
+            headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
+          });
+        }
       }
     }
 
