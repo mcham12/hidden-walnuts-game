@@ -76,35 +76,40 @@ let ws: WebSocket | null = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 
-async function ensureTokenAndSquirrelId(): Promise<{ squirrelId: string; token: string }> {
-  let squirrelId = localStorage.getItem('squirrelId');
-  let token = localStorage.getItem('token');
+async function initializeGame() {
+  console.log("Starting game initialization...");
+  try {
+    // Generate a unique squirrelId
+    const squirrelId = crypto.randomUUID();
+    console.log("Generated squirrelId:", squirrelId);
 
-  if (!squirrelId || !token) {
-    // Generate new squirrelId and get token from server
-    const newSquirrelId = crypto.randomUUID();
-    const joinResponse = await fetch(`${API_BASE}/join?squirrelId=${newSquirrelId}`);
-    const data = await joinResponse.json();
-    const newToken = data.token;
-    
-    // Store both in localStorage
-    localStorage.setItem('squirrelId', newSquirrelId);
-    localStorage.setItem('token', newToken);
-    console.log('✅ Generated new squirrelId and token');
-    
-    return { squirrelId: newSquirrelId, token: newToken };
-  }
+    // Fetch token from /join endpoint
+    const joinResponse = await fetch(`${API_BASE}/join?squirrelId=${squirrelId}`, {
+      method: "POST", // Ensure POST if server expects it
+      headers: { "Content-Type": "application/json" }
+    });
+    if (!joinResponse.ok) {
+      throw new Error(`Join request failed with status: ${joinResponse.status}`);
+    }
 
-  return { squirrelId: squirrelId!, token: token! };
-}
+    const joinData = await joinResponse.json();
+    const token = joinData.token;
+    console.log("Received token from /join:", token);
 
-function connectWebSocket() {
-  ensureTokenAndSquirrelId().then(({ squirrelId, token }) => {
-    const wsProtocol = API_BASE.startsWith('https') ? 'wss' : 'ws';
-    const wsHost = API_BASE.replace(/^https?:\/\//, '');
-    const wsUrl = `${wsProtocol}://${wsHost}/ws?squirrelId=${squirrelId}&token=${token}`;
-    
-    console.log('🔌 Connecting to WebSocket:', wsUrl);
+    if (!token || token === "Must join first") {
+      throw new Error("Invalid token received from /join");
+    }
+
+    // Store token for debugging purposes
+    localStorage.setItem("squirrelToken", token);
+    localStorage.setItem("squirrelId", squirrelId);
+
+    // Initialize WebSocket with squirrelId and token
+    const wsProtocol = API_BASE.startsWith("https") ? "wss" : "ws";
+    const wsHost = API_BASE.replace(/^https?:\/\//, "");
+    const wsUrl = `${wsProtocol}://${wsHost}/ws?squirrelId=${squirrelId}&token=${encodeURIComponent(token)}`;
+    console.log("Connecting to WebSocket:", wsUrl);
+
     ws = new WebSocket(wsUrl);
 
     ws.addEventListener("open", () => {
@@ -124,7 +129,7 @@ function connectWebSocket() {
       stopHeartbeat();
       stopPositionSync();
       if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-        setTimeout(connectWebSocket, 1000 * (reconnectAttempts + 1));
+        setTimeout(() => initializeGame(), 1000 * (reconnectAttempts + 1));
         reconnectAttempts++;
       }
     });
@@ -154,17 +159,15 @@ function connectWebSocket() {
         console.error('Error parsing WebSocket message:', error);
       }
     });
-  }).catch(error => {
-    console.error('Failed to initialize WebSocket:', error);
+
+  } catch (error) {
+    console.error("Game initialization failed:", error);
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-      setTimeout(connectWebSocket, 1000 * (reconnectAttempts + 1));
+      setTimeout(() => initializeGame(), 1000 * (reconnectAttempts + 1));
       reconnectAttempts++;
     }
-  });
+  }
 }
-
-// Initialize WebSocket connection
-connectWebSocket();
 
 // Scene dimensions
 const FOREST_SIZE = 100
@@ -290,15 +293,18 @@ scene.add(directionalLight)
 // Terrain and forest setup
 let terrain: THREE.Mesh;
 let forestMeshes: THREE.Object3D[] = [];
+
+// Call initializeGame after scene setup
 createTerrain().then((mesh) => {
   terrain = mesh;
-  scene.add(terrain);
-  console.log('Terrain added to scene');
+  scene.add(mesh);
+  console.log("Terrain added to scene");
   fetchWalnutMap();
   createForest().then((meshes) => {
     forestMeshes = meshes;
     meshes.forEach((mesh) => scene.add(mesh));
-    console.log('Forest added to scene');
+    console.log("Forest added to scene");
+    initializeGame(); // Start game after scene is ready
   });
   // Load squirrel avatar and log height
   loadSquirrelAvatar(scene).then(async () => {
@@ -542,7 +548,7 @@ function startPositionSync() {
   positionSyncInterval = window.setInterval(() => {
     if (ws && ws.readyState === WebSocket.OPEN) {
       const position = getPlayerPosition();
-      const storedToken = localStorage.getItem('token');
+      const storedToken = localStorage.getItem('squirrelToken');
       const storedSquirrelId = localStorage.getItem('squirrelId');
       
       if (storedToken && storedSquirrelId) {
