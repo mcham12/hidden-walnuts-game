@@ -100,10 +100,27 @@ export class ForestManager implements DurableObject {
     try {
       console.log(`[Log] WebSocket connection established for squirrelId: ${squirrelId}`);
       socket.accept();
+      
+      // Store session for broadcasting
+      this.sessions.set(squirrelId, socket);
+      console.log(`[Log] Session stored for ${squirrelId}, total sessions: ${this.sessions.size}`);
+      
       socket.addEventListener('message', async (event) => {
         try {
           const data = JSON.parse(event.data);
           console.log(`[Log] Received message from ${squirrelId}:`, data);
+          
+          if (data.type === 'player_update') {
+            // Broadcast to all other players
+            const updateMessage = {
+              type: 'player_update',
+              squirrelId: squirrelId,
+              position: data.position
+            };
+            this.broadcastExcept(squirrelId, updateMessage);
+            console.log(`[Log] Broadcasted player update from ${squirrelId} to ${this.sessions.size - 1} other players`);
+          }
+          
           await this.processMessage(squirrelId, data);
           socket.send(JSON.stringify({ type: 'ack', message: 'Received' }));
         } catch (error) {
@@ -111,6 +128,18 @@ export class ForestManager implements DurableObject {
           socket.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
         }
       });
+      
+      socket.addEventListener('close', () => {
+        console.log(`[Log] WebSocket closed for ${squirrelId}`);
+        this.sessions.delete(squirrelId);
+        console.log(`[Log] Session removed for ${squirrelId}, remaining sessions: ${this.sessions.size}`);
+      });
+      
+      socket.addEventListener('error', (error) => {
+        console.error(`[Error] WebSocket error for ${squirrelId}:`, error);
+        this.sessions.delete(squirrelId);
+      });
+      
     } catch (error) {
       console.error(`[Error] Error handling WebSocket for ${squirrelId}:`, error);
       socket.close(1011, 'Internal server error');
@@ -182,12 +211,23 @@ export class ForestManager implements DurableObject {
     }
   }
 
-  private broadcastExcept(senderId: string, message: object): void {
-    for (const [id, socket] of this.sessions) {
-      if (id !== senderId) {
-        socket.send(JSON.stringify(message));
+  private broadcastExcept(excludeSquirrelId: string, message: any): void {
+    const serializedMessage = JSON.stringify(message);
+    let broadcastCount = 0;
+    
+    for (const [squirrelId, socket] of this.sessions.entries()) {
+      if (squirrelId !== excludeSquirrelId && socket.readyState === WebSocket.OPEN) {
+        try {
+          socket.send(serializedMessage);
+          broadcastCount++;
+        } catch (error) {
+          console.error(`[Error] Failed to send message to ${squirrelId}:`, error);
+          this.sessions.delete(squirrelId); // Clean up dead connections
+        }
       }
     }
+    
+    console.log(`[Log] Broadcasted message to ${broadcastCount} players (excluding ${excludeSquirrelId})`);
   }
 
   async validateToken(squirrelId: string, token: string): Promise<boolean> {

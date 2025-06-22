@@ -104,13 +104,8 @@ async function connectWebSocket(squirrelId: string, token: string) {
     reconnectAttempts = 0;
     startHeartbeat();
     
-    // Send player updates every 100ms to reduce acknowledgment spam
-    setInterval(() => {
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        const position = getPlayerPosition();
-        socket.send(JSON.stringify({ type: 'player_update', position }));
-      }
-    }, 100);
+    // No longer using frequent intervals - will call sendPlayerUpdate() in render loop
+    console.log("[Log] WebSocket ready for optimized player updates");
   });
 
   socket.addEventListener("error", (event) => {
@@ -137,6 +132,14 @@ async function connectWebSocket(squirrelId: string, token: string) {
         console.debug("💓 Heartbeat acknowledged");
         return;
       }
+      
+      // Handle multiplayer updates
+      if (data.type === 'player_update' && data.squirrelId !== localStorage.getItem('squirrelId')) {
+        console.log(`[Log] Received player update from ${data.squirrelId}:`, data.position);
+        updateOtherPlayer(data.squirrelId, data.position);
+        return;
+      }
+      
       if (data.type === "map_reset") {
         const mapState = data.data.mapState;
         console.log(`Received map_reset with ${mapState.length} walnuts`);
@@ -176,9 +179,6 @@ async function connectWebSocket(squirrelId: string, token: string) {
         const { walnutId, location } = data;
         console.log(`Received rehidden message for ${walnutId} at location:`, location);
         fetchWalnutMap();
-      }
-      if (data.type === "player_update") {
-        updateOtherPlayer(data.squirrelId, data.position);
       }
       if (data.type === "player_join") {
         console.log(`Player joined: ${data.squirrelId}`);
@@ -324,7 +324,11 @@ createTerrain().then((mesh) => {
   terrain = mesh;
   scene.add(mesh);
   console.log("Terrain added to scene");
+  
+  // Debug environment fetching
   fetchWalnutMap();
+  fetchForestObjects(); // Debug forest objects
+  
   createForest().then((meshes) => {
     forestMeshes = meshes;
     meshes.forEach((mesh) => scene.add(mesh));
@@ -449,6 +453,23 @@ async function fetchWalnutMap() {
   }
 }
 
+// Debug function for forest objects
+async function fetchForestObjects() {
+  try {
+    const response = await fetch(`${API_BASE}/forest-objects`);
+    if (!response.ok) {
+      console.error(`[Error] Failed to fetch forest objects: HTTP ${response.status}`);
+      return [];
+    }
+    const data = await response.json();
+    console.log(`[Log] Fetched ${data.length} forest objects`);
+    return data;
+  } catch (error) {
+    console.error('[Error] Failed to fetch forest objects:', error);
+    return [];
+  }
+}
+
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -528,6 +549,9 @@ async function animate() {
 
   updateSquirrelMovement(deltaTime);
   updateSquirrelCamera(camera);
+  
+  // Send optimized player updates
+  sendPlayerUpdate();
 
   controls.enabled = false; // Disable OrbitControls during movement
 
@@ -706,3 +730,16 @@ function initializePlayer() {
 
 // Call initializePlayer after scene setup
 initializePlayer();
+
+// Optimized player update frequency control
+let lastUpdateTime = 0;
+const UPDATE_INTERVAL = 100; // Send updates every 100ms
+
+function sendPlayerUpdate() {
+  const now = Date.now();
+  if (now - lastUpdateTime > UPDATE_INTERVAL && socket && socket.readyState === WebSocket.OPEN) {
+    const position = getPlayerPosition();
+    socket.send(JSON.stringify({ type: 'player_update', position }));
+    lastUpdateTime = now;
+  }
+}
