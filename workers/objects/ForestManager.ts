@@ -102,15 +102,21 @@ export class ForestManager implements DurableObject {
   }
 
   async handleSocket(ws: WebSocket, squirrelId: string, token: string) {
+    console.log(`[Log] Handling WebSocket for squirrelId: ${squirrelId} with token: ${token}`);
+    
     // Validate token first
     const isValid = await this.validateToken(squirrelId, token);
     if (!isValid) {
+      console.log(`[Log] Invalid token for squirrelId: ${squirrelId}, closing connection`);
       ws.close(1008, "Invalid token");
       return;
     }
 
+    console.log(`[Log] Token validated successfully for squirrelId: ${squirrelId}`);
+    
     // Add WebSocket handling logic here (e.g., accept, message handling)
     ws.accept();
+    console.log(`[Log] WebSocket accepted for squirrelId: ${squirrelId}`);
     
     this.sessions.set(squirrelId, ws);
     this.socketToPlayer.set(ws, squirrelId);
@@ -122,8 +128,10 @@ export class ForestManager implements DurableObject {
       position: this.players.get(squirrelId)?.position || { x: 0, y: 0, z: 0 }
     });
 
+    console.log(`[Log] Player ${squirrelId} added to sessions, total active sessions: ${this.sessions.size}`);
+
     ws.addEventListener("message", async (event) => {
-      console.log(`Received message from ${squirrelId}: ${event.data}`);
+      console.log(`[Log] Received message from ${squirrelId}: ${event.data}`);
       const playerId = this.socketToPlayer.get(ws);
       if (!playerId) return;
       
@@ -144,12 +152,19 @@ export class ForestManager implements DurableObject {
           await this.handleWalnutPlace(data.walnut);
         }
       } catch (error) {
-        console.error('Error processing message:', error);
+        console.error(`[Error] Error processing message from ${squirrelId}:`, error);
       }
     });
 
-    ws.addEventListener('close', () => this.handlePlayerLeave(squirrelId));
-    ws.addEventListener('error', () => this.handlePlayerLeave(squirrelId));
+    ws.addEventListener('close', () => {
+      console.log(`[Log] WebSocket closed for squirrelId: ${squirrelId}`);
+      this.handlePlayerLeave(squirrelId);
+    });
+    
+    ws.addEventListener('error', (error) => {
+      console.error(`[Error] WebSocket error for squirrelId: ${squirrelId}:`, error);
+      this.handlePlayerLeave(squirrelId);
+    });
 
     await this.handlePlayerJoin(squirrelId);
   }
