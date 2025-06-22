@@ -1,11 +1,11 @@
-import { ForestManagerDO } from './objects/ForestManager';
+import { ForestManager } from './objects/ForestManager';
 import { getObjectInstance, EnvWithBindings } from './objects/registry';
 import SquirrelSession from "./objects/SquirrelSession";
 import WalnutRegistry from "./objects/WalnutRegistry";
 import Leaderboard from "./objects/Leaderboard";
 
 // Export the Durable Objects so they can be used by the worker......
-export { ForestManagerDO as ForestManager, SquirrelSession, WalnutRegistry, Leaderboard };
+export { ForestManager, SquirrelSession, WalnutRegistry, Leaderboard };
 
 // Cloudflare Workers ExecutionContext type
 interface ExecutionContext {
@@ -54,17 +54,9 @@ export default {
     }
 
     try {
-      // Handle WebSocket connections
-      if (pathname === "/ws") {
-        // Check if this is a WebSocket upgrade request
-        const upgradeHeader = request.headers.get('Upgrade');
-        if (upgradeHeader !== 'websocket') {
-          return new Response('Expected Upgrade: websocket', { status: 426 });
-        }
-
-        // Forward the WebSocket request to the ForestManager DO
+      // Consolidated routing for terrain-seed and ws endpoints
+      if (pathname === "/terrain-seed" || pathname === "/ws") {
         const forest = getObjectInstance(env, "forest", "daily-forest");
-        console.log('Forwarding WebSocket request to ForestManager');
         return forest.fetch(request);
       }
 
@@ -160,22 +152,6 @@ export default {
           headers: {
             ...CORS_HEADERS,
             "Content-Type": "application/json"
-          }
-        });
-      }
-
-      // Handle /terrain-seed route
-      if (pathname === "/terrain-seed") {
-        const forest = getObjectInstance(env, "forest", "daily-forest");
-        console.log("Fetching terrain seed from ForestManager");
-        const resp = await forest.fetch(request);
-        const result = await resp.text();
-        console.log("Terrain seed response:", result);
-        return new Response(result, {
-          status: resp.status,
-          headers: {
-            ...CORS_HEADERS,
-            'Content-Type': 'application/json',
           }
         });
       }

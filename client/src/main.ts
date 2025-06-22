@@ -5,12 +5,6 @@ import { createTerrain } from './terrain'
 import { createForest } from './forest'
 import { loadSquirrelAvatar, updateSquirrelMovement, updateSquirrelCamera } from './avatar'
 
-// WebSocket Configuration
-const WS_URL = 'wss://api.hiddenwalnuts.com/ws';
-let ws: WebSocket | null = null;
-let reconnectAttempts = 0;
-const MAX_RECONNECT_ATTEMPTS = 5;
-
 // Player state and movement
 interface PlayerState {
   position: THREE.Vector3;
@@ -44,56 +38,6 @@ const keys = {
 };
 */
 
-function connectWebSocket() {
-  ws = new WebSocket(WS_URL);
-  
-  ws.onopen = () => {
-    console.log('Connected to WebSocket at wss://api.hiddenwalnuts.com/ws');
-    reconnectAttempts = 0;
-    startPositionSync();
-  };
-  
-  ws.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      switch (data.type) {
-        case 'player_update':
-          updateOtherPlayer(data.squirrelId, data.position);
-          break;
-        case 'player_join':
-          console.log(`Player joined: ${data.squirrelId}`);
-          updateOtherPlayer(data.squirrelId, data.position);
-          break;
-        case 'player_leave':
-          console.log(`Player left: ${data.squirrelId}`);
-          removeOtherPlayer(data.squirrelId);
-          break;
-        case 'pong':
-          console.debug('💓 Heartbeat acknowledged');
-          break;
-        default:
-          console.log('Unknown message type:', data.type);
-      }
-    } catch (error) {
-      console.error('Error parsing WebSocket message:', error);
-    }
-  };
-  
-  ws.onclose = (event) => {
-    console.log('WebSocket disconnected:', event.code, event.reason);
-    stopPositionSync();
-    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-      setTimeout(connectWebSocket, 1000 * (reconnectAttempts + 1));
-      reconnectAttempts++;
-    }
-  };
-  
-  ws.onerror = (error) => console.error('WebSocket error:', error);
-}
-
-// Initialize WebSocket connection
-connectWebSocket();
-
 // AI NOTE: Export DEBUG for use in other modules
 export const DEBUG = false;
 
@@ -126,6 +70,101 @@ try {
 }
 
 export { API_BASE };
+
+// WebSocket Configuration
+let ws: WebSocket | null = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+
+async function ensureTokenAndSquirrelId(): Promise<{ squirrelId: string; token: string }> {
+  let squirrelId = localStorage.getItem('squirrelId');
+  let token = localStorage.getItem('token');
+
+  if (!squirrelId || !token) {
+    // Generate new squirrelId and get token from server
+    const newSquirrelId = crypto.randomUUID();
+    const joinResponse = await fetch(`${API_BASE}/join?squirrelId=${newSquirrelId}`);
+    const data = await joinResponse.json();
+    const newToken = data.token;
+    
+    // Store both in localStorage
+    localStorage.setItem('squirrelId', newSquirrelId);
+    localStorage.setItem('token', newToken);
+    console.log('✅ Generated new squirrelId and token');
+    
+    return { squirrelId: newSquirrelId, token: newToken };
+  }
+
+  return { squirrelId: squirrelId!, token: token! };
+}
+
+function connectWebSocket() {
+  ensureTokenAndSquirrelId().then(({ squirrelId, token }) => {
+    const wsProtocol = API_BASE.startsWith('https') ? 'wss' : 'ws';
+    const wsHost = API_BASE.replace(/^https?:\/\//, '');
+    const wsUrl = `${wsProtocol}://${wsHost}/ws?squirrelId=${squirrelId}&token=${token}`;
+    
+    console.log('🔌 Connecting to WebSocket:', wsUrl);
+    ws = new WebSocket(wsUrl);
+
+    ws.addEventListener("open", () => {
+      console.log("✅ WebSocket connection established");
+      reconnectAttempts = 0;
+      startPositionSync();
+      startHeartbeat();
+    });
+
+    ws.addEventListener("error", (event) => {
+      console.error("WebSocket error:", event);
+      stopHeartbeat();
+    });
+
+    ws.addEventListener("close", (event) => {
+      console.warn("WebSocket closed:", event.code, event.reason);
+      stopHeartbeat();
+      stopPositionSync();
+      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        setTimeout(connectWebSocket, 1000 * (reconnectAttempts + 1));
+        reconnectAttempts++;
+      }
+    });
+    
+    ws.addEventListener("message", (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        switch (data.type) {
+          case 'player_update':
+            updateOtherPlayer(data.squirrelId, data.position);
+            break;
+          case 'player_join':
+            console.log(`Player joined: ${data.squirrelId}`);
+            updateOtherPlayer(data.squirrelId, data.position);
+            break;
+          case 'player_leave':
+            console.log(`Player left: ${data.squirrelId}`);
+            removeOtherPlayer(data.squirrelId);
+            break;
+          case 'pong':
+            console.debug('💓 Heartbeat acknowledged');
+            break;
+          default:
+            console.log('Unknown message type:', data.type);
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    });
+  }).catch(error => {
+    console.error('Failed to initialize WebSocket:', error);
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      setTimeout(connectWebSocket, 1000 * (reconnectAttempts + 1));
+      reconnectAttempts++;
+    }
+  });
+}
+
+// Initialize WebSocket connection
+connectWebSocket();
 
 // Scene dimensions
 const FOREST_SIZE = 100
@@ -174,8 +213,7 @@ async function getTerrainHeight(x: number, z: number): Promise<number> {
   
   const size = 200;
   const height = 5;
-  const s = await initializeTerrainSeed();
-  const seed = s || Math.random() * 1000; // Use fallback if s is undefined
+  const seed = await initializeTerrainSeed(); // Fetch or generate seed
   
   const xNorm = (x + size / 2) / size;
   const zNorm = (z + size / 2) / size;
@@ -464,8 +502,8 @@ function startHeartbeat() {
     clearInterval(heartbeatInterval);
   }
   heartbeatInterval = window.setInterval(() => {
-    if (socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ type: 'ping' }));
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'ping' }));
     }
   }, HEARTBEAT_INTERVAL);
 }
@@ -476,108 +514,6 @@ function stopHeartbeat() {
     heartbeatInterval = null;
   }
 }
-
-// WebSocket connection
-const wsProtocol = API_BASE.startsWith('https') ? 'wss' : 'ws';
-const wsHost = API_BASE.replace(/^https?:\/\//, '');
-const squirrelId = crypto.randomUUID();
-const wsUrl = `${wsProtocol}://${wsHost}/ws?squirrelId=${squirrelId}`;
-const socket = new WebSocket(wsUrl);
-
-socket.addEventListener("open", () => {
-  console.log("✅ WebSocket connection established");
-  startHeartbeat();
-});
-
-socket.addEventListener("message", (event) => {
-  console.log("Raw WS message received:", event.data);
-  const data = JSON.parse(event.data);
-
-  if (data.type === "pong") {
-    console.debug("💓 Heartbeat acknowledged");
-    return;
-  }
-
-  if (data.type === "map_reset") {
-    const mapState = data.data.mapState;
-    console.log(`Received map_reset with ${mapState.length} walnuts`);
-    // Clear both walnutMap and walnutMeshes
-    Object.values(walnutMap).forEach(mesh => {
-      scene.remove(mesh);
-    });
-    walnutMap = {};
-    walnutMeshes.forEach(mesh => {
-      scene.remove(mesh);
-    });
-    walnutMeshes.clear();
-    // Clear forest meshes
-    forestMeshes.forEach(mesh => {
-      scene.remove(mesh);
-    });
-    forestMeshes = [];
-    // Re-render walnuts and forest
-    for (const walnut of mapState) {
-      if (!walnut.found) {
-        const mesh = createWalnutMesh(walnut);
-        scene.add(mesh);
-        walnutMap[walnut.id] = mesh;
-        walnutMeshes.set(walnut.id, mesh);
-        console.log(`Added walnut ${walnut.id} to scene after map_reset`);
-      }
-    }
-    createForest().then((meshes) => {
-      forestMeshes = meshes;
-      meshes.forEach((mesh) => scene.add(mesh));
-      console.log('Forest re-added to scene after map_reset');
-    });
-    return;
-  }
-
-  if (data.type === "init") {
-    console.log(`Received mapState with ${data.mapState.length} walnuts`);
-    Object.values(walnutMap).forEach(mesh => {
-      scene.remove(mesh);
-    });
-    walnutMap = {};
-    for (const walnut of data.mapState) {
-      if (!walnut.found) {
-        const mesh = createWalnutMesh(walnut);
-        scene.add(mesh);
-        walnutMap[walnut.id] = mesh;
-        console.log(`Added walnut ${walnut.id} to scene`);
-      }
-    }
-  }
-
-  if (data.type === "walnut-rehidden") {
-    const { walnutId, location } = data;
-    console.log(`Received rehidden message for ${walnutId} at location:`, location);
-    Object.values(walnutMap).forEach(mesh => {
-      scene.remove(mesh);
-    });
-    walnutMap = {};
-    fetchWalnutMap().then(updatedWalnuts => {
-      for (const walnut of updatedWalnuts) {
-        if (!walnut.found) {
-          const mesh = createWalnutMesh(walnut);
-          scene.add(mesh);
-          walnutMap[walnut.id] = mesh;
-          console.log(`Synced walnut ${walnut.id} at position (${walnut.location.x}, ${walnut.location.y}, ${walnut.location.z})`);
-        }
-      }
-    });
-  }
-});
-
-socket.addEventListener("error", (event) => {
-  console.error("WebSocket error:", event);
-  stopHeartbeat();
-});
-
-socket.addEventListener("close", (event) => {
-  console.warn("WebSocket closed:", event);
-  stopHeartbeat();
-});
 
 // Update exports
 export {
@@ -590,7 +526,7 @@ export {
   renderWalnuts,
   getHidingMethod,
   createWalnutMaterial,
-  socket,
+  ws as socket,
   terrain,
   getTerrainHeight,
   forestMeshes,
@@ -606,12 +542,17 @@ function startPositionSync() {
   positionSyncInterval = window.setInterval(() => {
     if (ws && ws.readyState === WebSocket.OPEN) {
       const position = getPlayerPosition();
-      ws.send(JSON.stringify({
-        type: 'player_update',
-        position,
-        token: localStorage.getItem('token'),
-        squirrelId: localStorage.getItem('squirrelId')
-      }));
+      const storedToken = localStorage.getItem('token');
+      const storedSquirrelId = localStorage.getItem('squirrelId');
+      
+      if (storedToken && storedSquirrelId) {
+        ws.send(JSON.stringify({
+          type: 'player_update',
+          position,
+          token: storedToken,
+          squirrelId: storedSquirrelId
+        }));
+      }
     }
   }, 50); // 20 times per second
 }
@@ -690,7 +631,8 @@ const otherPlayers = new Map<string, THREE.Mesh>();
 
 // Update other players' positions
 function updateOtherPlayer(squirrelId: string, position: { x: number; y: number; z: number; rotationY: number }) {
-  if (squirrelId === localStorage.getItem('squirrelId')) return; // Skip local player
+  const localSquirrelId = localStorage.getItem('squirrelId');
+  if (squirrelId === localSquirrelId) return; // Skip local player
 
   let playerMesh = otherPlayers.get(squirrelId);
   if (!playerMesh) {
