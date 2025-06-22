@@ -758,32 +758,48 @@ function getPlayerPosition() {
 let playerMesh: THREE.Mesh | null = null;
 const otherPlayers = new Map<string, THREE.Mesh>();
 
-// Update other players' positions
+// Update other players' positions with enhanced visibility
 function updateOtherPlayer(squirrelId: string, position: { x: number; y: number; z: number; rotationY: number }) {
   const localSquirrelId = localStorage.getItem('squirrelId');
   if (squirrelId === localSquirrelId) return; // Skip local player
 
   let playerMesh = otherPlayers.get(squirrelId);
   if (!playerMesh) {
-    // Create new player mesh if it doesn't exist
+    // Create new player mesh with better visibility
     const geometry = new THREE.BoxGeometry(1, 2, 1);
     const material = new THREE.MeshStandardMaterial({ 
       color: 0x00ff00,
       transparent: true,
-      opacity: 0.9
+      opacity: 0.9,
+      emissive: 0x002200, // Slight glow for visibility
+      metalness: 0.1,
+      roughness: 0.8
     });
     playerMesh = new THREE.Mesh(geometry, material);
     playerMesh.castShadow = true;
     playerMesh.receiveShadow = true;
+    
+    // Add a glowing outline for better visibility
+    const outlineGeometry = new THREE.BoxGeometry(1.1, 2.1, 1.1);
+    const outlineMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0x00ff00,
+      transparent: true,
+      opacity: 0.3,
+      side: THREE.BackSide
+    });
+    const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
+    playerMesh.add(outline);
+    
     scene.add(playerMesh);
     otherPlayers.set(squirrelId, playerMesh);
-    console.log(`[Log] 🟢 Added multiplayer avatar for ${squirrelId} to scene`);
+    console.log(`[Log] 🟢 Added enhanced multiplayer avatar for ${squirrelId} to scene`);
   }
 
-  // Update position and rotation with smooth movement
-  playerMesh.position.set(position.x, position.y, position.z);
+  // Update position and rotation with terrain adjustment
+  const terrainY = Math.max(position.y, 0); // Ensure above ground
+  playerMesh.position.set(position.x, terrainY + 1, position.z); // Offset Y to stand on ground
   playerMesh.rotation.y = position.rotationY;
-  console.log(`[Log] 🎯 Updated player ${squirrelId} position to (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
+  console.log(`[Log] 🎯 Updated player ${squirrelId} position to (${position.x.toFixed(1)}, ${terrainY + 1}, ${position.z.toFixed(1)})`);
 }
 
 // Remove other player's avatar

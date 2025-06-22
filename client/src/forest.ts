@@ -114,7 +114,7 @@ export async function createForest(): Promise<THREE.Object3D[]> {
       }
       model.position.set(x, terrainHeight, z);
       model.scale.set(obj.scale, obj.scale, obj.scale);
-      model.traverse((child) => {
+      model.traverse((child: THREE.Object3D) => {
         if (child instanceof THREE.Mesh) {
           child.castShadow = true;
           child.receiveShadow = true;
