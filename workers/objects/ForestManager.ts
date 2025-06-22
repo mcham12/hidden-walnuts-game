@@ -49,124 +49,60 @@ export class ForestManager implements DurableObject {
 
   async fetch(request: CfRequest): Promise<CfResponse> {
     const url = new URL(request.url);
-    const path = url.pathname;
+    console.log(`[Log] ForestManager fetch called for path: ${url.pathname}`);
 
-    if (path === "/terrain-seed") {
-      const seed = this.terrainSeed; // Use initialized seed
+    if (url.pathname === '/ws') {
+      const upgradeHeader = request.headers.get('Upgrade');
+      if (upgradeHeader !== 'websocket') {
+        console.error('[Error] Missing Upgrade header for WebSocket');
+        return new Response('Expected Upgrade: websocket', { status: 426 }) as unknown as CfResponse;
+      }
+
+      const squirrelId = url.searchParams.get('squirrelId');
+      const token = url.searchParams.get('token');
+      if (!squirrelId || !token) {
+        console.error('[Error] Missing squirrelId or token');
+        return new Response('Missing squirrelId or token', { status: 400 }) as unknown as CfResponse;
+      }
+
+      console.log(`[Log] Upgrading to WebSocket for squirrelId: ${squirrelId}`);
+      const pair = new WebSocketPair();
+      const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
+      await this.handleSocket(server, squirrelId, token);
+      return new Response(null, { status: 101, webSocket: client }) as unknown as CfResponse;
+    }
+
+    if (url.pathname === "/terrain-seed") {
+      const seed = this.terrainSeed;
       return new Response(JSON.stringify({ seed }), {
         headers: { "Content-Type": "application/json", ...CORS_HEADERS },
       }) as unknown as CfResponse;
     }
 
-    if (path === "/ws") {
-      const upgradeHeader = request.headers.get("Upgrade");
-      if (upgradeHeader !== "websocket") {
-        return new Response("Expected Upgrade: websocket", { status: 426, headers: CORS_HEADERS }) as unknown as CfResponse;
-      }
-      const pair = new WebSocketPair();
-      const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
-      const squirrelId = url.searchParams.get("squirrelId") || crypto.randomUUID();
-      const token = url.searchParams.get("token") || "";
-      await this.handleSocket(server, squirrelId, token);
-      return new Response(null, { status: 101, webSocket: client }) as unknown as CfResponse;
-    }
-
-    // Legacy endpoints for backward compatibility
-    if (path === '/join' && request.method === 'GET') {
-      const squirrelId = url.searchParams.get('squirrelId');
-      const token = url.searchParams.get('token');
-      if (!squirrelId || !token) {
-        return new Response('Missing squirrelId or token', { status: 400, headers: CORS_HEADERS }) as unknown as CfResponse;
-      }
-      const pair = new WebSocketPair();
-      const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
-      await this.handleSocket(server, squirrelId, token);
-      return new Response(null, { status: 101, webSocket: client }) as unknown as CfResponse;
-    }
-
-    if (path === '/forest-objects') {
+    if (url.pathname === '/forest-objects') {
       const forestObjects = await this.getForestObjects();
       return new Response(JSON.stringify(forestObjects), {
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
       }) as unknown as CfResponse;
     }
 
-    if (path === '/map-state') {
+    if (url.pathname === '/map-state') {
       const mapState = await this.getMapState();
       return new Response(JSON.stringify(mapState), {
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
       }) as unknown as CfResponse;
     }
 
-    return new Response("Not Found", { status: 404, headers: CORS_HEADERS }) as unknown as CfResponse;
+    return new Response('Not Found', { status: 404 }) as unknown as CfResponse;
   }
 
-  async handleSocket(ws: WebSocket, squirrelId: string, token: string) {
-    console.log(`[Log] Handling WebSocket for squirrelId: ${squirrelId} with token: ${token}`);
-    
-    // Validate token first
-    const isValid = await this.validateToken(squirrelId, token);
-    if (!isValid) {
-      console.log(`[Log] Invalid token for squirrelId: ${squirrelId}, closing connection`);
-      ws.close(1008, "Invalid token");
-      return;
-    }
-
-    console.log(`[Log] Token validated successfully for squirrelId: ${squirrelId}`);
-    
-    // Add WebSocket handling logic here (e.g., accept, message handling)
-    ws.accept();
-    console.log(`[Log] WebSocket accepted for squirrelId: ${squirrelId}`);
-    
-    this.sessions.set(squirrelId, ws);
-    this.socketToPlayer.set(ws, squirrelId);
-
-    // Broadcast new player to all other players
-    this.broadcastExcept(squirrelId, {
-      type: 'player_join',
-      squirrelId,
-      position: this.players.get(squirrelId)?.position || { x: 0, y: 0, z: 0 }
+  async handleSocket(socket: WebSocket, squirrelId: string, token: string) {
+    console.log(`[Log] WebSocket connection established for squirrelId: ${squirrelId}`);
+    socket.accept();
+    socket.addEventListener('message', (event) => {
+      console.log(`[Log] Message from client: ${event.data}`);
+      socket.send(JSON.stringify({ type: 'ack', message: 'Received' }));
     });
-
-    console.log(`[Log] Player ${squirrelId} added to sessions, total active sessions: ${this.sessions.size}`);
-
-    ws.addEventListener("message", async (event) => {
-      console.log(`[Log] Received message from ${squirrelId}: ${event.data}`);
-      const playerId = this.socketToPlayer.get(ws);
-      if (!playerId) return;
-      
-      try {
-        const data = JSON.parse(event.data as string);
-        if (data.type === 'heartbeat') {
-          ws.send(JSON.stringify({ type: 'pong' }));
-          await this.cleanupStalePlayers();
-        } else if (data.type === 'player_update') {
-          await this.handlePlayerUpdate(playerId, data.position, data.rotationY);
-          // Broadcast position update to all other players
-          this.broadcastExcept(playerId, {
-            type: 'player_update',
-            squirrelId: playerId,
-            position: data.position
-          });
-        } else if (data.type === 'walnut_place') {
-          await this.handleWalnutPlace(data.walnut);
-        }
-      } catch (error) {
-        console.error(`[Error] Error processing message from ${squirrelId}:`, error);
-      }
-    });
-
-    ws.addEventListener('close', () => {
-      console.log(`[Log] WebSocket closed for squirrelId: ${squirrelId}`);
-      this.handlePlayerLeave(squirrelId);
-    });
-    
-    ws.addEventListener('error', (error) => {
-      console.error(`[Error] WebSocket error for squirrelId: ${squirrelId}:`, error);
-      this.handlePlayerLeave(squirrelId);
-    });
-
-    await this.handlePlayerJoin(squirrelId);
   }
 
   private async cleanupStalePlayers(): Promise<void> {

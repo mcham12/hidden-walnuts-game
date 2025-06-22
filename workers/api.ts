@@ -75,16 +75,8 @@ export default {
     }
 
     try {
-      // Handle /ws endpoint with WebSocket upgrade validation
+      // Handle /ws endpoint - forward directly to ForestManager
       if (pathname === "/ws") {
-        const upgradeHeader = request.headers.get('Upgrade');
-        if (upgradeHeader !== 'websocket') {
-          return new Response('Expected Upgrade: websocket', { 
-            status: 426,
-            headers: CORS_HEADERS
-          });
-        }
-        console.log('Forwarding WebSocket /ws request to ForestManager');
         const forest = getObjectInstance(env, "forest", "daily-forest");
         return forest.fetch(request);
       }
