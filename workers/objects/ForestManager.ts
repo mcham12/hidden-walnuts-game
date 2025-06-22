@@ -119,10 +119,22 @@ export class ForestManager implements DurableObject {
             };
             this.broadcastExcept(squirrelId, updateMessage);
             console.log(`[Log] Broadcasted player update from ${squirrelId} to ${this.sessions.size - 1} other players`);
+            
+            // Store player position for future multiplayer features
+            await this.handlePlayerUpdate(squirrelId, data.position, data.position.rotationY || 0);
+            
+            // NO acknowledgment for player updates to reduce spam
+            return;
           }
           
+          // Process other message types
           await this.processMessage(squirrelId, data);
-          socket.send(JSON.stringify({ type: 'ack', message: 'Received' }));
+          
+          // Send acknowledgment only for non-frequent, important messages
+          if (data.type !== 'ping' && data.type !== 'heartbeat' && data.type !== 'player_update') {
+            socket.send(JSON.stringify({ type: 'ack', message: `Received ${data.type}` }));
+          }
+          
         } catch (error) {
           console.error(`[Error] Error processing message from ${squirrelId}:`, error);
           socket.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
@@ -148,10 +160,6 @@ export class ForestManager implements DurableObject {
 
   private async processMessage(squirrelId: string, data: any): Promise<void> {
     switch (data.type) {
-      case 'player_update':
-        console.log(`[Log] Processing player update for ${squirrelId}:`, data.position);
-        // Store player position for future multiplayer features
-        break;
       case 'ping':
         console.log(`[Log] Ping received from ${squirrelId}`);
         break;

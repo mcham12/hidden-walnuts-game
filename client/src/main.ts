@@ -133,9 +133,9 @@ async function connectWebSocket(squirrelId: string, token: string) {
         return;
       }
       
-      // Handle multiplayer updates
+      // Enhanced multiplayer updates with better logging
       if (data.type === 'player_update' && data.squirrelId !== localStorage.getItem('squirrelId')) {
-        console.log(`[Log] Received player update from ${data.squirrelId}:`, data.position);
+        console.log(`[Log] 📨 Received player update from ${data.squirrelId}:`, data.position);
         updateOtherPlayer(data.squirrelId, data.position);
         return;
       }
@@ -181,11 +181,11 @@ async function connectWebSocket(squirrelId: string, token: string) {
         fetchWalnutMap();
       }
       if (data.type === "player_join") {
-        console.log(`Player joined: ${data.squirrelId}`);
+        console.log(`[Log] 👋 Player joined: ${data.squirrelId}`);
         updateOtherPlayer(data.squirrelId, data.position);
       }
       if (data.type === "player_leave") {
-        console.log(`Player left: ${data.squirrelId}`);
+        console.log(`[Log] 👋 Player left: ${data.squirrelId}`);
         removeOtherPlayer(data.squirrelId);
       }
     } catch (error) {
@@ -435,24 +435,6 @@ function renderWalnuts(walnutData: Walnut[]): void {
   });
 }
 
-async function fetchWalnutMap() {
-  try {
-    const response = await fetch(`${API_BASE}/map-state`);
-    if (!response.ok) {
-      console.error(`[Error] Failed to fetch walnut map: HTTP ${response.status}`);
-      return [];
-    }
-    const data = await response.json();
-    console.log(`[Log] Fetched walnut map with ${data.length} walnuts`);
-    walnuts = data;
-    if (Object.keys(walnutMap).length === 0) renderWalnuts(walnuts);
-    return walnuts;
-  } catch (error) {
-    console.error('[Error] Failed to fetch walnut map:', error);
-    return [];
-  }
-}
-
 // Debug function for forest objects
 async function fetchForestObjects() {
   try {
@@ -467,6 +449,98 @@ async function fetchForestObjects() {
   } catch (error) {
     console.error('[Error] Failed to fetch forest objects:', error);
     return [];
+  }
+}
+
+// Enhanced walnut map fetching with better logging
+async function fetchWalnutMap() {
+  try {
+    const response = await fetch(`${API_BASE}/map-state`);
+    if (!response.ok) {
+      console.error(`[Error] Failed to fetch walnut map: HTTP ${response.status}`);
+      return [];
+    }
+    const data = await response.json();
+    console.log(`[Log] Fetched ${data.length} walnuts from map-state`);
+    return data;
+  } catch (error) {
+    console.error('[Error] Failed to fetch walnut map:', error);
+    return [];
+  }
+}
+
+// Enhanced environment rendering function
+function renderEnvironment(forestData: any[], walnutData: any[]) {
+  console.log(`[Log] Starting environment rendering with ${forestData.length} forest objects and ${walnutData.length} walnuts`);
+  
+  // Render forest objects (trees/shrubs)
+  forestData.forEach(obj => {
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(2, 8, 2), // Taller boxes for trees
+      new THREE.MeshStandardMaterial({ 
+        color: obj.type === 'tree' ? 0x006400 : 0x228B22,
+        transparent: true,
+        opacity: 0.8
+      })
+    );
+    
+    // Handle both direct coordinates and nested position
+    const x = obj.position?.x ?? obj.x ?? 0;
+    const y = obj.position?.y ?? obj.y ?? 0;
+    const z = obj.position?.z ?? obj.z ?? 0;
+    
+    mesh.position.set(x, y + 4, z); // Offset Y to sit on ground
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+    console.log(`[Log] Added ${obj.type} at (${x}, ${y + 4}, ${z})`);
+  });
+
+  // Render walnuts with better visibility
+  walnutData.forEach(walnut => {
+    if (!walnut.found) {
+      const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.3), // Slightly larger for visibility
+        new THREE.MeshStandardMaterial({ 
+          color: 0x8B4513,
+          metalness: 0.2,
+          roughness: 0.8
+        })
+      );
+      
+      // Handle nested location structure
+      const location = walnut.location || walnut;
+      mesh.position.set(location.x, location.y + 0.3, location.z);
+      mesh.castShadow = true;
+      mesh.userData.walnutId = walnut.id;
+      scene.add(mesh);
+      walnutMeshes.set(walnut.id, mesh);
+      console.log(`[Log] Added walnut ${walnut.id} at (${location.x}, ${location.y + 0.3}, ${location.z})`);
+    }
+  });
+
+  console.log(`[Log] Environment rendering complete. Scene now has ${scene.children.length} objects`);
+}
+
+// Initialize environment with comprehensive logging
+async function initEnvironment() {
+  console.log('[Log] Initializing game environment...');
+  
+  try {
+    const [forestData, walnutData] = await Promise.all([
+      fetchForestObjects(),
+      fetchWalnutMap()
+    ]);
+    
+    console.log(`[Log] Environment data loaded: ${forestData.length} forest objects, ${walnutData.length} walnuts`);
+    renderEnvironment(forestData, walnutData);
+    
+    // Log scene composition for debugging
+    console.log(`[Log] Scene children count: ${scene.children.length}`);
+    console.log(`[Log] Scene children types:`, scene.children.map(child => child.type));
+    
+  } catch (error) {
+    console.error('[Error] Environment initialization failed:', error);
   }
 }
 
@@ -693,16 +767,23 @@ function updateOtherPlayer(squirrelId: string, position: { x: number; y: number;
   if (!playerMesh) {
     // Create new player mesh if it doesn't exist
     const geometry = new THREE.BoxGeometry(1, 2, 1);
-    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+    const material = new THREE.MeshStandardMaterial({ 
+      color: 0x00ff00,
+      transparent: true,
+      opacity: 0.9
+    });
     playerMesh = new THREE.Mesh(geometry, material);
     playerMesh.castShadow = true;
+    playerMesh.receiveShadow = true;
     scene.add(playerMesh);
     otherPlayers.set(squirrelId, playerMesh);
+    console.log(`[Log] 🟢 Added multiplayer avatar for ${squirrelId} to scene`);
   }
 
-  // Update position and rotation
+  // Update position and rotation with smooth movement
   playerMesh.position.set(position.x, position.y, position.z);
   playerMesh.rotation.y = position.rotationY;
+  console.log(`[Log] 🎯 Updated player ${squirrelId} position to (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
 }
 
 // Remove other player's avatar
@@ -711,25 +792,77 @@ function removeOtherPlayer(squirrelId: string) {
   if (playerMesh) {
     scene.remove(playerMesh);
     otherPlayers.delete(squirrelId);
-    console.log(`Removed player ${squirrelId}`);
+    console.log(`[Log] 🔴 Removed multiplayer avatar for ${squirrelId}`);
   }
 }
 
 // Initialize local player mesh
 function initializePlayer() {
   const geometry = new THREE.BoxGeometry(1, 2, 1);
-  const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+  const material = new THREE.MeshStandardMaterial({ 
+    color: 0xff0000,
+    transparent: true,
+    opacity: 0.9
+  });
   playerMesh = new THREE.Mesh(geometry, material);
   playerMesh.castShadow = true;
+  playerMesh.receiveShadow = true;
   scene.add(playerMesh);
   
   // Set initial position
   playerMesh.position.copy(playerState.position);
   playerMesh.rotation.y = playerState.rotationY;
+  
+  console.log('[Log] 🔴 Local player avatar initialized');
 }
 
 // Call initializePlayer after scene setup
 initializePlayer();
+
+// Initialize environment after player setup
+initEnvironment();
+
+// Scene monitoring for debugging
+function monitorScene() {
+  const sceneStats = {
+    totalChildren: scene.children.length,
+    meshCount: scene.children.filter(child => child.type === 'Mesh').length,
+    otherPlayerCount: otherPlayers.size,
+    walnutCount: walnutMeshes.size,
+    forestObjectCount: forestMeshes.length
+  };
+  
+  console.log('[Log] 📊 Scene composition:', sceneStats);
+  
+  // Check for missing environment elements
+  if (sceneStats.forestObjectCount === 0) {
+    console.warn('[Warning] 🌲 No forest objects detected in scene');
+  }
+  if (sceneStats.walnutCount === 0) {
+    console.warn('[Warning] 🥜 No walnuts detected in scene');
+  }
+}
+
+// Monitor scene every 30 seconds for debugging
+setInterval(monitorScene, 30000);
+
+// Debug function to manually fetch environment (accessible from console)
+(window as any).debugFetchEnvironment = async () => {
+  console.log('[Debug] 🔍 Manually fetching environment data...');
+  await initEnvironment();
+};
+
+// Debug function to log current scene state
+(window as any).debugSceneState = () => {
+  console.log('[Debug] 🎬 Current scene state:');
+  monitorScene();
+  console.log('[Debug] Scene children:', scene.children.map(child => ({ 
+    type: child.type, 
+    name: child.name || 'unnamed',
+    position: child.position,
+    visible: child.visible
+  })));
+};
 
 // Optimized player update frequency control
 let lastUpdateTime = 0;
