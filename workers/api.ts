@@ -32,14 +32,24 @@ export default {
     const url = new URL(request.url);
     const pathname = url.pathname;
 
-    if (pathname === "/join") {
-      const id = url.searchParams.get("squirrelId") || crypto.randomUUID();
-      const squirrel = env.SQUIRREL.get(env.SQUIRREL.idFromName(id));
-      const tokenResponse = await squirrel.fetch("https://internal/generate-token");
-      const token = await tokenResponse.text();
-      return new Response(JSON.stringify({ squirrelId: id, token }), {
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
-      });
+    if (pathname === '/join') {
+      const upgradeHeader = request.headers.get('Upgrade');
+      if (upgradeHeader === 'websocket') {
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        console.log('Forwarding WebSocket /join request to ForestManager');
+        return await forest.fetch(request);
+      } else {
+        const id = url.searchParams.get('squirrelId') || crypto.randomUUID();
+        const token = crypto.randomUUID();
+        const squirrel = env.SQUIRREL.get(env.SQUIRREL.idFromName(id));
+        const joinUrl = new URL(request.url);
+        joinUrl.pathname = '/join';
+        const response = await squirrel.fetch(new Request(joinUrl, { method: 'GET' }));
+        const data = await response.json();
+        return new Response(JSON.stringify({ squirrelId: id, token }), {
+          headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
+        });
+      }
     }
 
     if (request.method === 'OPTIONS') {
@@ -58,13 +68,6 @@ export default {
       if (pathname === "/terrain-seed" || pathname === "/ws") {
         const forest = getObjectInstance(env, "forest", "daily-forest");
         return forest.fetch(request);
-      }
-
-      // Route /join WebSocket requests to ForestManager Durable Object
-      if (pathname === '/join') {
-        const forest = getObjectInstance(env, "forest", "daily-forest");
-        console.log('Forwarding /join request to ForestManager');
-        return await forest.fetch(request);
       }
 
       // Handle /hide route

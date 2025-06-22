@@ -47,30 +47,36 @@ export default class SquirrelSession {
     const path = url.pathname;
     const now = Date.now();
 
-    // Load squirrel data if not already loaded
-    if (!this.squirrel) {
-      this.squirrel = await this.storage.get<Squirrel>("session");
-    }
+    try {
+      if (path.endsWith("/join")) {
+        const providedId = url.searchParams.get("squirrelId") || crypto.randomUUID();
+        this.squirrel = {
+          id: providedId,
+          joinedAt: now,
+          lastSeen: now,
+          participationSeconds: 0,
+          multiplier: 1.0,
+          powerUps: Object.fromEntries(DEFAULT_POWERUPS.map(p => [p, true])),
+          hiddenWalnuts: [],
+          foundWalnuts: [],
+          score: 0,
+          firstFinderAchieved: false
+        };
+        await this.save();
+        return new Response(JSON.stringify(this.squirrel), { 
+          headers: { "Content-Type": "application/json" }
+        });
+      }
 
-    // Handle join request - this will either create a new squirrel or update an existing one
-    if (path.endsWith("/join")) {
-      await this.handleJoin(request);
-      return new Response(JSON.stringify(this.squirrel), { 
-        headers: { "Content-Type": "application/json" }
-      });
-    }
+      if (!this.squirrel) {
+        this.squirrel = await this.storage.get<Squirrel>("session");
+        if (!this.squirrel) {
+          return new Response("Must join first", { status: 400 });
+        }
+      }
 
-    // All other endpoints require an existing squirrel
-    if (!this.squirrel) {
-      return new Response("Must join first", { status: 400 });
-    }
-
-    if (path.endsWith("/hide")) {
-      try {
-        // Parse and validate request body
+      if (path.endsWith("/hide")) {
         const body = await request.json() as unknown;
-        
-        // Type guard for request body
         if (!this.isValidHideRequest(body)) {
           return new Response(JSON.stringify({ 
             error: "Missing required fields: location and hiddenIn"
@@ -79,8 +85,6 @@ export default class SquirrelSession {
             headers: { "Content-Type": "application/json" }
           });
         }
-        
-        // Create the walnut object
         const walnut: Walnut = {
           id: `p-${crypto.randomUUID()}`,
           ownerId: this.squirrel.id,
@@ -90,15 +94,11 @@ export default class SquirrelSession {
           found: false,
           timestamp: now
         };
-        
-        // Send to WalnutRegistry
         const registry = getObjectInstance(this.env, "walnuts", "global");
         const registryResponse = await registry.fetch(new Request("https://internal/add", {
           method: "POST",
           body: JSON.stringify(walnut)
         }));
-        
-        // Check if the registry accepted the walnut
         if (!registryResponse.ok) {
           return new Response(JSON.stringify({ 
             error: "Failed to register walnut", 
@@ -108,56 +108,44 @@ export default class SquirrelSession {
             headers: { "Content-Type": "application/json" }
           });
         }
-        
-        // Update the squirrel's hidden walnuts
         this.squirrel.hiddenWalnuts.push(walnut.id);
         await this.save();
-        
-        // Return success with walnut details
         return new Response(JSON.stringify({ 
           success: true, 
           message: "Walnut hidden successfully",
-          walnut: {
-            id: walnut.id,
-            hiddenIn: walnut.hiddenIn,
-            timestamp: walnut.timestamp
-          }
+          walnut: { id: walnut.id, hiddenIn: walnut.hiddenIn, timestamp: walnut.timestamp }
         }), { 
           status: 200, 
           headers: { "Content-Type": "application/json" }
         });
-      } catch (error: unknown) {
-        // Handle JSON parsing errors
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return new Response(JSON.stringify({ 
-          error: "Invalid request", 
-          details: errorMessage 
-        }), { 
-          status: 400, 
-          headers: { "Content-Type": "application/json" }
-        });
       }
-    }
 
-    if (path.endsWith("/ping")) {
-      await this.updateParticipation();
-      await this.save();
-      return new Response("Participation updated");
-    }
+      if (path.endsWith("/ping")) {
+        await this.updateParticipation();
+        await this.save();
+        return new Response("Participation updated");
+      }
 
-    if (path === "/generate-token") {
-      const token = await this.generateToken();
-      return new Response(token);
-    }
+      if (path === "/generate-token") {
+        const token = await this.generateToken();
+        return new Response(token);
+      }
 
-    if (path === "/validate" && request.method === "POST") {
-      const body = await request.json() as ValidateBody;
-      const providedToken = body.token;
-      const isValid = await this.validateToken(providedToken);
-      return new Response(isValid ? "Valid" : "Invalid", { status: isValid ? 200 : 401 });
-    }
+      if (path === "/validate" && request.method === "POST") {
+        const body = await request.json() as ValidateBody;
+        const providedToken = body.token;
+        const isValid = await this.validateToken(providedToken);
+        return new Response(isValid ? "Valid" : "Invalid", { status: isValid ? 200 : 401 });
+      }
 
-    return new Response("Not found", { status: 404 });
+      return new Response("Not found", { status: 404 });
+    } catch (error) {
+      console.error('Error in SquirrelSession fetch:', error);
+      return new Response(JSON.stringify({ error: "Internal server error" }), { 
+        status: 500, 
+        headers: { "Content-Type": "application/json" }
+      });
+    }
   }
 
   async updateParticipation(): Promise<void> {
@@ -176,45 +164,6 @@ export default class SquirrelSession {
     if (this.squirrel) {
       await this.storage.put("session", this.squirrel);
     }
-  }
-
-  private async handleJoin(request: Request): Promise<void> {
-    const currentTime = Date.now();
-    const url = new URL(request.url);
-    
-    // Check if this is a new squirrel or returning one
-    if (!this.squirrel) {
-      // Extract ID from URL params or generate a new one
-      const providedId = url.searchParams.get("squirrelId");
-      const squirrelId = providedId || crypto.randomUUID();
-      
-      // Create a new squirrel with default values
-      this.squirrel = {
-        id: squirrelId,
-        joinedAt: currentTime,
-        lastSeen: currentTime,
-        participationSeconds: 0,
-        multiplier: 1.0,
-        powerUps: Object.fromEntries(DEFAULT_POWERUPS.map(p => [p, true])),
-        hiddenWalnuts: [],
-        foundWalnuts: [],
-        score: 0,
-        firstFinderAchieved: false
-      };
-    } else {
-      // Update existing squirrel's participation data
-      const secondsSinceLastSeen = Math.floor((currentTime - this.squirrel.lastSeen) / 1000);
-      this.squirrel.participationSeconds += secondsSinceLastSeen;
-      this.squirrel.lastSeen = currentTime;
-      
-      // Update multiplier based on participation time
-      const participationIntervals = Math.floor(this.squirrel.participationSeconds / PARTICIPATION_INTERVAL_SECONDS);
-      const newMultiplier = 1.0 + (participationIntervals * 0.1);
-      this.squirrel.multiplier = Math.min(newMultiplier, PARTICIPATION_MAX_MULTIPLIER);
-    }
-    
-    // Save squirrel data
-    await this.save();
   }
 
   // Type guard for hide request body

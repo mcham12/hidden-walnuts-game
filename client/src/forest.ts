@@ -89,6 +89,10 @@ export async function createForest(): Promise<THREE.Object3D[]> {
   }
 
   for (const obj of forestObjects) {
+    if (typeof obj.x !== 'number' || typeof obj.z !== 'number' || isNaN(obj.x) || isNaN(obj.z)) {
+      console.error(`[Log] Skipping invalid forest object ${obj.id}:`, obj);
+      continue;
+    }
     try {
       const model = obj.type === 'tree' ? treeModel.scene.clone() : shrubModel.scene.clone();
       let terrainHeight;
