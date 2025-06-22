@@ -99,89 +99,99 @@ async function connectWebSocket(squirrelId: string, token: string) {
   const wsUrl = `${wsProtocol}://${wsHost}/ws?squirrelId=${squirrelId}&token=${token}`;
   socket = new WebSocket(wsUrl);
 
-  socket.onopen = () => {
-    console.log("[Log] WebSocket connected");
+  socket.addEventListener("open", () => {
+    console.log("✅ WebSocket connection established");
     reconnectAttempts = 0;
     startHeartbeat();
-    startPositionSync();
-  };
-
-  socket.onmessage = (event) => {
-    console.log('[Log] WebSocket message received:', event.data);
-    const data = JSON.parse(event.data);
-    if (data.type === "pong") {
-      console.debug("💓 Heartbeat acknowledged");
-      return;
-    }
-    if (data.type === "map_reset") {
-      const mapState = data.data.mapState;
-      console.log(`Received map_reset with ${mapState.length} walnuts`);
-      Object.values(walnutMap).forEach(mesh => scene.remove(mesh));
-      walnutMap = {};
-      walnutMeshes.forEach(mesh => scene.remove(mesh));
-      walnutMeshes.clear();
-      forestMeshes.forEach(mesh => scene.remove(mesh));
-      forestMeshes = [];
-      for (const walnut of mapState) {
-        if (!walnut.found) {
-          const mesh = createWalnutMesh(walnut);
-          scene.add(mesh);
-          walnutMap[walnut.id] = mesh;
-          walnutMeshes.set(walnut.id, mesh);
-        }
+    
+    // Send player updates every 100ms to reduce acknowledgment spam
+    setInterval(() => {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        const position = getPlayerPosition();
+        socket.send(JSON.stringify({ type: 'player_update', position }));
       }
-      createForest().then((meshes) => {
-        forestMeshes = meshes;
-        meshes.forEach((mesh) => scene.add(mesh));
-        console.log('Forest re-added to scene after map_reset');
-      });
-    }
-    if (data.type === "init") {
-      console.log(`Received mapState with ${data.mapState.length} walnuts`);
-      Object.values(walnutMap).forEach(mesh => scene.remove(mesh));
-      walnutMap = {};
-      for (const walnut of data.mapState) {
-        if (!walnut.found) {
-          const mesh = createWalnutMesh(walnut);
-          scene.add(mesh);
-          walnutMap[walnut.id] = mesh;
-        }
-      }
-    }
-    if (data.type === "walnut-rehidden") {
-      const { walnutId, location } = data;
-      console.log(`Received rehidden message for ${walnutId} at location:`, location);
-      fetchWalnutMap();
-    }
-    if (data.type === "player_update") {
-      updateOtherPlayer(data.squirrelId, data.position);
-    }
-    if (data.type === "player_join") {
-      console.log(`Player joined: ${data.squirrelId}`);
-      updateOtherPlayer(data.squirrelId, data.position);
-    }
-    if (data.type === "player_leave") {
-      console.log(`Player left: ${data.squirrelId}`);
-      removeOtherPlayer(data.squirrelId);
-    }
-  };
+    }, 100);
+  });
 
-  socket.onerror = (error) => {
-    console.error('[Error] WebSocket error:', error);
+  socket.addEventListener("error", (event) => {
+    console.error("WebSocket error:", event);
     stopHeartbeat();
-    stopPositionSync();
-  };
+  });
 
-  socket.onclose = () => {
-    console.warn('[Warning] WebSocket closed');
+  socket.addEventListener("close", (event) => {
+    console.warn("WebSocket closed:", event.code, event.reason);
     stopHeartbeat();
-    stopPositionSync();
     // Attempt to reconnect after a delay
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       reconnectAttempts++;
       setTimeout(() => connectWebSocket(squirrelId, token), RECONNECT_DELAY * reconnectAttempts);
     }
-  };
+  });
+
+  socket.addEventListener("message", (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      console.log("Received message:", data);
+      
+      if (data.type === "pong") {
+        console.debug("💓 Heartbeat acknowledged");
+        return;
+      }
+      if (data.type === "map_reset") {
+        const mapState = data.data.mapState;
+        console.log(`Received map_reset with ${mapState.length} walnuts`);
+        Object.values(walnutMap).forEach(mesh => scene.remove(mesh));
+        walnutMap = {};
+        walnutMeshes.forEach(mesh => scene.remove(mesh));
+        walnutMeshes.clear();
+        forestMeshes.forEach(mesh => scene.remove(mesh));
+        forestMeshes = [];
+        for (const walnut of mapState) {
+          if (!walnut.found) {
+            const mesh = createWalnutMesh(walnut);
+            scene.add(mesh);
+            walnutMap[walnut.id] = mesh;
+            walnutMeshes.set(walnut.id, mesh);
+          }
+        }
+        createForest().then((meshes) => {
+          forestMeshes = meshes;
+          meshes.forEach((mesh) => scene.add(mesh));
+          console.log('Forest re-added to scene after map_reset');
+        });
+      }
+      if (data.type === "init") {
+        console.log(`Received mapState with ${data.mapState.length} walnuts`);
+        Object.values(walnutMap).forEach(mesh => scene.remove(mesh));
+        walnutMap = {};
+        for (const walnut of data.mapState) {
+          if (!walnut.found) {
+            const mesh = createWalnutMesh(walnut);
+            scene.add(mesh);
+            walnutMap[walnut.id] = mesh;
+          }
+        }
+      }
+      if (data.type === "walnut-rehidden") {
+        const { walnutId, location } = data;
+        console.log(`Received rehidden message for ${walnutId} at location:`, location);
+        fetchWalnutMap();
+      }
+      if (data.type === "player_update") {
+        updateOtherPlayer(data.squirrelId, data.position);
+      }
+      if (data.type === "player_join") {
+        console.log(`Player joined: ${data.squirrelId}`);
+        updateOtherPlayer(data.squirrelId, data.position);
+      }
+      if (data.type === "player_leave") {
+        console.log(`Player left: ${data.squirrelId}`);
+        removeOtherPlayer(data.squirrelId);
+      }
+    } catch (error) {
+      console.error("Error parsing message:", error);
+    }
+  });
 }
 
 // Scene dimensions
@@ -264,7 +274,7 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 )
-camera.position.set(30, 60, 50)
+camera.position.set(0, 50, 100)
 camera.lookAt(0, 0, 0)
 console.log('Camera initialized at:', camera.position)
 
@@ -335,7 +345,7 @@ createTerrain().then((mesh) => {
   });
 });
 
-const axesHelper = new THREE.AxesHelper(5)
+const axesHelper = new THREE.AxesHelper(100)
 scene.add(axesHelper)
 
 interface Walnut {
@@ -408,11 +418,13 @@ function createWalnutMesh(walnut: Walnut): THREE.Mesh {
 }
 
 function renderWalnuts(walnutData: Walnut[]): void {
+  console.log(`[Log] Rendering ${walnutData.length} walnuts`);
   walnutMeshes.forEach(mesh => scene.remove(mesh));
   walnutMeshes.clear();
   walnutData.forEach(walnut => {
     if (!walnut.found) {
       const mesh = createWalnutMesh(walnut);
+      console.log(`[Log] Adding walnut at (${walnut.location.x}, ${walnut.location.z})`);
       scene.add(mesh);
       walnutMeshes.set(walnut.id, mesh);
     }
@@ -422,12 +434,17 @@ function renderWalnuts(walnutData: Walnut[]): void {
 async function fetchWalnutMap() {
   try {
     const response = await fetch(`${API_BASE}/map-state`);
-    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-    walnuts = await response.json();
+    if (!response.ok) {
+      console.error(`[Error] Failed to fetch walnut map: HTTP ${response.status}`);
+      return [];
+    }
+    const data = await response.json();
+    console.log(`[Log] Fetched walnut map with ${data.length} walnuts`);
+    walnuts = data;
     if (Object.keys(walnutMap).length === 0) renderWalnuts(walnuts);
     return walnuts;
   } catch (error) {
-    console.error('Failed to fetch walnut map data:', error);
+    console.error('[Error] Failed to fetch walnut map:', error);
     return [];
   }
 }
@@ -562,30 +579,30 @@ export {
   updateLocalPlayer
 };
 
-// Set up position sync interval
-let positionSyncInterval: number | null = null;
+// Set up position sync interval - UNUSED since we handle it in WebSocket open handler
+// let positionSyncInterval: number | null = null;
 
-function startPositionSync() {
-  if (positionSyncInterval) return;
-  positionSyncInterval = window.setInterval(() => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      const position = getPlayerPosition();
-      socket.send(JSON.stringify({
-        type: 'player_update',
-        position,
-        token: localStorage.getItem('token'),
-        squirrelId: localStorage.getItem('squirrelId')
-      }));
-    }
-  }, 50);
-}
+// function startPositionSync() {
+//   if (positionSyncInterval) return;
+//   positionSyncInterval = window.setInterval(() => {
+//     if (socket && socket.readyState === WebSocket.OPEN) {
+//       const position = getPlayerPosition();
+//       socket.send(JSON.stringify({
+//         type: 'player_update',
+//         position,
+//         token: localStorage.getItem('token'),
+//         squirrelId: localStorage.getItem('squirrelId')
+//       }));
+//     }
+//   }, 50);
+// }
 
-function stopPositionSync() {
-  if (positionSyncInterval) {
-    clearInterval(positionSyncInterval);
-    positionSyncInterval = null;
-  }
-}
+// function stopPositionSync() {
+//   if (positionSyncInterval) {
+//     clearInterval(positionSyncInterval);
+//     positionSyncInterval = null;
+//   }
+// }
 
 // Update local player position
 function updateLocalPlayer(deltaTime: number) {

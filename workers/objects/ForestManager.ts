@@ -97,12 +97,38 @@ export class ForestManager implements DurableObject {
   }
 
   async handleSocket(socket: WebSocket, squirrelId: string, token: string) {
-    console.log(`[Log] WebSocket connection established for squirrelId: ${squirrelId}`);
-    socket.accept();
-    socket.addEventListener('message', (event) => {
-      console.log(`[Log] Message from client: ${event.data}`);
-      socket.send(JSON.stringify({ type: 'ack', message: 'Received' }));
-    });
+    try {
+      console.log(`[Log] WebSocket connection established for squirrelId: ${squirrelId}`);
+      socket.accept();
+      socket.addEventListener('message', async (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log(`[Log] Received message from ${squirrelId}:`, data);
+          await this.processMessage(squirrelId, data);
+          socket.send(JSON.stringify({ type: 'ack', message: 'Received' }));
+        } catch (error) {
+          console.error(`[Error] Error processing message from ${squirrelId}:`, error);
+          socket.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
+        }
+      });
+    } catch (error) {
+      console.error(`[Error] Error handling WebSocket for ${squirrelId}:`, error);
+      socket.close(1011, 'Internal server error');
+    }
+  }
+
+  private async processMessage(squirrelId: string, data: any): Promise<void> {
+    switch (data.type) {
+      case 'player_update':
+        console.log(`[Log] Processing player update for ${squirrelId}:`, data.position);
+        // Store player position for future multiplayer features
+        break;
+      case 'ping':
+        console.log(`[Log] Ping received from ${squirrelId}`);
+        break;
+      default:
+        console.log(`[Log] Unknown message type from ${squirrelId}: ${data.type}`);
+    }
   }
 
   private async cleanupStalePlayers(): Promise<void> {
