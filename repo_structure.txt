@@ -23,6 +23,7 @@
 │   │           └── test.txt
 │   ├── src
 │   │   ├── avatar.ts
+│   │   ├── constants.ts
 │   │   ├── forest.ts
 │   │   ├── main.ts
 │   │   ├── style.css
@@ -32,10 +33,14 @@
 │   ├── test-multiplayer.html
 │   ├── tsconfig.json
 │   └── vite.config.ts
+├── concat_files.sh
 ├── conventions.md
+├── deployment_setup.md
 ├── GameVision.md
 ├── hide-walnut.sh
 ├── MVP_Plan_Hidden_Walnuts.md
+├── output.txt
+├── package_files.sh
 ├── package-lock.json
 ├── package.json
 ├── public
@@ -72,6 +77,11 @@
 ├── repo_structure.txt
 ├── src
 │   └── index.ts
+├── test-ack-optimization.js
+├── test-environment-multiplayer.js
+├── test-multiplayer.js
+├── test-websocket.js
+├── TODO.md
 ├── tsconfig.json
 ├── workers
 │   ├── api.ts
@@ -84,6 +94,8 @@
 │   │   └── WalnutRegistry.ts
 │   ├── package-lock.json
 │   ├── package.json
+│   ├── test-multiplayer.js
+│   ├── test-websocket.js
 │   ├── tsconfig.json
 │   └── types.ts
 └── wrangler.toml

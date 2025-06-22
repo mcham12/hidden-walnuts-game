@@ -1,4 +1,4 @@
-// AI NOTE: Modified for MVP-5 to fix tree/shrub visibility by enhancing debug logs for GLTF and test asset loading.
+// AI NOTE: Updated for Task 2 - Added fallback models and improved error handling for rendering issues.
 // Loads GLTF models and places them at positions fetched from /forest-objects, adjusted to terrain height.
 
 import * as THREE from 'three';
@@ -15,8 +15,71 @@ interface ForestObject {
   position?: { x: number; y: number; z: number };
 }
 
-export async function createForest(): Promise<THREE.Object3D[]> {
+let treeModel: any = null;
+let shrubModel: any = null;
+let modelsLoaded = false;
+let fallbackModels = false;
+
+// Load models with fallback support
+async function loadModels() {
+  if (modelsLoaded) return;
+  
   const loader = new GLTFLoader();
+  
+  // Load tree model with fallback
+  const treePath = '/assets/models/Tree_01.glb';
+  try {
+    if (DEBUG) console.log(`[Log] Loading GLTF model: ${treePath}`);
+    treeModel = await loader.loadAsync(treePath);
+    if (DEBUG) console.log(`[Log] Loaded ${treePath} successfully`);
+  } catch (error) {
+    console.error(`[Error] Failed to load ${treePath}:`, error);
+    // Create fallback model
+    const fallbackTree = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 3, 1), 
+      new THREE.MeshStandardMaterial({ 
+        color: 0x228B22,
+        transparent: true,
+        opacity: 0.8
+      })
+    );
+    treeModel = { scene: fallbackTree };
+    fallbackModels = true;
+    console.log('[Log] Using fallback box geometry for trees');
+  }
+
+  // Load shrub model with fallback
+  const shrubPath = '/assets/models/Bush_01.glb';
+  try {
+    if (DEBUG) console.log(`[Log] Loading GLTF model: ${shrubPath}`);
+    shrubModel = await loader.loadAsync(shrubPath);
+    if (DEBUG) console.log(`[Log] Loaded ${shrubPath} successfully`);
+  } catch (error) {
+    console.error(`[Error] Failed to load ${shrubPath}:`, error);
+    // Create fallback model
+    const fallbackShrub = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1), 
+      new THREE.MeshStandardMaterial({ 
+        color: 0x006400,
+        transparent: true,
+        opacity: 0.8
+      })
+    );
+    shrubModel = { scene: fallbackShrub };
+    fallbackModels = true;
+    console.log('[Log] Using fallback box geometry for shrubs');
+  }
+  
+  modelsLoaded = true;
+  if (fallbackModels) {
+    console.warn('[Warning] Using fallback models - check that .glb files exist in /assets/models/');
+  }
+}
+
+export async function createForest(): Promise<THREE.Object3D[]> {
+  // Load models first
+  await loadModels();
+  
   const forestObjects: ForestObject[] = [];
 
   // Fetch forest object positions from backend
@@ -26,94 +89,52 @@ export async function createForest(): Promise<THREE.Object3D[]> {
     const data = await response.json();
     if (!Array.isArray(data)) throw new Error('Invalid forest objects data: not an array');
     forestObjects.push(...data);
-    console.log(`[Log] Fetched ${forestObjects.length} forest objects`);
+    console.log(`[Log] Fetched ${forestObjects.length} forest objects from API`);
   } catch (error) {
-    console.error('Failed to fetch forest objects:', error);
-    return [];
+    console.error('[Error] Failed to fetch forest objects from API:', error);
+    // Create some test objects for debugging
+    const testObjects = [
+      { id: 'test-tree-1', type: 'tree' as const, x: 10, y: 0, z: 10, scale: 1 },
+      { id: 'test-tree-2', type: 'tree' as const, x: -10, y: 0, z: 10, scale: 1 },
+      { id: 'test-tree-3', type: 'tree' as const, x: 10, y: 0, z: -10, scale: 1 },
+      { id: 'test-shrub-1', type: 'shrub' as const, x: 5, y: 0, z: -5, scale: 1 },
+      { id: 'test-shrub-2', type: 'shrub' as const, x: -5, y: 0, z: -5, scale: 1 },
+      { id: 'test-shrub-3', type: 'shrub' as const, x: 0, y: 0, z: 8, scale: 1 }
+    ];
+    forestObjects.push(...testObjects);
+    console.log(`[Log] Using ${testObjects.length} test forest objects`);
   }
 
   const meshes: THREE.Object3D[] = [];
   
-  // Test asset serving with a simple text file
-  if (DEBUG) {
-    try {
-      const testPath = '/assets/models/test.txt';
-      const testUrl = `${window.location.origin}${testPath}`;
-      console.log(`[Log] Testing asset serving: ${testUrl}`);
-      const response = await fetch(testUrl);
-      const responseText = await response.text();
-      console.log(`[Log] Test asset fetch status: ${response.status}, Response: ${responseText}`);
-    } catch (error) {
-      console.error('Failed to fetch test asset:', error);
-    }
-  }
-
-  // Load models
-  let treeModel, shrubModel;
-  const treePath = '/assets/models/Tree_01.glb';
-  const shrubPath = '/assets/models/Bush_01.glb';
-  const treeUrl = `${window.location.origin}${treePath}`;
-  const shrubUrl = `${window.location.origin}${shrubPath}`;
-  try {
-    if (DEBUG) console.log(`[Log] Loading GLTF model: ${treeUrl} (path: ${treePath})`);
-    treeModel = await loader.loadAsync(treePath);
-    if (DEBUG) console.log(`[Log] Loaded ${treePath} successfully`);
-  } catch (error) {
-    console.error(`Failed to load ${treeUrl}:`, error);
-    if (DEBUG) {
-      try {
-        const response = await fetch(treeUrl);
-        const responseText = await response.text();
-        console.log(`[Log] Tree GLTF fetch status: ${response.status}, Response: ${responseText.slice(0, 200)}`);
-      } catch (fetchError) {
-        console.error(`Failed to fetch ${treeUrl} for debugging:`, fetchError);
-      }
-    }
-    return [];
-  }
-  try {
-    if (DEBUG) console.log(`[Log] Loading GLTF model: ${shrubUrl} (path: ${shrubPath})`);
-    shrubModel = await loader.loadAsync(shrubPath);
-    if (DEBUG) console.log(`[Log] Loaded ${shrubPath} successfully`);
-  } catch (error) {
-    console.error(`Failed to load ${shrubUrl}:`, error);
-    if (DEBUG) {
-      try {
-        const response = await fetch(shrubUrl);
-        const responseText = await response.text();
-        console.log(`[Log] Shrub GLTF fetch status: ${response.status}, Response: ${responseText.slice(0, 200)}`);
-      } catch (fetchError) {
-        console.error(`Failed to fetch ${shrubUrl} for debugging:`, fetchError);
-      }
-    }
-    return [];
-  }
-
   for (const obj of forestObjects) {
     // Handle both direct x/z and nested position properties
     const x = obj.x !== undefined ? obj.x : obj.position?.x;
     const z = obj.z !== undefined ? obj.z : obj.position?.z;
     
     if (typeof x !== 'number' || typeof z !== 'number' || isNaN(x) || isNaN(z)) {
-      console.error(`[Log] Skipping invalid forest object ${obj.id}:`, obj);
+      console.error(`[Error] Skipping invalid forest object ${obj.id}:`, obj);
       continue;
     }
     
     try {
       const model = obj.type === 'tree' ? treeModel.scene.clone() : shrubModel.scene.clone();
-      let terrainHeight;
+      let terrainHeight = 0;
+      
+      // Try to get terrain height, but don't fail if it's not available
       try {
         terrainHeight = await getTerrainHeight(x, z);
         if (terrainHeight < 0 || terrainHeight > 5) {
-          console.warn(`Invalid terrain height for ${obj.type} ${obj.id} at (${x}, ${z}): ${terrainHeight}, using 0`);
+          console.warn(`[Warning] Invalid terrain height for ${obj.type} ${obj.id} at (${x}, ${z}): ${terrainHeight}, using 0`);
           terrainHeight = 0;
         }
       } catch (error) {
-        console.error(`[Log] Failed to get terrain height for ${obj.type} ${obj.id}:`, error);
+        if (DEBUG) console.warn(`[Warning] Failed to get terrain height for ${obj.type} ${obj.id}:`, error);
         terrainHeight = 0;
       }
+      
       model.position.set(x, terrainHeight, z);
-      model.scale.set(obj.scale, obj.scale, obj.scale);
+      model.scale.set(obj.scale || 1, obj.scale || 1, obj.scale || 1);
       model.traverse((child: THREE.Object3D) => {
         if (child instanceof THREE.Mesh) {
           child.castShadow = true;
@@ -122,14 +143,63 @@ export async function createForest(): Promise<THREE.Object3D[]> {
       });
       model.userData = { id: obj.id, type: obj.type };
       meshes.push(model);
-      if (DEBUG) {
-        console.log(`[Log] Created mesh for ${obj.type} ${obj.id} at (${x}, ${terrainHeight}, ${z})`);
-      }
+      console.log(`[Log] Created ${obj.type} ${obj.id} at (${x}, ${terrainHeight}, ${z}) ${fallbackModels ? '(fallback)' : '(GLTF)'}`);
     } catch (error) {
-      console.error(`[Log] Failed to create mesh for ${obj.id}:`, error);
+      console.error(`[Error] Failed to create mesh for ${obj.id}:`, error);
     }
   }
 
-  console.log(`[Log] Created ${meshes.length} forest meshes`);
+  console.log(`[Log] Created ${meshes.length} forest meshes (${fallbackModels ? 'using fallback models' : 'using GLTF models'})`);
+  return meshes;
+}
+
+// Create individual forest mesh
+export function createForestMesh(obj: ForestObject, scene: THREE.Scene): THREE.Object3D | null {
+  if (!modelsLoaded) {
+    console.warn('[Warning] Models not loaded yet, skipping forest object creation');
+    return null;
+  }
+  
+  const model = obj.type === 'tree' ? treeModel.scene.clone() : shrubModel.scene.clone();
+  
+  // Handle both direct x/z and nested position properties
+  const x = obj.x !== undefined ? obj.x : obj.position?.x;
+  const z = obj.z !== undefined ? obj.z : obj.position?.z;
+  
+  if (typeof x !== 'number' || typeof z !== 'number' || isNaN(x) || isNaN(z)) {
+    console.error(`[Error] Invalid coordinates for forest object ${obj.id}:`, obj);
+    return null;
+  }
+  
+  model.position.set(x, obj.y || 0, z);
+  model.scale.set(obj.scale || 1, obj.scale || 1, obj.scale || 1);
+  
+  // Ensure the model has proper shadows
+  model.traverse((child: THREE.Object3D) => {
+    if (child instanceof THREE.Mesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+  
+  model.userData = { id: obj.id, type: obj.type };
+  scene.add(model);
+  console.log(`[Log] Added ${obj.type} ${obj.id} at (${x}, ${obj.y || 0}, ${z})`);
+  return model;
+}
+
+// Export function to render forest objects from external data
+export function renderForestObjects(forestData: ForestObject[], scene: THREE.Scene): THREE.Object3D[] {
+  if (!modelsLoaded) {
+    console.warn('[Warning] Models not loaded yet, cannot render forest objects');
+    return [];
+  }
+  
+  const meshes: THREE.Object3D[] = [];
+  forestData.forEach(obj => {
+    const mesh = createForestMesh(obj, scene);
+    if (mesh) meshes.push(mesh);
+  });
+  
   return meshes;
 } 

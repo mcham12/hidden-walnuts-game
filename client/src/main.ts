@@ -456,15 +456,15 @@ async function fetchForestObjects() {
 async function fetchWalnutMap() {
   try {
     const response = await fetch(`${API_BASE}/map-state`);
-    if (!response.ok) {
-      console.error(`[Error] Failed to fetch walnut map: HTTP ${response.status}`);
-      return [];
-    }
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
-    console.log(`[Log] Fetched ${data.length} walnuts from map-state`);
+    console.log('[Log] Raw walnut data:', data);
+    if (!Array.isArray(data)) throw new Error(`Expected array, got: ${typeof data}`);
+    console.log(`[Log] Fetched ${data.length} walnuts`);
+    renderWalnuts(data);
     return data;
   } catch (error) {
-    console.error('[Error] Failed to fetch walnut map:', error);
+    console.error('[Error] Fetching walnut map:', error);
     return [];
   }
 }
