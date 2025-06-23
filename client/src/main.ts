@@ -3,40 +3,11 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { createTerrain } from './terrain'
 import { createForest } from './forest'
-import { loadSquirrelAvatar, updateSquirrelMovement, updateSquirrelCamera } from './avatar'
-import { MOVEMENT_SPEED, GRAVITY, JUMP_FORCE, FOREST_SIZE, HEARTBEAT_INTERVAL, MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY } from './constants'
-
-// Player state and movement
-interface PlayerState {
-  position: THREE.Vector3;
-  rotationY: number;
-  velocity: THREE.Vector3;
-  isMoving: boolean;
-}
-
-const playerState: PlayerState = {
-  position: new THREE.Vector3(0, 0, 0),
-  rotationY: 0,
-  velocity: new THREE.Vector3(0, 0, 0),
-  isMoving: false
-};
-
-let isJumping = false;
-
-// Input state
-const keys = {
-  w: false,
-  a: false,
-  s: false,
-  d: false,
-  space: false
-};
+import { loadSquirrelAvatar, updateSquirrelMovement, updateSquirrelCamera, getSquirrelAvatar } from './avatar'
+import { FOREST_SIZE, HEARTBEAT_INTERVAL, MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY } from './constants'
 
 // AI NOTE: Export DEBUG for use in other modules
 export const DEBUG = false;
-
-// Debug flag for player update logs
-// const LOG_PLAYER_UPDATES = false;
 
 // ===== DEBUG LOGS =====
 console.log('%c🔍 Environment Variables', 'font-size: 16px; font-weight: bold; color: #4CAF50;');
@@ -322,33 +293,10 @@ scene.add(directionalLight)
 let terrain: THREE.Object3D;
 let forestMeshes: THREE.Object3D[] = [];
 
-// Initialize local player mesh
-function initializePlayer() {
-  const geometry = new THREE.BoxGeometry(1, 2, 1);
-  const material = new THREE.MeshStandardMaterial({ 
-    color: 0xff0000,
-    transparent: true,
-    opacity: 0.9
-  });
-  playerMesh = new THREE.Mesh(geometry, material);
-  playerMesh.castShadow = true;
-  playerMesh.receiveShadow = true;
-  scene.add(playerMesh);
-  
-  // Set initial position
-  playerMesh.position.copy(playerState.position);
-  playerMesh.rotation.y = playerState.rotationY;
-  
-  console.log('[Log] 🔴 Local player avatar initialized');
-}
-
 // Proper game initialization sequence
 async function startGame() {
   try {
     console.log('[Log] 🎮 Starting game initialization...');
-    
-    // Initialize player first
-    initializePlayer();
     
     // Initialize game and connect WebSocket
     const { squirrelId, token } = await initializeGame();
@@ -529,20 +477,6 @@ window.addEventListener('mousemove', (event) => {
 
 window.addEventListener('contextmenu', (event) => event.preventDefault());
 
-window.addEventListener('keydown', (event) => {
-  const key = event.key.toLowerCase();
-  if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
-    controls.enabled = false;
-  }
-});
-
-window.addEventListener('keyup', (event) => {
-  const key = event.key.toLowerCase();
-  if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
-    controls.enabled = true;
-  }
-});
-
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
@@ -568,13 +502,15 @@ async function animate() {
   const deltaTime = (currentTime - lastTime) / 1000;
   lastTime = currentTime;
 
+  // Use proper avatar system
   updateSquirrelMovement(deltaTime);
   updateSquirrelCamera(camera);
   
-  // Send optimized player updates
+  // Send optimized player updates using avatar position
   sendPlayerUpdate();
 
-  controls.enabled = false; // Disable OrbitControls during movement
+  // Allow controls to work when not in conflict
+  controls.update();
 
   walnutMeshes.forEach(mesh => { mesh.rotation.y += 0.002; });
   renderer.render(scene, camera);
@@ -603,107 +539,23 @@ function stopHeartbeat() {
   }
 }
 
-// Update exports
-export {
-  scene,
-  camera,
-  renderer,
-  FOREST_SIZE,
-  fetchWalnutMap,
-  walnuts,
-  renderWalnuts,
-  getHidingMethod,
-  createWalnutMaterial,
-  socket,
-  terrain,
-  getTerrainHeight,
-  forestMeshes,
-  initializeTerrainSeed,
-  initializeGame,
-  connectWebSocket,
-  updateLocalPlayer
-};
-
-// Set up position sync interval - UNUSED since we handle it in WebSocket open handler
-// let positionSyncInterval: number | null = null;
-
-// function startPositionSync() {
-//   if (positionSyncInterval) return;
-//   positionSyncInterval = window.setInterval(() => {
-//     if (socket && socket.readyState === WebSocket.OPEN) {
-//       const position = getPlayerPosition();
-//       socket.send(JSON.stringify({
-//         type: 'player_update',
-//         position,
-//         token: localStorage.getItem('token'),
-//         squirrelId: localStorage.getItem('squirrelId')
-//       }));
-//     }
-//   }, 50);
-// }
-
-// function stopPositionSync() {
-//   if (positionSyncInterval) {
-//     clearInterval(positionSyncInterval);
-//     positionSyncInterval = null;
-//   }
-// }
-
-// Update local player position
-function updateLocalPlayer(deltaTime: number) {
-  const moveDirection = new THREE.Vector3(0, 0, 0);
-  if (keys.w) moveDirection.z -= 1;
-  if (keys.s) moveDirection.z += 1;
-  if (keys.a) moveDirection.x -= 1;
-  if (keys.d) moveDirection.x += 1;
-  moveDirection.normalize();
-
-  if (moveDirection.length() > 0) {
-    playerState.rotationY = Math.atan2(moveDirection.x, moveDirection.z);
-  }
-
-  playerState.velocity.set(
-    moveDirection.x * MOVEMENT_SPEED,
-    playerState.velocity.y,
-    moveDirection.z * MOVEMENT_SPEED
-  );
-
-  if (playerState.position.y > 0 || isJumping) {
-    playerState.velocity.y += GRAVITY * deltaTime;
-  }
-
-  if (keys.space && !isJumping && playerState.position.y <= 0) {
-    playerState.velocity.y = JUMP_FORCE;
-    isJumping = true;
-  }
-
-  playerState.position.addScaledVector(playerState.velocity, deltaTime);
-
-  if (playerState.position.y < 0) {
-    playerState.position.y = 0;
-    playerState.velocity.y = 0;
-    isJumping = false;
-  }
-
-  if (playerMesh) {
-    playerMesh.position.copy(playerState.position);
-    playerMesh.rotation.y = playerState.rotationY;
-  }
-}
-
-// Get current player position
-function getPlayerPosition() {
-  return {
-    x: playerState.position.x,
-    y: playerState.position.y,
-    z: playerState.position.z,
-    rotationY: playerState.rotationY
-  };
-}
-
-// Player mesh and other players
-let playerMesh: THREE.Mesh | null = null;
+// Multiplayer other players tracking
 const otherPlayers = new Map<string, THREE.Mesh>();
+
+// Get current player position from avatar system
+function getPlayerPosition() {
+  const avatar = getSquirrelAvatar();
+  if (avatar?.mesh) {
+    return {
+      x: avatar.mesh.position.x,
+      y: avatar.mesh.position.y,
+      z: avatar.mesh.position.z,
+      rotationY: avatar.mesh.rotation.y
+    };
+  }
+  // Fallback for when avatar isn't loaded yet
+  return { x: 0, y: 0, z: 0, rotationY: 0 };
+}
 
 // Update other players' positions with enhanced visibility
 async function updateOtherPlayer(squirrelId: string, position: { x: number; y: number; z: number; rotationY: number }) {
@@ -791,3 +643,23 @@ function sendPlayerUpdate() {
   socket.send(JSON.stringify({ type: 'player_update', position }));
   lastUpdateTime = now;
 }
+
+// Update exports
+export {
+  scene,
+  camera,
+  renderer,
+  FOREST_SIZE,
+  fetchWalnutMap,
+  walnuts,
+  renderWalnuts,
+  getHidingMethod,
+  createWalnutMaterial,
+  socket,
+  terrain,
+  getTerrainHeight,
+  forestMeshes,
+  initializeTerrainSeed,
+  initializeGame,
+  connectWebSocket
+};
