@@ -21,22 +21,40 @@ function addKeyListeners() {
   if (eventListenersAdded) return;
   
   // FIX: Use keydown/keyup for immediate response (best practice)
+  // FIX: Add focus check to prevent cross-tab interference
   document.addEventListener('keydown', (event) => {
+    // Only process if this window has focus
+    if (!document.hasFocus()) return;
+    
     if (event.code in keys) {
       keys[event.code as keyof typeof keys] = true;
       event.preventDefault(); // Prevent browser shortcuts
+      console.log(`[Debug] Key pressed: ${event.code}`);
     }
   });
 
   document.addEventListener('keyup', (event) => {
+    // Only process if this window has focus
+    if (!document.hasFocus()) return;
+    
     if (event.code in keys) {
       keys[event.code as keyof typeof keys] = false;
       event.preventDefault();
+      console.log(`[Debug] Key released: ${event.code}`);
     }
   });
   
+  // FIX: Clear all keys when window loses focus
+  window.addEventListener('blur', () => {
+    console.log('[Debug] Window lost focus, clearing all keys');
+    keys.KeyW = false;
+    keys.KeyS = false;
+    keys.KeyA = false;
+    keys.KeyD = false;
+  });
+  
   eventListenersAdded = true;
-  console.log('[Log] WASD controls initialized');
+  console.log('[Log] WASD controls initialized with focus management');
 }
 
 export async function loadSquirrelAvatar(scene: THREE.Scene): Promise<SquirrelAvatar> {

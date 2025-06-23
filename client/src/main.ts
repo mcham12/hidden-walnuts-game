@@ -211,6 +211,18 @@ async function connectWebSocket(squirrelId: string, token: string) {
           if (socket && socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify({ type: 'client_ready' }));
             console.log(`[Log] 📤 Sent client_ready signal`);
+            
+            // FIX: Initialize lastSentPosition to actual spawn position
+            const avatar = getSquirrelAvatar();
+            if (avatar?.mesh) {
+              lastSentPosition = {
+                x: avatar.mesh.position.x,
+                y: avatar.mesh.position.y,
+                z: avatar.mesh.position.z,
+                rotationY: avatar.mesh.rotation.y
+              };
+              console.log(`[Log] 📍 Initialized lastSentPosition:`, lastSentPosition);
+            }
           }
         }, 1000); // Give time for avatar to load
       }
@@ -808,8 +820,8 @@ const UPDATE_INTERVAL = 100; // 100ms
 
 // FIX: Add movement prediction and position smoothing
 let lastSentPosition = { x: 0, y: 0, z: 0, rotationY: 0 };
-const MOVEMENT_THRESHOLD = 0.5; // Minimum movement to trigger update
-const ROTATION_THRESHOLD = 0.1; // Minimum rotation to trigger update
+const MOVEMENT_THRESHOLD = 0.1; // FIX: Much lower threshold - was 0.5, now 0.1
+const ROTATION_THRESHOLD = 0.05; // FIX: Lower rotation threshold too
 
 // FIX: Improved player update throttling with better error handling
 function sendPlayerUpdate() {
@@ -846,8 +858,14 @@ function sendPlayerUpdate() {
     );
     const rotationDifference = Math.abs(position.rotationY - lastSentPosition.rotationY);
     
+    // FIX: Add debug logging for movement threshold
+    if (DEBUG || Date.now() % 5000 < 100) { // Debug every 5 seconds
+      console.log(`[Debug] Movement check: distance=${movementDistance.toFixed(3)}, rotation=${rotationDifference.toFixed(3)}, thresholds: move=${MOVEMENT_THRESHOLD}, rot=${ROTATION_THRESHOLD}`);
+    }
+    
     if (movementDistance < MOVEMENT_THRESHOLD && rotationDifference < ROTATION_THRESHOLD) {
       // No significant movement, skip update
+      if (DEBUG) console.log(`[Debug] Skipping update - below threshold`);
       return;
     }
 
