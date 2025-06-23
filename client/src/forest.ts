@@ -37,11 +37,7 @@ async function loadModels() {
     // Create fallback model
     const fallbackTree = new THREE.Mesh(
       new THREE.BoxGeometry(1, 3, 1), 
-      new THREE.MeshStandardMaterial({ 
-        color: 0x228B22,
-        transparent: true,
-        opacity: 0.8
-      })
+      new THREE.MeshStandardMaterial({ color: 0x228B22 })
     );
     treeModel = { scene: fallbackTree };
     fallbackModels = true;
@@ -59,11 +55,7 @@ async function loadModels() {
     // Create fallback model
     const fallbackShrub = new THREE.Mesh(
       new THREE.BoxGeometry(1, 1, 1), 
-      new THREE.MeshStandardMaterial({ 
-        color: 0x006400,
-        transparent: true,
-        opacity: 0.8
-      })
+      new THREE.MeshStandardMaterial({ color: 0x006400 })
     );
     shrubModel = { scene: fallbackShrub };
     fallbackModels = true;

@@ -35,6 +35,9 @@ const keys = {
 // AI NOTE: Export DEBUG for use in other modules
 export const DEBUG = false;
 
+// Debug flag for player update logs
+const LOG_PLAYER_UPDATES = false;
+
 // ===== DEBUG LOGS =====
 console.log('%c🔍 Environment Variables', 'font-size: 16px; font-weight: bold; color: #4CAF50;');
 console.log({
@@ -428,7 +431,7 @@ function renderWalnuts(walnutData: Walnut[]): void {
   walnutData.forEach(walnut => {
     if (!walnut.found) {
       const mesh = createWalnutMesh(walnut);
-      console.log(`[Log] Adding walnut at (${walnut.location.x}, ${walnut.location.z})`);
+      console.log(`[Log] Added walnut ${walnut.id} at (${walnut.location.x}, ${walnut.location.y}, ${walnut.location.z})`);
       scene.add(mesh);
       walnutMeshes.set(walnut.id, mesh);
     }
@@ -779,27 +782,19 @@ function updateOtherPlayer(squirrelId: string, position: { x: number; y: number;
     playerMesh.castShadow = true;
     playerMesh.receiveShadow = true;
     
-    // Add a glowing outline for better visibility
-    const outlineGeometry = new THREE.BoxGeometry(1.1, 2.1, 1.1);
-    const outlineMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0x00ff00,
-      transparent: true,
-      opacity: 0.3,
-      side: THREE.BackSide
-    });
-    const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
-    playerMesh.add(outline);
-    
     scene.add(playerMesh);
     otherPlayers.set(squirrelId, playerMesh);
-    console.log(`[Log] 🟢 Added enhanced multiplayer avatar for ${squirrelId} to scene`);
+    console.log(`[Log] 🟢 Added player ${squirrelId} to scene at (${position.x}, ${position.y + 1}, ${position.z})`);
   }
 
   // Update position and rotation with terrain adjustment
   const terrainY = Math.max(position.y, 0); // Ensure above ground
   playerMesh.position.set(position.x, terrainY + 1, position.z); // Offset Y to stand on ground
   playerMesh.rotation.y = position.rotationY;
-  console.log(`[Log] 🎯 Updated player ${squirrelId} position to (${position.x.toFixed(1)}, ${terrainY + 1}, ${position.z.toFixed(1)})`);
+  
+  if (LOG_PLAYER_UPDATES) {
+    console.log(`[Log] 🎯 Updated player ${squirrelId} position to (${position.x.toFixed(1)}, ${terrainY + 1}, ${position.z.toFixed(1)})`);
+  }
 }
 
 // Remove other player's avatar
