@@ -206,6 +206,10 @@ async function connectWebSocket(squirrelId: string, token: string) {
         for (const player of data.players) {
           updateOtherPlayer(player.squirrelId, player.position);
         }
+        // FIX: Broadcast our current position to newly connected players
+        setTimeout(() => {
+          sendPlayerUpdate();
+        }, 1000); // Give time for avatar to initialize
       }
       
       if (data.type === "walnut-rehidden") {
@@ -216,6 +220,10 @@ async function connectWebSocket(squirrelId: string, token: string) {
       if (data.type === "player_join") {
         console.log(`[Log] 👋 Player joined: ${data.squirrelId}`);
         updateOtherPlayer(data.squirrelId, data.position);
+        // FIX: Immediately send our position to the new player
+        setTimeout(() => {
+          sendPlayerUpdate();
+        }, 500);
       }
       if (data.type === "player_leave") {
         console.log(`[Log] 👋 Player left: ${data.squirrelId}`);
@@ -554,26 +562,33 @@ window.addEventListener('mousedown', (event) => {
   }
 });
 
-let lastTime = performance.now();
+// AI NOTE: Track deltaTime calculation for proper squirrel movement
+let lastTime = 0;
+
 async function animate() {
-  requestAnimationFrame(animate);
-
-  const currentTime = performance.now();
-  const deltaTime = (currentTime - lastTime) / 1000;
-  lastTime = currentTime;
-
-  // Use proper avatar system
-  updateSquirrelMovement(deltaTime);
-  updateSquirrelCamera(camera);
+  requestAnimationFrame(animate)
   
-  // Send optimized player updates using avatar position
-  sendPlayerUpdate();
-
-  // Allow controls to work when not in conflict
-  controls.update();
-
-  walnutMeshes.forEach(mesh => { mesh.rotation.y += 0.002; });
-  renderer.render(scene, camera);
+  // Calculate deltaTime for smooth movement
+  const currentTime = Date.now();
+  const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
+  lastTime = currentTime;
+  
+  // Update avatar system
+  const avatar = getSquirrelAvatar();
+  if (avatar) {
+    updateSquirrelMovement(deltaTime);
+    await updateSquirrelCamera(camera);
+  }
+  
+  // FIX: Add throttled player updates to animation loop for real-time multiplayer
+  const now = Date.now();
+  if (now - lastUpdateTime > UPDATE_INTERVAL) {
+    sendPlayerUpdate();
+    lastUpdateTime = now;
+  }
+  
+  controls.update()
+  renderer.render(scene, camera)
 }
 
 animate();
@@ -736,21 +751,37 @@ const UPDATE_INTERVAL = 100; // 100ms
 
 // FIX: Improved player update throttling with better error handling
 function sendPlayerUpdate() {
-  const now = Date.now();
-  if (now - lastUpdateTime < UPDATE_INTERVAL) return;
+  // FIX: Check WebSocket connection state before sending
   if (!socket || socket.readyState !== WebSocket.OPEN) {
-    if (DEBUG) console.log('[Debug] Skipping player update - WebSocket not ready');
+    console.warn("[Warning] Cannot send player update: WebSocket not connected");
     return;
   }
-  
+
+  // FIX: Check if avatar is initialized before getting position
+  const avatar = getSquirrelAvatar();
+  if (!avatar || !avatar.mesh) {
+    console.warn("[Warning] Cannot send player update: Avatar not initialized");
+    return;
+  }
+
   try {
     const position = getPlayerPosition();
-    const message = JSON.stringify({ type: 'player_update', position });
-    socket.send(message);
-    lastUpdateTime = now;
-    if (DEBUG) console.log(`[Debug] 📤 Sent player update:`, position);
+    if (!position) {
+      console.warn("[Warning] Cannot send player update: Invalid position");
+      return;
+    }
+
+    const message = {
+      type: 'player_update',
+      position: position
+    };
+
+    socket.send(JSON.stringify(message));
+    if (DEBUG) {
+      console.log(`[Log] 📤 Sent player update:`, position);
+    }
   } catch (error) {
-    console.error('[Error] Failed to send player update:', error);
+    console.error("[Error] Failed to send player update:", error);
   }
 }
 

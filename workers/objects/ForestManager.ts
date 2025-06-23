@@ -54,8 +54,35 @@ export class ForestManager implements DurableObject {
     this.env = env;
     this.terrainSeed = Math.random() * 1000;
     
-    // FIX: Schedule periodic cleanup (Cloudflare DO best practice)
+    // FIX: Initialize players from storage for persistence across refreshes
+    this.initializePlayersFromStorage();
+    
+    // Schedule regular cleanup
     this.scheduleCleanup();
+  }
+
+  // FIX: Load persisted player data on startup
+  private async initializePlayersFromStorage(): Promise<void> {
+    try {
+      const storedPlayers = await this.state.storage.get<Map<string, PlayerData>>('active-players');
+      if (storedPlayers) {
+        this.players = new Map(storedPlayers);
+        console.log(`[Log] 🔄 Restored ${this.players.size} players from storage`);
+      }
+    } catch (error) {
+      console.error('[Error] Failed to load players from storage:', error);
+    }
+  }
+
+  // FIX: Persist player data to storage
+  private async persistPlayerData(): Promise<void> {
+    try {
+      // Convert Map to Array for storage
+      const playersArray = Array.from(this.players.entries());
+      await this.state.storage.put('active-players', playersArray);
+    } catch (error) {
+      console.error('[Error] Failed to persist player data:', error);
+    }
   }
 
   async fetch(request: CfRequest): Promise<CfResponse> {
@@ -175,17 +202,31 @@ export class ForestManager implements DurableObject {
     const mapState = await this.getMapState();
     socket.send(JSON.stringify({ type: 'init', mapState }));
 
-    // FIX: Initialize player state immediately upon connection
-    this.players.set(squirrelId, {
-      squirrelId,
-      position: { x: 0, y: 2, z: 0 }, // Default spawn position
-      rotationY: 0,
-      lastUpdate: Date.now(),
-      messageCount: 1,
-      messageResetTime: Date.now() + 60000
-    });
+    // FIX: Check if player already exists (reconnection) or create new
+    let existingPlayer = this.players.get(squirrelId);
+    if (!existingPlayer) {
+      // New player - initialize with default position
+      existingPlayer = {
+        squirrelId,
+        position: { x: 50, y: 2, z: 50 }, // Better spawn position
+        rotationY: 0,
+        lastUpdate: Date.now(),
+        messageCount: 1,
+        messageResetTime: Date.now() + 60000
+      };
+      this.players.set(squirrelId, existingPlayer);
+      await this.persistPlayerData(); // FIX: Persist new player
+      console.log(`[Log] 🆕 Created new player ${squirrelId} at spawn position`);
+    } else {
+      // Returning player - update connection time but keep position
+      existingPlayer.lastUpdate = Date.now();
+      existingPlayer.messageCount = 1;
+      existingPlayer.messageResetTime = Date.now() + 60000;
+      this.players.set(squirrelId, existingPlayer);
+      console.log(`[Log] 🔄 Reconnected player ${squirrelId} at stored position:`, existingPlayer.position);
+    }
 
-    // FIX: Send existing players to new player
+    // FIX: Send existing players to new connection (always, for reconnections too)
     const existingPlayers = Array.from(this.players.entries())
       .filter(([id]) => id !== squirrelId)
       .map(([id, player]) => ({
@@ -199,15 +240,21 @@ export class ForestManager implements DurableObject {
         type: 'existing_players', 
         players: existingPlayers 
       }));
-      console.log(`[Log] Sent ${existingPlayers.length} existing players to ${squirrelId}`);
+      console.log(`[Log] 📤 Sent ${existingPlayers.length} existing players to ${squirrelId}`);
     }
 
-    // Send player_join notification to other players
+    // FIX: Broadcast actual player position (not default) to other players
     this.broadcastExcept(squirrelId, {
       type: 'player_join',
       squirrelId,
-      position: { x: 0, y: 2, z: 0, rotationY: 0 } // Default position
+      position: {
+        x: existingPlayer.position.x,
+        y: existingPlayer.position.y,
+        z: existingPlayer.position.z,
+        rotationY: existingPlayer.rotationY
+      }
     });
+    console.log(`[Log] 📢 Broadcasted player_join for ${squirrelId} with real position`);
 
     socket.addEventListener('message', async (event) => {
       try {
@@ -245,8 +292,7 @@ export class ForestManager implements DurableObject {
           
           // Rate limit: max 20 updates per second
           if (now - lastUpdate < 50) {
-            console.warn(`[Warning] Player update rate limit exceeded for ${squirrelId}`);
-            return;
+            return; // Silent rate limiting for position updates
           }
           
           // FIX: Basic position validation (anti-cheat)
@@ -255,15 +301,22 @@ export class ForestManager implements DurableObject {
             return;
           }
           
-          // Update player state with proper message tracking
-          this.players.set(squirrelId, {
+          // FIX: Update player state and persist every 10 updates (performance)
+          const updatedPlayer = {
             squirrelId,
             position: data.position,
             rotationY: data.position.rotationY || 0,
             lastUpdate: now,
             messageCount: player?.messageCount || 1,
             messageResetTime: player?.messageResetTime || now + 60000
-          });
+          };
+          
+          this.players.set(squirrelId, updatedPlayer);
+          
+          // Persist periodically (not every update for performance)
+          if (now % 5000 < 100) { // Roughly every 5 seconds
+            await this.persistPlayerData();
+          }
           
           // Broadcast to other players
           this.broadcastExcept(squirrelId, {
@@ -335,12 +388,36 @@ export class ForestManager implements DurableObject {
 
   private async cleanupStalePlayers(): Promise<void> {
     const now = Date.now();
-    const staleTimeout = 30000; // 30 seconds
+    const staleTimeout = 300000; // FIX: 5 minutes for full cleanup from storage
+    const sessionTimeout = 30000; // 30 seconds for active session cleanup
 
+    // Clean up active sessions that are stale
     for (const [squirrelId, player] of this.players.entries()) {
-      if (now - player.lastUpdate > staleTimeout) {
+      if (now - player.lastUpdate > sessionTimeout && this.sessions.has(squirrelId)) {
+        console.log(`[Log] 🧹 Cleaning up stale active player: ${squirrelId}`);
         await this.handlePlayerLeave(squirrelId);
       }
+    }
+
+    // FIX: Clean up from storage only after longer timeout
+    try {
+      const storedPlayers = await this.state.storage.get<[string, PlayerData][]>('active-players');
+      if (storedPlayers) {
+        const activePlayers = storedPlayers.filter(([id, player]) => {
+          const isStale = now - player.lastUpdate > staleTimeout;
+          if (isStale) {
+            console.log(`[Log] 🗑️ Removing stale player from storage: ${id}`);
+          }
+          return !isStale;
+        });
+        
+        if (activePlayers.length !== storedPlayers.length) {
+          await this.state.storage.put('active-players', activePlayers);
+          console.log(`[Log] ✅ Cleaned up ${storedPlayers.length - activePlayers.length} stale players from storage`);
+        }
+      }
+    } catch (error) {
+      console.error('[Error] Failed to cleanup stale players from storage:', error);
     }
   }
 
@@ -355,6 +432,9 @@ export class ForestManager implements DurableObject {
       this.socketToPlayer.delete(socket);
       this.sessions.delete(squirrelId);
     }
+    
+    // FIX: Remove from players Map but DON'T remove from storage immediately
+    // Keep in storage for potential reconnection within session timeout
     this.players.delete(squirrelId);
     console.log(`[Log] ✅ Cleaned up session for ${squirrelId}`);
   }
