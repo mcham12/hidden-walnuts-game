@@ -291,24 +291,22 @@ export class ForestManager implements DurableObject {
       objects.push({
         type: 'tree',
         id: `tree-${i}`,
-        position: {
-          x: (Math.random() - 0.5) * terrainSize,
-          y: 0,
-          z: (Math.random() - 0.5) * terrainSize
-        }
+        x: (Math.random() - 0.5) * terrainSize,
+        y: 0,
+        z: (Math.random() - 0.5) * terrainSize,
+        scale: 1
       });
     }
     
-    // Generate bushes
+    // Generate shrubs (not 'bush' - client expects 'shrub')
     for (let i = 0; i < SHRUB_COUNT; i++) {
       objects.push({
-        type: 'bush',
-        id: `bush-${i}`,
-        position: {
-          x: (Math.random() - 0.5) * terrainSize,
-          y: 0,
-          z: (Math.random() - 0.5) * terrainSize
-        }
+        type: 'shrub',
+        id: `shrub-${i}`,
+        x: (Math.random() - 0.5) * terrainSize,
+        y: 0,
+        z: (Math.random() - 0.5) * terrainSize,
+        scale: 1
       });
     }
     

@@ -319,38 +319,52 @@ directionalLight.shadow.camera.bottom = -FOREST_SIZE
 scene.add(directionalLight)
 
 // Terrain and forest setup
-let terrain: THREE.Mesh;
+let terrain: THREE.Object3D;
 let forestMeshes: THREE.Object3D[] = [];
 
-// Call initializeGame after scene setup
-createTerrain().then((mesh) => {
-  terrain = mesh;
-  scene.add(mesh);
-  console.log("Terrain added to scene");
-  
-  // Debug environment fetching
-  fetchWalnutMap();
-  fetchForestObjects(); // Debug forest objects
-  
-  createForest().then((meshes) => {
-    forestMeshes = meshes;
-    meshes.forEach((mesh) => scene.add(mesh));
-    console.log("Forest added to scene");
-    // Start game
-    initializeGame().then(({ squirrelId, token }) => {
-      connectWebSocket(squirrelId, token);
-    }).catch(() => {
-      console.error("Failed to initialize game, retrying in 2 seconds...");
-      setTimeout(() => initializeGame().then(({ squirrelId, token }) => connectWebSocket(squirrelId, token)), 2000);
-    });
+// Initialize local player mesh
+function initializePlayer() {
+  const geometry = new THREE.BoxGeometry(1, 2, 1);
+  const material = new THREE.MeshStandardMaterial({ 
+    color: 0xff0000,
+    transparent: true,
+    opacity: 0.9
   });
-  // Load squirrel avatar and log height
-  loadSquirrelAvatar(scene).then(async () => {
-    console.log('Squirrel avatar loaded');
-    const avatarHeight = await getTerrainHeight(50, 50);
-    console.log(`[Log] Squirrel avatar terrain height at (50, 50): ${avatarHeight}`);
-  });
-});
+  playerMesh = new THREE.Mesh(geometry, material);
+  playerMesh.castShadow = true;
+  playerMesh.receiveShadow = true;
+  scene.add(playerMesh);
+  
+  // Set initial position
+  playerMesh.position.copy(playerState.position);
+  playerMesh.rotation.y = playerState.rotationY;
+  
+  console.log('[Log] 🔴 Local player avatar initialized');
+}
+
+// Proper game initialization sequence
+async function startGame() {
+  try {
+    console.log('[Log] 🎮 Starting game initialization...');
+    
+    // Initialize player first
+    initializePlayer();
+    
+    // Initialize game and connect WebSocket
+    const { squirrelId, token } = await initializeGame();
+    await connectWebSocket(squirrelId, token);
+    
+    // Initialize environment (forest and walnuts)
+    await initEnvironment();
+    
+    console.log('[Log] ✅ Game initialization complete!');
+  } catch (error) {
+    console.error('[Error] Game initialization failed:', error);
+  }
+}
+
+// Start the game
+startGame();
 
 const axesHelper = new THREE.AxesHelper(100)
 scene.add(axesHelper)
@@ -376,7 +390,7 @@ const WALNUT_CONFIG = {
   height: { buried: 0.2, bush: 0.8 }
 }
 
-const walnutMeshes = new Map<string, THREE.Mesh>()
+let walnutMeshes = new Map<string, THREE.Mesh>();
 let walnuts: Walnut[] = []
 let walnutMap: Record<string, THREE.Mesh> = {};
 
@@ -430,23 +444,6 @@ function renderWalnuts(walnutData: Walnut[]): void {
   });
 }
 
-// Debug function for forest objects
-async function fetchForestObjects() {
-  try {
-    const response = await fetch(`${API_BASE}/forest-objects`);
-    if (!response.ok) {
-      console.error(`[Error] Failed to fetch forest objects: HTTP ${response.status}`);
-      return [];
-    }
-    const data = await response.json();
-    console.log(`[Log] Fetched ${data.length} forest objects`);
-    return data;
-  } catch (error) {
-    console.error('[Error] Failed to fetch forest objects:', error);
-    return [];
-  }
-}
-
 // Enhanced walnut map fetching with better logging
 async function fetchWalnutMap() {
   try {
@@ -463,75 +460,31 @@ async function fetchWalnutMap() {
   }
 }
 
-// Enhanced environment rendering function
-function renderEnvironment(forestData: any[], walnutData: any[]) {
-  console.log(`[Log] Starting environment rendering with ${forestData.length} forest objects and ${walnutData.length} walnuts`);
-  
-  // Render forest objects (trees/shrubs)
-  forestData.forEach(obj => {
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(2, 8, 2), // Taller boxes for trees
-      new THREE.MeshStandardMaterial({ 
-        color: obj.type === 'tree' ? 0x006400 : 0x228B22,
-        transparent: true,
-        opacity: 0.8
-      })
-    );
-    
-    // Handle both direct coordinates and nested position
-    const x = obj.position?.x ?? obj.x ?? 0;
-    const y = obj.position?.y ?? obj.y ?? 0;
-    const z = obj.position?.z ?? obj.z ?? 0;
-    
-    mesh.position.set(x, y + 4, z); // Offset Y to sit on ground
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    scene.add(mesh);
-    console.log(`[Log] Added ${obj.type} at (${x}, ${y + 4}, ${z})`);
-  });
-
-  // Render walnuts with better visibility
-  walnutData.forEach(walnut => {
-    if (!walnut.found) {
-      const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(0.3), // Slightly larger for visibility
-        new THREE.MeshStandardMaterial({ 
-          color: 0x8B4513,
-          metalness: 0.2,
-          roughness: 0.8
-        })
-      );
-      
-      // Handle nested location structure
-      const location = walnut.location || walnut;
-      mesh.position.set(location.x, location.y + 0.3, location.z);
-      mesh.castShadow = true;
-      mesh.userData.walnutId = walnut.id;
-      scene.add(mesh);
-      walnutMeshes.set(walnut.id, mesh);
-      console.log(`[Log] Added walnut ${walnut.id} at (${location.x}, ${location.y + 0.3}, ${location.z})`);
-    }
-  });
-
-  console.log(`[Log] Environment rendering complete. Scene now has ${scene.children.length} objects`);
-}
-
-// Initialize environment with comprehensive logging
+// Initialize environment with proper forest and walnut loading
 async function initEnvironment() {
   console.log('[Log] Initializing game environment...');
   
   try {
-    const [forestData, walnutData] = await Promise.all([
-      fetchForestObjects(),
-      fetchWalnutMap()
-    ]);
+    // Initialize terrain first
+    const terrain = await createTerrain();
+    scene.add(terrain);
+    console.log('[Log] Terrain added to scene');
     
-    console.log(`[Log] Environment data loaded: ${forestData.length} forest objects, ${walnutData.length} walnuts`);
-    renderEnvironment(forestData, walnutData);
+    // Load forest using the proper GLTF system
+    const forestMeshes = await createForest();
+    forestMeshes.forEach(mesh => scene.add(mesh));
+    console.log(`[Log] Added ${forestMeshes.length} forest objects to scene`);
     
-    // Log scene composition for debugging
-    console.log(`[Log] Scene children count: ${scene.children.length}`);
-    console.log(`[Log] Scene children types:`, scene.children.map(child => child.type));
+    // Load walnuts using the proper system
+    const walnutData = await fetchWalnutMap();
+    console.log(`[Log] Loaded ${walnutData.length} walnuts`);
+    
+    // Load squirrel avatar
+    await loadSquirrelAvatar(scene);
+    console.log('[Log] Squirrel avatar loaded');
+    
+    // Log final scene composition
+    console.log(`[Log] Environment initialization complete. Scene has ${scene.children.length} objects`);
     
   } catch (error) {
     console.error('[Error] Environment initialization failed:', error);
@@ -784,35 +737,6 @@ function removeOtherPlayer(squirrelId: string) {
     console.log(`[Log] 🔴 Removed multiplayer avatar for ${squirrelId}`);
   }
 }
-
-// Initialize local player mesh
-function initializePlayer() {
-  const geometry = new THREE.BoxGeometry(1, 2, 1);
-  const material = new THREE.MeshStandardMaterial({ 
-    color: 0xff0000,
-    transparent: true,
-    opacity: 0.9
-  });
-  playerMesh = new THREE.Mesh(geometry, material);
-  playerMesh.castShadow = true;
-  playerMesh.receiveShadow = true;
-  scene.add(playerMesh);
-  
-  // Set initial position
-  playerMesh.position.copy(playerState.position);
-  playerMesh.rotation.y = playerState.rotationY;
-  
-  console.log('[Log] 🔴 Local player avatar initialized');
-}
-
-// Call initializePlayer after scene setup
-initializePlayer();
-
-// Initialize environment after player setup
-initEnvironment();
-
-// Ensure fetchWalnutMap is called on init
-fetchWalnutMap();
 
 // Scene monitoring for debugging
 function monitorScene() {
