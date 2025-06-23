@@ -30,44 +30,48 @@ async function loadModels() {
   const treePath = '/assets/models/Tree_01.glb';
   try {
     if (DEBUG) console.log(`[Log] Loading GLTF model: ${treePath}`);
-    treeModel = await loader.loadAsync(treePath);
-    if (DEBUG) console.log(`[Log] Loaded ${treePath} successfully`);
+    const gltf = await loader.loadAsync(treePath);
+    treeModel = gltf.scene;
+    // Clean up unwanted meshes
+    treeModel.traverse((child: THREE.Object3D) => {
+      if (child.name.toLowerCase().includes('box') || child.name.toLowerCase().includes('bounding')) {
+        child.visible = false; // Hide bounding boxes
+      }
+    });
+    if (DEBUG) console.log(`[Log] Loaded and cleaned ${treePath}`);
   } catch (error) {
     console.error(`[Error] Failed to load ${treePath}:`, error);
     // Create fallback model
-    const fallbackTree = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 3, 1), 
-      new THREE.MeshStandardMaterial({ 
-        color: 0x228B22,
-        transparent: true,
-        opacity: 0.8
-      })
-    );
-    treeModel = { scene: fallbackTree };
+    treeModel = { scene: new THREE.Mesh(
+      new THREE.CylinderGeometry(0.5, 0.5, 3, 16),
+      new THREE.MeshStandardMaterial({ color: 0x228B22 })
+    )};
     fallbackModels = true;
-    console.log('[Log] Using fallback box geometry for trees');
+    console.log('[Log] Using fallback cylinder geometry for trees');
   }
 
   // Load shrub model with fallback
   const shrubPath = '/assets/models/Bush_01.glb';
   try {
     if (DEBUG) console.log(`[Log] Loading GLTF model: ${shrubPath}`);
-    shrubModel = await loader.loadAsync(shrubPath);
-    if (DEBUG) console.log(`[Log] Loaded ${shrubPath} successfully`);
+    const gltf = await loader.loadAsync(shrubPath);
+    shrubModel = gltf.scene;
+    // Clean up unwanted meshes
+    shrubModel.traverse((child: THREE.Object3D) => {
+      if (child.name.toLowerCase().includes('box') || child.name.toLowerCase().includes('bounding')) {
+        child.visible = false; // Hide bounding boxes
+      }
+    });
+    if (DEBUG) console.log(`[Log] Loaded and cleaned ${shrubPath}`);
   } catch (error) {
     console.error(`[Error] Failed to load ${shrubPath}:`, error);
     // Create fallback model
-    const fallbackShrub = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1, 1), 
-      new THREE.MeshStandardMaterial({ 
-        color: 0x006400,
-        transparent: true,
-        opacity: 0.8
-      })
-    );
-    shrubModel = { scene: fallbackShrub };
+    shrubModel = { scene: new THREE.Mesh(
+      new THREE.SphereGeometry(1, 16, 16),
+      new THREE.MeshStandardMaterial({ color: 0x006400 })
+    )};
     fallbackModels = true;
-    console.log('[Log] Using fallback box geometry for shrubs');
+    console.log('[Log] Using fallback sphere geometry for shrubs');
   }
   
   modelsLoaded = true;

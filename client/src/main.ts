@@ -36,7 +36,7 @@ const keys = {
 export const DEBUG = false;
 
 // Debug flag for player update logs
-const LOG_PLAYER_UPDATES = false;
+// const LOG_PLAYER_UPDATES = false;
 
 // ===== DEBUG LOGS =====
 console.log('%c🔍 Environment Variables', 'font-size: 16px; font-weight: bold; color: #4CAF50;');
@@ -397,30 +397,23 @@ function createWalnutMaterial(walnut: Walnut, hidingMethod: 'buried' | 'bush'): 
 
 function createWalnutMesh(walnut: Walnut): THREE.Mesh {
   const hidingMethod = getHidingMethod(walnut);
-  const geometry = new THREE.SphereGeometry(
-    WALNUT_CONFIG.radius,
-    WALNUT_CONFIG.segments,
-    WALNUT_CONFIG.segments
-  );
-  const material = createWalnutMaterial(walnut, hidingMethod);
+  const geometry = new THREE.SphereGeometry(1, 16, 16); // Increased size for visibility
+  const material = new THREE.MeshStandardMaterial({
+    color: hidingMethod === 'buried' ? 0x8B4513 : 0x228B22,
+    roughness: 0.7,
+    metalness: 0.2
+  });
   const mesh = new THREE.Mesh(geometry, material);
   getTerrainHeight(walnut.location.x, walnut.location.z).then((terrainHeight) => {
-    if (terrainHeight <= 0) {
-      terrainHeight = 5;
-      console.warn(`Invalid terrain height at (${walnut.location.x}, ${walnut.location.z}), using fallback y=5`);
-    }
-    const yPosition = terrainHeight + WALNUT_CONFIG.height[hidingMethod];
+    const yPosition = terrainHeight + (hidingMethod === 'buried' ? 0.2 : 0.8);
     mesh.position.set(walnut.location.x, yPosition, walnut.location.z);
-    console.log(`[Log] Walnut ${walnut.id} positioned at (${walnut.location.x}, ${yPosition}, ${walnut.location.z}), terrain height: ${terrainHeight}`);
+    console.log(`[Log] Walnut ${walnut.id} at (${walnut.location.x}, ${yPosition}, ${walnut.location.z})`);
+  }).catch(() => {
+    mesh.position.set(walnut.location.x, 5, walnut.location.z); // Fallback
   });
   mesh.castShadow = true;
   mesh.receiveShadow = true;
-  mesh.userData = {
-    walnutId: walnut.id,
-    hiddenIn: hidingMethod,
-    origin: walnut.origin,
-    ownerId: walnut.ownerId
-  };
+  mesh.userData = { walnutId: walnut.id };
   return mesh;
 }
 
@@ -431,7 +424,6 @@ function renderWalnuts(walnutData: Walnut[]): void {
   walnutData.forEach(walnut => {
     if (!walnut.found) {
       const mesh = createWalnutMesh(walnut);
-      console.log(`[Log] Added walnut ${walnut.id} at (${walnut.location.x}, ${walnut.location.y}, ${walnut.location.z})`);
       scene.add(mesh);
       walnutMeshes.set(walnut.id, mesh);
     }
@@ -461,9 +453,8 @@ async function fetchWalnutMap() {
     const response = await fetch(`${API_BASE}/map-state`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
-    console.log('[Log] Raw walnut data:', data);
-    if (!Array.isArray(data)) throw new Error(`Expected array, got: ${typeof data}`);
-    console.log(`[Log] Fetched ${data.length} walnuts`);
+    console.log('[Log] Fetched walnut data:', data);
+    if (!Array.isArray(data)) throw new Error('Expected array');
     renderWalnuts(data);
     return data;
   } catch (error) {
@@ -762,39 +753,26 @@ let playerMesh: THREE.Mesh | null = null;
 const otherPlayers = new Map<string, THREE.Mesh>();
 
 // Update other players' positions with enhanced visibility
-function updateOtherPlayer(squirrelId: string, position: { x: number; y: number; z: number; rotationY: number }) {
+async function updateOtherPlayer(squirrelId: string, position: { x: number; y: number; z: number; rotationY: number }) {
   const localSquirrelId = localStorage.getItem('squirrelId');
-  if (squirrelId === localSquirrelId) return; // Skip local player
+  if (squirrelId === localSquirrelId) return;
 
   let playerMesh = otherPlayers.get(squirrelId);
   if (!playerMesh) {
-    // Create new player mesh with better visibility
     const geometry = new THREE.BoxGeometry(1, 2, 1);
-    const material = new THREE.MeshStandardMaterial({ 
-      color: 0x00ff00,
-      transparent: true,
-      opacity: 0.9,
-      emissive: 0x002200, // Slight glow for visibility
-      metalness: 0.1,
-      roughness: 0.8
-    });
+    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00, opacity: 1, transparent: false });
     playerMesh = new THREE.Mesh(geometry, material);
     playerMesh.castShadow = true;
     playerMesh.receiveShadow = true;
-    
     scene.add(playerMesh);
     otherPlayers.set(squirrelId, playerMesh);
-    console.log(`[Log] 🟢 Added player ${squirrelId} to scene at (${position.x}, ${position.y + 1}, ${position.z})`);
+    console.log(`[Log] Added player ${squirrelId}`);
   }
 
-  // Update position and rotation with terrain adjustment
-  const terrainY = Math.max(position.y, 0); // Ensure above ground
-  playerMesh.position.set(position.x, terrainY + 1, position.z); // Offset Y to stand on ground
+  const terrainHeight = await getTerrainHeight(position.x, position.z).catch(() => 0);
+  playerMesh.position.set(position.x, terrainHeight + 1, position.z);
   playerMesh.rotation.y = position.rotationY;
-  
-  if (LOG_PLAYER_UPDATES) {
-    console.log(`[Log] 🎯 Updated player ${squirrelId} position to (${position.x.toFixed(1)}, ${terrainY + 1}, ${position.z.toFixed(1)})`);
-  }
+  console.log(`[Log] Updated player ${squirrelId} to (${position.x}, ${terrainHeight + 1}, ${position.z})`);
 }
 
 // Remove other player's avatar
@@ -832,6 +810,9 @@ initializePlayer();
 
 // Initialize environment after player setup
 initEnvironment();
+
+// Ensure fetchWalnutMap is called on init
+fetchWalnutMap();
 
 // Scene monitoring for debugging
 function monitorScene() {
@@ -875,15 +856,14 @@ setInterval(monitorScene, 30000);
   })));
 };
 
-// Optimized player update frequency control
+// Throttle player updates
 let lastUpdateTime = 0;
-const UPDATE_INTERVAL = 100; // Send updates every 100ms
-
+const UPDATE_INTERVAL = 100; // 100ms
 function sendPlayerUpdate() {
   const now = Date.now();
-  if (now - lastUpdateTime > UPDATE_INTERVAL && socket && socket.readyState === WebSocket.OPEN) {
-    const position = getPlayerPosition();
-    socket.send(JSON.stringify({ type: 'player_update', position }));
-    lastUpdateTime = now;
-  }
+  if (now - lastUpdateTime < UPDATE_INTERVAL || !socket || socket.readyState !== WebSocket.OPEN) return;
+  
+  const position = getPlayerPosition();
+  socket.send(JSON.stringify({ type: 'player_update', position }));
+  lastUpdateTime = now;
 }

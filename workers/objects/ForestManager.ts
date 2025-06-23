@@ -97,65 +97,35 @@ export class ForestManager implements DurableObject {
   }
 
   async handleSocket(socket: WebSocket, squirrelId: string, token: string) {
-    try {
-      console.log(`[Log] WebSocket connection established for squirrelId: ${squirrelId}`);
-      socket.accept();
-      
-      // Store session for broadcasting
-      this.sessions.set(squirrelId, socket);
-      console.log(`[Log] Session stored for ${squirrelId}, total sessions: ${this.sessions.size}`);
-      
-      socket.addEventListener('message', async (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log(`[Log] Received message from ${squirrelId}:`, data);
-          
-          if (data.type === 'player_update') {
-            // Broadcast to all other players
-            const updateMessage = {
-              type: 'player_update',
-              squirrelId: squirrelId,
-              position: data.position
-            };
-            this.broadcastExcept(squirrelId, updateMessage);
-            console.log(`[Log] Broadcasted player update from ${squirrelId} to ${this.sessions.size - 1} other players`);
-            
-            // Store player position for future multiplayer features
-            await this.handlePlayerUpdate(squirrelId, data.position, data.position.rotationY || 0);
-            
-            // NO acknowledgment for player updates to reduce spam
-            return;
-          }
-          
-          // Process other message types
-          await this.processMessage(squirrelId, data);
-          
-          // Send acknowledgment only for non-frequent, important messages
-          if (data.type !== 'ping' && data.type !== 'heartbeat' && data.type !== 'player_update') {
-            socket.send(JSON.stringify({ type: 'ack', message: `Received ${data.type}` }));
-          }
-          
-        } catch (error) {
-          console.error(`[Error] Error processing message from ${squirrelId}:`, error);
-          socket.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
-        }
-      });
-      
-      socket.addEventListener('close', () => {
-        console.log(`[Log] WebSocket closed for ${squirrelId}`);
-        this.sessions.delete(squirrelId);
-        console.log(`[Log] Session removed for ${squirrelId}, remaining sessions: ${this.sessions.size}`);
-      });
-      
-      socket.addEventListener('error', (error) => {
-        console.error(`[Error] WebSocket error for ${squirrelId}:`, error);
-        this.sessions.delete(squirrelId);
-      });
-      
-    } catch (error) {
-      console.error(`[Error] Error handling WebSocket for ${squirrelId}:`, error);
-      socket.close(1011, 'Internal server error');
-    }
+    socket.accept();
+    this.sessions.set(squirrelId, socket);
+    this.socketToPlayer.set(socket, squirrelId);
+
+    // Send initial map state
+    const mapState = await this.getMapState();
+    socket.send(JSON.stringify({ type: 'init', mapState }));
+
+    socket.addEventListener('message', async (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'player_update') {
+        this.players.set(squirrelId, {
+          squirrelId,
+          position: data.position,
+          rotationY: data.position.rotationY || 0,
+          lastUpdate: Date.now()
+        });
+        this.broadcastExcept(squirrelId, {
+          type: 'player_update',
+          squirrelId,
+          position: data.position
+        });
+      }
+    });
+
+    socket.addEventListener('close', () => {
+      this.handlePlayerLeave(squirrelId);
+      this.broadcast({ type: 'player_leave', squirrelId });
+    });
   }
 
   private async processMessage(squirrelId: string, data: any): Promise<void> {
@@ -277,26 +247,22 @@ export class ForestManager implements DurableObject {
   }
 
   private async getMapState(): Promise<any[]> {
-    // Get current map state with walnuts
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const today = new Date().toISOString().split('T')[0];
     let mapState = await this.state.storage.get<any[]>(`map-state-${today}`);
-    
     if (!mapState) {
-      // Generate initial game walnuts (100 as per MVP plan)
       mapState = this.generateGameWalnuts();
       await this.state.storage.put(`map-state-${today}`, mapState);
-      console.log(`[Log] Seeded ${mapState.length} game walnuts for ${today}`);
+      console.log(`[Log] Generated and stored ${mapState.length} walnuts for ${today}`);
+    } else {
+      console.log(`[Log] Retrieved ${mapState.length} walnuts for ${today}`);
     }
-    
     return mapState;
   }
 
   private generateGameWalnuts(): any[] {
     const walnuts = [];
     const terrainSize = 200;
-    const walnutCount = 100; // As per MVP plan
-    
-    for (let i = 0; i < walnutCount; i++) {
+    for (let i = 0; i < 100; i++) {
       walnuts.push({
         id: `game-walnut-${i}`,
         ownerId: 'system',
