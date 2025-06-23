@@ -137,18 +137,27 @@ async function connectWebSocket(squirrelId: string, token: string) {
           console.log('Forest re-added to scene after map_reset');
         });
       }
+      
       if (data.type === "init") {
-        console.log(`Received mapState with ${data.mapState.length} walnuts`);
+        console.log(`[Log] 📨 Received init message with ${data.mapState.length} walnuts`);
+        // Clear existing walnuts
         Object.values(walnutMap).forEach(mesh => scene.remove(mesh));
         walnutMap = {};
+        walnutMeshes.forEach(mesh => scene.remove(mesh));
+        walnutMeshes.clear();
+        
+        // Add new walnuts using consistent method
         for (const walnut of data.mapState) {
           if (!walnut.found) {
             const mesh = createWalnutMesh(walnut);
             scene.add(mesh);
             walnutMap[walnut.id] = mesh;
+            walnutMeshes.set(walnut.id, mesh);
           }
         }
+        console.log(`[Log] ✅ Init complete: added ${walnutMeshes.size} walnuts to scene`);
       }
+      
       if (data.type === "walnut-rehidden") {
         const { walnutId, location } = data;
         console.log(`Received rehidden message for ${walnutId} at location:`, location);
@@ -419,8 +428,9 @@ async function initEnvironment() {
     console.log('[Log] Terrain added to scene');
     
     // Load forest using the proper GLTF system
-    const forestMeshes = await createForest();
-    forestMeshes.forEach(mesh => scene.add(mesh));
+    const loadedForestMeshes = await createForest();
+    loadedForestMeshes.forEach(mesh => scene.add(mesh));
+    forestMeshes = loadedForestMeshes;
     console.log(`[Log] Added ${forestMeshes.length} forest objects to scene`);
     
     // Load walnuts using the proper system
@@ -542,7 +552,7 @@ function stopHeartbeat() {
 // Multiplayer other players tracking
 const otherPlayers = new Map<string, THREE.Mesh>();
 
-// Get current player position from avatar system
+// Get current player position from avatar system with better error handling
 function getPlayerPosition() {
   const avatar = getSquirrelAvatar();
   if (avatar?.mesh) {
@@ -553,8 +563,9 @@ function getPlayerPosition() {
       rotationY: avatar.mesh.rotation.y
     };
   }
-  // Fallback for when avatar isn't loaded yet
-  return { x: 0, y: 0, z: 0, rotationY: 0 };
+  // FIX: Better fallback that still allows multiplayer sync during avatar loading
+  console.warn('[Warning] Avatar not loaded yet, using default position for multiplayer sync');
+  return { x: 0, y: 2, z: 0, rotationY: 0 }; // Use y=2 so player is visible above terrain
 }
 
 // Update other players' positions with enhanced visibility
@@ -635,13 +646,25 @@ setInterval(monitorScene, 30000);
 // Throttle player updates
 let lastUpdateTime = 0;
 const UPDATE_INTERVAL = 100; // 100ms
+
+// FIX: Improved player update throttling with better error handling
 function sendPlayerUpdate() {
   const now = Date.now();
-  if (now - lastUpdateTime < UPDATE_INTERVAL || !socket || socket.readyState !== WebSocket.OPEN) return;
+  if (now - lastUpdateTime < UPDATE_INTERVAL) return;
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    if (DEBUG) console.log('[Debug] Skipping player update - WebSocket not ready');
+    return;
+  }
   
-  const position = getPlayerPosition();
-  socket.send(JSON.stringify({ type: 'player_update', position }));
-  lastUpdateTime = now;
+  try {
+    const position = getPlayerPosition();
+    const message = JSON.stringify({ type: 'player_update', position });
+    socket.send(message);
+    lastUpdateTime = now;
+    if (DEBUG) console.log(`[Debug] 📤 Sent player update:`, position);
+  } catch (error) {
+    console.error('[Error] Failed to send player update:', error);
+  }
 }
 
 // Update exports
