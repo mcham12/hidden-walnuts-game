@@ -217,6 +217,36 @@ export default {
         }
       }
 
+      // Handle /clear-cache route
+      if (pathname === "/clear-cache") {
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        console.log("Clearing cache");
+        const response = await forest.fetch(request);
+        const result = await response.json();
+        return new Response(JSON.stringify(result), {
+          status: response.status,
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "application/json"
+          }
+        });
+      }
+
+      // Handle /test-walnuts route
+      if (pathname === "/test-walnuts") {
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        console.log("Testing walnut generation");
+        const response = await forest.fetch(request);
+        const result = await response.json();
+        return new Response(JSON.stringify(result), {
+          status: response.status,
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "application/json"
+          }
+        });
+      }
+
       // Handle not found case
       console.log("No matching route for:", pathname);
       return new Response(JSON.stringify({

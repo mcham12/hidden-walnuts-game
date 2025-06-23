@@ -113,6 +113,20 @@ export class ForestManager implements DurableObject {
       }) as unknown as CfResponse;
     }
 
+    // FIX: Add cache clear endpoint
+    if (url.pathname === '/clear-cache') {
+      const today = new Date().toISOString().split('T')[0];
+      await this.state.storage.delete(`map-state-${today}`);
+      await this.state.storage.delete(`forest-objects-${today}`);
+      console.log(`[Log] ✅ Cleared cache for ${today}`);
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: `Cache cleared for ${today}` 
+      }), {
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      }) as unknown as CfResponse;
+    }
+
     return new Response('Not Found', { status: 404 }) as unknown as CfResponse;
   }
 
@@ -160,6 +174,33 @@ export class ForestManager implements DurableObject {
     // Send initial map state
     const mapState = await this.getMapState();
     socket.send(JSON.stringify({ type: 'init', mapState }));
+
+    // FIX: Initialize player state immediately upon connection
+    this.players.set(squirrelId, {
+      squirrelId,
+      position: { x: 0, y: 2, z: 0 }, // Default spawn position
+      rotationY: 0,
+      lastUpdate: Date.now(),
+      messageCount: 1,
+      messageResetTime: Date.now() + 60000
+    });
+
+    // FIX: Send existing players to new player
+    const existingPlayers = Array.from(this.players.entries())
+      .filter(([id]) => id !== squirrelId)
+      .map(([id, player]) => ({
+        squirrelId: id,
+        position: player.position,
+        rotationY: player.rotationY
+      }));
+
+    if (existingPlayers.length > 0) {
+      socket.send(JSON.stringify({ 
+        type: 'existing_players', 
+        players: existingPlayers 
+      }));
+      console.log(`[Log] Sent ${existingPlayers.length} existing players to ${squirrelId}`);
+    }
 
     // Send player_join notification to other players
     this.broadcastExcept(squirrelId, {
@@ -419,6 +460,14 @@ export class ForestManager implements DurableObject {
   private async getMapState(): Promise<any[]> {
     const today = new Date().toISOString().split('T')[0];
     let mapState = await this.state.storage.get<any[]>(`map-state-${today}`);
+    
+    // FIX: Check if cached array exists but is empty, clear and regenerate
+    if (mapState && Array.isArray(mapState) && mapState.length === 0) {
+      console.log(`[Log] ⚠️ Found empty cached walnut array, regenerating...`);
+      await this.state.storage.delete(`map-state-${today}`);
+      mapState = undefined; // Force regeneration
+    }
+    
     if (!mapState) {
       mapState = this.generateGameWalnuts();
       await this.state.storage.put(`map-state-${today}`, mapState);

@@ -199,6 +199,14 @@ async function connectWebSocket(squirrelId: string, token: string) {
         console.log(`[Log] ✅ Init complete: added ${walnutMeshes.size} walnuts to scene`);
       }
       
+      // FIX: Handle existing players when joining
+      if (data.type === "existing_players") {
+        console.log(`[Log] 👥 Received ${data.players.length} existing players`);
+        for (const player of data.players) {
+          updateOtherPlayer(player.squirrelId, player.position);
+        }
+      }
+      
       if (data.type === "walnut-rehidden") {
         const { walnutId, location } = data;
         console.log(`Received rehidden message for ${walnutId} at location:`, location);
