@@ -282,12 +282,37 @@ export class ForestManager implements DurableObject {
     let mapState = await this.state.storage.get<any[]>(`map-state-${today}`);
     
     if (!mapState) {
-      // Initialize empty map state
-      mapState = [];
+      // Generate initial game walnuts (100 as per MVP plan)
+      mapState = this.generateGameWalnuts();
       await this.state.storage.put(`map-state-${today}`, mapState);
+      console.log(`[Log] Seeded ${mapState.length} game walnuts for ${today}`);
     }
     
     return mapState;
+  }
+
+  private generateGameWalnuts(): any[] {
+    const walnuts = [];
+    const terrainSize = 200;
+    const walnutCount = 100; // As per MVP plan
+    
+    for (let i = 0; i < walnutCount; i++) {
+      walnuts.push({
+        id: `game-walnut-${i}`,
+        ownerId: 'system',
+        origin: 'game',
+        hiddenIn: Math.random() > 0.5 ? 'buried' : 'bush',
+        location: {
+          x: (Math.random() - 0.5) * terrainSize,
+          y: 0,
+          z: (Math.random() - 0.5) * terrainSize
+        },
+        found: false,
+        timestamp: Date.now()
+      });
+    }
+    
+    return walnuts;
   }
 
   private generateForestObjects(): any[] {
