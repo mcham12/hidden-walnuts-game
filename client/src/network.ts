@@ -37,7 +37,6 @@ class NetworkManager {
   // Industry Standard: Heartbeat system
   private heartbeatInterval: number | null = null
   private readonly HEARTBEAT_INTERVAL = 1000 // 1 second
-  private readonly CONNECTION_TIMEOUT = 5000 // 5 seconds
 
   // Callbacks
   private onMessageCallbacks = new Map<string, (data: any) => void>()

@@ -1,7 +1,7 @@
 import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+// GLTFLoader now used in avatar.ts and multiplayer.ts
 import { createTerrain } from './terrain'
 import { createForest } from './forest'
 import { 
@@ -14,9 +14,9 @@ import {
   reconcileWithServer,
   setPlayerPosition
 } from './avatar'
-import { MultiplayerSystem, type PlayerData } from './multiplayer'
+import { MultiplayerSystem } from './multiplayer'
 import { NetworkManager } from './network'
-import { FOREST_SIZE, HEARTBEAT_INTERVAL, MAX_RECONNECT_ATTEMPTS } from './constants'
+import { FOREST_SIZE } from './constants'
 
 // AI NOTE: Export DEBUG for use in other modules
 export const DEBUG = false;
@@ -339,21 +339,24 @@ directionalLight.shadow.camera.far = 500
 scene.add(directionalLight)
 
 // Terrain and forest setup
-let terrain: THREE.Object3D;
 let forestMeshes: THREE.Object3D[] = [];
 
 // Proper game initialization sequence
 async function startGame() {
-  console.log('[Log] 🎮 Starting game initialization...');
-  
-  // Initialize game and connect WebSocket
-  const { squirrelId, token } = await initializeGame();
-  await connectWebSocket(squirrelId, token);
-  
-  // Initialize environment (forest and walnuts)
-  await initEnvironment();
-  
-  console.log('[Log] ✅ Game initialization complete!');
+  try {
+    console.log('[Log] 🎮 Starting game...');
+    
+    // Initialize game and connect
+    const { squirrelId, token } = await initializeGame();
+    await connectWebSocket(squirrelId, token);
+    
+    // Initialize environment
+    await initEnvironment();
+    
+    console.log('[Log] ✅ Game started successfully!');
+  } catch (error) {
+    console.error('[Error] Failed to start game:', error);
+  }
 }
 
 // Start the game
@@ -455,19 +458,18 @@ async function fetchWalnutMap() {
 
 // Initialize environment with proper forest and walnut loading
 async function initEnvironment() {
-  console.log('[Log] Initializing game environment...');
-  
   try {
-    // Initialize terrain first
-    const terrain = await createTerrain();
-    scene.add(terrain);
-    console.log('[Log] Terrain added to scene');
+    console.log('[Log] Environment initialization starting...');
     
-    // Load forest using the proper GLTF system
-    const loadedForestMeshes = await createForest();
-    loadedForestMeshes.forEach(mesh => scene.add(mesh));
-    forestMeshes = loadedForestMeshes;
-    console.log(`[Log] Added ${forestMeshes.length} forest objects to scene`);
+    // Create and add terrain to scene
+    const terrain = await createTerrain()
+    scene.add(terrain)
+    console.log('[Log] Terrain added to scene')
+    
+    // Create and add forest objects to scene
+    forestMeshes = await createForest()
+    forestMeshes.forEach((mesh) => scene.add(mesh))
+    console.log(`[Log] Forest added to scene with ${forestMeshes.length} objects`)
     
     // Load walnuts using the proper system
     const walnutData = await fetchWalnutMap();
@@ -596,7 +598,7 @@ async function animate(currentTime: number = 0) {
     // FIX: Update multiplayer system with actual local player position
     const localPos = avatar.mesh.position.clone();
     multiplayerSystem.updateLocalPlayerPosition(localPos);
-    multiplayerSystem.update(deltaTime, localPos);
+    multiplayerSystem.update();
   }
   
   // Standard Three.js updates
@@ -630,266 +632,13 @@ setInterval(() => {
   }
 }, 10000); // Every 10 seconds
 
-// WebSocket heartbeat setup
-let heartbeatInterval: number | null = null;
+// Legacy multiplayer system removed - using new industry-standard system
 
-function startHeartbeat() {
-  if (heartbeatInterval) {
-    clearInterval(heartbeatInterval);
-  }
-  heartbeatInterval = window.setInterval(() => {
-    if (networkManager.getConnectionState().isConnected) {
-      networkManager.send('ping', {}, { priority: 0 });
-    }
-  }, HEARTBEAT_INTERVAL);
-}
+// Heartbeat functions removed - handled by NetworkManager
 
-function stopHeartbeat() {
-  if (heartbeatInterval) {
-    clearInterval(heartbeatInterval);
-    heartbeatInterval = null;
-  }
-}
+// Legacy multiplayer functions removed - using new industry-standard MultiplayerSystem
 
-// Multiplayer other players tracking
-const otherPlayers = new Map<string, THREE.Object3D>();
-// FIX: Add position smoothing for other players
-const playerTargetPositions = new Map<string, { x: number, y: number, z: number, rotationY: number }>();
-
-// Get current player position from avatar system with better error handling
-function getPlayerPosition() {
-  const avatar = getSquirrelAvatar();
-  if (avatar?.mesh) {
-    return {
-      x: avatar.mesh.position.x,
-      y: avatar.mesh.position.y,
-      z: avatar.mesh.position.z,
-      rotationY: avatar.mesh.rotation.y
-    };
-  }
-  // FIX: Better fallback that still allows multiplayer sync during avatar loading
-  console.warn('[Warning] Avatar not loaded yet, using default position for multiplayer sync');
-  return { x: 0, y: 2, z: 0, rotationY: 0 }; // Use y=2 so player is visible above terrain
-}
-
-// Update other players' positions with enhanced visibility
-async function updateOtherPlayer(squirrelId: string, position: { x: number; y: number; z: number; rotationY: number }) {
-  const localSquirrelId = localStorage.getItem('squirrelId');
-  if (squirrelId === localSquirrelId) return;
-
-  // FIX: Validate position data
-  if (!position || typeof position.x !== 'number' || typeof position.z !== 'number') {
-    console.warn(`[Warning] Invalid position for player ${squirrelId}:`, position);
-    return;
-  }
-
-  let playerMesh = otherPlayers.get(squirrelId);
-  if (!playerMesh) {
-    // FIX: Load proper squirrel avatar for other players instead of box
-    try {
-      const loader = new GLTFLoader();
-      const gltf = await loader.loadAsync('/assets/models/squirrel.glb');
-      playerMesh = gltf.scene;
-      playerMesh.scale.set(0.5, 0.5, 0.5); // Same scale as main player
-      
-      // Make it slightly different color to distinguish from main player
-      playerMesh.traverse((child: THREE.Object3D) => {
-        if (child instanceof THREE.Mesh && child.material) {
-          const material = child.material.clone();
-          if (Array.isArray(material)) {
-            material.forEach(mat => {
-              if ('color' in mat) mat.color.setHex(0x888888); // Darker gray
-            });
-          } else if ('color' in material) {
-            material.color.setHex(0x888888); // Darker gray
-          }
-          child.material = material;
-        }
-      });
-      
-      playerMesh.castShadow = true;
-      playerMesh.receiveShadow = true;
-      scene.add(playerMesh);
-      otherPlayers.set(squirrelId, playerMesh);
-      console.log(`[Log] ✅ Added squirrel avatar for player ${squirrelId}`);
-    } catch (error) {
-      console.warn(`[Warning] Failed to load squirrel for ${squirrelId}, using fallback:`, error);
-      // Fallback to colored box but make it look more like a player
-      const geometry = new THREE.CapsuleGeometry(0.3, 1.2, 4, 8);
-      const material = new THREE.MeshStandardMaterial({ 
-        color: 0xffaa00, // Orange color
-        roughness: 0.7,
-        metalness: 0.1
-      });
-      playerMesh = new THREE.Mesh(geometry, material);
-      playerMesh.castShadow = true;
-      playerMesh.receiveShadow = true;
-      scene.add(playerMesh);
-      otherPlayers.set(squirrelId, playerMesh);
-      console.log(`[Log] ⚠️ Added fallback avatar for player ${squirrelId}`);
-    }
-  }
-
-  if (playerMesh) {
-    try {
-      const terrainHeight = await getTerrainHeight(position.x, position.z).catch(() => 0);
-      const newY = terrainHeight + 0.1;
-      
-      // FIX: Store target position for smooth interpolation instead of immediate update
-      playerTargetPositions.set(squirrelId, {
-        x: position.x,
-        y: newY,
-        z: position.z,
-        rotationY: position.rotationY || 0
-      });
-      
-      console.log(`[Log] 📍 Set target position for player ${squirrelId}: (${position.x.toFixed(1)}, ${newY.toFixed(1)}, ${position.z.toFixed(1)})`);
-    } catch (error) {
-      console.error(`[Error] Failed to update player ${squirrelId} position:`, error);
-    }
-  }
-}
-
-// Remove other player's avatar
-function removeOtherPlayer(squirrelId: string) {
-  const playerMesh = otherPlayers.get(squirrelId);
-  if (playerMesh) {
-    scene.remove(playerMesh);
-    otherPlayers.delete(squirrelId);
-    // FIX: Clean up target position data
-    playerTargetPositions.delete(squirrelId);
-    console.log(`[Log] 🔴 Removed multiplayer avatar for ${squirrelId}`);
-  }
-}
-
-// Scene monitoring for debugging
-function monitorScene() {
-  const sceneStats = {
-    totalChildren: scene.children.length,
-    meshCount: scene.children.filter(child => child.type === 'Mesh').length,
-    otherPlayerCount: otherPlayers.size,
-    walnutCount: walnutMeshes.size,
-    forestObjectCount: forestMeshes.length
-  };
-  
-  console.log('[Log] 📊 Scene composition:', sceneStats);
-  
-  // Check for missing environment elements
-  if (sceneStats.forestObjectCount === 0) {
-    console.warn('[Warning] 🌲 No forest objects detected in scene');
-  }
-  if (sceneStats.walnutCount === 0) {
-    console.warn('[Warning] 🥜 No walnuts detected in scene');
-  }
-}
-
-// Monitor scene every 30 seconds for debugging
-setInterval(monitorScene, 30000);
-
-// Debug function to manually fetch environment (accessible from console)
-(window as any).debugFetchEnvironment = async () => {
-  console.log('[Debug] 🔍 Manually fetching environment data...');
-  await initEnvironment();
-};
-
-// Debug function to log current scene state
-(window as any).debugSceneState = () => {
-  console.log('[Debug] 🎬 Current scene state:');
-  monitorScene();
-  console.log('[Debug] Scene children:', scene.children.map(child => ({ 
-    type: child.type, 
-    name: child.name || 'unnamed',
-    position: child.position,
-    visible: child.visible
-  })));
-};
-
-// Throttle player updates
-let lastUpdateTime = 0;
-const UPDATE_INTERVAL = 100; // 100ms
-
-// FIX: Add movement prediction and position smoothing
-let lastSentPosition = { x: 0, y: 0, z: 0, rotationY: 0 };
-const MOVEMENT_THRESHOLD = 0.1; // FIX: Much lower threshold - was 0.5, now 0.1
-const ROTATION_THRESHOLD = 0.05; // FIX: Lower rotation threshold too
-
-// FIX: Improved player update throttling with better error handling
-function sendPlayerUpdate() {
-  // FIX: Check WebSocket connection state before sending
-  if (!networkManager.getConnectionState().isConnected) {
-    if (DEBUG) console.warn("[Warning] Cannot send player update: Network not connected");
-    return;
-  }
-
-  // FIX: Check if avatar is initialized before getting position
-  const avatar = getSquirrelAvatar();
-  if (!avatar || !avatar.mesh) {
-    if (DEBUG) console.warn("[Warning] Cannot send player update: Avatar not initialized");
-    return;
-  }
-
-  try {
-    const position = getPlayerPosition();
-    if (!position) {
-      console.warn("[Warning] Cannot send player update: Invalid position");
-      return;
-    }
-
-    // FIX: Validate position before sending
-    if (typeof position.x !== 'number' || typeof position.y !== 'number' || typeof position.z !== 'number') {
-      console.warn("[Warning] Cannot send player update: Invalid position data", position);
-      return;
-    }
-
-    // FIX: Movement prediction - only send if significant movement occurred
-    const movementDistance = Math.sqrt(
-      Math.pow(position.x - lastSentPosition.x, 2) + 
-      Math.pow(position.z - lastSentPosition.z, 2)
-    );
-    const rotationDifference = Math.abs(position.rotationY - lastSentPosition.rotationY);
-    
-    // FIX: Add debug logging for movement threshold
-    if (DEBUG || Date.now() % 5000 < 100) { // Debug every 5 seconds
-      console.log(`[Debug] Movement check: distance=${movementDistance.toFixed(3)}, rotation=${rotationDifference.toFixed(3)}, thresholds: move=${MOVEMENT_THRESHOLD}, rot=${ROTATION_THRESHOLD}`);
-    }
-    
-    if (movementDistance < MOVEMENT_THRESHOLD && rotationDifference < ROTATION_THRESHOLD) {
-      // No significant movement, skip update
-      if (DEBUG) console.log(`[Debug] Skipping update - below threshold`);
-      return;
-    }
-
-    const message = {
-      type: 'player_update',
-      position: position
-    };
-
-    networkManager.send('player_update', message, { priority: 1 });
-    
-    // Update last sent position
-    lastSentPosition = { ...position };
-    
-    // FIX: More detailed debug logging
-    if (DEBUG) {
-      console.log(`[Log] 📤 Sent player update:`, position);
-    } else {
-      // Periodic logging even without DEBUG mode
-      if (Date.now() % 10000 < 100) {
-        console.log(`[Log] 📤 Position update sent:`, { x: position.x.toFixed(1), z: position.z.toFixed(1), y: position.rotationY?.toFixed(2) });
-      }
-    }
-  } catch (error) {
-    console.error("[Error] Failed to send player update:", error);
-  }
-}
-
-// Connection configuration with exponential backoff
-const BASE_RECONNECT_DELAY = 1000; // Start with 1 second
-
-// FIX: Exponential backoff for reconnection (Phase 2)
-function getReconnectDelay(attempt: number): number {
-  return Math.min(BASE_RECONNECT_DELAY * Math.pow(2, attempt), 30000); // Max 30 seconds
-}
+// Window resize handler
 
 // Update exports
 export {

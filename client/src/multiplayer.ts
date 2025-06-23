@@ -26,7 +26,6 @@ class MultiplayerSystem {
   // Industry Standard: Area of Interest settings
   private readonly AOI_RADIUS = 100 // Only sync players within 100 units
   private readonly CULLING_RADIUS = 150 // Remove from memory beyond 150 units
-  private readonly UPDATE_RATE = 20 // 20Hz for other players
   private readonly INTERPOLATION_TIME = 100 // 100ms interpolation buffer
   
   // Industry Standard: Network interpolation
@@ -38,7 +37,7 @@ class MultiplayerSystem {
   constructor(scene: THREE.Scene) {
     this.scene = scene
   }
-
+  
   // Industry Standard: Update local player position for distance calculations
   updateLocalPlayerPosition(position: THREE.Vector3): void {
     this.localPlayerPosition.copy(position)
@@ -183,7 +182,7 @@ class MultiplayerSystem {
   }
 
   // Industry Standard: Smooth interpolation update
-  update(deltaTime: number, localPlayerPosition: THREE.Vector3): void {
+  update(): void {
     const now = performance.now()
     const interpolationTarget = now - this.INTERPOLATION_TIME
 
