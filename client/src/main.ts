@@ -152,6 +152,13 @@ async function connectWebSocket(squirrelId: string, token: string) {
       // Enhanced multiplayer updates with better logging
       if (data.type === 'player_update' && data.squirrelId !== localStorage.getItem('squirrelId')) {
         console.log(`[Log] 📨 Received player update from ${data.squirrelId}:`, data.position);
+        
+        // FIX: Validate received position data
+        if (!data.position || typeof data.position.x !== 'number' || typeof data.position.z !== 'number') {
+          console.warn(`[Warning] Invalid position data received:`, data.position);
+          return;
+        }
+        
         updateOtherPlayer(data.squirrelId, data.position);
         return;
       }
@@ -638,6 +645,12 @@ async function updateOtherPlayer(squirrelId: string, position: { x: number; y: n
   const localSquirrelId = localStorage.getItem('squirrelId');
   if (squirrelId === localSquirrelId) return;
 
+  // FIX: Validate position data
+  if (!position || typeof position.x !== 'number' || typeof position.z !== 'number') {
+    console.warn(`[Warning] Invalid position for player ${squirrelId}:`, position);
+    return;
+  }
+
   let playerMesh = otherPlayers.get(squirrelId);
   if (!playerMesh) {
     // FIX: Load proper squirrel avatar for other players instead of box
@@ -686,10 +699,28 @@ async function updateOtherPlayer(squirrelId: string, position: { x: number; y: n
   }
 
   if (playerMesh) {
-    const terrainHeight = await getTerrainHeight(position.x, position.z).catch(() => 0);
-    playerMesh.position.set(position.x, terrainHeight + 0.1, position.z);
-    playerMesh.rotation.y = position.rotationY;
-    console.log(`[Log] 📍 Updated player ${squirrelId} to (${position.x}, ${terrainHeight + 0.1}, ${position.z})`);
+    try {
+      const terrainHeight = await getTerrainHeight(position.x, position.z).catch(() => 0);
+      const newY = terrainHeight + 0.1;
+      
+      // FIX: Only update if position actually changed (avoid unnecessary updates)
+      const currentPos = playerMesh.position;
+      const positionChanged = Math.abs(currentPos.x - position.x) > 0.1 || 
+                            Math.abs(currentPos.z - position.z) > 0.1 ||
+                            Math.abs(currentPos.y - newY) > 0.1;
+      
+      if (positionChanged) {
+        playerMesh.position.set(position.x, newY, position.z);
+        console.log(`[Log] 📍 Updated player ${squirrelId} to (${position.x.toFixed(1)}, ${newY.toFixed(1)}, ${position.z.toFixed(1)})`);
+      }
+      
+      // FIX: Always update rotation if provided
+      if (typeof position.rotationY === 'number') {
+        playerMesh.rotation.y = position.rotationY;
+      }
+    } catch (error) {
+      console.error(`[Error] Failed to update player ${squirrelId} position:`, error);
+    }
   }
 }
 
@@ -753,14 +784,14 @@ const UPDATE_INTERVAL = 100; // 100ms
 function sendPlayerUpdate() {
   // FIX: Check WebSocket connection state before sending
   if (!socket || socket.readyState !== WebSocket.OPEN) {
-    console.warn("[Warning] Cannot send player update: WebSocket not connected");
+    if (DEBUG) console.warn("[Warning] Cannot send player update: WebSocket not connected");
     return;
   }
 
   // FIX: Check if avatar is initialized before getting position
   const avatar = getSquirrelAvatar();
   if (!avatar || !avatar.mesh) {
-    console.warn("[Warning] Cannot send player update: Avatar not initialized");
+    if (DEBUG) console.warn("[Warning] Cannot send player update: Avatar not initialized");
     return;
   }
 
@@ -771,14 +802,27 @@ function sendPlayerUpdate() {
       return;
     }
 
+    // FIX: Validate position before sending
+    if (typeof position.x !== 'number' || typeof position.y !== 'number' || typeof position.z !== 'number') {
+      console.warn("[Warning] Cannot send player update: Invalid position data", position);
+      return;
+    }
+
     const message = {
       type: 'player_update',
       position: position
     };
 
     socket.send(JSON.stringify(message));
+    
+    // FIX: More detailed debug logging
     if (DEBUG) {
       console.log(`[Log] 📤 Sent player update:`, position);
+    } else {
+      // Periodic logging even without DEBUG mode
+      if (Date.now() % 10000 < 100) {
+        console.log(`[Log] 📤 Position update sent:`, { x: position.x.toFixed(1), z: position.z.toFixed(1), y: position.rotationY?.toFixed(2) });
+      }
     }
   } catch (error) {
     console.error("[Error] Failed to send player update:", error);

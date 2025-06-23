@@ -64,10 +64,19 @@ export class ForestManager implements DurableObject {
   // FIX: Load persisted player data on startup
   private async initializePlayersFromStorage(): Promise<void> {
     try {
-      const storedPlayers = await this.state.storage.get<Map<string, PlayerData>>('active-players');
-      if (storedPlayers) {
+      // FIX: Expect array format, not Map format
+      const storedPlayers = await this.state.storage.get<[string, PlayerData][]>('active-players');
+      if (storedPlayers && Array.isArray(storedPlayers)) {
+        // Convert array back to Map
         this.players = new Map(storedPlayers);
         console.log(`[Log] 🔄 Restored ${this.players.size} players from storage`);
+        
+        // Debug: Log restored players
+        for (const [id, player] of this.players.entries()) {
+          console.log(`[Log] 📍 Restored player ${id} at position:`, player.position);
+        }
+      } else {
+        console.log(`[Log] 📁 No stored players found, starting fresh`);
       }
     } catch (error) {
       console.error('[Error] Failed to load players from storage:', error);
@@ -149,6 +158,33 @@ export class ForestManager implements DurableObject {
       return new Response(JSON.stringify({ 
         success: true, 
         message: `Cache cleared for ${today}` 
+      }), {
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      }) as unknown as CfResponse;
+    }
+
+    // FIX: Add debug endpoint to inspect player storage
+    if (url.pathname === '/debug-players') {
+      const storedPlayers = await this.state.storage.get<[string, PlayerData][]>('active-players');
+      const currentPlayers = Array.from(this.players.entries());
+      
+      return new Response(JSON.stringify({
+        storedPlayers: storedPlayers || [],
+        currentPlayers: currentPlayers,
+        activeSessions: Array.from(this.sessions.keys())
+      }), {
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      }) as unknown as CfResponse;
+    }
+
+    // FIX: Add endpoint to clear player storage
+    if (url.pathname === '/clear-players') {
+      await this.state.storage.delete('active-players');
+      this.players.clear();
+      console.log(`[Log] ✅ Cleared all player storage`);
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'All player storage cleared' 
       }), {
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
       }) as unknown as CfResponse;
@@ -301,11 +337,16 @@ export class ForestManager implements DurableObject {
             return;
           }
           
-          // FIX: Update player state and persist every 10 updates (performance)
+          // FIX: Properly extract position and rotation from client data
+          const { x, y, z, rotationY } = data.position;
+          const position = { x, y, z };
+          const rotation = rotationY || 0;
+          
+          // FIX: Update player state with correct structure
           const updatedPlayer = {
             squirrelId,
-            position: data.position,
-            rotationY: data.position.rotationY || 0,
+            position: position,
+            rotationY: rotation,
             lastUpdate: now,
             messageCount: player?.messageCount || 1,
             messageResetTime: player?.messageResetTime || now + 60000
@@ -313,17 +354,27 @@ export class ForestManager implements DurableObject {
           
           this.players.set(squirrelId, updatedPlayer);
           
-          // Persist periodically (not every update for performance)
-          if (now % 5000 < 100) { // Roughly every 5 seconds
+          // FIX: Persist more frequently for better position persistence (every 2 seconds)
+          if (now % 2000 < 100) {
             await this.persistPlayerData();
           }
           
-          // Broadcast to other players
+          // FIX: Broadcast with proper position structure
           this.broadcastExcept(squirrelId, {
             type: 'player_update',
             squirrelId,
-            position: data.position
+            position: {
+              x: position.x,
+              y: position.y,
+              z: position.z,
+              rotationY: rotation
+            }
           });
+          
+          // Debug: Log position updates periodically
+          if (now % 5000 < 100) {
+            console.log(`[Log] 📍 Updated ${squirrelId} position:`, position, `rotation:`, rotation);
+          }
         }
         
         if (data.type === 'ping') {

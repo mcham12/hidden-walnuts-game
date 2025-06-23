@@ -247,6 +247,36 @@ export default {
         });
       }
 
+      // Handle /debug-players route
+      if (pathname === "/debug-players") {
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        console.log("Debugging player storage");
+        const response = await forest.fetch(request);
+        const result = await response.json();
+        return new Response(JSON.stringify(result), {
+          status: response.status,
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "application/json"
+          }
+        });
+      }
+
+      // Handle /clear-players route
+      if (pathname === "/clear-players") {
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        console.log("Clearing player storage");
+        const response = await forest.fetch(request);
+        const result = await response.json();
+        return new Response(JSON.stringify(result), {
+          status: response.status,
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "application/json"
+          }
+        });
+      }
+
       // Handle not found case
       console.log("No matching route for:", pathname);
       return new Response(JSON.stringify({
