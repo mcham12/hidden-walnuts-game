@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { createTerrain } from './terrain'
 import { createForest } from './forest'
 import { loadSquirrelAvatar, updateSquirrelMovement, updateSquirrelCamera, getSquirrelAvatar } from './avatar'
-import { FOREST_SIZE, HEARTBEAT_INTERVAL, MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY } from './constants'
+import { FOREST_SIZE, HEARTBEAT_INTERVAL, MAX_RECONNECT_ATTEMPTS } from './constants'
 
 // AI NOTE: Export DEBUG for use in other modules
 export const DEBUG = false;
@@ -69,13 +69,31 @@ const wsProtocol = API_BASE.startsWith("https") ? "wss" : "ws";
 const wsHost = API_BASE.replace(/^https?:\/\//, "");
 
 async function connectWebSocket(squirrelId: string, token: string) {
+  // FIX: Better connection state management (Phase 2)
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    console.log("[Log] WebSocket already connected, skipping reconnection");
+    return;
+  }
+
   // Use /ws endpoint instead of /join for WebSocket
   const wsUrl = `${wsProtocol}://${wsHost}/ws?squirrelId=${squirrelId}&token=${token}`;
-  socket = new WebSocket(wsUrl);
+  
+  try {
+    socket = new WebSocket(wsUrl);
+  } catch (error) {
+    console.error("Failed to create WebSocket:", error);
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      reconnectAttempts++;
+      const delay = getReconnectDelay(reconnectAttempts);
+      console.log(`[Log] Retrying connection in ${delay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+      setTimeout(() => connectWebSocket(squirrelId, token), delay);
+    }
+    return;
+  }
 
   socket.addEventListener("open", () => {
     console.log("✅ WebSocket connection established");
-    reconnectAttempts = 0;
+    reconnectAttempts = 0; // Reset on successful connection
     startHeartbeat();
     
     // No longer using frequent intervals - will call sendPlayerUpdate() in render loop
@@ -85,15 +103,38 @@ async function connectWebSocket(squirrelId: string, token: string) {
   socket.addEventListener("error", (event) => {
     console.error("WebSocket error:", event);
     stopHeartbeat();
+    
+    // FIX: Enhanced error handling with specific error types
+    if (socket?.readyState === WebSocket.CONNECTING) {
+      console.error("[Error] Failed to connect to WebSocket server");
+    } else if (socket?.readyState === WebSocket.OPEN) {
+      console.error("[Error] WebSocket connection lost during operation");
+    }
   });
 
   socket.addEventListener("close", (event) => {
     console.warn("WebSocket closed:", event.code, event.reason);
     stopHeartbeat();
-    // Attempt to reconnect after a delay
+    
+    // FIX: Better close code handling
+    if (event.code === 4001) {
+      console.error("[Error] Authentication failed - invalid token");
+      // Don't auto-reconnect on auth failure
+      return;
+    } else if (event.code === 4003) {
+      console.error("[Error] Server at capacity - will retry later");
+    } else if (event.code === 4004) {
+      console.warn("[Warning] Connection timeout - reconnecting");
+    }
+    
+    // Attempt to reconnect after a delay with exponential backoff
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       reconnectAttempts++;
-      setTimeout(() => connectWebSocket(squirrelId, token), RECONNECT_DELAY * reconnectAttempts);
+      const delay = getReconnectDelay(reconnectAttempts);
+      console.log(`[Log] Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+      setTimeout(() => connectWebSocket(squirrelId, token), delay);
+    } else {
+      console.error("[Error] Max reconnection attempts reached. Please refresh the page.");
     }
   });
 
@@ -665,6 +706,14 @@ function sendPlayerUpdate() {
   } catch (error) {
     console.error('[Error] Failed to send player update:', error);
   }
+}
+
+// Connection configuration with exponential backoff
+const BASE_RECONNECT_DELAY = 1000; // Start with 1 second
+
+// FIX: Exponential backoff for reconnection (Phase 2)
+function getReconnectDelay(attempt: number): number {
+  return Math.min(BASE_RECONNECT_DELAY * Math.pow(2, attempt), 30000); // Max 30 seconds
 }
 
 // Update exports

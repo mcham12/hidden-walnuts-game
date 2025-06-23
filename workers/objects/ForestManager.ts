@@ -25,11 +25,19 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 } as const;
 
+// FIX: Add resource limits and timeouts (Phase 2)
+const MAX_CONCURRENT_SESSIONS = 100; // Cloudflare DO best practice
+const SESSION_TIMEOUT = 10 * 60 * 1000; // 10 minutes
+const MAX_MESSAGE_SIZE = 1024; // 1KB per message
+const MAX_MESSAGES_PER_MINUTE = 60; // Rate limiting
+
 interface PlayerData {
   squirrelId: string;
   position: { x: number; y: number; z: number };
   rotationY: number;
   lastUpdate: number;
+  messageCount: number; // Track messages per minute
+  messageResetTime: number; // When to reset counter
 }
 
 export class ForestManager implements DurableObject {
@@ -44,7 +52,10 @@ export class ForestManager implements DurableObject {
   constructor(state: DurableObjectState, env: EnvWithBindings) {
     this.state = state;
     this.env = env;
-    this.terrainSeed = Math.random() * 1000; // Initialize seed on creation
+    this.terrainSeed = Math.random() * 1000;
+    
+    // FIX: Schedule periodic cleanup (Cloudflare DO best practice)
+    this.scheduleCleanup();
   }
 
   async fetch(request: CfRequest): Promise<CfResponse> {
@@ -93,39 +104,182 @@ export class ForestManager implements DurableObject {
       }) as unknown as CfResponse;
     }
 
+    // FIX: Add test endpoint to force walnut regeneration
+    if (url.pathname === '/test-walnuts') {
+      const walnuts = this.generateGameWalnuts();
+      console.log(`[Test] Generated ${walnuts.length} test walnuts`);
+      return new Response(JSON.stringify(walnuts), {
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      }) as unknown as CfResponse;
+    }
+
     return new Response('Not Found', { status: 404 }) as unknown as CfResponse;
   }
 
   async handleSocket(socket: WebSocket, squirrelId: string, token: string) {
-    socket.accept();
+    // FIX: Check resource limits before accepting new connections
+    if (this.sessions.size >= MAX_CONCURRENT_SESSIONS) {
+      console.warn(`[Warning] Session limit reached (${MAX_CONCURRENT_SESSIONS}), rejecting ${squirrelId}`);
+      socket.close(4003, "Server at capacity");
+      return;
+    }
+
+    // FIX: Implement proper authentication before accepting socket
+    console.log(`[Log] Validating WebSocket connection for ${squirrelId}`);
+    
+    try {
+      // Validate token with SquirrelSession (single source of truth)
+      const isValid = await this.validateToken(squirrelId, token);
+      if (!isValid) {
+        console.error(`[Error] Invalid token for ${squirrelId}, rejecting WebSocket`);
+        socket.close(4001, "Invalid token");
+        return;
+      }
+      
+      // Only accept socket after successful validation
+      socket.accept();
+      console.log(`[Log] ✅ WebSocket authenticated for ${squirrelId}`);
+      
+    } catch (error) {
+      console.error(`[Error] Token validation failed for ${squirrelId}:`, error);
+      socket.close(4002, "Authentication error");
+      return;
+    }
+
+    // Store authenticated session with timeout
     this.sessions.set(squirrelId, socket);
     this.socketToPlayer.set(socket, squirrelId);
+
+    // FIX: Set connection timeout
+    const connectionTimeout = setTimeout(() => {
+      console.log(`[Log] Connection timeout for ${squirrelId}`);
+      this.handlePlayerLeave(squirrelId);
+      socket.close(4004, "Connection timeout");
+    }, SESSION_TIMEOUT);
 
     // Send initial map state
     const mapState = await this.getMapState();
     socket.send(JSON.stringify({ type: 'init', mapState }));
 
+    // Send player_join notification to other players
+    this.broadcastExcept(squirrelId, {
+      type: 'player_join',
+      squirrelId,
+      position: { x: 0, y: 2, z: 0, rotationY: 0 } // Default position
+    });
+
     socket.addEventListener('message', async (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'player_update') {
-        this.players.set(squirrelId, {
-          squirrelId,
-          position: data.position,
-          rotationY: data.position.rotationY || 0,
-          lastUpdate: Date.now()
-        });
-        this.broadcastExcept(squirrelId, {
-          type: 'player_update',
-          squirrelId,
-          position: data.position
-        });
+      try {
+        // FIX: Message size validation
+        if (event.data.length > MAX_MESSAGE_SIZE) {
+          console.warn(`[Warning] Message too large from ${squirrelId}: ${event.data.length} bytes`);
+          return;
+        }
+
+        const data = JSON.parse(event.data);
+        
+        // FIX: Rate limiting for all messages (enhanced)
+        const now = Date.now();
+        const player = this.players.get(squirrelId);
+        
+        if (player) {
+          // Reset message counter if time window expired
+          if (now > player.messageResetTime) {
+            player.messageCount = 1;
+            player.messageResetTime = now + 60000; // Next minute
+          } else {
+            player.messageCount++;
+          }
+          
+          // Rate limit check
+          if (player.messageCount > MAX_MESSAGES_PER_MINUTE) {
+            console.warn(`[Warning] Rate limit exceeded for ${squirrelId}: ${player.messageCount} messages`);
+            return;
+          }
+        }
+        
+        // FIX: Enhanced rate limiting for player updates (anti-spam)
+        if (data.type === 'player_update') {
+          const lastUpdate = player?.lastUpdate || 0;
+          
+          // Rate limit: max 20 updates per second
+          if (now - lastUpdate < 50) {
+            console.warn(`[Warning] Player update rate limit exceeded for ${squirrelId}`);
+            return;
+          }
+          
+          // FIX: Basic position validation (anti-cheat)
+          if (!this.isValidPosition(data.position)) {
+            console.warn(`[Warning] Invalid position from ${squirrelId}:`, data.position);
+            return;
+          }
+          
+          // Update player state with proper message tracking
+          this.players.set(squirrelId, {
+            squirrelId,
+            position: data.position,
+            rotationY: data.position.rotationY || 0,
+            lastUpdate: now,
+            messageCount: player?.messageCount || 1,
+            messageResetTime: player?.messageResetTime || now + 60000
+          });
+          
+          // Broadcast to other players
+          this.broadcastExcept(squirrelId, {
+            type: 'player_update',
+            squirrelId,
+            position: data.position
+          });
+        }
+        
+        if (data.type === 'ping') {
+          socket.send(JSON.stringify({ type: 'pong' }));
+          // Reset connection timeout on activity
+          clearTimeout(connectionTimeout);
+          setTimeout(() => {
+            if (this.sessions.has(squirrelId)) {
+              console.log(`[Log] Connection timeout for ${squirrelId}`);
+              this.handlePlayerLeave(squirrelId);
+              socket.close(4004, "Connection timeout");
+            }
+          }, SESSION_TIMEOUT);
+        }
+        
+      } catch (error) {
+        console.error(`[Error] Processing message from ${squirrelId}:`, error);
       }
     });
 
     socket.addEventListener('close', () => {
+      console.log(`[Log] Player ${squirrelId} disconnected`);
+      clearTimeout(connectionTimeout);
       this.handlePlayerLeave(squirrelId);
       this.broadcast({ type: 'player_leave', squirrelId });
     });
+
+    socket.addEventListener('error', (error) => {
+      console.error(`[Error] WebSocket error for ${squirrelId}:`, error);
+      clearTimeout(connectionTimeout);
+      this.handlePlayerLeave(squirrelId);
+    });
+  }
+
+  // FIX: Add position validation for anti-cheat
+  private isValidPosition(position: any): boolean {
+    if (!position || typeof position !== 'object') return false;
+    
+    const { x, y, z, rotationY } = position;
+    
+    // Check if coordinates are numbers
+    if (typeof x !== 'number' || typeof y !== 'number' || typeof z !== 'number') return false;
+    
+    // Check reasonable bounds (terrain is 200x200, height 0-20)
+    if (Math.abs(x) > 150 || y < -5 || y > 25 || Math.abs(z) > 150) return false;
+    
+    // Check rotation is valid
+    if (rotationY !== undefined && (typeof rotationY !== 'number' || Math.abs(rotationY) > Math.PI * 2)) return false;
+    
+    return true;
   }
 
   private async processMessage(squirrelId: string, data: any): Promise<void> {
@@ -158,8 +312,10 @@ export class ForestManager implements DurableObject {
     const socket = this.sessions.get(squirrelId);
     if (socket) {
       this.socketToPlayer.delete(socket);
+      this.sessions.delete(squirrelId);
     }
-    this.sessions.delete(squirrelId);
+    this.players.delete(squirrelId);
+    console.log(`[Log] ✅ Cleaned up session for ${squirrelId}`);
   }
 
   private async handlePlayerUpdate(squirrelId: string, position: { x: number; y: number; z: number }, rotationY: number): Promise<void> {
@@ -167,7 +323,9 @@ export class ForestManager implements DurableObject {
       squirrelId,
       position,
       rotationY,
-      lastUpdate: Date.now()
+      lastUpdate: Date.now(),
+      messageCount: 1, // Initialize message counter
+      messageResetTime: Date.now() + 60000 // Reset counter in 1 minute
     });
   }
 
@@ -208,15 +366,27 @@ export class ForestManager implements DurableObject {
     console.log(`[Log] Broadcasted message to ${broadcastCount} players (excluding ${excludeSquirrelId})`);
   }
 
-  async validateToken(squirrelId: string, token: string): Promise<boolean> {
-    const squirrel = this.env.SQUIRREL.get(this.env.SQUIRREL.idFromName(squirrelId));
-    const validationResponse = await squirrel.fetch(
-      new Request("https://internal/validate", {
-        method: "POST",
-        body: JSON.stringify({ token }),
-      })
-    );
-    return validationResponse.status === 200;
+  // FIX: Token validation through SquirrelSession (single source of truth)
+  private async validateToken(squirrelId: string, token: string): Promise<boolean> {
+    try {
+      // Get SquirrelSession Durable Object
+      const squirrelSessionId = this.env.SQUIRREL.idFromName(squirrelId);
+      const squirrelSession = this.env.SQUIRREL.get(squirrelSessionId);
+      
+      // Create request to validate token
+      const request = new Request(`https://internal/validate-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      
+      const response = await squirrelSession.fetch(request);
+      return response.ok;
+      
+    } catch (error) {
+      console.error('[Error] Token validation failed:', error);
+      return false;
+    }
   }
 
   private async getTerrainSeed(): Promise<number> {
@@ -291,25 +461,69 @@ export class ForestManager implements DurableObject {
       objects.push({
         type: 'tree',
         id: `tree-${i}`,
-        x: (Math.random() - 0.5) * terrainSize,
-        y: 0,
-        z: (Math.random() - 0.5) * terrainSize,
+        position: {
+          x: (Math.random() - 0.5) * terrainSize,
+          y: 0,
+          z: (Math.random() - 0.5) * terrainSize
+        },
         scale: 1
       });
     }
     
-    // Generate shrubs (not 'bush' - client expects 'shrub')
+    // Generate shrubs (use 'bush' to match deployed API)
     for (let i = 0; i < SHRUB_COUNT; i++) {
       objects.push({
-        type: 'shrub',
-        id: `shrub-${i}`,
-        x: (Math.random() - 0.5) * terrainSize,
-        y: 0,
-        z: (Math.random() - 0.5) * terrainSize,
+        type: 'bush',
+        id: `bush-${i}`,
+        position: {
+          x: (Math.random() - 0.5) * terrainSize,
+          y: 0,
+          z: (Math.random() - 0.5) * terrainSize
+        },
         scale: 1
       });
     }
     
     return objects;
+  }
+
+  // FIX: Periodic cleanup using Cloudflare alarms
+  private async scheduleCleanup() {
+    // Schedule cleanup every 5 minutes
+    const now = Date.now();
+    const nextCleanup = now + 5 * 60 * 1000; // 5 minutes
+    await this.state.storage.setAlarm(nextCleanup);
+  }
+
+  // FIX: Handle periodic cleanup via alarm
+  async alarm() {
+    console.log('[Log] 🧹 Running periodic cleanup...');
+    
+    const now = Date.now();
+    let cleanedSessions = 0;
+    let cleanedPlayers = 0;
+    
+    // Clean up stale sessions
+    for (const [squirrelId, socket] of this.sessions) {
+      if (socket.readyState !== WebSocket.OPEN) {
+        this.handlePlayerLeave(squirrelId);
+        cleanedSessions++;
+      }
+    }
+    
+    // Clean up inactive players
+    for (const [squirrelId, player] of this.players) {
+      if (now - player.lastUpdate > SESSION_TIMEOUT) {
+        console.log(`[Log] Timing out inactive player: ${squirrelId}`);
+        this.handlePlayerLeave(squirrelId);
+        this.broadcast({ type: 'player_leave', squirrelId });
+        cleanedPlayers++;
+      }
+    }
+    
+    console.log(`[Log] ✅ Cleanup complete: ${cleanedSessions} sessions, ${cleanedPlayers} players`);
+    
+    // Schedule next cleanup
+    await this.scheduleCleanup();
   }
 }

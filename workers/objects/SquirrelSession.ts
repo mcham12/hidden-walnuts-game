@@ -138,6 +138,17 @@ export default class SquirrelSession {
         return new Response(isValid ? "Valid" : "Invalid", { status: isValid ? 200 : 401 });
       }
 
+      // FIX: Add validate-token endpoint for ForestManager authentication
+      if (path === "/validate-token" && request.method === "POST") {
+        const body = await request.json() as ValidateBody;
+        const providedToken = body.token;
+        const isValid = await this.validateToken(providedToken);
+        return new Response(JSON.stringify({ valid: isValid }), { 
+          status: isValid ? 200 : 401,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
       return new Response("Not found", { status: 404 });
     } catch (error) {
       console.error('Error in SquirrelSession fetch:', error);

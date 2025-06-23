@@ -40,23 +40,37 @@ export default {
         console.log('Forwarding WebSocket /join request to ForestManager');
         return await forest.fetch(request);
       } else {
-        // HTTP /join request - generate token and create squirrel session
+        // FIX: HTTP /join request - generate token and create authenticated squirrel session
         const id = url.searchParams.get('squirrelId') || crypto.randomUUID();
-        const token = crypto.randomUUID();
         
         try {
           const squirrel = env.SQUIRREL.get(env.SQUIRREL.idFromName(id));
+          
+          // First create the session
           const joinUrl = new URL(request.url);
           joinUrl.pathname = '/join';
-          const response = await squirrel.fetch(new Request(joinUrl, { method: 'GET' }));
+          const joinResponse = await squirrel.fetch(new Request(joinUrl, { method: 'GET' }));
+          
+          if (!joinResponse.ok) {
+            console.error('Failed to create squirrel session');
+            return new Response('Failed to create session', { status: 500 });
+          }
+          
+          // Then generate and store the token
+          const tokenResponse = await squirrel.fetch(new Request('https://internal/generate-token', { method: 'POST' }));
+          const token = await tokenResponse.text();
+          
+          console.log(`[Log] ✅ Created authenticated session for ${id} with token`);
           
           // Return token with correct structure (id field, not token field)
           return new Response(JSON.stringify({ id: token, squirrelId: id }), {
             headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
           });
         } catch (error) {
-          console.error('Error creating squirrel session:', error);
-          return new Response(JSON.stringify({ id: token, squirrelId: id }), {
+          console.error('Error creating authenticated squirrel session:', error);
+          // FIX: Don't return mock tokens on error - this was a security hole
+          return new Response(JSON.stringify({ error: 'Failed to create session' }), {
+            status: 500,
             headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
           });
         }
