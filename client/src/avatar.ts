@@ -5,7 +5,39 @@ import { getTerrainHeight } from './main';
 import type { SquirrelAvatar } from './types';
 
 let avatar: SquirrelAvatar | null = null;
-const moveState = { forward: false, backward: false, turnLeft: false, turnRight: false };
+
+// FIX: Proper key state tracking following best practices
+const keys = {
+  KeyW: false,
+  KeyS: false,
+  KeyA: false,
+  KeyD: false
+};
+
+// FIX: Add event listeners only once when module loads
+let eventListenersAdded = false;
+
+function addKeyListeners() {
+  if (eventListenersAdded) return;
+  
+  // FIX: Use keydown/keyup for immediate response (best practice)
+  document.addEventListener('keydown', (event) => {
+    if (event.code in keys) {
+      keys[event.code as keyof typeof keys] = true;
+      event.preventDefault(); // Prevent browser shortcuts
+    }
+  });
+
+  document.addEventListener('keyup', (event) => {
+    if (event.code in keys) {
+      keys[event.code as keyof typeof keys] = false;
+      event.preventDefault();
+    }
+  });
+  
+  eventListenersAdded = true;
+  console.log('[Log] WASD controls initialized');
+}
 
 export async function loadSquirrelAvatar(scene: THREE.Scene): Promise<SquirrelAvatar> {
   const loader = new GLTFLoader();
@@ -44,68 +76,55 @@ export async function loadSquirrelAvatar(scene: THREE.Scene): Promise<SquirrelAv
   
   avatar = { mesh, gltf };
   
-  // Add WASD event listeners
-  document.addEventListener('keydown', (event) => {
-    const key = event.key.toLowerCase();
-    switch (key) {
-      case 'w': moveState.forward = true; break;
-      case 's': moveState.backward = true; break;
-      case 'a': moveState.turnLeft = true; break;
-      case 'd': moveState.turnRight = true; break;
-    }
-  });
-
-  document.addEventListener('keyup', (event) => {
-    const key = event.key.toLowerCase();
-    switch (key) {
-      case 'w': moveState.forward = false; break;
-      case 's': moveState.backward = false; break;
-      case 'a': moveState.turnLeft = false; break;
-      case 'd': moveState.turnRight = false; break;
-    }
-  });
-
+  // Initialize key listeners
+  addKeyListeners();
+  
   return avatar;
 }
 
 export function updateSquirrelMovement(deltaTime: number) {
   if (!avatar) return;
 
-  const moveSpeed = 5; // Units per second
-  const turnSpeed = Math.PI; // Radians per second
+  // FIX: Improved movement parameters for better feel
+  const moveSpeed = 10; // Units per second (increased for better responsiveness)
+  const turnSpeed = Math.PI * 1.5; // Radians per second (faster turning)
   const mesh = avatar.mesh;
 
-  // Handle rotation (A/D)
-  if (moveState.turnLeft) {
+  // FIX: Handle rotation using A/D keys (tank-style controls - best practice for 3D)
+  if (keys.KeyA) {
     mesh.rotation.y += turnSpeed * deltaTime;
   }
-  if (moveState.turnRight) {
+  if (keys.KeyD) {
     mesh.rotation.y -= turnSpeed * deltaTime;
   }
 
-  // Handle movement (W/S)
-  const direction = new THREE.Vector3();
-  mesh.getWorldDirection(direction); // Get facing direction
-  direction.y = 0;
+  // FIX: Handle forward/backward movement using W/S keys
+  // Get the direction the squirrel is facing
+  const direction = new THREE.Vector3(0, 0, 1);
+  direction.applyQuaternion(mesh.quaternion);
+  direction.y = 0; // Keep movement horizontal
   direction.normalize();
 
-  if (moveState.forward) {
-    mesh.position.addScaledVector(direction, moveSpeed * deltaTime); // Forward (W)
+  // Apply movement based on keys pressed
+  if (keys.KeyW) {
+    mesh.position.addScaledVector(direction, moveSpeed * deltaTime);
   }
-  if (moveState.backward) {
-    mesh.position.addScaledVector(direction, -moveSpeed * deltaTime); // Backward (S)
+  if (keys.KeyS) {
+    mesh.position.addScaledVector(direction, -moveSpeed * deltaTime);
   }
 
-  // Clamp position to terrain bounds
-  mesh.position.x = Math.max(-100, Math.min(100, mesh.position.x));
-  mesh.position.z = Math.max(-100, Math.min(100, mesh.position.z));
+  // FIX: Clamp position to terrain bounds with buffer
+  const terrainSize = 100;
+  mesh.position.x = Math.max(-terrainSize + 5, Math.min(terrainSize - 5, mesh.position.x));
+  mesh.position.z = Math.max(-terrainSize + 5, Math.min(terrainSize - 5, mesh.position.z));
 
-  // Update y-position to stay grounded
+  // FIX: Update y-position to stay grounded (async but non-blocking)
   getTerrainHeight(mesh.position.x, mesh.position.z).then((terrainHeight) => {
-    mesh.position.y = terrainHeight;
-  }).catch((error) => {
-    console.error('[Log] Failed to update squirrel height:', error);
-    mesh.position.y = 2; // Fallback
+    if (terrainHeight >= 0 && terrainHeight <= 10) {
+      mesh.position.y = terrainHeight + 0.1; // Slight offset to avoid z-fighting
+    }
+  }).catch(() => {
+    // Fallback - don't change Y position if terrain height fails
   });
 }
 
@@ -113,22 +132,26 @@ export function updateSquirrelCamera(camera: THREE.PerspectiveCamera) {
   if (!avatar) return;
 
   const mesh = avatar.mesh;
-  const offsetDistance = 5; // Units behind
-  const offsetHeight = 3; // Units above
-  const direction = new THREE.Vector3();
+  const offsetDistance = 8; // Units behind (increased for better view)
+  const offsetHeight = 4; // Units above
   
-  // Get squirrel's facing direction
-  mesh.getWorldDirection(direction);
+  // FIX: Get direction the squirrel is facing using quaternion (more reliable)
+  const direction = new THREE.Vector3(0, 0, 1);
+  direction.applyQuaternion(mesh.quaternion);
   direction.y = 0;
   direction.normalize();
   
-  // Position camera behind and above
+  // Position camera behind and above the squirrel
   const cameraPosition = mesh.position.clone()
     .addScaledVector(direction, -offsetDistance) // Behind
     .setY(mesh.position.y + offsetHeight); // Above
   
-  camera.position.lerp(cameraPosition, 0.1); // Smooth transition
-  camera.lookAt(mesh.position); // Look at squirrel
+  // FIX: Smooth camera movement with better interpolation
+  camera.position.lerp(cameraPosition, 0.05); // Slower, smoother camera
+  
+  // FIX: Look ahead of the squirrel for better gameplay
+  const lookTarget = mesh.position.clone().addScaledVector(direction, 2);
+  camera.lookAt(lookTarget);
 }
 
 export function getSquirrelAvatar(): SquirrelAvatar | null {

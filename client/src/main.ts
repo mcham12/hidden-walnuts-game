@@ -1,6 +1,7 @@
 import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { createTerrain } from './terrain'
 import { createForest } from './forest'
 import { loadSquirrelAvatar, updateSquirrelMovement, updateSquirrelCamera, getSquirrelAvatar } from './avatar'
@@ -417,7 +418,7 @@ function createWalnutMaterial(walnut: Walnut, hidingMethod: 'buried' | 'bush'): 
 
 function createWalnutMesh(walnut: Walnut): THREE.Mesh {
   const hidingMethod = getHidingMethod(walnut);
-  const geometry = new THREE.SphereGeometry(1, 16, 16); // Increased size for visibility
+  const geometry = new THREE.SphereGeometry(0.3, 16, 16); // FIX: Smaller walnuts for better proportions
   const material = new THREE.MeshStandardMaterial({
     color: hidingMethod === 'buried' ? 0x8B4513 : 0x228B22,
     roughness: 0.7,
@@ -425,7 +426,7 @@ function createWalnutMesh(walnut: Walnut): THREE.Mesh {
   });
   const mesh = new THREE.Mesh(geometry, material);
   getTerrainHeight(walnut.location.x, walnut.location.z).then((terrainHeight) => {
-    const yPosition = terrainHeight + (hidingMethod === 'buried' ? 0.2 : 0.8);
+    const yPosition = terrainHeight + (hidingMethod === 'buried' ? 0.15 : 0.4); // Adjusted for smaller size
     mesh.position.set(walnut.location.x, yPosition, walnut.location.z);
     console.log(`[Log] Walnut ${walnut.id} at (${walnut.location.x}, ${yPosition}, ${walnut.location.z})`);
   }).catch(() => {
@@ -599,7 +600,7 @@ function stopHeartbeat() {
 }
 
 // Multiplayer other players tracking
-const otherPlayers = new Map<string, THREE.Mesh>();
+const otherPlayers = new Map<string, THREE.Object3D>();
 
 // Get current player position from avatar system with better error handling
 function getPlayerPosition() {
@@ -624,20 +625,57 @@ async function updateOtherPlayer(squirrelId: string, position: { x: number; y: n
 
   let playerMesh = otherPlayers.get(squirrelId);
   if (!playerMesh) {
-    const geometry = new THREE.BoxGeometry(1, 2, 1);
-    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00, opacity: 1, transparent: false });
-    playerMesh = new THREE.Mesh(geometry, material);
-    playerMesh.castShadow = true;
-    playerMesh.receiveShadow = true;
-    scene.add(playerMesh);
-    otherPlayers.set(squirrelId, playerMesh);
-    console.log(`[Log] Added player ${squirrelId}`);
+    // FIX: Load proper squirrel avatar for other players instead of box
+    try {
+      const loader = new GLTFLoader();
+      const gltf = await loader.loadAsync('/assets/models/squirrel.glb');
+      playerMesh = gltf.scene;
+      playerMesh.scale.set(0.5, 0.5, 0.5); // Same scale as main player
+      
+      // Make it slightly different color to distinguish from main player
+      playerMesh.traverse((child: THREE.Object3D) => {
+        if (child instanceof THREE.Mesh && child.material) {
+          const material = child.material.clone();
+          if (Array.isArray(material)) {
+            material.forEach(mat => {
+              if ('color' in mat) mat.color.setHex(0x888888); // Darker gray
+            });
+          } else if ('color' in material) {
+            material.color.setHex(0x888888); // Darker gray
+          }
+          child.material = material;
+        }
+      });
+      
+      playerMesh.castShadow = true;
+      playerMesh.receiveShadow = true;
+      scene.add(playerMesh);
+      otherPlayers.set(squirrelId, playerMesh);
+      console.log(`[Log] ✅ Added squirrel avatar for player ${squirrelId}`);
+    } catch (error) {
+      console.warn(`[Warning] Failed to load squirrel for ${squirrelId}, using fallback:`, error);
+      // Fallback to colored box but make it look more like a player
+      const geometry = new THREE.CapsuleGeometry(0.3, 1.2, 4, 8);
+      const material = new THREE.MeshStandardMaterial({ 
+        color: 0xffaa00, // Orange color
+        roughness: 0.7,
+        metalness: 0.1
+      });
+      playerMesh = new THREE.Mesh(geometry, material);
+      playerMesh.castShadow = true;
+      playerMesh.receiveShadow = true;
+      scene.add(playerMesh);
+      otherPlayers.set(squirrelId, playerMesh);
+      console.log(`[Log] ⚠️ Added fallback avatar for player ${squirrelId}`);
+    }
   }
 
-  const terrainHeight = await getTerrainHeight(position.x, position.z).catch(() => 0);
-  playerMesh.position.set(position.x, terrainHeight + 1, position.z);
-  playerMesh.rotation.y = position.rotationY;
-  console.log(`[Log] Updated player ${squirrelId} to (${position.x}, ${terrainHeight + 1}, ${position.z})`);
+  if (playerMesh) {
+    const terrainHeight = await getTerrainHeight(position.x, position.z).catch(() => 0);
+    playerMesh.position.set(position.x, terrainHeight + 0.1, position.z);
+    playerMesh.rotation.y = position.rotationY;
+    console.log(`[Log] 📍 Updated player ${squirrelId} to (${position.x}, ${terrainHeight + 0.1}, ${position.z})`);
+  }
 }
 
 // Remove other player's avatar
