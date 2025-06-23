@@ -279,18 +279,14 @@ export class ForestManager implements DurableObject {
       console.log(`[Log] 📤 Sent ${existingPlayers.length} existing players to ${squirrelId}`);
     }
 
-    // FIX: Broadcast actual player position (not default) to other players
-    this.broadcastExcept(squirrelId, {
-      type: 'player_join',
-      squirrelId,
-      position: {
-        x: existingPlayer.position.x,
-        y: existingPlayer.position.y,
-        z: existingPlayer.position.z,
-        rotationY: existingPlayer.rotationY
+    // FIX: Wait for client ready acknowledgment before broadcasting join
+    let clientReady = false;
+    const clientReadyTimeout = setTimeout(() => {
+      if (!clientReady) {
+        console.log(`[Log] ⚠️ Client ${squirrelId} didn't send ready signal, proceeding anyway`);
+        this.broadcastPlayerJoin(squirrelId, existingPlayer);
       }
-    });
-    console.log(`[Log] 📢 Broadcasted player_join for ${squirrelId} with real position`);
+    }, 5000); // 5 second timeout
 
     socket.addEventListener('message', async (event) => {
       try {
@@ -301,6 +297,15 @@ export class ForestManager implements DurableObject {
         }
 
         const data = JSON.parse(event.data);
+        
+        // FIX: Handle client ready signal
+        if (data.type === 'client_ready' && !clientReady) {
+          clientReady = true;
+          clearTimeout(clientReadyTimeout);
+          console.log(`[Log] ✅ Client ${squirrelId} is ready, broadcasting join`);
+          this.broadcastPlayerJoin(squirrelId, existingPlayer);
+          return;
+        }
         
         // FIX: Rate limiting for all messages (enhanced)
         const now = Date.now();
@@ -508,18 +513,26 @@ export class ForestManager implements DurableObject {
 
   private broadcast(message: any): void {
     const serializedMessage = JSON.stringify(message);
+    let broadcastCount = 0;
+    
     for (const socket of this.sessions.values()) {
       try {
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(serializedMessage);
+          broadcastCount++;
         }
       } catch (error) {
         console.error('Error broadcasting message:', error);
       }
     }
+    
+    if (broadcastCount > 0) {
+      console.log(`[Log] 📢 Broadcasted to ${broadcastCount} players`);
+    }
   }
 
   private broadcastExcept(excludeSquirrelId: string, message: any): void {
+    // FIX: Serialize once for performance
     const serializedMessage = JSON.stringify(message);
     let broadcastCount = 0;
     
@@ -530,12 +543,30 @@ export class ForestManager implements DurableObject {
           broadcastCount++;
         } catch (error) {
           console.error(`[Error] Failed to send message to ${squirrelId}:`, error);
-          this.sessions.delete(squirrelId); // Clean up dead connections
+          // FIX: Clean up dead connections immediately
+          this.handlePlayerLeave(squirrelId);
         }
       }
     }
     
-    console.log(`[Log] Broadcasted message to ${broadcastCount} players (excluding ${excludeSquirrelId})`);
+    if (broadcastCount > 0) {
+      console.log(`[Log] 📢 Broadcasted to ${broadcastCount} players (excluding ${excludeSquirrelId})`);
+    }
+  }
+
+  // FIX: Dedicated method for broadcasting player join with proper structure
+  private broadcastPlayerJoin(squirrelId: string, player: PlayerData): void {
+    console.log(`[Log] 📢 Broadcasting player_join for ${squirrelId} with position:`, player.position);
+    this.broadcastExcept(squirrelId, {
+      type: 'player_join',
+      squirrelId,
+      position: {
+        x: player.position.x,
+        y: player.position.y,
+        z: player.position.z,
+        rotationY: player.rotationY
+      }
+    });
   }
 
   // FIX: Token validation through SquirrelSession (single source of truth)

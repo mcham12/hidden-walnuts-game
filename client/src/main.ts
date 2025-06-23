@@ -205,6 +205,14 @@ async function connectWebSocket(squirrelId: string, token: string) {
           }
         }
         console.log(`[Log] ✅ Init complete: added ${walnutMeshes.size} walnuts to scene`);
+        
+        // FIX: Send client ready signal after initialization is complete
+        setTimeout(() => {
+          if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: 'client_ready' }));
+            console.log(`[Log] 📤 Sent client_ready signal`);
+          }
+        }, 1000); // Give time for avatar to load
       }
       
       // FIX: Handle existing players when joining
@@ -594,6 +602,26 @@ async function animate() {
     lastUpdateTime = now;
   }
   
+  // FIX: Smooth interpolation for other players
+  for (const [squirrelId, targetPos] of playerTargetPositions.entries()) {
+    const playerMesh = otherPlayers.get(squirrelId);
+    if (playerMesh) {
+      // Smooth position interpolation
+      playerMesh.position.lerp(new THREE.Vector3(targetPos.x, targetPos.y, targetPos.z), 0.1);
+      
+      // Smooth rotation interpolation
+      const targetRotation = targetPos.rotationY;
+      let currentRotation = playerMesh.rotation.y;
+      
+      // Handle rotation wrapping (shortest path)
+      let rotationDiff = targetRotation - currentRotation;
+      if (rotationDiff > Math.PI) rotationDiff -= 2 * Math.PI;
+      if (rotationDiff < -Math.PI) rotationDiff += 2 * Math.PI;
+      
+      playerMesh.rotation.y += rotationDiff * 0.1;
+    }
+  }
+  
   controls.update()
   renderer.render(scene, camera)
 }
@@ -623,6 +651,8 @@ function stopHeartbeat() {
 
 // Multiplayer other players tracking
 const otherPlayers = new Map<string, THREE.Object3D>();
+// FIX: Add position smoothing for other players
+const playerTargetPositions = new Map<string, { x: number, y: number, z: number, rotationY: number }>();
 
 // Get current player position from avatar system with better error handling
 function getPlayerPosition() {
@@ -703,21 +733,15 @@ async function updateOtherPlayer(squirrelId: string, position: { x: number; y: n
       const terrainHeight = await getTerrainHeight(position.x, position.z).catch(() => 0);
       const newY = terrainHeight + 0.1;
       
-      // FIX: Only update if position actually changed (avoid unnecessary updates)
-      const currentPos = playerMesh.position;
-      const positionChanged = Math.abs(currentPos.x - position.x) > 0.1 || 
-                            Math.abs(currentPos.z - position.z) > 0.1 ||
-                            Math.abs(currentPos.y - newY) > 0.1;
+      // FIX: Store target position for smooth interpolation instead of immediate update
+      playerTargetPositions.set(squirrelId, {
+        x: position.x,
+        y: newY,
+        z: position.z,
+        rotationY: position.rotationY || 0
+      });
       
-      if (positionChanged) {
-        playerMesh.position.set(position.x, newY, position.z);
-        console.log(`[Log] 📍 Updated player ${squirrelId} to (${position.x.toFixed(1)}, ${newY.toFixed(1)}, ${position.z.toFixed(1)})`);
-      }
-      
-      // FIX: Always update rotation if provided
-      if (typeof position.rotationY === 'number') {
-        playerMesh.rotation.y = position.rotationY;
-      }
+      console.log(`[Log] 📍 Set target position for player ${squirrelId}: (${position.x.toFixed(1)}, ${newY.toFixed(1)}, ${position.z.toFixed(1)})`);
     } catch (error) {
       console.error(`[Error] Failed to update player ${squirrelId} position:`, error);
     }
@@ -730,6 +754,8 @@ function removeOtherPlayer(squirrelId: string) {
   if (playerMesh) {
     scene.remove(playerMesh);
     otherPlayers.delete(squirrelId);
+    // FIX: Clean up target position data
+    playerTargetPositions.delete(squirrelId);
     console.log(`[Log] 🔴 Removed multiplayer avatar for ${squirrelId}`);
   }
 }
@@ -780,6 +806,11 @@ setInterval(monitorScene, 30000);
 let lastUpdateTime = 0;
 const UPDATE_INTERVAL = 100; // 100ms
 
+// FIX: Add movement prediction and position smoothing
+let lastSentPosition = { x: 0, y: 0, z: 0, rotationY: 0 };
+const MOVEMENT_THRESHOLD = 0.5; // Minimum movement to trigger update
+const ROTATION_THRESHOLD = 0.1; // Minimum rotation to trigger update
+
 // FIX: Improved player update throttling with better error handling
 function sendPlayerUpdate() {
   // FIX: Check WebSocket connection state before sending
@@ -808,12 +839,27 @@ function sendPlayerUpdate() {
       return;
     }
 
+    // FIX: Movement prediction - only send if significant movement occurred
+    const movementDistance = Math.sqrt(
+      Math.pow(position.x - lastSentPosition.x, 2) + 
+      Math.pow(position.z - lastSentPosition.z, 2)
+    );
+    const rotationDifference = Math.abs(position.rotationY - lastSentPosition.rotationY);
+    
+    if (movementDistance < MOVEMENT_THRESHOLD && rotationDifference < ROTATION_THRESHOLD) {
+      // No significant movement, skip update
+      return;
+    }
+
     const message = {
       type: 'player_update',
       position: position
     };
 
     socket.send(JSON.stringify(message));
+    
+    // Update last sent position
+    lastSentPosition = { ...position };
     
     // FIX: More detailed debug logging
     if (DEBUG) {
