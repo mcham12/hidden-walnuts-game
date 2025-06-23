@@ -1,177 +1,392 @@
-// AI NOTE: This file handles squirrel avatar loading and rendering for MVP 6.
-import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { getTerrainHeight } from './main';
-import type { SquirrelAvatar } from './types';
+import * as THREE from 'three'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { MOVEMENT_SPEED } from './constants'
 
-let avatar: SquirrelAvatar | null = null;
+// Industry Standard: Client-Side Prediction with Input State
+interface InputState {
+  forward: boolean
+  backward: boolean
+  left: boolean
+  right: boolean
+  mouseX: number
+  mouseY: number
+  timestamp: number
+}
 
-// FIX: Proper key state tracking following best practices
-const keys = {
-  KeyW: false,
-  KeyS: false,
-  KeyA: false,
-  KeyD: false
-};
+interface PlayerState {
+  position: THREE.Vector3
+  velocity: THREE.Vector3
+  rotation: number
+  timestamp: number
+  inputSequence: number
+}
 
-// FIX: Add event listeners only once when module loads
-let eventListenersAdded = false;
+interface Avatar {
+  mesh: THREE.Object3D | null
+  mixer: THREE.AnimationMixer | null
+  actions: Map<string, THREE.AnimationAction>
+  isLoaded: boolean
+}
 
-function addKeyListeners() {
-  if (eventListenersAdded) return;
-  
-  // FIX: Use keydown/keyup for immediate response (best practice)
-  // FIX: Add focus check to prevent cross-tab interference
-  document.addEventListener('keydown', (event) => {
-    // Only process if this window has focus
-    if (!document.hasFocus()) return;
+class AvatarSystem {
+  private avatar: Avatar = {
+    mesh: null,
+    mixer: null,
+    actions: new Map(),
+    isLoaded: false
+  }
+
+  // Industry Standard: Input prediction state
+  private currentInput: InputState = {
+    forward: false,
+    backward: false,
+    left: false,
+    right: false,
+    mouseX: 0,
+    mouseY: 0,
+    timestamp: 0
+  }
+
+  // Industry Standard: Client-side prediction
+  private predictedState: PlayerState = {
+    position: new THREE.Vector3(50, 2, 50), // Spawn position
+    velocity: new THREE.Vector3(),
+    rotation: 0,
+    timestamp: 0,
+    inputSequence: 0
+  }
+
+  private serverState: PlayerState = {
+    position: new THREE.Vector3(50, 2, 50),
+    velocity: new THREE.Vector3(),
+    rotation: 0,
+    timestamp: 0,
+    inputSequence: 0
+  }
+
+  // Industry Standard: Input history for reconciliation
+  private inputHistory: Array<{ input: InputState, state: PlayerState }> = []
+  private maxHistorySize = 60 // 1 second at 60fps
+
+  // Physics constants
+  private readonly ACCELERATION = 50
+  private readonly FRICTION = 15
+  private readonly MAX_SPEED = MOVEMENT_SPEED
+
+  constructor() {
+    this.setupInputHandlers()
+  }
+
+  // Industry Standard: Proper input handling
+  private setupInputHandlers() {
+    const keys: Record<string, boolean> = {}
+
+    document.addEventListener('keydown', (event) => {
+      keys[event.code] = true
+      this.updateInputState(keys)
+    })
+
+    document.addEventListener('keyup', (event) => {
+      keys[event.code] = false
+      this.updateInputState(keys)
+    })
+
+    // Mouse look (for rotation)
+    document.addEventListener('mousemove', (event) => {
+      // Simple mouse look - can be enhanced with pointer lock
+      this.currentInput.mouseX += event.movementX * 0.002
+      this.currentInput.mouseY += event.movementY * 0.002
+      this.currentInput.mouseY = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.currentInput.mouseY))
+    })
+  }
+
+  private updateInputState(keys: Record<string, boolean>) {
+    this.currentInput.forward = keys['KeyW'] || keys['ArrowUp'] || false
+    this.currentInput.backward = keys['KeyS'] || keys['ArrowDown'] || false
+    this.currentInput.left = keys['KeyA'] || keys['ArrowLeft'] || false
+    this.currentInput.right = keys['KeyD'] || keys['ArrowRight'] || false
+    this.currentInput.timestamp = performance.now()
+  }
+
+  // Industry Standard: Load avatar with proper error handling
+  async loadAvatar(): Promise<void> {
+    if (this.avatar.isLoaded) return
+
+    try {
+      const loader = new GLTFLoader()
+      const gltf = await loader.loadAsync('/assets/models/squirrel.glb')
+      
+      this.avatar.mesh = gltf.scene
+      this.avatar.mesh.scale.set(0.5, 0.5, 0.5)
+      this.avatar.mesh.position.copy(this.predictedState.position)
+      this.avatar.mesh.rotation.y = this.predictedState.rotation
+      
+      // Setup animations if available
+      if (gltf.animations.length > 0) {
+        this.avatar.mixer = new THREE.AnimationMixer(this.avatar.mesh)
+        
+        gltf.animations.forEach((clip) => {
+          const action = this.avatar.mixer!.clipAction(clip)
+          this.avatar.actions.set(clip.name, action)
+        })
+
+        // Play idle animation by default
+        if (this.avatar.actions.has('Idle')) {
+          this.avatar.actions.get('Idle')!.play()
+        }
+      }
+
+      // Setup shadows
+      this.avatar.mesh.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true
+          child.receiveShadow = true
+        }
+      })
+
+      this.avatar.isLoaded = true
+      console.log('[Avatar] ✅ Avatar loaded successfully')
+      
+    } catch (error) {
+      console.error('[Avatar] ❌ Failed to load avatar:', error)
+      // Create fallback avatar
+      this.createFallbackAvatar()
+    }
+  }
+
+  private createFallbackAvatar() {
+    const geometry = new THREE.CapsuleGeometry(0.3, 1.2, 4, 8)
+    const material = new THREE.MeshStandardMaterial({ 
+      color: 0x8B4513, // Brown color for squirrel
+      roughness: 0.7,
+      metalness: 0.1
+    })
     
-    if (event.code in keys) {
-      keys[event.code as keyof typeof keys] = true;
-      event.preventDefault(); // Prevent browser shortcuts
-      console.log(`[Debug] Key pressed: ${event.code}`);
-    }
-  });
-
-  document.addEventListener('keyup', (event) => {
-    // Only process if this window has focus
-    if (!document.hasFocus()) return;
+    this.avatar.mesh = new THREE.Mesh(geometry, material)
+    this.avatar.mesh.position.copy(this.predictedState.position)
+    this.avatar.mesh.rotation.y = this.predictedState.rotation
+    this.avatar.mesh.castShadow = true
+    this.avatar.mesh.receiveShadow = true
+    this.avatar.isLoaded = true
     
-    if (event.code in keys) {
-      keys[event.code as keyof typeof keys] = false;
-      event.preventDefault();
-      console.log(`[Debug] Key released: ${event.code}`);
+    console.log('[Avatar] ⚠️ Using fallback avatar')
+  }
+
+  // Industry Standard: Physics-based movement with prediction
+  updateMovement(deltaTime: number) {
+    if (!this.avatar.isLoaded || !this.avatar.mesh) return
+
+    // Industry Standard: Apply input to predicted state
+    this.applyInputToState(this.predictedState, this.currentInput, deltaTime)
+    
+    // Store input history for reconciliation
+    this.inputHistory.push({
+      input: { ...this.currentInput },
+      state: { ...this.predictedState, position: this.predictedState.position.clone() }
+    })
+
+    // Limit history size
+    if (this.inputHistory.length > this.maxHistorySize) {
+      this.inputHistory.shift()
     }
-  });
-  
-  // FIX: Clear all keys when window loses focus
-  window.addEventListener('blur', () => {
-    console.log('[Debug] Window lost focus, clearing all keys');
-    keys.KeyW = false;
-    keys.KeyS = false;
-    keys.KeyA = false;
-    keys.KeyD = false;
-  });
-  
-  eventListenersAdded = true;
-  console.log('[Log] WASD controls initialized with focus management');
-}
 
-export async function loadSquirrelAvatar(scene: THREE.Scene): Promise<SquirrelAvatar> {
-  const loader = new GLTFLoader();
-  let gltf;
-  try {
-    gltf = await loader.loadAsync('/assets/models/squirrel.glb');
-  } catch (error) {
-    console.error('[Log] Failed to load squirrel.glb:', error);
-    throw error;
+    // Update avatar mesh position
+    this.avatar.mesh.position.copy(this.predictedState.position)
+    this.avatar.mesh.rotation.y = this.predictedState.rotation
+
+    // Update animations
+    this.updateAnimations(deltaTime)
   }
-  
-  const mesh = gltf.scene;
-  mesh.scale.set(0.5, 0.5, 0.5);
-  const x = 50, z = 50;
-  let terrainHeight;
-  try {
-    terrainHeight = await getTerrainHeight(x, z);
-    if (terrainHeight < 0 || terrainHeight > 5) {
-      console.warn(`[Log] Invalid terrain height for avatar at (${x}, ${z}): ${terrainHeight}, using 2`);
-      terrainHeight = 2;
+
+  // Industry Standard: Apply input with proper physics
+  private applyInputToState(state: PlayerState, input: InputState, deltaTime: number) {
+    // Rotation from mouse
+    state.rotation = input.mouseX
+
+    // Movement input
+    const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), state.rotation)
+    const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), state.rotation)
+
+    const inputDir = new THREE.Vector3()
+    if (input.forward) inputDir.add(forward)
+    if (input.backward) inputDir.sub(forward)  
+    if (input.right) inputDir.add(right)
+    if (input.left) inputDir.sub(right)
+
+    if (inputDir.length() > 0) {
+      inputDir.normalize()
+      // Apply acceleration
+      const acceleration = inputDir.multiplyScalar(this.ACCELERATION * deltaTime)
+      state.velocity.add(acceleration)
     }
-  } catch (error) {
-    console.error('[Log] Failed to get terrain height for avatar:', error);
-    terrainHeight = 2;
-  }
-  mesh.position.set(x, terrainHeight, z);
-  mesh.rotation.y = Math.PI;
-  
-  try {
-    scene.add(mesh);
-    console.log('[Log] Squirrel avatar added to scene at:', mesh.position.toArray());
-  } catch (error) {
-    console.error('[Log] Failed to add squirrel avatar to scene:', error);
-    throw error;
-  }
-  
-  avatar = { mesh, gltf };
-  
-  // Initialize key listeners
-  addKeyListeners();
-  
-  return avatar;
-}
 
-export function updateSquirrelMovement(deltaTime: number) {
-  if (!avatar) return;
+    // Apply friction
+    state.velocity.multiplyScalar(Math.max(0, 1 - this.FRICTION * deltaTime))
 
-  // FIX: Improved movement parameters for better feel
-  const moveSpeed = 10; // Units per second (increased for better responsiveness)
-  const turnSpeed = Math.PI * 1.5; // Radians per second (faster turning)
-  const mesh = avatar.mesh;
-
-  // FIX: Handle rotation using A/D keys (tank-style controls - best practice for 3D)
-  if (keys.KeyA) {
-    mesh.rotation.y += turnSpeed * deltaTime;
-  }
-  if (keys.KeyD) {
-    mesh.rotation.y -= turnSpeed * deltaTime;
-  }
-
-  // FIX: Handle forward/backward movement using W/S keys
-  // Get the direction the squirrel is facing
-  const direction = new THREE.Vector3(0, 0, 1);
-  direction.applyQuaternion(mesh.quaternion);
-  direction.y = 0; // Keep movement horizontal
-  direction.normalize();
-
-  // Apply movement based on keys pressed
-  if (keys.KeyW) {
-    mesh.position.addScaledVector(direction, moveSpeed * deltaTime);
-  }
-  if (keys.KeyS) {
-    mesh.position.addScaledVector(direction, -moveSpeed * deltaTime);
-  }
-
-  // FIX: Clamp position to terrain bounds with buffer
-  const terrainSize = 100;
-  mesh.position.x = Math.max(-terrainSize + 5, Math.min(terrainSize - 5, mesh.position.x));
-  mesh.position.z = Math.max(-terrainSize + 5, Math.min(terrainSize - 5, mesh.position.z));
-
-  // FIX: Update y-position to stay grounded (async but non-blocking)
-  getTerrainHeight(mesh.position.x, mesh.position.z).then((terrainHeight) => {
-    if (terrainHeight >= 0 && terrainHeight <= 10) {
-      mesh.position.y = terrainHeight + 0.1; // Slight offset to avoid z-fighting
+    // Limit max speed
+    if (state.velocity.length() > this.MAX_SPEED) {
+      state.velocity.normalize().multiplyScalar(this.MAX_SPEED)
     }
-  }).catch(() => {
-    // Fallback - don't change Y position if terrain height fails
-  });
+
+    // Update position
+    const deltaPos = state.velocity.clone().multiplyScalar(deltaTime)
+    state.position.add(deltaPos)
+    
+    // Simple bounds checking
+    state.position.x = Math.max(-100, Math.min(100, state.position.x))
+    state.position.z = Math.max(-100, Math.min(100, state.position.z))
+
+    state.timestamp = performance.now()
+    state.inputSequence++
+  }
+
+  // Industry Standard: Server reconciliation
+  reconcileWithServer(serverPosition: THREE.Vector3, serverRotation: number, serverTimestamp: number) {
+    // Find the input that corresponds to the server state
+    const serverInputIndex = this.inputHistory.findIndex(
+      entry => Math.abs(entry.state.timestamp - serverTimestamp) < 50 // 50ms tolerance
+    )
+
+    if (serverInputIndex === -1) return // Too old or not found
+
+    // Check if prediction was correct
+    const predictedPos = this.inputHistory[serverInputIndex].state.position
+    const error = predictedPos.distanceTo(serverPosition)
+
+    // Industry Standard: Only correct if error is significant (>10cm)
+    if (error > 0.1) {
+      console.log(`[Avatar] 🔄 Correcting prediction error: ${error.toFixed(3)}m`)
+      
+      // Correct the server state
+      this.serverState.position.copy(serverPosition)
+      this.serverState.rotation = serverRotation
+      this.serverState.timestamp = serverTimestamp
+
+      // Re-apply inputs since server state
+      let correctedState = { ...this.serverState, position: serverPosition.clone() }
+      
+      for (let i = serverInputIndex + 1; i < this.inputHistory.length; i++) {
+        const entry = this.inputHistory[i]
+        const deltaTime = i > 0 ? 
+          (this.inputHistory[i].state.timestamp - this.inputHistory[i-1].state.timestamp) / 1000 : 0.016
+        
+        this.applyInputToState(correctedState, entry.input, deltaTime)
+      }
+
+      // Update predicted state
+      this.predictedState = correctedState
+      
+      // Smooth correction to avoid jarring
+      if (this.avatar.mesh) {
+        this.avatar.mesh.position.lerp(this.predictedState.position, 0.2)
+        this.avatar.mesh.rotation.y = this.predictedState.rotation
+      }
+    }
+
+    // Clean old history
+    this.inputHistory = this.inputHistory.slice(serverInputIndex)
+  }
+
+  private updateAnimations(deltaTime: number) {
+    if (!this.avatar.mixer) return
+
+    this.avatar.mixer.update(deltaTime)
+
+    // Industry Standard: State-based animation
+    const isMoving = this.predictedState.velocity.length() > 0.1
+    const isRunning = this.predictedState.velocity.length() > this.MAX_SPEED * 0.5
+
+    // Stop all actions first
+    this.avatar.actions.forEach(action => action.stop())
+
+    // Play appropriate animation
+    if (isRunning && this.avatar.actions.has('Run')) {
+      this.avatar.actions.get('Run')!.play()
+    } else if (isMoving && this.avatar.actions.has('Walk')) {
+      this.avatar.actions.get('Walk')!.play()
+    } else if (this.avatar.actions.has('Idle')) {
+      this.avatar.actions.get('Idle')!.play()
+    }
+  }
+
+  // Industry Standard: Camera follow with smooth tracking
+  async updateCamera(camera: THREE.Camera) {
+    if (!this.avatar.mesh) return
+
+    const targetPosition = this.avatar.mesh.position.clone()
+    targetPosition.y += 8 // Height above player
+    targetPosition.z += 10 // Distance behind player
+
+    // Rotate camera position around player based on mouse look
+    const offset = new THREE.Vector3(0, 8, 10)
+    offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.predictedState.rotation)
+    targetPosition.copy(this.avatar.mesh.position).add(offset)
+
+    // Smooth camera follow
+    camera.position.lerp(targetPosition, 0.1)
+    
+    // Look at player
+    const lookTarget = this.avatar.mesh.position.clone()
+    lookTarget.y += 1 // Look slightly above player
+    camera.lookAt(lookTarget)
+  }
+
+  // Getters for external access
+  getAvatar(): Avatar {
+    return this.avatar
+  }
+
+  getCurrentInput(): InputState {
+    return { ...this.currentInput }
+  }
+
+  getPredictedState(): PlayerState {
+    return { ...this.predictedState, position: this.predictedState.position.clone() }
+  }
+
+  // Set position (for spawning/teleporting)
+  setPosition(position: THREE.Vector3) {
+    this.predictedState.position.copy(position)
+    this.serverState.position.copy(position)
+    if (this.avatar.mesh) {
+      this.avatar.mesh.position.copy(position)
+    }
+  }
 }
 
-export function updateSquirrelCamera(camera: THREE.PerspectiveCamera) {
-  if (!avatar) return;
+// Singleton instance
+const avatarSystem = new AvatarSystem()
 
-  const mesh = avatar.mesh;
-  const offsetDistance = 8; // Units behind (increased for better view)
-  const offsetHeight = 4; // Units above
-  
-  // FIX: Get direction the squirrel is facing using quaternion (more reliable)
-  const direction = new THREE.Vector3(0, 0, 1);
-  direction.applyQuaternion(mesh.quaternion);
-  direction.y = 0;
-  direction.normalize();
-  
-  // Position camera behind and above the squirrel
-  const cameraPosition = mesh.position.clone()
-    .addScaledVector(direction, -offsetDistance) // Behind
-    .setY(mesh.position.y + offsetHeight); // Above
-  
-  // FIX: Smooth camera movement with better interpolation
-  camera.position.lerp(cameraPosition, 0.05); // Slower, smoother camera
-  
-  // FIX: Look ahead of the squirrel for better gameplay
-  const lookTarget = mesh.position.clone().addScaledVector(direction, 2);
-  camera.lookAt(lookTarget);
+// Export functions for compatibility with existing code
+export async function loadSquirrelAvatar(): Promise<void> {
+  return avatarSystem.loadAvatar()
 }
 
-export function getSquirrelAvatar(): SquirrelAvatar | null {
-  return avatar;
+export function updateSquirrelMovement(deltaTime: number): void {
+  avatarSystem.updateMovement(deltaTime)
+}
+
+export async function updateSquirrelCamera(camera: THREE.Camera): Promise<void> {
+  return avatarSystem.updateCamera(camera)
+}
+
+export function getSquirrelAvatar(): Avatar {
+  return avatarSystem.getAvatar()
+}
+
+// New exports for multiplayer
+export function getCurrentInput(): InputState {
+  return avatarSystem.getCurrentInput()
+}
+
+export function getPredictedState(): PlayerState {
+  return avatarSystem.getPredictedState()
+}
+
+export function reconcileWithServer(position: THREE.Vector3, rotation: number, timestamp: number): void {
+  avatarSystem.reconcileWithServer(position, rotation, timestamp)
+}
+
+export function setPlayerPosition(position: THREE.Vector3): void {
+  avatarSystem.setPosition(position)
 } 

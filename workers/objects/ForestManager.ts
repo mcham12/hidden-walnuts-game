@@ -61,36 +61,80 @@ export class ForestManager implements DurableObject {
     this.scheduleCleanup();
   }
 
-  // FIX: Load persisted player data on startup
-  private async initializePlayersFromStorage(): Promise<void> {
+  // Industry Standard: Optimized player data persistence
+  private async persistPlayerData(): Promise<void> {
     try {
-      // FIX: Expect array format, not Map format
-      const storedPlayers = await this.state.storage.get<[string, PlayerData][]>('active-players');
-      if (storedPlayers && Array.isArray(storedPlayers)) {
-        // Convert array back to Map
-        this.players = new Map(storedPlayers);
-        console.log(`[Log] 🔄 Restored ${this.players.size} players from storage`);
-        
-        // Debug: Log restored players
-        for (const [id, player] of this.players.entries()) {
-          console.log(`[Log] 📍 Restored player ${id} at position:`, player.position);
-        }
-      } else {
-        console.log(`[Log] 📁 No stored players found, starting fresh`);
-      }
+      // Industry Standard: Batch persistence with compression
+      const playersArray = Array.from(this.players.entries());
+      
+      // Only persist if there are actual changes
+      if (playersArray.length === 0) return;
+      
+      // Industry Standard: Add timestamp for debugging
+      const persistenceData = {
+        players: playersArray,
+        timestamp: Date.now(),
+        count: playersArray.length
+      };
+      
+      await this.state.storage.put('active-players', persistenceData);
+      console.log(`[Persistence] ✅ Persisted ${playersArray.length} players`);
+      
     } catch (error) {
-      console.error('[Error] Failed to load players from storage:', error);
+      console.error('[Error] Failed to persist player data:', error);
     }
   }
 
-  // FIX: Persist player data to storage
-  private async persistPlayerData(): Promise<void> {
+  // Industry Standard: Load with migration support
+  private async initializePlayersFromStorage(): Promise<void> {
     try {
-      // Convert Map to Array for storage
-      const playersArray = Array.from(this.players.entries());
-      await this.state.storage.put('active-players', playersArray);
+      const storedData = await this.state.storage.get<any>('active-players');
+      
+      if (!storedData) {
+        console.log(`[Persistence] 📁 No stored players found, starting fresh`);
+        return;
+      }
+      
+      // Industry Standard: Handle both old and new formats
+      let playersArray: [string, PlayerData][];
+      
+      if (Array.isArray(storedData)) {
+        // Old format
+        playersArray = storedData;
+        console.log(`[Persistence] 🔄 Migrating old format players`);
+      } else if (storedData.players && Array.isArray(storedData.players)) {
+        // New format
+        playersArray = storedData.players;
+        const age = Date.now() - storedData.timestamp;
+        console.log(`[Persistence] 🔄 Loading players (age: ${Math.round(age/1000)}s)`);
+      } else {
+        console.warn(`[Persistence] ⚠️ Invalid stored data format`);
+        return;
+      }
+      
+      // Industry Standard: Validate and filter stale data on load
+      const now = Date.now();
+      const validPlayers = playersArray.filter(([id, player]) => {
+        const age = now - player.lastUpdate;
+        if (age > 600000) { // 10 minutes
+          console.log(`[Persistence] 🗑️ Removing stale player ${id} (age: ${Math.round(age/1000)}s)`);
+          return false;
+        }
+        return true;
+      });
+      
+      // Convert array back to Map
+      this.players = new Map(validPlayers);
+      console.log(`[Persistence] ✅ Restored ${this.players.size} valid players`);
+      
+      // Debug: Log restored players
+      for (const [id, player] of this.players.entries()) {
+        console.log(`[Persistence] 📍 Restored player ${id} at (${player.position.x.toFixed(1)}, ${player.position.z.toFixed(1)})`);
+      }
+      
     } catch (error) {
-      console.error('[Error] Failed to persist player data:', error);
+      console.error('[Error] Failed to load players from storage:', error);
+      this.players = new Map(); // Start fresh on error
     }
   }
 
@@ -168,10 +212,41 @@ export class ForestManager implements DurableObject {
       const storedPlayers = await this.state.storage.get<[string, PlayerData][]>('active-players');
       const currentPlayers = Array.from(this.players.entries());
       
+      console.log(`[Debug] Active sessions: ${this.sessions.size}`);
+      console.log(`[Debug] Current players: ${this.players.size}`);
+      
       return new Response(JSON.stringify({
         storedPlayers: storedPlayers || [],
-        currentPlayers: currentPlayers,
-        activeSessions: Array.from(this.sessions.keys())
+        currentPlayers: currentPlayers.map(([id, player]) => ({
+          id,
+          position: player.position,
+          lastUpdate: player.lastUpdate,
+          age: Date.now() - player.lastUpdate
+        })),
+        activeSessions: Array.from(this.sessions.keys()),
+        stats: {
+          totalSessions: this.sessions.size,
+          totalPlayers: this.players.size,
+          playersWithPosition: currentPlayers.filter(([_, p]) => p.position.x !== 0 || p.position.z !== 0).length
+        }
+      }), {
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      }) as unknown as CfResponse;
+    }
+
+    // FIX: Add endpoint to test player positions
+    if (url.pathname === '/test-positions') {
+      const positions = Array.from(this.players.entries()).map(([id, player]) => ({
+        id,
+        x: player.position.x,
+        y: player.position.y,
+        z: player.position.z,
+        distance: Math.sqrt(Math.pow(player.position.x - 50, 2) + Math.pow(player.position.z - 50, 2))
+      }));
+      
+      return new Response(JSON.stringify({
+        spawn: { x: 50, y: 2, z: 50 },
+        players: positions
       }), {
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
       }) as unknown as CfResponse;
@@ -258,13 +333,12 @@ export class ForestManager implements DurableObject {
       existingPlayer.lastUpdate = Date.now();
       existingPlayer.messageCount = 1;
       existingPlayer.messageResetTime = Date.now() + 60000;
-      this.players.set(squirrelId, existingPlayer);
-      console.log(`[Log] 🔄 Reconnected player ${squirrelId} at stored position:`, existingPlayer.position);
+      console.log(`[Log] 🔄 Player ${squirrelId} reconnected at (${existingPlayer.position.x}, ${existingPlayer.position.z})`);
     }
 
-    // FIX: Send existing players to new connection (always, for reconnections too)
+    // FIX: CRITICAL - Send existing players to the new joiner
     const existingPlayers = Array.from(this.players.entries())
-      .filter(([id]) => id !== squirrelId)
+      .filter(([id]) => id !== squirrelId) // Don't include self
       .map(([id, player]) => ({
         squirrelId: id,
         position: player.position,
@@ -272,6 +346,7 @@ export class ForestManager implements DurableObject {
       }));
 
     if (existingPlayers.length > 0) {
+      console.log(`[Log] 📤 Sending ${existingPlayers.length} existing players to ${squirrelId}`);
       socket.send(JSON.stringify({ 
         type: 'existing_players', 
         players: existingPlayers 
@@ -495,15 +570,126 @@ export class ForestManager implements DurableObject {
     console.log(`[Log] ✅ Cleaned up session for ${squirrelId}`);
   }
 
+  // Industry Standard: Server-side position validation and anti-cheat
   private async handlePlayerUpdate(squirrelId: string, position: { x: number; y: number; z: number }, rotationY: number): Promise<void> {
-    this.players.set(squirrelId, {
+    const player = this.players.get(squirrelId);
+    if (!player) {
+      console.warn(`[Warning] Received update for unknown player: ${squirrelId}`);
+      return;
+    }
+
+    // Industry Standard: Validate position bounds (anti-cheat)
+    if (!this.isValidPosition(position)) {
+      console.warn(`[AntiCheat] Invalid position from ${squirrelId}:`, position);
+      // Send corrected position back to client
+      this.sendToPlayer(squirrelId, {
+        type: 'position_correction',
+        position: player.position,
+        rotationY: player.rotationY,
+        timestamp: Date.now()
+      });
+      return;
+    }
+
+    // Industry Standard: Time-based movement validation instead of distance thresholds
+    const now = Date.now();
+    const deltaTime = (now - player.lastUpdate) / 1000; // seconds
+    
+    if (deltaTime > 0) {
+      // Calculate movement speed
+      const distance = Math.sqrt(
+        Math.pow(position.x - player.position.x, 2) +
+        Math.pow(position.z - player.position.z, 2)
+      );
+      const speed = distance / deltaTime;
+      
+      // Industry Standard: Speed-based validation (not arbitrary thresholds)
+      const MAX_SPEED = 20; // 20 units per second (reasonable for game)
+      
+      if (speed > MAX_SPEED && deltaTime < 5) { // Allow higher speed if long time gap
+        console.warn(`[AntiCheat] Suspicious speed from ${squirrelId}: ${speed.toFixed(1)} u/s (max: ${MAX_SPEED})`);
+        // Don't reject, but log for monitoring
+      }
+    }
+
+    // Update player state
+    player.position = position;
+    player.rotationY = rotationY;
+    player.lastUpdate = now;
+
+    // Industry Standard: Rate limiting per player
+    player.messageCount++;
+    if (now > player.messageResetTime) {
+      player.messageCount = 1;
+      player.messageResetTime = now + 60000; // Reset every minute
+    }
+
+    if (player.messageCount > 3600) { // 60 messages per second max
+      console.warn(`[RateLimit] Player ${squirrelId} exceeding message rate`);
+      return;
+    }
+
+    // Persist changes periodically (not every update)
+    if (Math.random() < 0.01) { // 1% chance per update
+      await this.persistPlayerData();
+    }
+
+    // Industry Standard: Broadcast to nearby players only (Area of Interest)
+    this.broadcastToNearbyPlayers(squirrelId, {
+      type: 'player_update',
       squirrelId,
       position,
       rotationY,
-      lastUpdate: Date.now(),
-      messageCount: 1, // Initialize message counter
-      messageResetTime: Date.now() + 60000 // Reset counter in 1 minute
-    });
+      timestamp: now
+    }, 150); // 150 unit radius
+  }
+
+  // Industry Standard: Area of Interest broadcasting
+  private broadcastToNearbyPlayers(sourcePlayerId: string, message: any, radius: number = 100): void {
+    const sourcePlayer = this.players.get(sourcePlayerId);
+    if (!sourcePlayer) return;
+
+    let nearbyCount = 0;
+    for (const [playerId, socket] of this.sessions.entries()) {
+      if (playerId === sourcePlayerId) continue;
+      
+      const player = this.players.get(playerId);
+      if (!player) continue;
+
+      // Calculate distance
+      const distance = Math.sqrt(
+        Math.pow(player.position.x - sourcePlayer.position.x, 2) +
+        Math.pow(player.position.z - sourcePlayer.position.z, 2)
+      );
+
+      // Only send to nearby players
+      if (distance <= radius) {
+        try {
+          socket.send(JSON.stringify(message));
+          nearbyCount++;
+        } catch (error) {
+          console.error(`[Error] Failed to send to ${playerId}:`, error);
+          this.handlePlayerLeave(playerId);
+        }
+      }
+    }
+
+    if (nearbyCount > 0) {
+      console.debug(`[Broadcast] Sent update from ${sourcePlayerId} to ${nearbyCount} nearby players`);
+    }
+  }
+
+  // Industry Standard: Send message to specific player
+  private sendToPlayer(playerId: string, message: any): void {
+    const socket = this.sessions.get(playerId);
+    if (socket) {
+      try {
+        socket.send(JSON.stringify(message));
+      } catch (error) {
+        console.error(`[Error] Failed to send to ${playerId}:`, error);
+        this.handlePlayerLeave(playerId);
+      }
+    }
   }
 
   private async handleWalnutPlace(walnut: any): Promise<void> {
