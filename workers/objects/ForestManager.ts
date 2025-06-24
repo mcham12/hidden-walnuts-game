@@ -140,27 +140,41 @@ export class ForestManager implements DurableObject {
 
   async fetch(request: CfRequest): Promise<CfResponse> {
     const url = new URL(request.url);
-    console.log(`[Log] ForestManager fetch called for path: ${url.pathname}`);
+    console.log(`[ForestManager] 📥 Fetch called for path: ${url.pathname}`);
+    console.log(`[ForestManager] Method: ${request.method}, URL: ${request.url}`);
 
     if (url.pathname === '/ws') {
+      console.log(`[ForestManager] 🔌 WebSocket request received`);
+      
       const upgradeHeader = request.headers.get('Upgrade');
+      console.log(`[ForestManager] Upgrade header: "${upgradeHeader}"`);
+      
       if (upgradeHeader !== 'websocket') {
-        console.error('[Error] Missing Upgrade header for WebSocket');
+        console.error(`[ForestManager] ❌ Invalid Upgrade header: ${upgradeHeader} (expected "websocket")`);
         return new Response('Expected Upgrade: websocket', { status: 426 }) as unknown as CfResponse;
       }
 
       const squirrelId = url.searchParams.get('squirrelId');
       const token = url.searchParams.get('token');
+      console.log(`[ForestManager] Parameters - squirrelId: ${squirrelId}, token: ${token ? 'present' : 'missing'}`);
+      
       if (!squirrelId || !token) {
-        console.error('[Error] Missing squirrelId or token');
+        console.error(`[ForestManager] ❌ Missing parameters - squirrelId: ${!!squirrelId}, token: ${!!token}`);
         return new Response('Missing squirrelId or token', { status: 400 }) as unknown as CfResponse;
       }
 
-      console.log(`[Log] Upgrading to WebSocket for squirrelId: ${squirrelId}`);
-      const pair = new WebSocketPair();
-      const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
-      await this.handleSocket(server, squirrelId, token);
-      return new Response(null, { status: 101, webSocket: client }) as unknown as CfResponse;
+      console.log(`[ForestManager] ✅ Creating WebSocket pair for squirrelId: ${squirrelId}`);
+      try {
+        const pair = new WebSocketPair();
+        const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
+        console.log(`[ForestManager] ✅ WebSocket pair created, calling handleSocket`);
+        await this.handleSocket(server, squirrelId, token);
+        console.log(`[ForestManager] ✅ Returning WebSocket response with status 101`);
+        return new Response(null, { status: 101, webSocket: client }) as unknown as CfResponse;
+      } catch (error) {
+        console.error(`[ForestManager] ❌ Error creating WebSocket:`, error);
+        return new Response('WebSocket creation failed', { status: 500 }) as unknown as CfResponse;
+      }
     }
 
     if (url.pathname === "/terrain-seed") {
@@ -269,7 +283,8 @@ export class ForestManager implements DurableObject {
   }
 
   async handleSocket(socket: WebSocket, squirrelId: string, token: string) {
-    console.log(`[Log] 🔌 New WebSocket connection: ${squirrelId}`);
+    console.log(`[ForestManager] 🔌 handleSocket called for: ${squirrelId}`);
+    console.log(`[ForestManager] Socket state: ${socket.readyState}`);
     
     // FIX: Validate token first
     const isValidToken = await this.validateToken(squirrelId, token);

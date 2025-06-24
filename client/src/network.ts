@@ -55,22 +55,39 @@ class NetworkManager {
     }
 
     try {
+      console.log(`[Network] 🔌 Creating WebSocket to: ${url}`)
       this.socket = new WebSocket(url)
+      console.log(`[Network] WebSocket created, readyState: ${this.socket.readyState} (CONNECTING=${WebSocket.CONNECTING})`)
+      
       this.setupSocketHandlers()
       
       // Wait for connection
       return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('Connection timeout')), 10000)
+        const timeout = setTimeout(() => {
+          console.error('[Network] ❌ Connection timeout after 10 seconds')
+          console.log(`[Network] Socket state at timeout: ${this.socket?.readyState}`)
+          reject(new Error('Connection timeout'))
+        }, 10000)
         
-        this.socket!.addEventListener('open', () => {
+        this.socket!.addEventListener('open', (event) => {
+          console.log('[Network] ✅ WebSocket OPEN event fired')
+          console.log('[Network] Event details:', event)
           clearTimeout(timeout)
           this.onConnect()
           resolve()
         })
         
         this.socket!.addEventListener('error', (error) => {
+          console.error('[Network] ❌ WebSocket ERROR event fired:', error)
           clearTimeout(timeout)
           reject(error)
+        })
+        
+        this.socket!.addEventListener('close', (event) => {
+          console.log(`[Network] ❌ WebSocket CLOSE event fired during connection`)
+          console.log(`[Network] Close code: ${event.code}, reason: "${event.reason}", wasClean: ${event.wasClean}`)
+          clearTimeout(timeout)
+          reject(new Error(`WebSocket closed during connection: ${event.code} - ${event.reason}`))
         })
       })
     } catch (error) {
@@ -98,7 +115,15 @@ class NetworkManager {
   }
 
   private onDisconnect(event: CloseEvent): void {
-    console.log(`[Network] ❌ Disconnected (code: ${event.code})`)
+    console.log(`[Network] ❌ WebSocket disconnected`)
+    console.log(`[Network] Close code: ${event.code}, reason: "${event.reason}", wasClean: ${event.wasClean}`)
+    
+    // Common WebSocket close codes:
+    // 1000 = Normal closure
+    // 1006 = Abnormal closure (no close frame received)
+    // 1011 = Server error
+    // 4001 = Authentication failure (custom)
+    
     this.connectionState.isConnected = false
     this.notifyConnectionState()
     
@@ -109,7 +134,9 @@ class NetworkManager {
   }
 
   private onError(error: Event): void {
-    console.error('[Network] Error:', error)
+    console.error('[Network] ❌ WebSocket error event:', error)
+    console.log('[Network] Error type:', error.type)
+    console.log('[Network] Socket readyState:', this.socket?.readyState)
   }
 
   private onMessage(event: MessageEvent): void {
