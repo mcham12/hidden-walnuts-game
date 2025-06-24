@@ -105,6 +105,12 @@ async function connectWebSocket(squirrelId: string, token: string) {
     setTimeout(() => {
       networkManager.send('client_ready', {}, { priority: 0 });
       console.log(`[Log] 📤 Sent client_ready signal immediately after connection`);
+      
+      // Test: Send a ping to see if server responds at all
+      setTimeout(() => {
+        networkManager.send('ping', { timestamp: performance.now() }, { priority: 0 });
+        console.log(`[Log] 📤 Sent ping to test server responsiveness`);
+      }, 1000);
     }, 100);
     
   } catch (error) {
@@ -270,6 +276,11 @@ function setupNetworkHandlers() {
     const { walnutId, location } = data;
     console.log(`Received rehidden message for ${walnutId} at location:`, location);
     fetchWalnutMap();
+  });
+  
+  // Test: Handle pong response to confirm server communication
+  networkManager.on('pong', (data) => {
+    console.log(`[Log] 🏓 Received pong from server:`, data);
   });
 }
 

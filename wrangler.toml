@@ -1,6 +1,10 @@
 name = "hidden-walnuts"
 compatibility_date = "2025-05-23"
 
+# Enable Cloudflare Workers logging
+[observability.logs]
+enabled = true
+
 [build]
 command = "npm run build"
 
