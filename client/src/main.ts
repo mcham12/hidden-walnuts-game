@@ -539,9 +539,25 @@ async function initEnvironment() {
     const walnutData = await fetchWalnutMap();
     console.log(`[Log] Loaded ${walnutData.length} walnuts`);
     
-    // Simple: Load avatar but DON'T add to scene yet (wait for server init)
+    // Load avatar and add to scene immediately (bypass WebSocket dependency)
     await loadSquirrelAvatar();
-    console.log('[Log] Squirrel avatar loaded (waiting for server init)');
+    console.log('[Log] Squirrel avatar loaded');
+    
+    // FIX: Add avatar to scene and start movement system immediately
+    const avatar = getSquirrelAvatar();
+    if (avatar.mesh && avatar.isLoaded) {
+      scene.add(avatar.mesh);
+      const spawnPos = new THREE.Vector3(50, 2, 50);
+      setPlayerPosition(spawnPos);
+      setupThirdPersonCamera(avatar.mesh);
+      console.log('[Log] ✅ Avatar added to scene at spawn position');
+      
+      // Start input transmission for movement
+      startInputTransmission();
+      console.log('[Log] ✅ Input transmission started');
+    } else {
+      console.error('[Error] ❌ Avatar not ready after loading');
+    }
     
     // Log final scene composition
     console.log(`[Log] Environment initialization complete. Scene has ${scene.children.length} objects`);
@@ -618,23 +634,28 @@ function startInputTransmission() {
   
   inputTransmissionInterval = window.setInterval(() => {
     const avatar = getSquirrelAvatar();
-    if (!avatar.mesh || !networkManager.getConnectionState().isConnected) return;
+    if (!avatar.mesh) return;
     
     const currentInput = getCurrentInput();
     const predictedState = getPredictedState();
     
-    // Industry Standard: Send input state + predicted position for validation
-    networkManager.send('player_update', {
-      position: {
-        x: predictedState.position.x,
-        y: predictedState.position.y,
-        z: predictedState.position.z,
-        rotationY: predictedState.rotation
-      },
-      input: currentInput,
-      sequence: predictedState.inputSequence,
-      timestamp: performance.now()
-    }, { priority: 1 });
+    // Always process input for local movement (independent of network)
+    // This ensures WASD works even when offline
+    
+    // Only send to network if connected
+    if (networkManager.getConnectionState().isConnected) {
+      networkManager.send('player_update', {
+        position: {
+          x: predictedState.position.x,
+          y: predictedState.position.y,
+          z: predictedState.position.z,
+          rotationY: predictedState.rotation
+        },
+        input: currentInput,
+        sequence: predictedState.inputSequence,
+        timestamp: performance.now()
+      }, { priority: 1 });
+    }
     
   }, 1000 / INPUT_RATE);
 }
