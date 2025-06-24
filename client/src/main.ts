@@ -144,24 +144,28 @@ function setupNetworkHandlers() {
     }
     console.log(`[Log] ✅ Init complete: added ${walnutMeshes.size} walnuts to scene`);
     
-    // Industry Standard: Ensure avatar is ready and visible
+    // Simple: Add avatar to scene now that server is ready
     const avatar = getSquirrelAvatar();
     if (avatar.mesh && avatar.isLoaded) {
-      // Avatar already loaded during environment init, just ensure it's in scene
-      if (!scene.getObjectById(avatar.mesh.id)) {
-        scene.add(avatar.mesh);
-        console.log('[Log] ✅ Avatar re-added to scene');
-      }
+      // Make sure avatar is visible and properly configured
+      avatar.mesh.visible = true;
+      avatar.mesh.castShadow = true;
+      avatar.mesh.receiveShadow = true;
       
-      // Set spawn position with terrain collision
+      // Add to scene (only once)
+      scene.add(avatar.mesh);
+      console.log('[Log] ✅ Avatar added to scene');
+      
+      // Set spawn position 
       const spawnPos = new THREE.Vector3(50, 2, 50);
       setPlayerPosition(spawnPos);
-      console.log('[Log] ✅ Avatar positioned at:', spawnPos);
       
-      // Update camera to follow player
+      // Setup camera
       setupThirdPersonCamera(avatar.mesh);
+      
+      console.log('[Log] ✅ Avatar ready at:', spawnPos);
     } else {
-      console.warn('[Warning] Avatar not ready during init');
+      console.error('[Error] ❌ Avatar not ready for server init');
     }
     
     // Signal client is ready
@@ -488,40 +492,12 @@ async function initEnvironment() {
     const walnutData = await fetchWalnutMap();
     console.log(`[Log] Loaded ${walnutData.length} walnuts`);
     
-    // Industry Standard: Load avatar and add to scene immediately
+    // Simple: Load avatar but DON'T add to scene yet (wait for server init)
     await loadSquirrelAvatar();
-    const avatar = getSquirrelAvatar();
-    if (avatar.mesh && avatar.isLoaded) {
-      // Ensure avatar is visible and properly configured
-      avatar.mesh.visible = true;
-      avatar.mesh.castShadow = true;
-      avatar.mesh.receiveShadow = true;
-      
-      // Add to scene if not already added
-      if (!scene.getObjectById(avatar.mesh.id)) {
-        scene.add(avatar.mesh);
-        console.log('[Log] ✅ Avatar added to scene');
-      }
-      
-      // Set proper spawn position 
-      const spawnPos = new THREE.Vector3(50, 2, 50);
-      setPlayerPosition(spawnPos);
-      
-      // Setup camera immediately
-      setupThirdPersonCamera(avatar.mesh);
-      
-      console.log('[Log] ✅ Avatar initialized at:', spawnPos);
-      console.log('[Log] ✅ Avatar in scene with ID:', avatar.mesh.id, 'visible:', avatar.mesh.visible);
-    } else {
-      console.error('[Error] ❌ Avatar failed to load properly');
-    }
+    console.log('[Log] Squirrel avatar loaded (waiting for server init)');
     
-    console.log('[Log] Squirrel avatar loaded');
-    
-    // Log final scene composition with avatar check
-    const avatarInScene = scene.children.find(child => child === avatar.mesh);
+    // Log final scene composition
     console.log(`[Log] Environment initialization complete. Scene has ${scene.children.length} objects`);
-    console.log(`[Log] Avatar in scene: ${!!avatarInScene}`);
     
   } catch (error) {
     console.error('[Error] Environment initialization failed:', error);

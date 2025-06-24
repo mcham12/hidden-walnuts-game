@@ -82,28 +82,50 @@ class AvatarSystem {
 
   // Industry Standard: Proper input handling
   private setupInputHandlers() {
+    // Industry Standard: WASD movement keys
     const keys: Record<string, boolean> = {}
-
+    
+    // Industry Standard: Keyboard input handling
     document.addEventListener('keydown', (event) => {
       keys[event.code] = true
       this.updateInputState(keys)
+      event.preventDefault()
     })
 
     document.addEventListener('keyup', (event) => {
       keys[event.code] = false
       this.updateInputState(keys)
+      event.preventDefault()
     })
 
-    // Mouse look (for rotation)
-    document.addEventListener('mousemove', (event) => {
-      // Simple mouse look - can be enhanced with pointer lock
-      this.currentInput.mouseX += event.movementX * 0.002
-      this.currentInput.mouseY += event.movementY * 0.002
-      this.currentInput.mouseY = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.currentInput.mouseY))
+    // Industry Standard: Mouse look (with lock for FPS-style controls)
+    let isLocked = false
+    
+    document.addEventListener('click', () => {
+      if (!isLocked) {
+        document.body.requestPointerLock()
+      }
     })
+
+    document.addEventListener('pointerlockchange', () => {
+      isLocked = document.pointerLockElement === document.body
+    })
+
+    document.addEventListener('mousemove', (event) => {
+      if (isLocked) {
+        // Industry Standard: Mouse sensitivity and rotation
+        const sensitivity = 0.002
+        this.currentInput.mouseX -= event.movementX * sensitivity
+        this.currentInput.mouseY = Math.max(-Math.PI/3, Math.min(Math.PI/3, 
+          this.currentInput.mouseY - event.movementY * sensitivity))
+      }
+    })
+
+    console.log('[Avatar] ✅ Input handlers configured')
   }
 
   private updateInputState(keys: Record<string, boolean>) {
+    // Industry Standard: WASD + Arrow key support
     this.currentInput.forward = keys['KeyW'] || keys['ArrowUp'] || false
     this.currentInput.backward = keys['KeyS'] || keys['ArrowDown'] || false
     this.currentInput.left = keys['KeyA'] || keys['ArrowLeft'] || false
@@ -389,16 +411,15 @@ class AvatarSystem {
   }
 }
 
-// Singleton instance
+// Create the singleton instance properly
 const avatarSystem = new AvatarSystem()
 
-// Export functions for compatibility with existing code
 export async function loadSquirrelAvatar(): Promise<void> {
   return avatarSystem.loadAvatar()
 }
 
 export function updateSquirrelMovement(deltaTime: number): void {
-  avatarSystem.updateMovement(deltaTime)
+  return avatarSystem.updateMovement(deltaTime)
 }
 
 export async function updateSquirrelCamera(camera: THREE.Camera): Promise<void> {
@@ -409,7 +430,6 @@ export function getSquirrelAvatar(): Avatar {
   return avatarSystem.getAvatar()
 }
 
-// New exports for multiplayer
 export function getCurrentInput(): InputState {
   return avatarSystem.getCurrentInput()
 }
