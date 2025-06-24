@@ -91,8 +91,14 @@ export default {
     try {
       // Handle /ws endpoint - forward directly to ForestManager
       if (pathname === "/ws") {
+        console.log(`[API] 🔌 WebSocket request received: ${request.url}`);
+        console.log(`[API] Upgrade header:`, request.headers.get('Upgrade'));
+        console.log(`[API] Connection header:`, request.headers.get('Connection'));
         const forest = getObjectInstance(env, "forest", "daily-forest");
-        return forest.fetch(request);
+        console.log(`[API] Forwarding to ForestManager...`);
+        const response = await forest.fetch(request);
+        console.log(`[API] ForestManager response status:`, response.status);
+        return response;
       }
 
       // Handle terrain-seed endpoint
