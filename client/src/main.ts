@@ -101,6 +101,12 @@ async function connectWebSocket(squirrelId: string, token: string) {
     setupNetworkHandlers();
     console.log("✅ Network connection established and handlers setup");
     
+    // FIX: Send client_ready immediately after connection to trigger server init
+    setTimeout(() => {
+      networkManager.send('client_ready', {}, { priority: 0 });
+      console.log(`[Log] 📤 Sent client_ready signal immediately after connection`);
+    }, 100);
+    
   } catch (error) {
     console.error("❌ Failed to connect to server:", error);
     console.error("❌ Error details:", error);
@@ -140,6 +146,8 @@ async function connectWebSocket(squirrelId: string, token: string) {
 
 // Industry Standard: Setup network message handlers
 function setupNetworkHandlers() {
+  let inputTransmissionStarted = false;
+  
   // Handle player updates with proper reconciliation
   networkManager.on('player_update', (data) => {
     if (data.squirrelId === localPlayerId) {
@@ -169,6 +177,13 @@ function setupNetworkHandlers() {
   // Handle initialization
   networkManager.on('init', async (data) => {
     console.log(`[Log] 📨 Received init message with ${data.mapState.length} walnuts`);
+    
+    // Start input transmission once we know server is responsive
+    if (!inputTransmissionStarted) {
+      startInputTransmission();
+      inputTransmissionStarted = true;
+      console.log(`[Log] ✅ Input transmission started after init`);
+    }
     
     // Clear existing walnuts
     Object.values(walnutMap).forEach(mesh => scene.remove(mesh));
@@ -211,15 +226,8 @@ function setupNetworkHandlers() {
       console.error('[Error] ❌ Avatar not ready for server init');
     }
     
-    // Signal client is ready
-    setTimeout(() => {
-      networkManager.send('client_ready', {}, { priority: 0 });
-      console.log(`[Log] 📤 Sent client_ready signal`);
-      
-      // FIX: Start input transmission after client is ready
-      startInputTransmission();
-      console.log(`[Log] ✅ Input transmission started`);
-    }, 500);
+    // Input transmission will be started after client_ready response
+    console.log(`[Log] ✅ Init handler complete, awaiting client_ready response`);
   });
 
   // Handle existing players
