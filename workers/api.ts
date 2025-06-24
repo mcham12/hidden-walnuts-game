@@ -283,6 +283,21 @@ export default {
         });
       }
 
+      // Handle /test-positions route
+      if (pathname === "/test-positions") {
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        console.log("Testing player positions");
+        const response = await forest.fetch(request);
+        const result = await response.json();
+        return new Response(JSON.stringify(result), {
+          status: response.status,
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "application/json"
+          }
+        });
+      }
+
       // Handle not found case
       console.log("No matching route for:", pathname);
       return new Response(JSON.stringify({
