@@ -4,6 +4,10 @@ compatibility_date = "2025-05-23"
 [build]
 command = "npm run build"
 
+# Enable logging for debugging
+[observability.logs]
+enabled = true
+
 # Durable Object bindings
 [durable_objects]
 bindings = [
