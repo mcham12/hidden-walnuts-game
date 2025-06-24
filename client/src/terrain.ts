@@ -53,6 +53,6 @@ export async function createTerrain(): Promise<THREE.Mesh> {
   terrain.rotation.x = -Math.PI / 2; // Lay flat
   terrain.receiveShadow = true;
 
-  console.log('[Log] Terrain setup complete: 200x200, height 0–5 units');
+  // Terrain setup complete
   return terrain;
 } 

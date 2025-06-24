@@ -52,7 +52,7 @@ async function initializeTerrainSeed(): Promise<number> {
   if (cachedSeed) {
     terrainSeed = parseFloat(cachedSeed);
     if (!hasLoggedSeed) {
-      console.log(`[Log] Using cached terrain seed: ${terrainSeed}`);
+      // Using cached terrain seed
       hasLoggedSeed = true;
     }
     return terrainSeed;
@@ -64,7 +64,7 @@ async function initializeTerrainSeed(): Promise<number> {
     terrainSeed = data.seed;
     sessionStorage.setItem('terrainSeed', terrainSeed.toString());
     if (!hasLoggedSeed) {
-      console.log(`[Log] Fetched terrain seed: ${terrainSeed}`);
+      // Fetched terrain seed from server
       hasLoggedSeed = true;
     }
     return terrainSeed;
@@ -73,7 +73,7 @@ async function initializeTerrainSeed(): Promise<number> {
     terrainSeed = Math.random() * 1000;
     sessionStorage.setItem('terrainSeed', terrainSeed.toString());
     if (!hasLoggedSeed) {
-      console.log(`[Log] Using fallback terrain seed: ${terrainSeed}`);
+      // Using fallback terrain seed
       hasLoggedSeed = true;
     }
     return terrainSeed;
@@ -99,7 +99,7 @@ async function getTerrainHeight(x: number, z: number): Promise<number> {
   }
   
   heightCache.set(key, terrainHeight);
-  if (DEBUG) console.log(`[Log] Terrain height at (${x}, ${z}): ${terrainHeight}`);
+  // Removed verbose terrain height logging
   return terrainHeight;
 }
 
@@ -121,7 +121,7 @@ const camera = new THREE.PerspectiveCamera(
 )
 camera.position.set(30, 60, 50)
 camera.lookAt(0, 0, 0)
-console.log('Camera initialized at:', camera.position)
+// Camera initialized
 
 // Create renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true })
@@ -136,12 +136,7 @@ controls.minDistance = 10
 controls.maxDistance = 100
 controls.minPolarAngle = 0.1
 controls.maxPolarAngle = Math.PI / 2 - 0.1
-console.log('OrbitControls configured:', {
-  minDistance: controls.minDistance,
-  maxDistance: controls.maxDistance,
-  minPolarAngle: controls.minPolarAngle,
-  maxPolarAngle: controls.maxPolarAngle
-})
+// OrbitControls configured
 
 // Add lights
 const ambientLight = new THREE.AmbientLight(0x404040, 1)
@@ -166,34 +161,50 @@ let forestMeshes: THREE.Object3D[] = [];
 createTerrain().then((mesh) => {
   terrain = mesh;
   scene.add(terrain);
-  console.log('Terrain added to scene');
+  console.log('🏞️ Terrain loaded');
   fetchWalnutMap();
   createForest().then((meshes) => {
-    forestMeshes = meshes;
-    meshes.forEach((mesh) => scene.add(mesh));
-    console.log('Forest added to scene');
+          forestMeshes = meshes;
+      meshes.forEach((mesh) => scene.add(mesh));
+      console.log('🌲 Forest loaded');
   });
   // Load squirrel avatar and initialize multiplayer
   loadSquirrelAvatar(scene).then(async () => {
-    console.log('Squirrel avatar loaded');
-    const avatarHeight = await getTerrainHeight(50, 50);
-    console.log(`[Log] Squirrel avatar terrain height at (50, 50): ${avatarHeight}`);
+    console.log('🐿️ Squirrel avatar loaded');
     
     // Initialize multiplayer system
     const squirrelAvatar = getSquirrelAvatar();
     if (squirrelAvatar) {
-      multiplayerManager = new MultiplayerManager(multiplayerConfig, scene, squirrelAvatar.mesh);
       try {
+        multiplayerManager = new MultiplayerManager(multiplayerConfig, scene, squirrelAvatar.mesh);
         const authData = await multiplayerManager.initialize();
-        console.log(`[Multiplayer] Connected as ${authData.squirrelId}`);
+        console.log(`🎯 [Multiplayer] Connected as ${authData.squirrelId.substring(0, 8)}`);
         
-        // Position player at spawn location from server
-        squirrelAvatar.mesh.position.set(authData.position.x, authData.position.y, authData.position.z);
-        squirrelAvatar.mesh.rotation.y = authData.rotationY;
+        // Debug: Check scene integrity before positioning
+        console.log(`🔍 Scene children: ${scene.children.length}, Camera pos: ${camera.position.x}, ${camera.position.y}, ${camera.position.z}`);
         
-        console.log(`[Multiplayer] Player spawned at position:`, authData.position);
+        // Position player at spawn location from server (with bounds checking)
+        const pos = authData.position;
+        if (pos.x >= -100 && pos.x <= 100 && pos.z >= -100 && pos.z <= 100 && pos.y >= 0 && pos.y <= 50) {
+          squirrelAvatar.mesh.position.set(pos.x, pos.y, pos.z);
+          squirrelAvatar.mesh.rotation.y = authData.rotationY;
+          
+          // Ensure camera is positioned correctly relative to player
+          camera.position.set(pos.x + 30, pos.y + 60, pos.z + 50);
+          camera.lookAt(pos.x, pos.y, pos.z);
+        } else {
+          console.warn('⚠️ Invalid spawn position from server, using default');
+          squirrelAvatar.mesh.position.set(50, 2, 50);
+          camera.position.set(80, 62, 100);
+          camera.lookAt(50, 2, 50);
+        }
+        
+        console.log(`📍 [Multiplayer] Spawned at:`, authData.position);
       } catch (error) {
-        console.error('[Multiplayer] Failed to connect:', error);
+        console.error('❌ [Multiplayer] Initialization failed:', error);
+        // Ensure game still works without multiplayer
+        console.log('🎮 Game running in single-player mode');
+        multiplayerManager = null;
       }
     }
   });
@@ -305,7 +316,7 @@ function createWalnutMesh(walnut: Walnut): THREE.Mesh {
     }
     const yPosition = terrainHeight + WALNUT_CONFIG.height[hidingMethod];
     mesh.position.set(walnut.location.x, yPosition, walnut.location.z);
-    console.log(`[Log] Walnut ${walnut.id} positioned at (${walnut.location.x}, ${yPosition}, ${walnut.location.z}), terrain height: ${terrainHeight}`);
+    // Removed verbose walnut positioning logs
   });
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -357,7 +368,7 @@ window.addEventListener('mousedown', (event) => {
     isRotating = true;
     lastMouseX = event.clientX;
     controls.enabled = false;
-    if (DEBUG) console.log('[Log] Mouse rotation started');
+    // Mouse rotation started
   }
 });
 
@@ -365,7 +376,7 @@ window.addEventListener('mouseup', (event) => {
   if (event.button === 2) {
     isRotating = false;
     controls.enabled = true;
-    if (DEBUG) console.log('[Log] Mouse rotation stopped');
+    // Mouse rotation stopped
   }
 });
 
@@ -375,7 +386,7 @@ window.addEventListener('mousemove', (event) => {
     const rotationSpeed = 0.005;
     camera.rotation.y -= deltaX * rotationSpeed;
     lastMouseX = event.clientX;
-    if (DEBUG) console.log('[Log] Camera rotation updated:', camera.rotation.y);
+          // Camera rotation updated
   }
 });
 
@@ -431,6 +442,11 @@ async function animate() {
     if (Math.floor(currentTime / 500) !== Math.floor(lastTime / 500)) {
       updateMultiplayerUI();
     }
+  }
+
+  // Safety check: Detect scene corruption
+  if (scene.children.length < 3) { // Should have terrain, lights, etc.
+    console.error('🚨 Scene corruption detected! Children count:', scene.children.length);
   }
 
   controls.enabled = false; // Disable OrbitControls during movement

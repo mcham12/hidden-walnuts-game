@@ -47,7 +47,7 @@ class MultiplayerManager {
   private setupNetworkHandlers(): void {
     // Connection events
     this.network.on('connected', () => {
-      console.log('[Multiplayer] Connected to server');
+      console.log('🎮 [Multiplayer] Connected to server');
       this.startPositionUpdates();
     });
 
@@ -111,7 +111,7 @@ class MultiplayerManager {
         '/assets/models/squirrel.glb',
         (gltf) => {
           this.squirrelModel = gltf.scene.clone();
-          console.log('[Multiplayer] Squirrel model loaded');
+          // Squirrel model loaded
           resolve();
         },
         (_progress) => {
@@ -134,8 +134,8 @@ class MultiplayerManager {
       return;
     }
 
-    console.log(`[Multiplayer] Player joined: ${squirrelId}`, position);
-    this.createRemotePlayer(squirrelId, position, rotationY);
+          console.log(`👥 [Multiplayer] Player joined: ${squirrelId.substring(0, 8)}`);
+      this.createRemotePlayer(squirrelId, position, rotationY);
   }
 
   // Handle player position updates
@@ -157,7 +157,7 @@ class MultiplayerManager {
   // Handle player leaving
   private handlePlayerLeave(data: any): void {
     const { squirrelId } = data;
-    console.log(`[Multiplayer] Player left: ${squirrelId}`);
+    console.log(`👋 [Multiplayer] Player left: ${squirrelId.substring(0, 8)}`);
     this.removeRemotePlayer(squirrelId);
   }
 
@@ -172,8 +172,8 @@ class MultiplayerManager {
   }
 
   // Handle world state
-  private handleWorldState(data: any): void {
-    console.log('[Multiplayer] Received world state:', data);
+  private handleWorldState(_data: any): void {
+    console.log('🌍 [Multiplayer] World state received');
     // Handle terrain seed, map objects, walnuts, etc.
     // This would integrate with the terrain and forest systems
   }
@@ -208,7 +208,7 @@ class MultiplayerManager {
     };
 
     this.remotePlayers.set(squirrelId, remotePlayer);
-    console.log(`[Multiplayer] Created remote player: ${squirrelId}`);
+    // Remote player created
   }
 
   // Add name tag to player avatar
@@ -247,7 +247,7 @@ class MultiplayerManager {
     }
 
     this.remotePlayers.delete(squirrelId);
-    console.log(`[Multiplayer] Removed remote player: ${squirrelId}`);
+    // Remote player removed
   }
 
   // Clear all remote players

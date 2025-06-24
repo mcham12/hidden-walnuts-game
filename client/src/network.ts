@@ -39,7 +39,7 @@ class NetworkManager {
   // Industry Standard: Authentication flow
   async authenticate(): Promise<AuthData> {
     try {
-      console.log('[Network] Starting authentication...');
+      console.log('🔐 [Network] Authenticating...');
       
       // Request to join the game (creates session and returns token)
       const response = await fetch(`${this.config.apiBaseUrl}/join`, {
@@ -56,7 +56,7 @@ class NetworkManager {
       const authData = await response.json() as AuthData;
       this.authData = authData;
 
-      console.log(`[Network] Authenticated as ${authData.squirrelId}`);
+      console.log(`✅ [Network] Authenticated as ${authData.squirrelId.substring(0, 8)}`);
       return authData;
       
     } catch (error) {
@@ -90,7 +90,7 @@ class NetworkManager {
       wsUrl.searchParams.set('squirrelId', this.authData.squirrelId);
       wsUrl.searchParams.set('token', this.authData.token);
 
-      console.log(`[Network] Connecting to WebSocket: ${wsUrl.toString()}`);
+      // Connecting to WebSocket
 
       // Create WebSocket connection
       this.socket = new WebSocket(wsUrl.toString());
@@ -101,7 +101,7 @@ class NetworkManager {
       // Wait for connection to open
       await this.waitForConnection();
       
-      console.log('[Network] WebSocket connected successfully');
+      console.log('🚀 [Network] Connected to multiplayer');
 
     } catch (error) {
       console.error('[Network] Connection error:', error);
@@ -116,7 +116,6 @@ class NetworkManager {
     if (!this.socket) return;
 
     this.socket.onopen = (event) => {
-      console.log('[Network] WebSocket opened');
       this.connectionState = 'connected';
       this.reconnectAttempts = 0;
       this.startHeartbeat();
@@ -193,7 +192,10 @@ class NetworkManager {
 
   // Industry Standard: Message routing system
   private handleMessage(message: NetworkMessage): void {
-    console.log(`[Network] Received message: ${message.type}`, message);
+    // Only log important messages, not pongs or updates
+    if (message.type !== 'pong' && message.type !== 'player_update') {
+      console.log(`🌐 [Network] ${message.type}:`, message);
+    }
 
     // Handle system messages
     switch (message.type) {

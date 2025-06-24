@@ -36,7 +36,7 @@ export async function loadSquirrelAvatar(scene: THREE.Scene): Promise<SquirrelAv
   
   try {
     scene.add(mesh);
-    console.log('[Log] Squirrel avatar added to scene at:', mesh.position.toArray());
+    // Squirrel avatar added to scene
   } catch (error) {
     console.error('[Log] Failed to add squirrel avatar to scene:', error);
     throw error;
