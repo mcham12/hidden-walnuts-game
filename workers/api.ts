@@ -57,28 +57,20 @@ export default {
         return forest.fetch(request);
       }
 
-      // Route /join WebSocket requests to ForestManager Durable Object
-      if (pathname === '/join') {
-        const forest = getObjectInstance(env, "forest", "daily-forest");
-        console.log('Forwarding /join request to ForestManager');
-        return await forest.fetch(request);
-      }
-
-      // Handle /join route
+      // Handle /join route - multiplayer authentication & session creation
       if (pathname === "/join") {
-        // Get squirrelId from query string or generate a new one
-        const id = url.searchParams.get("squirrelId") || crypto.randomUUID();
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        console.log('Forwarding /join request to ForestManager for multiplayer');
+        const response = await forest.fetch(request);
         
-        // Create a modified request with the ID in the path
-        // This ensures the ID is available even if we can't modify the original request
-        const newUrl = new URL(request.url);
-        newUrl.pathname = "/join";
-        
-        // Get SquirrelSession Durable Object instance
-        const squirrel = getObjectInstance(env, "squirrel", id);
-        
-        // Forward the request to the Durable Object
-        return await squirrel.fetch(new Request(newUrl, request));
+        // Add CORS headers
+        return new Response(response.body, {
+          status: response.status,
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "application/json"
+          }
+        });
       }
 
       // Handle /hide route

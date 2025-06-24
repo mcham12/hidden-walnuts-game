@@ -1,0 +1,377 @@
+// multiplayer.ts - Industry Standard Multiplayer Client
+// Manages other players, avatar rendering, and game integration
+
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { NetworkManager, type NetworkConfig, type AuthData } from './network';
+
+interface RemotePlayer {
+  squirrelId: string;
+  position: { x: number; y: number; z: number };
+  rotationY: number;
+  mesh?: THREE.Object3D;
+  lastUpdate: number;
+  targetPosition: { x: number; y: number; z: number };
+  targetRotationY: number;
+}
+
+interface MultiplayerConfig extends NetworkConfig {
+  interpolationSpeed: number;
+  updateThreshold: number;
+  playerUpdateRate: number;
+}
+
+class MultiplayerManager {
+  private network: NetworkManager;
+  private config: MultiplayerConfig;
+  private scene: THREE.Scene;
+  private localPlayer: THREE.Object3D;
+  private remotePlayers = new Map<string, RemotePlayer>();
+  private squirrelModel?: THREE.Object3D;
+  private lastPositionSent = { x: 0, y: 0, z: 0 };
+  private lastRotationSent = 0;
+  private updateTimer: any = null;
+  private loader: GLTFLoader;
+
+  constructor(config: MultiplayerConfig, scene: THREE.Scene, localPlayer: THREE.Object3D) {
+    this.config = config;
+    this.scene = scene;
+    this.localPlayer = localPlayer;
+    this.network = new NetworkManager(config);
+    this.loader = new GLTFLoader();
+    
+    this.setupNetworkHandlers();
+  }
+
+  // Industry Standard: Network event handling
+  private setupNetworkHandlers(): void {
+    // Connection events
+    this.network.on('connected', () => {
+      console.log('[Multiplayer] Connected to server');
+      this.startPositionUpdates();
+    });
+
+    this.network.on('disconnected', () => {
+      console.log('[Multiplayer] Disconnected from server');
+      this.stopPositionUpdates();
+      this.clearAllRemotePlayers();
+    });
+
+    this.network.on('error', (data) => {
+      console.error('[Multiplayer] Network error:', data);
+    });
+
+    // Player events
+    this.network.on('player_join', (data) => {
+      this.handlePlayerJoin(data);
+    });
+
+    this.network.on('player_update', (data) => {
+      this.handlePlayerUpdate(data);
+    });
+
+    this.network.on('player_leave', (data) => {
+      this.handlePlayerLeave(data);
+    });
+
+    this.network.on('existing_players', (data) => {
+      this.handleExistingPlayers(data);
+    });
+
+    this.network.on('world_state', (data) => {
+      this.handleWorldState(data);
+    });
+  }
+
+  // Industry Standard: Initialize multiplayer system
+  async initialize(): Promise<AuthData> {
+    try {
+      console.log('[Multiplayer] Initializing...');
+      
+      // Load squirrel model for other players
+      await this.loadSquirrelModel();
+      
+      // Authenticate and connect
+      const authData = await this.network.authenticate();
+      await this.network.connect();
+      
+      console.log('[Multiplayer] Initialized successfully');
+      return authData;
+      
+    } catch (error) {
+      console.error('[Multiplayer] Initialization failed:', error);
+      throw error;
+    }
+  }
+
+  // Load squirrel model for remote players
+  private async loadSquirrelModel(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.loader.load(
+        '/assets/models/squirrel.glb',
+        (gltf) => {
+          this.squirrelModel = gltf.scene.clone();
+          console.log('[Multiplayer] Squirrel model loaded');
+          resolve();
+        },
+        (_progress) => {
+          // Loading progress
+        },
+        (error) => {
+          console.error('[Multiplayer] Failed to load squirrel model:', error);
+          reject(error);
+        }
+      );
+    });
+  }
+
+  // Handle new player joining
+  private handlePlayerJoin(data: any): void {
+    const { squirrelId, position, rotationY } = data;
+    
+    if (this.remotePlayers.has(squirrelId)) {
+      console.warn(`[Multiplayer] Player ${squirrelId} already exists`);
+      return;
+    }
+
+    console.log(`[Multiplayer] Player joined: ${squirrelId}`, position);
+    this.createRemotePlayer(squirrelId, position, rotationY);
+  }
+
+  // Handle player position updates
+  private handlePlayerUpdate(data: any): void {
+    const { squirrelId, position, rotationY } = data;
+    
+    const player = this.remotePlayers.get(squirrelId);
+    if (!player) {
+      console.warn(`[Multiplayer] Update for unknown player: ${squirrelId}`);
+      return;
+    }
+
+    // Update target position for interpolation
+    player.targetPosition = { ...position };
+    player.targetRotationY = rotationY;
+    player.lastUpdate = Date.now();
+  }
+
+  // Handle player leaving
+  private handlePlayerLeave(data: any): void {
+    const { squirrelId } = data;
+    console.log(`[Multiplayer] Player left: ${squirrelId}`);
+    this.removeRemotePlayer(squirrelId);
+  }
+
+  // Handle existing players on connection
+  private handleExistingPlayers(data: any): void {
+    const { players } = data;
+    console.log(`[Multiplayer] Received ${players.length} existing players`);
+    
+    players.forEach((playerData: any) => {
+      this.createRemotePlayer(playerData.squirrelId, playerData.position, playerData.rotationY);
+    });
+  }
+
+  // Handle world state
+  private handleWorldState(data: any): void {
+    console.log('[Multiplayer] Received world state:', data);
+    // Handle terrain seed, map objects, walnuts, etc.
+    // This would integrate with the terrain and forest systems
+  }
+
+  // Industry Standard: Create remote player avatar
+  private createRemotePlayer(squirrelId: string, position: { x: number; y: number; z: number }, rotationY: number): void {
+    if (!this.squirrelModel) {
+      console.error('[Multiplayer] Cannot create player - squirrel model not loaded');
+      return;
+    }
+
+    // Clone the squirrel model
+    const playerMesh = this.squirrelModel.clone();
+    playerMesh.position.set(position.x, position.y, position.z);
+    playerMesh.rotation.y = rotationY;
+    
+    // Add name tag
+    this.addNameTag(playerMesh, squirrelId);
+    
+    // Add to scene
+    this.scene.add(playerMesh);
+
+    // Create player record
+    const remotePlayer: RemotePlayer = {
+      squirrelId,
+      position: { ...position },
+      rotationY,
+      mesh: playerMesh,
+      lastUpdate: Date.now(),
+      targetPosition: { ...position },
+      targetRotationY: rotationY
+    };
+
+    this.remotePlayers.set(squirrelId, remotePlayer);
+    console.log(`[Multiplayer] Created remote player: ${squirrelId}`);
+  }
+
+  // Add name tag to player avatar
+  private addNameTag(playerMesh: THREE.Object3D, squirrelId: string): void {
+    // Create text sprite for name tag
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d')!;
+    canvas.width = 256;
+    canvas.height = 64;
+    
+    context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    
+    context.fillStyle = 'white';
+    context.font = '20px Arial';
+    context.textAlign = 'center';
+    context.fillText(squirrelId.substring(0, 8), canvas.width / 2, canvas.height / 2 + 7);
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+    const sprite = new THREE.Sprite(spriteMaterial);
+    
+    sprite.position.set(0, 3, 0); // Above the player
+    sprite.scale.set(2, 0.5, 1);
+    
+    playerMesh.add(sprite);
+  }
+
+  // Remove remote player
+  private removeRemotePlayer(squirrelId: string): void {
+    const player = this.remotePlayers.get(squirrelId);
+    if (!player) return;
+
+    if (player.mesh) {
+      this.scene.remove(player.mesh);
+    }
+
+    this.remotePlayers.delete(squirrelId);
+    console.log(`[Multiplayer] Removed remote player: ${squirrelId}`);
+  }
+
+  // Clear all remote players
+  private clearAllRemotePlayers(): void {
+    for (const [_squirrelId, player] of this.remotePlayers) {
+      if (player.mesh) {
+        this.scene.remove(player.mesh);
+      }
+    }
+    this.remotePlayers.clear();
+    console.log('[Multiplayer] Cleared all remote players');
+  }
+
+  // Industry Standard: Position interpolation for smooth movement
+  update(deltaTime: number): void {
+    const now = Date.now();
+
+    for (const [squirrelId, player] of this.remotePlayers) {
+      if (!player.mesh) continue;
+
+      // Interpolate position
+      const positionLerpSpeed = this.config.interpolationSpeed * deltaTime;
+      player.position.x = THREE.MathUtils.lerp(player.position.x, player.targetPosition.x, positionLerpSpeed);
+      player.position.y = THREE.MathUtils.lerp(player.position.y, player.targetPosition.y, positionLerpSpeed);
+      player.position.z = THREE.MathUtils.lerp(player.position.z, player.targetPosition.z, positionLerpSpeed);
+
+      // Interpolate rotation (manual angle lerp since lerpAngle doesn't exist in this Three.js version)
+      let angleDiff = player.targetRotationY - player.rotationY;
+      // Normalize angle difference to [-PI, PI]
+      while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+      while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+      player.rotationY += angleDiff * positionLerpSpeed;
+
+      // Apply to mesh
+      player.mesh.position.set(player.position.x, player.position.y, player.position.z);
+      player.mesh.rotation.y = player.rotationY;
+
+      // Check for stale players (disconnected but not properly removed)
+      if (now - player.lastUpdate > 60000) { // 1 minute
+        console.warn(`[Multiplayer] Removing stale player: ${squirrelId}`);
+        this.removeRemotePlayer(squirrelId);
+      }
+    }
+  }
+
+  // Industry Standard: Send position updates at controlled rate
+  private startPositionUpdates(): void {
+    this.updateTimer = setInterval(() => {
+      this.sendPositionUpdate();
+    }, 1000 / this.config.playerUpdateRate); // Convert rate to interval
+  }
+
+  private stopPositionUpdates(): void {
+    if (this.updateTimer) {
+      clearInterval(this.updateTimer);
+      this.updateTimer = null;
+    }
+  }
+
+  // Send position update if movement threshold exceeded
+  private sendPositionUpdate(): void {
+    if (!this.network.isConnected()) return;
+
+    const currentPosition = this.localPlayer.position;
+    const currentRotation = this.localPlayer.rotation.y;
+
+    // Check if position changed significantly
+    const positionChange = currentPosition.distanceTo(new THREE.Vector3(
+      this.lastPositionSent.x,
+      this.lastPositionSent.y,
+      this.lastPositionSent.z
+    ));
+
+    const rotationChange = Math.abs(currentRotation - this.lastRotationSent);
+
+    if (positionChange > this.config.updateThreshold || rotationChange > 0.1) {
+      // Send update
+      const success = this.network.sendPlayerUpdate(
+        {
+          x: currentPosition.x,
+          y: currentPosition.y,
+          z: currentPosition.z
+        },
+        currentRotation
+      );
+
+      if (success) {
+        this.lastPositionSent = {
+          x: currentPosition.x,
+          y: currentPosition.y,
+          z: currentPosition.z
+        };
+        this.lastRotationSent = currentRotation;
+      }
+    }
+  }
+
+  // Get connection status
+  getConnectionState(): string {
+    return this.network.getConnectionState();
+  }
+
+  // Get player count
+  getPlayerCount(): number {
+    return this.remotePlayers.size + 1; // +1 for local player
+  }
+
+  // Get auth data
+  getAuthData(): AuthData | null {
+    return this.network.getAuthData();
+  }
+
+  // Clean shutdown
+  shutdown(): void {
+    console.log('[Multiplayer] Shutting down...');
+    this.stopPositionUpdates();
+    this.clearAllRemotePlayers();
+    this.network.disconnect();
+  }
+
+  // Check if connected
+  isConnected(): boolean {
+    return this.network.isConnected();
+  }
+}
+
+export { MultiplayerManager, type MultiplayerConfig, type RemotePlayer }; 

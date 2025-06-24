@@ -26,206 +26,308 @@ interface DurableObjectId {
   equals(other: DurableObjectId): boolean;
 }
 
-export default class SquirrelSession {
-  state: DurableObjectState;
-  storage: DurableObjectStorage;
-  env!: EnvWithBindings;
-  squirrel: Squirrel | null = null;
+interface SessionState {
+  squirrelId: string;
+  token: string;
+  isAuthenticated: boolean;
+  joinedAt: number;
+  lastActivity: number;
+  position: { x: number; y: number; z: number };
+  rotationY: number;
+  connectionState: 'connecting' | 'authenticated' | 'active' | 'disconnected';
+}
 
-  constructor(state: DurableObjectState, env: EnvWithBindings) {
+interface PlayerStats {
+  walnuts: { hidden: number; found: number };
+  score: number;
+  timeOnline: number;
+}
+
+export default class SquirrelSession {
+  private state: DurableObjectState;
+  private sessionState: SessionState | null = null;
+  private playerStats: PlayerStats | null = null;
+  private sessionTimeout: any = null;
+
+  constructor(state: DurableObjectState, env: any) {
     this.state = state;
-    this.storage = state.storage;
-    this.env = env;
   }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    const path = url.pathname;
-    const now = Date.now();
+    const pathname = url.pathname;
 
-    // Load squirrel data if not already loaded
-    if (!this.squirrel) {
-      this.squirrel = await this.storage.get<Squirrel>("session");
+    try {
+      // Handle player join/authentication
+      if (pathname === "/join") {
+        return await this.handleJoin(request);
+      }
+
+      // Handle session validation
+      if (pathname === "/validate") {
+        return await this.handleValidation(request);
+      }
+
+      // Handle player state updates
+      if (pathname === "/update-state") {
+        return await this.handleStateUpdate(request);
+      }
+
+      // Handle session cleanup
+      if (pathname === "/disconnect") {
+        return await this.handleDisconnect(request);
+      }
+
+      // Handle session info requests
+      if (pathname === "/session-info") {
+        return await this.handleSessionInfo(request);
+      }
+
+      return new Response("Not Found", { status: 404 });
+    } catch (error) {
+      console.error("[SquirrelSession] Error:", error);
+      return new Response(JSON.stringify({ 
+        error: "Internal Server Error",
+        message: error instanceof Error ? error.message : "Unknown error"
+      }), { 
+        status: 500, 
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+  }
+
+  // Industry Standard: Secure token-based authentication
+  private async handleJoin(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    const squirrelId = url.searchParams.get("squirrelId");
+    
+    if (!squirrelId) {
+      return new Response(JSON.stringify({
+        error: "Missing squirrelId parameter"
+      }), { status: 400, headers: { "Content-Type": "application/json" }});
     }
 
-    // Handle join request - this will either create a new squirrel or update an existing one
-    if (path.endsWith("/join")) {
-      await this.handleJoin(request);
-      return new Response(JSON.stringify(this.squirrel), { 
+    // Generate secure session token
+    const token = crypto.randomUUID();
+    const now = Date.now();
+    
+    // Load existing session state if it exists
+    const existingState = await this.state.storage.get<SessionState>("session");
+    const existingStats = await this.state.storage.get<PlayerStats>("stats");
+    
+    // Create or update session state
+    this.sessionState = {
+      squirrelId,
+      token,
+      isAuthenticated: true,
+      joinedAt: existingState?.joinedAt || now,
+      lastActivity: now,
+      position: existingState?.position || { x: 50, y: 2, z: 50 }, // Default spawn
+      rotationY: existingState?.rotationY || 0,
+      connectionState: 'authenticated'
+    };
+
+    // Initialize or preserve player stats
+    this.playerStats = existingStats || {
+      walnuts: { hidden: 0, found: 0 },
+      score: 0,
+      timeOnline: 0
+    };
+
+    // Persist to storage
+    await this.state.storage.put("session", this.sessionState);
+    await this.state.storage.put("stats", this.playerStats);
+    
+    // Set session timeout (industry standard: 30 minutes)
+    this.scheduleSessionTimeout();
+
+    console.log(`[SquirrelSession] Player ${squirrelId} authenticated with token ${token}`);
+    
+    return new Response(JSON.stringify({
+      success: true,
+      token,
+      squirrelId,
+      position: this.sessionState.position,
+      rotationY: this.sessionState.rotationY,
+      stats: this.playerStats
+    }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  // Industry Standard: Token validation for secure communication
+  private async handleValidation(request: Request): Promise<Response> {
+    if (request.method !== "POST") {
+      return new Response("Method not allowed", { status: 405 });
+    }
+
+    const body = await request.json() as { token: string };
+    
+    if (!this.sessionState) {
+      await this.loadSessionFromStorage();
+    }
+
+    const isValid = this.sessionState?.token === body.token && 
+                   this.sessionState?.isAuthenticated === true;
+
+    if (isValid && this.sessionState) {
+      // Update last activity
+      this.sessionState.lastActivity = Date.now();
+      await this.state.storage.put("session", this.sessionState);
+      this.scheduleSessionTimeout();
+    }
+
+    return new Response(JSON.stringify({ 
+      valid: isValid,
+      squirrelId: isValid ? this.sessionState?.squirrelId : null
+    }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  // Industry Standard: State persistence with validation
+  private async handleStateUpdate(request: Request): Promise<Response> {
+    if (request.method !== "POST") {
+      return new Response("Method not allowed", { status: 405 });
+    }
+
+    const body = await request.json() as { 
+      token: string; 
+      position?: { x: number; y: number; z: number };
+      rotationY?: number;
+      connectionState?: 'active' | 'disconnected';
+    };
+
+    if (!this.sessionState) {
+      await this.loadSessionFromStorage();
+    }
+
+    // Validate token
+    if (!this.sessionState || this.sessionState.token !== body.token) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
         headers: { "Content-Type": "application/json" }
       });
     }
 
-    // All other endpoints require an existing squirrel
-    if (!this.squirrel) {
-      return new Response("Must join first", { status: 400 });
+    // Update state with validation
+    if (body.position && this.isValidPosition(body.position)) {
+      this.sessionState.position = body.position;
+    }
+    
+    if (body.rotationY !== undefined) {
+      this.sessionState.rotationY = body.rotationY;
     }
 
-    if (path.endsWith("/hide")) {
-      try {
-        // Parse and validate request body
-        const body = await request.json() as unknown;
-        
-        // Type guard for request body
-        if (!this.isValidHideRequest(body)) {
-          return new Response(JSON.stringify({ 
-            error: "Missing required fields: location and hiddenIn"
-          }), { 
-            status: 400, 
-            headers: { "Content-Type": "application/json" }
-          });
-        }
-        
-        // Create the walnut object
-        const walnut: Walnut = {
-          id: `p-${crypto.randomUUID()}`,
-          ownerId: this.squirrel.id,
-          origin: "player",
-          hiddenIn: body.hiddenIn,
-          location: body.location,
-          found: false,
-          timestamp: now
-        };
-        
-        // Send to WalnutRegistry
-        const registry = getObjectInstance(this.env, "walnuts", "global");
-        const registryResponse = await registry.fetch(new Request("https://internal/add", {
-          method: "POST",
-          body: JSON.stringify(walnut)
-        }));
-        
-        // Check if the registry accepted the walnut
-        if (!registryResponse.ok) {
-          return new Response(JSON.stringify({ 
-            error: "Failed to register walnut", 
-            details: await registryResponse.text() 
-          }), { 
-            status: 500, 
-            headers: { "Content-Type": "application/json" }
-          });
-        }
-        
-        // Update the squirrel's hidden walnuts
-        this.squirrel.hiddenWalnuts.push(walnut.id);
-        await this.save();
-        
-        // Return success with walnut details
-        return new Response(JSON.stringify({ 
-          success: true, 
-          message: "Walnut hidden successfully",
-          walnut: {
-            id: walnut.id,
-            hiddenIn: walnut.hiddenIn,
-            timestamp: walnut.timestamp
-          }
-        }), { 
-          status: 200, 
-          headers: { "Content-Type": "application/json" }
-        });
-      } catch (error: unknown) {
-        // Handle JSON parsing errors
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return new Response(JSON.stringify({ 
-          error: "Invalid request", 
-          details: errorMessage 
-        }), { 
-          status: 400, 
-          headers: { "Content-Type": "application/json" }
-        });
+    if (body.connectionState) {
+      this.sessionState.connectionState = body.connectionState;
+    }
+
+    this.sessionState.lastActivity = Date.now();
+
+    // Persist to storage
+    await this.state.storage.put("session", this.sessionState);
+    this.scheduleSessionTimeout();
+
+    return new Response(JSON.stringify({ 
+      success: true,
+      position: this.sessionState.position,
+      rotationY: this.sessionState.rotationY 
+    }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  // Industry Standard: Graceful session cleanup
+  private async handleDisconnect(request: Request): Promise<Response> {
+    if (!this.sessionState) {
+      await this.loadSessionFromStorage();
+    }
+
+    if (this.sessionState) {
+      // Update connection state but preserve session for reconnection
+      this.sessionState.connectionState = 'disconnected';
+      this.sessionState.lastActivity = Date.now();
+      
+      // Update total time online
+      if (this.playerStats) {
+        this.playerStats.timeOnline += Date.now() - this.sessionState.joinedAt;
+        await this.state.storage.put("stats", this.playerStats);
       }
-    }
-
-    if (path.endsWith("/ping")) {
-      await this.updateParticipation();
-      await this.save();
-      return new Response("Participation updated");
-    }
-
-    return new Response("Not found", { status: 404 });
-  }
-
-  async updateParticipation(): Promise<void> {
-    if (!this.squirrel) return;
-    
-    const now = Date.now();
-    const elapsed = Math.floor((now - this.squirrel.lastSeen) / 1000);
-    this.squirrel.participationSeconds += elapsed;
-    this.squirrel.lastSeen = now;
-
-    const step = Math.floor(this.squirrel.participationSeconds / PARTICIPATION_INTERVAL_SECONDS);
-    this.squirrel.multiplier = Math.min(1 + step * 0.1, PARTICIPATION_MAX_MULTIPLIER);
-  }
-
-  async save(): Promise<void> {
-    if (this.squirrel) {
-      await this.storage.put("session", this.squirrel);
-    }
-  }
-
-  private async handleJoin(request: Request): Promise<void> {
-    const currentTime = Date.now();
-    const url = new URL(request.url);
-    
-    // Check if this is a new squirrel or returning one
-    if (!this.squirrel) {
-      // Extract ID from URL params or generate a new one
-      const providedId = url.searchParams.get("squirrelId");
-      const squirrelId = providedId || crypto.randomUUID();
       
-      // Create a new squirrel with default values
-      this.squirrel = {
-        id: squirrelId,
-        joinedAt: currentTime,
-        lastSeen: currentTime,
-        participationSeconds: 0,
-        multiplier: 1.0,
-        powerUps: Object.fromEntries(DEFAULT_POWERUPS.map(p => [p, true])),
-        hiddenWalnuts: [],
-        foundWalnuts: [],
-        score: 0,
-        firstFinderAchieved: false
-      };
-    } else {
-      // Update existing squirrel's participation data
-      const secondsSinceLastSeen = Math.floor((currentTime - this.squirrel.lastSeen) / 1000);
-      this.squirrel.participationSeconds += secondsSinceLastSeen;
-      this.squirrel.lastSeen = currentTime;
-      
-      // Update multiplier based on participation time
-      const participationIntervals = Math.floor(this.squirrel.participationSeconds / PARTICIPATION_INTERVAL_SECONDS);
-      const newMultiplier = 1.0 + (participationIntervals * 0.1);
-      this.squirrel.multiplier = Math.min(newMultiplier, PARTICIPATION_MAX_MULTIPLIER);
+      await this.state.storage.put("session", this.sessionState);
     }
-    
-    // Save squirrel data
-    await this.save();
+
+    // Clear timeout
+    if (this.sessionTimeout) {
+      clearTimeout(this.sessionTimeout);
+      this.sessionTimeout = null;
+    }
+
+    console.log(`[SquirrelSession] Player ${this.sessionState?.squirrelId} disconnected gracefully`);
+
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { "Content-Type": "application/json" }
+    });
   }
 
-  // Type guard for hide request body
-  private isValidHideRequest(body: unknown): body is { 
-    hiddenIn: HidingMethod; 
-    location: { x: number; y: number; z: number; }
-  } {
-    if (!body || typeof body !== 'object') return false;
-    
-    const hideRequest = body as Record<string, unknown>;
-    
-    // Check required fields exist
-    if (!hideRequest.location || !hideRequest.hiddenIn) return false;
-    
-    // Validate hiding method
-    if (hideRequest.hiddenIn !== "buried" && hideRequest.hiddenIn !== "bush") return false;
-    
-    // Validate location has x, y, z numeric coordinates
-    const location = hideRequest.location as Record<string, unknown>;
-    if (typeof location !== 'object') return false;
-    
-    if (typeof location.x !== 'number' || 
-        typeof location.y !== 'number' || 
-        typeof location.z !== 'number') {
-      return false;
+  // Get current session information
+  private async handleSessionInfo(request: Request): Promise<Response> {
+    if (!this.sessionState) {
+      await this.loadSessionFromStorage();
     }
-    
-    return true;
+
+    if (!this.sessionState) {
+      return new Response(JSON.stringify({ error: "No active session" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    return new Response(JSON.stringify({
+      squirrelId: this.sessionState.squirrelId,
+      isAuthenticated: this.sessionState.isAuthenticated,
+      connectionState: this.sessionState.connectionState,
+      position: this.sessionState.position,
+      rotationY: this.sessionState.rotationY,
+      stats: this.playerStats
+    }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  // Industry Standard: Position validation (anti-cheat)
+  private isValidPosition(position: { x: number; y: number; z: number }): boolean {
+    const MAX_COORDINATE = 200; // Terrain bounds
+    const MIN_Y = 0;
+    const MAX_Y = 50;
+
+    return position.x >= -MAX_COORDINATE && position.x <= MAX_COORDINATE &&
+           position.z >= -MAX_COORDINATE && position.z <= MAX_COORDINATE &&
+           position.y >= MIN_Y && position.y <= MAX_Y;
+  }
+
+  // Industry Standard: Session timeout management
+  private scheduleSessionTimeout(): void {
+    if (this.sessionTimeout) {
+      clearTimeout(this.sessionTimeout);
+    }
+
+    // Session expires after 30 minutes of inactivity
+    this.sessionTimeout = setTimeout(async () => {
+      console.log(`[SquirrelSession] Session timeout for ${this.sessionState?.squirrelId}`);
+      
+      if (this.sessionState) {
+        this.sessionState.connectionState = 'disconnected';
+        this.sessionState.isAuthenticated = false;
+        await this.state.storage.put("session", this.sessionState);
+      }
+    }, 30 * 60 * 1000); // 30 minutes
+  }
+
+  // Load session from persistent storage
+  private async loadSessionFromStorage(): Promise<void> {
+    this.sessionState = await this.state.storage.get<SessionState>("session");
+    this.playerStats = await this.state.storage.get<PlayerStats>("stats");
   }
 }

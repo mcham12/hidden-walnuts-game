@@ -38,11 +38,30 @@
    npm run dev
    ```
 
-## Deployment
+## Development & Deployment Workflow
+
+### **Development Process**
+- **Local Development**: Code changes made locally, optional `npm run dev` for build validation
+- **Testing**: ALL multiplayer testing done in Cloudflare preview environment (not local)
+- **No Local WebSocket**: WebSocket connections only tested via Cloudflare preview URLs
+
+### **Deployment Pipeline**
+1. **Code → GitHub**: Developer commits and pushes changes to GitHub
+2. **Auto-Build Workers**: GitHub Actions automatically builds/deploys workers (if changes detected)
+3. **Auto-Build Frontend**: Cloudflare Pages auto-builds frontend from GitHub push
+4. **Preview URLs**: Testing occurs using Cloudflare-generated preview URLs
+5. **Iteration**: Based on preview testing results, repeat cycle
+
+### **Deployment Details**
 - **Frontend**: Deployed to Cloudflare Pages via GitHub integration 
 - **Backend**: Deployed to Cloudflare Workers via GitHub Actions (`deploy-pages.yml`).
 - **Assets**: Served from `<game-root>/public/` (e.g., `Tree_01.glb`, `Bush_01.glb`).
 - **Routes**: `_routes.json` excludes `.glb` and `.txt` from SPA fallback.
+
+### **Why This Workflow**
+- **Real Environment Testing**: Multiplayer features tested in actual deployment environment
+- **Automatic Deployment**: No manual deployment steps, reduces errors
+- **Preview Isolation**: Each commit gets its own preview URL for testing
 
 ## Revised MVP Plan
 

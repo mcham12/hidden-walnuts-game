@@ -17,10 +17,31 @@
         display: block;
         position: relative;
       }
+      #multiplayer-status {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        z-index: 1000;
+        min-width: 150px;
+      }
+      .status-connected { background: rgba(0, 150, 0, 0.8) !important; }
+      .status-connecting { background: rgba(255, 165, 0, 0.8) !important; }
+      .status-disconnected { background: rgba(150, 0, 0, 0.8) !important; }
     </style>
   </head>
   <body>
     <div id="app"></div>
+    <div id="multiplayer-status">
+      <div>🌐 Multiplayer</div>
+      <div id="connection-status">Connecting...</div>
+      <div id="player-count">Players: 1</div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

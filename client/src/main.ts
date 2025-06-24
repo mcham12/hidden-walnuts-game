@@ -3,7 +3,8 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { createTerrain } from './terrain'
 import { createForest } from './forest'
-import { loadSquirrelAvatar, updateSquirrelMovement, updateSquirrelCamera } from './avatar'
+import { loadSquirrelAvatar, updateSquirrelMovement, updateSquirrelCamera, getSquirrelAvatar } from './avatar'
+import { MultiplayerManager, type MultiplayerConfig } from './multiplayer'
 
 // AI NOTE: Export DEBUG for use in other modules
 export const DEBUG = false;
@@ -172,16 +173,81 @@ createTerrain().then((mesh) => {
     meshes.forEach((mesh) => scene.add(mesh));
     console.log('Forest added to scene');
   });
-  // Load squirrel avatar and log height
+  // Load squirrel avatar and initialize multiplayer
   loadSquirrelAvatar(scene).then(async () => {
     console.log('Squirrel avatar loaded');
     const avatarHeight = await getTerrainHeight(50, 50);
     console.log(`[Log] Squirrel avatar terrain height at (50, 50): ${avatarHeight}`);
+    
+    // Initialize multiplayer system
+    const squirrelAvatar = getSquirrelAvatar();
+    if (squirrelAvatar) {
+      multiplayerManager = new MultiplayerManager(multiplayerConfig, scene, squirrelAvatar.mesh);
+      try {
+        const authData = await multiplayerManager.initialize();
+        console.log(`[Multiplayer] Connected as ${authData.squirrelId}`);
+        
+        // Position player at spawn location from server
+        squirrelAvatar.mesh.position.set(authData.position.x, authData.position.y, authData.position.z);
+        squirrelAvatar.mesh.rotation.y = authData.rotationY;
+        
+        console.log(`[Multiplayer] Player spawned at position:`, authData.position);
+      } catch (error) {
+        console.error('[Multiplayer] Failed to connect:', error);
+      }
+    }
   });
 });
 
 const axesHelper = new THREE.AxesHelper(5)
 scene.add(axesHelper)
+
+// Initialize multiplayer system
+let multiplayerManager: MultiplayerManager | null = null;
+
+// UI functions
+function updateMultiplayerUI(): void {
+  const statusDiv = document.getElementById('multiplayer-status');
+  const connectionDiv = document.getElementById('connection-status');
+  const playerCountDiv = document.getElementById('player-count');
+  
+  if (!statusDiv || !connectionDiv || !playerCountDiv || !multiplayerManager) return;
+  
+  const state = multiplayerManager.getConnectionState();
+  const playerCount = multiplayerManager.getPlayerCount();
+  const authData = multiplayerManager.getAuthData();
+  
+  // Update connection status
+  statusDiv.className = `status-${state}`;
+  
+  switch (state) {
+    case 'connected':
+      connectionDiv.textContent = `Connected${authData ? ` (${authData.squirrelId.substring(0, 8)})` : ''}`;
+      break;
+    case 'connecting':
+      connectionDiv.textContent = 'Connecting...';
+      break;
+    case 'disconnected':
+      connectionDiv.textContent = 'Disconnected';
+      break;
+    default:
+      connectionDiv.textContent = state;
+  }
+  
+  // Update player count
+  playerCountDiv.textContent = `Players: ${playerCount}`;
+}
+
+// Multiplayer configuration
+const multiplayerConfig: MultiplayerConfig = {
+  apiBaseUrl: API_BASE,
+  reconnectAttempts: 5,
+  reconnectDelay: 2000,
+  heartbeatInterval: 30000,
+  interpolationSpeed: 5.0,
+  updateThreshold: 0.1,
+  playerUpdateRate: 20 // 20 updates per second
+};
 
 interface Walnut {
   id: string
@@ -356,6 +422,16 @@ async function animate() {
 
   updateSquirrelMovement(deltaTime);
   updateSquirrelCamera(camera);
+
+  // Update multiplayer system
+  if (multiplayerManager) {
+    multiplayerManager.update(deltaTime);
+    
+    // Update UI periodically (every 30 frames ≈ 0.5 seconds at 60fps)
+    if (Math.floor(currentTime / 500) !== Math.floor(lastTime / 500)) {
+      updateMultiplayerUI();
+    }
+  }
 
   controls.enabled = false; // Disable OrbitControls during movement
 
