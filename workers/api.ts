@@ -1,3 +1,6 @@
+// API entry point for Hidden Walnuts game
+// Build trigger comment
+
 import { getObjectInstance } from "./objects/registry";
 import type { EnvWithBindings } from "./objects/registry";
 

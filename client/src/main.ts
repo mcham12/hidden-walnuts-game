@@ -506,3 +506,6 @@ export {
   forestMeshes,
   initializeTerrainSeed
 };
+
+// Hidden Walnuts Game - Main Entry Point
+console.log('[Build] Frontend build triggered');
