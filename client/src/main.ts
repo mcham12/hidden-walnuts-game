@@ -478,7 +478,7 @@ function createWalnutMesh(walnut: Walnut): THREE.Mesh {
   getTerrainHeight(walnut.location.x, walnut.location.z).then((terrainHeight) => {
     const yPosition = terrainHeight + (hidingMethod === 'buried' ? 0.15 : 0.4); // Adjusted for smaller size
     mesh.position.set(walnut.location.x, yPosition, walnut.location.z);
-    console.log(`[Log] Walnut ${walnut.id} at (${walnut.location.x}, ${yPosition}, ${walnut.location.z})`);
+    // console.log(`[Log] Walnut ${walnut.id} at (${walnut.location.x}, ${yPosition}, ${walnut.location.z})`);
   }).catch(() => {
     mesh.position.set(walnut.location.x, 5, walnut.location.z); // Fallback
   });
@@ -704,28 +704,31 @@ setInterval(() => {
   const multiplayerStats = multiplayerSystem.getStats();
   const avatar = getSquirrelAvatar();
   
-  console.log('[Performance] Network:', networkStats);
-  console.log('[Performance] Multiplayer:', multiplayerStats);
-  
-  if (avatar.mesh) {
-    const pos = avatar.mesh.position;
-    const predictedState = getPredictedState();
-    console.log(`[Debug] Local player at (${pos.x.toFixed(1)}, ${pos.z.toFixed(1)}) | Avatar visible: ${avatar.mesh.visible} | Scene children: ${scene.children.length}`);
-    console.log(`[Debug] Avatar state - Position: (${predictedState.position.x.toFixed(1)}, ${predictedState.position.z.toFixed(1)}) | Input: W:${getCurrentInput().forward} A:${getCurrentInput().left} S:${getCurrentInput().backward} D:${getCurrentInput().right}`);
+  // Reduced frequency logging - only show on changes
+  if (Math.random() < 0.1) { // Only log 10% of the time
+    console.log('[Performance] Network:', networkStats);
+    console.log('[Performance] Multiplayer:', multiplayerStats);
     
-    // List visible players
-    const visiblePlayers = multiplayerSystem.getVisiblePlayers();
-    if (visiblePlayers.length > 0) {
-      console.log(`[Debug] Visible players: ${visiblePlayers.map(p => 
-        `${p.id} at (${p.position.x.toFixed(1)}, ${p.position.z.toFixed(1)})`
-      ).join(', ')}`);
+    if (avatar.mesh) {
+      const pos = avatar.mesh.position;
+      const predictedState = getPredictedState();
+      console.log(`[Debug] Local player at (${pos.x.toFixed(1)}, ${pos.z.toFixed(1)}) | Avatar visible: ${avatar.mesh.visible} | Scene children: ${scene.children.length}`);
+      console.log(`[Debug] Avatar state - Position: (${predictedState.position.x.toFixed(1)}, ${predictedState.position.z.toFixed(1)}) | Input: W:${getCurrentInput().forward} A:${getCurrentInput().left} S:${getCurrentInput().backward} D:${getCurrentInput().right}`);
+      
+      // List visible players
+      const visiblePlayers = multiplayerSystem.getVisiblePlayers();
+      if (visiblePlayers.length > 0) {
+        console.log(`[Debug] Visible players: ${visiblePlayers.map(p => 
+          `${p.id} at (${p.position.x.toFixed(1)}, ${p.position.z.toFixed(1)})`
+        ).join(', ')}`);
+      } else {
+        console.log('[Debug] No other players visible');
+      }
     } else {
-      console.log('[Debug] No other players visible');
+      console.log('[Debug] ⚠️ Avatar mesh not available');
     }
-  } else {
-    console.log('[Debug] ⚠️ Avatar mesh not available');
   }
-}, 10000); // Every 10 seconds
+}, 30000); // Every 30 seconds
 
 // Legacy multiplayer system removed - using new industry-standard system
 
