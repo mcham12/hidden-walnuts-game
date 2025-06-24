@@ -5,6 +5,9 @@
 import * as THREE from 'three';
 import { API_BASE } from './main';
 
+// Industry Standard: Terrain collision system  
+let terrainSeed: number | null = null;
+
 export async function createTerrain(): Promise<THREE.Mesh> {
   const size = 200; // Matches TERRAIN_SIZE from constants.ts
   const height = 5; // Reduced from 20 to 5 for flatter terrain
@@ -17,10 +20,12 @@ export async function createTerrain(): Promise<THREE.Mesh> {
     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
     const data = await response.json();
     seed = data.seed;
+    terrainSeed = seed; // Cache for collision detection
     console.log(`Fetched terrain seed: ${seed}`);
   } catch (error) {
     console.error('Failed to fetch terrain seed:', error);
     seed = Math.random() * 1000; // Fallback seed
+    terrainSeed = seed;
   }
 
   // Create plane geometry
@@ -53,6 +58,37 @@ export async function createTerrain(): Promise<THREE.Mesh> {
   terrain.rotation.x = -Math.PI / 2; // Lay flat
   terrain.receiveShadow = true;
 
-  console.log('[Log] Terrain setup complete: 200x200, height 0–5 units');
+  console.log('[Terrain] ✅ Terrain setup complete: 200x200, height 0–5 units');
   return terrain;
+}
+
+// Industry Standard: High-performance terrain height calculation
+export function getTerrainHeightSync(x: number, z: number): number {
+  if (!terrainSeed) {
+    console.warn('[Terrain] ⚠️ Terrain seed not available, using fallback height');
+    return 2.0; // Fallback height
+  }
+
+  const size = 200;
+  const height = 5;
+  
+  // Same calculation as in createTerrain
+  const xNorm = (x + size / 2) / size;
+  const zNorm = (z + size / 2) / size;
+  const noiseValue = Math.sin(xNorm * 10 + terrainSeed) * Math.cos(zNorm * 10 + terrainSeed);
+  const terrainHeight = (noiseValue + 1) * (height / 2);
+  
+  // Clamp to valid range
+  return Math.max(0, Math.min(height, terrainHeight));
+}
+
+// Industry Standard: Initialize terrain system
+export function initializeTerrainSeed(seed: number): void {
+  terrainSeed = seed;
+  console.log(`[Terrain] ✅ Terrain seed initialized: ${seed}`);
+}
+
+// Industry Standard: Get cached terrain seed
+export function getTerrainSeed(): number | null {
+  return terrainSeed;
 } 

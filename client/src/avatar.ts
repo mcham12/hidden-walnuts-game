@@ -68,6 +68,8 @@ class AvatarSystem {
   private inputHistory: Array<{ input: InputState, state: PlayerState }> = []
   private maxHistorySize = 60 // 1 second at 60fps
 
+
+
   // Physics constants
   private readonly ACCELERATION = 50
   private readonly FRICTION = 15
@@ -173,7 +175,7 @@ class AvatarSystem {
   }
 
   // Industry Standard: Physics-based movement with prediction
-  updateMovement(deltaTime: number) {
+  updateMovement(deltaTime: number): void {
     if (!this.avatar.isLoaded || !this.avatar.mesh) return
 
     // Industry Standard: Apply input to predicted state
@@ -198,8 +200,8 @@ class AvatarSystem {
     this.updateAnimations(deltaTime)
   }
 
-  // Industry Standard: Apply input with proper physics
-  private applyInputToState(state: PlayerState, input: InputState, deltaTime: number) {
+  // Industry Standard: Apply input with proper physics and terrain collision
+  private applyInputToState(state: PlayerState, input: InputState, deltaTime: number): void {
     // Rotation from mouse
     state.rotation = input.mouseX
 
@@ -236,9 +238,43 @@ class AvatarSystem {
     state.position.x = Math.max(-100, Math.min(100, state.position.x))
     state.position.z = Math.max(-100, Math.min(100, state.position.z))
 
+    // Industry Standard: Terrain collision detection
+    this.applyTerrainCollision(state)
+
     state.timestamp = performance.now()
     state.inputSequence++
   }
+
+  // Industry Standard: Terrain collision system
+  private applyTerrainCollision(state: PlayerState): void {
+    try {
+      // Import terrain function for high-performance synchronous access
+      const { getTerrainHeightSync } = require('./terrain')
+      
+      // Get terrain height at player position
+      const terrainHeight = getTerrainHeightSync(state.position.x, state.position.z)
+      
+      // Industry Standard: Player height offset (1.0 unit above terrain)
+      const targetY = terrainHeight + 1.0
+      
+      // Industry Standard: Smooth terrain following instead of instant snapping
+      if (Math.abs(state.position.y - targetY) > 0.1) {
+        // Use linear interpolation for smooth terrain following
+        const lerpFactor = 0.15 // Slightly more responsive for better feel
+        state.position.y = THREE.MathUtils.lerp(state.position.y, targetY, lerpFactor)
+      } else {
+        // Snap to terrain if very close to avoid jitter
+        state.position.y = targetY
+      }
+      
+    } catch (error) {
+      // Fallback: Use a reasonable default height if terrain lookup fails
+      console.warn('[Avatar] Terrain height lookup failed, using fallback')
+      state.position.y = Math.max(state.position.y, 2.0) // Minimum height
+    }
+  }
+
+
 
   // Industry Standard: Server reconciliation
   reconcileWithServer(serverPosition: THREE.Vector3, serverRotation: number, serverTimestamp: number) {

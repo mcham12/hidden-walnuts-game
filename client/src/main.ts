@@ -2,7 +2,7 @@ import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 // GLTFLoader now used in avatar.ts and multiplayer.ts
-import { createTerrain } from './terrain'
+import { createTerrain, initializeTerrainSeed } from './terrain'
 import { createForest } from './forest'
 import { 
   loadSquirrelAvatar, 
@@ -213,7 +213,7 @@ let terrainSeed = Math.random() * 1000; // Initialize with random seed
 let hasLoggedSeed = false;
 const heightCache: Map<string, number> = new Map();
 
-async function initializeTerrainSeed(): Promise<number> {
+async function initializeTerrainSeedLocal(): Promise<number> {
   const cachedSeed = sessionStorage.getItem('terrainSeed');
   if (cachedSeed) {
     terrainSeed = parseFloat(cachedSeed);
@@ -252,7 +252,7 @@ async function getTerrainHeight(x: number, z: number): Promise<number> {
   
   const size = 200;
   const height = 5;
-  const seed = await initializeTerrainSeed();
+  const seed = await initializeTerrainSeedLocal();
   
   const xNorm = (x + size / 2) / size;
   const zNorm = (z + size / 2) / size;
@@ -461,6 +461,10 @@ async function initEnvironment() {
   try {
     console.log('[Log] Environment initialization starting...');
     
+    // Initialize terrain system for collision detection
+    const seed = await initializeTerrainSeedLocal();
+    initializeTerrainSeed(seed);
+    
     // Create and add terrain to scene
     const terrain = await createTerrain()
     scene.add(terrain)
@@ -655,7 +659,7 @@ export {
   multiplayerSystem,
   getTerrainHeight,
   forestMeshes,
-  initializeTerrainSeed,
+      initializeTerrainSeedLocal,
   initializeGame,
   connectWebSocket
 };
