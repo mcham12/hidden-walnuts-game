@@ -189,73 +189,109 @@ class AvatarSystem {
 
   // Industry Standard: Physics-based movement with prediction
   updateMovement(deltaTime: number): void {
-    if (!this.avatar.isLoaded || !this.avatar.mesh) return
+    if (!this.avatar.isLoaded || !this.avatar.mesh) {
+      console.log(`[Movement] Early return: loaded=${this.avatar.isLoaded}, mesh=${!!this.avatar.mesh}`);
+      return;
+    }
 
+    // Log current state before movement
+    const beforePos = this.predictedState.position.clone();
+    const beforeVel = this.predictedState.velocity.clone();
+    
     // Industry Standard: Apply input to predicted state
-    this.applyInputToState(this.predictedState, this.currentInput, deltaTime)
+    this.applyInputToState(this.predictedState, this.currentInput, deltaTime);
+    
+    // Log what changed
+    const afterPos = this.predictedState.position.clone();
+    const afterVel = this.predictedState.velocity.clone();
+    
+    const posChanged = !beforePos.equals(afterPos);
+    const velChanged = !beforeVel.equals(afterVel);
+    
+    if (posChanged || velChanged || this.currentInput.forward || this.currentInput.backward || this.currentInput.left || this.currentInput.right) {
+      console.log(`[Movement] Input: W:${this.currentInput.forward} A:${this.currentInput.left} S:${this.currentInput.backward} D:${this.currentInput.right}`);
+      console.log(`[Movement] Pos: (${beforePos.x.toFixed(1)},${beforePos.z.toFixed(1)}) → (${afterPos.x.toFixed(1)},${afterPos.z.toFixed(1)}) Changed:${posChanged}`);
+      console.log(`[Movement] Vel: (${beforeVel.x.toFixed(2)},${beforeVel.z.toFixed(2)}) → (${afterVel.x.toFixed(2)},${afterVel.z.toFixed(2)}) Changed:${velChanged}`);
+    }
     
     // Store input history for reconciliation
     this.inputHistory.push({
       input: { ...this.currentInput },
       state: { ...this.predictedState, position: this.predictedState.position.clone() }
-    })
+    });
 
     // Limit history size
     if (this.inputHistory.length > this.maxHistorySize) {
-      this.inputHistory.shift()
+      this.inputHistory.shift();
     }
 
     // Update avatar mesh position
-    this.avatar.mesh.position.copy(this.predictedState.position)
-    this.avatar.mesh.rotation.y = this.predictedState.rotation
+    this.avatar.mesh.position.copy(this.predictedState.position);
+    this.avatar.mesh.rotation.y = this.predictedState.rotation;
 
     // Update animations
-    this.updateAnimations(deltaTime)
+    this.updateAnimations(deltaTime);
   }
 
   // Industry Standard: Apply input with proper physics and terrain collision
   private applyInputToState(state: PlayerState, input: InputState, deltaTime: number): void {
     // Rotation from mouse
-    state.rotation = input.mouseX
+    state.rotation = input.mouseX;
 
     // Movement input
-    const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), state.rotation)
-    const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), state.rotation)
+    const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), state.rotation);
+    const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), state.rotation);
 
-    const inputDir = new THREE.Vector3()
-    if (input.forward) inputDir.add(forward)
-    if (input.backward) inputDir.sub(forward)  
-    if (input.right) inputDir.add(right)
-    if (input.left) inputDir.sub(right)
+    const inputDir = new THREE.Vector3();
+    if (input.forward) inputDir.add(forward);
+    if (input.backward) inputDir.sub(forward);  
+    if (input.right) inputDir.add(right);
+    if (input.left) inputDir.sub(right);
+
+    // DEBUG: Log input processing
+    const hasInput = input.forward || input.backward || input.left || input.right;
+    if (hasInput) {
+      console.log(`[Physics] Input detected, direction length: ${inputDir.length().toFixed(3)}, deltaTime: ${deltaTime.toFixed(4)}`);
+    }
 
     if (inputDir.length() > 0) {
-      inputDir.normalize()
+      inputDir.normalize();
       // Apply acceleration
-      const acceleration = inputDir.multiplyScalar(this.ACCELERATION * deltaTime)
-      state.velocity.add(acceleration)
+      const acceleration = inputDir.multiplyScalar(this.ACCELERATION * deltaTime);
+      state.velocity.add(acceleration);
+      
+      if (hasInput) {
+        console.log(`[Physics] Acceleration applied: (${acceleration.x.toFixed(3)}, ${acceleration.z.toFixed(3)})`);
+        console.log(`[Physics] New velocity: (${state.velocity.x.toFixed(3)}, ${state.velocity.z.toFixed(3)})`);
+      }
     }
 
     // Apply friction
-    state.velocity.multiplyScalar(Math.max(0, 1 - this.FRICTION * deltaTime))
+    state.velocity.multiplyScalar(Math.max(0, 1 - this.FRICTION * deltaTime));
 
     // Limit max speed
     if (state.velocity.length() > this.MAX_SPEED) {
-      state.velocity.normalize().multiplyScalar(this.MAX_SPEED)
+      state.velocity.normalize().multiplyScalar(this.MAX_SPEED);
     }
 
     // Update position
-    const deltaPos = state.velocity.clone().multiplyScalar(deltaTime)
-    state.position.add(deltaPos)
+    const deltaPos = state.velocity.clone().multiplyScalar(deltaTime);
+    state.position.add(deltaPos);
+    
+    if (hasInput || deltaPos.length() > 0.001) {
+      console.log(`[Physics] Delta position: (${deltaPos.x.toFixed(3)}, ${deltaPos.z.toFixed(3)})`);
+      console.log(`[Physics] New position: (${state.position.x.toFixed(3)}, ${state.position.z.toFixed(3)})`);
+    }
     
     // Simple bounds checking
-    state.position.x = Math.max(-100, Math.min(100, state.position.x))
-    state.position.z = Math.max(-100, Math.min(100, state.position.z))
+    state.position.x = Math.max(-100, Math.min(100, state.position.x));
+    state.position.z = Math.max(-100, Math.min(100, state.position.z));
 
     // Industry Standard: Terrain collision detection
-    this.applyTerrainCollision(state)
+    this.applyTerrainCollision(state);
 
-    state.timestamp = performance.now()
-    state.inputSequence++
+    state.timestamp = performance.now();
+    state.inputSequence++;
   }
 
   // Industry Standard: Terrain collision system

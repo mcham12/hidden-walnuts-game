@@ -85,31 +85,54 @@ async function connectWebSocket(squirrelId: string, token: string) {
   const wsHost = API_BASE.replace(/^https?:\/\//, "");
   const wsUrl = `${wsProtocol}://${wsHost}/ws?squirrelId=${squirrelId}&token=${token}`;
   
-  console.log(`[Network] Attempting WebSocket connection to: ${wsUrl}`);
-  console.log(`[Network] API_BASE: ${API_BASE}`);
-  console.log(`[Network] Protocol: ${wsProtocol}, Host: ${wsHost}`);
+  console.log(`[Network] 🔌 Attempting WebSocket connection to: ${wsUrl}`);
+  console.log(`[Network] 📋 Connection details:`);
+  console.log(`[Network]   - API_BASE: ${API_BASE}`);
+  console.log(`[Network]   - Protocol: ${wsProtocol}`);
+  console.log(`[Network]   - Host: ${wsHost}`);
+  console.log(`[Network]   - SquirrelId: ${squirrelId}`);
+  console.log(`[Network]   - Token: ${token}`);
   
   try {
+    console.log(`[Network] ⏳ Calling networkManager.connect()...`);
     await networkManager.connect(wsUrl);
+    
+    console.log(`[Network] ✅ NetworkManager connection successful`);
     setupNetworkHandlers();
-    console.log("✅ Network connection established");
+    console.log("✅ Network connection established and handlers setup");
+    
   } catch (error) {
     console.error("❌ Failed to connect to server:", error);
-    console.error("❌ Connection details:", { wsUrl, squirrelId, token });
+    console.error("❌ Error details:", error);
+    console.error("❌ Connection parameters:", { wsUrl, squirrelId, token });
     
     // Don't throw - continue game in offline mode for debugging
     console.warn("⚠️ Continuing in offline mode for debugging");
     
     // Set up a fallback to add avatar to scene manually
+    console.log("[Fallback] ⏰ Setting up 1-second fallback timer...");
     setTimeout(() => {
-      console.log("[Fallback] Adding avatar to scene manually");
+      console.log("[Fallback] 🚀 Executing fallback - Adding avatar to scene manually");
       const avatar = getSquirrelAvatar();
+      console.log("[Fallback] 📊 Avatar status:", { 
+        mesh: !!avatar.mesh, 
+        isLoaded: avatar.isLoaded,
+        meshType: avatar.mesh?.type || 'none'
+      });
+      
       if (avatar.mesh && avatar.isLoaded) {
         scene.add(avatar.mesh);
         const spawnPos = new THREE.Vector3(50, 2, 50);
         setPlayerPosition(spawnPos);
         setupThirdPersonCamera(avatar.mesh);
         console.log('[Fallback] ✅ Avatar added manually');
+        
+        // FIX: Start input transmission even in fallback mode
+        console.log('[Fallback] 🎮 Starting input transmission...');
+        startInputTransmission();
+        console.log('[Fallback] ✅ Input transmission started');
+      } else {
+        console.error('[Fallback] ❌ Avatar not ready for fallback setup');
       }
     }, 1000);
   }
@@ -192,6 +215,10 @@ function setupNetworkHandlers() {
     setTimeout(() => {
       networkManager.send('client_ready', {}, { priority: 0 });
       console.log(`[Log] 📤 Sent client_ready signal`);
+      
+      // FIX: Start input transmission after client is ready
+      startInputTransmission();
+      console.log(`[Log] ✅ Input transmission started`);
     }, 500);
   });
 
@@ -623,16 +650,20 @@ function stopInputTransmission() {
 async function animate(currentTime: number = 0) {
   requestAnimationFrame(animate);
   
-  const deltaTime = (currentTime - lastAnimationTime) / 1000;
+  let deltaTime = (currentTime - lastAnimationTime) / 1000;
   lastAnimationTime = currentTime;
   
-  // Industry Standard: Update avatar system with client-side prediction
+  // Fix timing issues
+  if (deltaTime > 0.1) deltaTime = 0.016;
+  if (deltaTime <= 0) deltaTime = 0.016;
+  
+  // Update avatar system with client-side prediction
   const avatar = getSquirrelAvatar();
   if (avatar.mesh) {
     updateSquirrelMovement(deltaTime);
     await updateSquirrelCamera(camera);
     
-    // FIX: Update multiplayer system with actual local player position
+    // Update multiplayer system with actual local player position
     const localPos = avatar.mesh.position.clone();
     multiplayerSystem.updateLocalPlayerPosition(localPos);
     multiplayerSystem.update();
