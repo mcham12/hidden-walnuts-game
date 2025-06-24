@@ -343,26 +343,27 @@ class AvatarSystem {
     }
   }
 
-  // Industry Standard: Camera follow with smooth tracking
+  // Industry Standard: Camera follow with smooth tracking (third-person style)
   async updateCamera(camera: THREE.Camera) {
     if (!this.avatar.mesh) return
 
-    const targetPosition = this.avatar.mesh.position.clone()
-    targetPosition.y += 8 // Height above player
-    targetPosition.z += 10 // Distance behind player
-
-    // Rotate camera position around player based on mouse look
-    const offset = new THREE.Vector3(0, 8, 10)
-    offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.predictedState.rotation)
-    targetPosition.copy(this.avatar.mesh.position).add(offset)
-
-    // Smooth camera follow
-    camera.position.lerp(targetPosition, 0.1)
+    // Industry Standard: Third-person camera positioning
+    const playerPosition = this.avatar.mesh.position.clone();
+    const cameraOffset = new THREE.Vector3(0, 8, 12); // Behind and above player
     
-    // Look at player
-    const lookTarget = this.avatar.mesh.position.clone()
-    lookTarget.y += 1 // Look slightly above player
-    camera.lookAt(lookTarget)
+    // Rotate offset based on player rotation for proper following
+    cameraOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.predictedState.rotation);
+    
+    const targetCameraPos = playerPosition.clone().add(cameraOffset);
+    
+    // Industry Standard: Smooth camera follow with configurable speed
+    const followSpeed = 0.1;
+    camera.position.lerp(targetCameraPos, followSpeed);
+    
+    // Look at player with slight upward offset
+    const lookTarget = playerPosition.clone();
+    lookTarget.y += 1.5; // Look slightly above player center
+    camera.lookAt(lookTarget);
   }
 
   // Getters for external access

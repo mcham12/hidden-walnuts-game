@@ -144,15 +144,24 @@ function setupNetworkHandlers() {
     }
     console.log(`[Log] ✅ Init complete: added ${walnutMeshes.size} walnuts to scene`);
     
-    // Load avatar and set spawn position
-    await loadSquirrelAvatar();
+    // Industry Standard: Ensure avatar is ready and visible
     const avatar = getSquirrelAvatar();
-    if (avatar.mesh) {
-      scene.add(avatar.mesh);
-      // Set initial position
+    if (avatar.mesh && avatar.isLoaded) {
+      // Avatar already loaded during environment init, just ensure it's in scene
+      if (!scene.getObjectById(avatar.mesh.id)) {
+        scene.add(avatar.mesh);
+        console.log('[Log] ✅ Avatar re-added to scene');
+      }
+      
+      // Set spawn position with terrain collision
       const spawnPos = new THREE.Vector3(50, 2, 50);
       setPlayerPosition(spawnPos);
-      console.log('[Log] ✅ Avatar spawned at:', spawnPos);
+      console.log('[Log] ✅ Avatar positioned at:', spawnPos);
+      
+      // Update camera to follow player
+      setupThirdPersonCamera(avatar.mesh);
+    } else {
+      console.warn('[Warning] Avatar not ready during init');
     }
     
     // Signal client is ready
@@ -459,7 +468,7 @@ async function fetchWalnutMap() {
 // Initialize environment with proper forest and walnut loading
 async function initEnvironment() {
   try {
-    console.log('[Log] Environment initialization starting...');
+    console.log('[Log] 🌲 Initializing environment...');
     
     // Initialize terrain system for collision detection
     const seed = await initializeTerrainSeedLocal();
@@ -479,12 +488,40 @@ async function initEnvironment() {
     const walnutData = await fetchWalnutMap();
     console.log(`[Log] Loaded ${walnutData.length} walnuts`);
     
-    // Load squirrel avatar
+    // Industry Standard: Load avatar and add to scene immediately
     await loadSquirrelAvatar();
+    const avatar = getSquirrelAvatar();
+    if (avatar.mesh && avatar.isLoaded) {
+      // Ensure avatar is visible and properly configured
+      avatar.mesh.visible = true;
+      avatar.mesh.castShadow = true;
+      avatar.mesh.receiveShadow = true;
+      
+      // Add to scene if not already added
+      if (!scene.getObjectById(avatar.mesh.id)) {
+        scene.add(avatar.mesh);
+        console.log('[Log] ✅ Avatar added to scene');
+      }
+      
+      // Set proper spawn position 
+      const spawnPos = new THREE.Vector3(50, 2, 50);
+      setPlayerPosition(spawnPos);
+      
+      // Setup camera immediately
+      setupThirdPersonCamera(avatar.mesh);
+      
+      console.log('[Log] ✅ Avatar initialized at:', spawnPos);
+      console.log('[Log] ✅ Avatar in scene with ID:', avatar.mesh.id, 'visible:', avatar.mesh.visible);
+    } else {
+      console.error('[Error] ❌ Avatar failed to load properly');
+    }
+    
     console.log('[Log] Squirrel avatar loaded');
     
-    // Log final scene composition
+    // Log final scene composition with avatar check
+    const avatarInScene = scene.children.find(child => child === avatar.mesh);
     console.log(`[Log] Environment initialization complete. Scene has ${scene.children.length} objects`);
+    console.log(`[Log] Avatar in scene: ${!!avatarInScene}`);
     
   } catch (error) {
     console.error('[Error] Environment initialization failed:', error);
@@ -622,7 +659,10 @@ setInterval(() => {
   console.log('[Performance] Multiplayer:', multiplayerStats);
   
   if (avatar.mesh) {
-    console.log(`[Debug] Local player at (${avatar.mesh.position.x.toFixed(1)}, ${avatar.mesh.position.z.toFixed(1)})`);
+    const pos = avatar.mesh.position;
+    const predictedState = getPredictedState();
+    console.log(`[Debug] Local player at (${pos.x.toFixed(1)}, ${pos.z.toFixed(1)}) | Avatar visible: ${avatar.mesh.visible} | Scene children: ${scene.children.length}`);
+    console.log(`[Debug] Avatar state - Position: (${predictedState.position.x.toFixed(1)}, ${predictedState.position.z.toFixed(1)}) | Input: W:${getCurrentInput().forward} A:${getCurrentInput().left} S:${getCurrentInput().backward} D:${getCurrentInput().right}`);
     
     // List visible players
     const visiblePlayers = multiplayerSystem.getVisiblePlayers();
@@ -633,6 +673,8 @@ setInterval(() => {
     } else {
       console.log('[Debug] No other players visible');
     }
+  } else {
+    console.log('[Debug] ⚠️ Avatar mesh not available');
   }
 }, 10000); // Every 10 seconds
 
@@ -663,3 +705,21 @@ export {
   initializeGame,
   connectWebSocket
 };
+
+// Industry Standard: Third-person camera setup
+function setupThirdPersonCamera(playerMesh: THREE.Object3D) {
+  // Industry Standard: Position camera behind and above player
+  const offset = new THREE.Vector3(0, 8, 12); // Behind and above
+  camera.position.copy(playerMesh.position).add(offset);
+  camera.lookAt(playerMesh.position);
+  
+  // Industry Standard: Disable orbit controls for third-person view
+  controls.enabled = false;
+  controls.enableRotate = false;
+  controls.enableZoom = false;
+  controls.enablePan = false;
+  
+  console.log('[Camera] ✅ Third-person camera configured');
+}
+
+// Input is handled by the avatar system
