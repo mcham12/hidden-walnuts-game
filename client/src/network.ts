@@ -42,8 +42,8 @@ class NetworkManager {
       console.log('🔐 [Network] Authenticating...');
       
       // Request to join the game (creates session and returns token)
-      const response = await fetch(`${this.config.apiBaseUrl}/join`, {
-        method: 'GET',
+      const response = await fetch(`${this.config.apiBaseUrl}/join?squirrelId=${crypto.randomUUID()}`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         }
