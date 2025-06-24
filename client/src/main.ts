@@ -230,16 +230,7 @@ function setupNetworkHandlers() {
       console.log('[Log] ✅ Avatar ready at:', spawnPos);
       
       // FIX: Process any pending existing players now that avatar is ready
-      const pendingPlayers = (window as any).pendingExistingPlayers;
-      if (pendingPlayers && pendingPlayers.length > 0) {
-        console.log(`[Log] 🔄 Processing ${pendingPlayers.length} deferred existing players`);
-        for (const player of pendingPlayers) {
-          const position = new THREE.Vector3(player.position.x, player.position.y, player.position.z);
-          await multiplayerSystem.addPlayer(player.squirrelId, position, player.position.rotationY || 0);
-          console.log(`[Debug] Added deferred player ${player.squirrelId} at (${position.x}, ${position.z})`);
-        }
-        (window as any).pendingExistingPlayers = null; // Clear pending list
-      }
+      await processPendingPlayers();
       
     } else {
       console.error('[Error] ❌ Avatar not ready for server init');
@@ -561,6 +552,21 @@ async function fetchWalnutMap() {
   }
 }
 
+// Function to process any pending existing players
+async function processPendingPlayers() {
+  const pendingPlayers = (window as any).pendingExistingPlayers;
+  if (pendingPlayers && pendingPlayers.length > 0) {
+    console.log(`[Log] 🔄 Processing ${pendingPlayers.length} deferred existing players`);
+    for (const player of pendingPlayers) {
+      const position = new THREE.Vector3(player.position.x, player.position.y, player.position.z);
+      await multiplayerSystem.addPlayer(player.squirrelId, position, player.position.rotationY || 0);
+      console.log(`[Debug] Added deferred player ${player.squirrelId} at (${position.x}, ${position.z})`);
+    }
+    (window as any).pendingExistingPlayers = null; // Clear pending list
+    console.log(`[Log] ✅ All deferred players processed`);
+  }
+}
+
 // Initialize environment with proper forest and walnut loading
 async function initEnvironment() {
   try {
@@ -713,6 +719,7 @@ function stopInputTransmission() {
 }
 
 // Animation loop with industry standard timing
+let pendingPlayersCheckCount = 0;
 async function animate(currentTime: number = 0) {
   requestAnimationFrame(animate);
   
@@ -733,6 +740,13 @@ async function animate(currentTime: number = 0) {
     const localPos = avatar.mesh.position.clone();
     multiplayerSystem.updateLocalPlayerPosition(localPos);
     multiplayerSystem.update();
+    
+    // Fallback: Check for pending players every 60 frames (about once per second)
+    pendingPlayersCheckCount++;
+    if (pendingPlayersCheckCount >= 60) {
+      await processPendingPlayers();
+      pendingPlayersCheckCount = 0;
+    }
   }
   
   // Standard Three.js updates
