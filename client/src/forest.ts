@@ -154,7 +154,7 @@ export async function createForest(): Promise<THREE.Object3D[]> {
       });
       model.userData = { id: obj.id, type: obj.type };
       meshes.push(model);
-      console.log(`[Log] Created ${obj.type} ${obj.id} at (${x}, ${terrainHeight}, ${z}) ${fallbackModels ? '(fallback)' : '(GLTF)'}`);
+      // console.log(`[Log] Created ${obj.type} ${obj.id} at (${x}, ${terrainHeight}, ${z}) ${fallbackModels ? '(fallback)' : '(GLTF)'}`);
     } catch (error) {
       console.error(`[Error] Failed to create mesh for ${obj.id}:`, error);
     }
