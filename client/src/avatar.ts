@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MOVEMENT_SPEED } from './constants'
+import { getTerrainHeightSync } from './terrain'
 
 // Industry Standard: Client-Side Prediction with Input State
 interface InputState {
@@ -248,10 +249,7 @@ class AvatarSystem {
   // Industry Standard: Terrain collision system
   private applyTerrainCollision(state: PlayerState): void {
     try {
-      // Import terrain function for high-performance synchronous access
-      const { getTerrainHeightSync } = require('./terrain')
-      
-      // Get terrain height at player position
+      // Get terrain height at player position using imported function
       const terrainHeight = getTerrainHeightSync(state.position.x, state.position.z)
       
       // Industry Standard: Player height offset (1.0 unit above terrain)
@@ -269,7 +267,7 @@ class AvatarSystem {
       
     } catch (error) {
       // Fallback: Use a reasonable default height if terrain lookup fails
-      console.warn('[Avatar] Terrain height lookup failed, using fallback')
+      console.warn('[Avatar] Terrain height lookup failed, using fallback:', error)
       state.position.y = Math.max(state.position.y, 2.0) // Minimum height
     }
   }

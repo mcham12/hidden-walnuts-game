@@ -64,6 +64,12 @@ export async function createTerrain(): Promise<THREE.Mesh> {
 
 // Industry Standard: High-performance terrain height calculation
 export function getTerrainHeightSync(x: number, z: number): number {
+  // Industry Standard: Input validation
+  if (typeof x !== 'number' || typeof z !== 'number' || !isFinite(x) || !isFinite(z)) {
+    console.warn(`[Terrain] Invalid coordinates: (${x}, ${z}), using fallback`);
+    return 2.0;
+  }
+
   if (!terrainSeed) {
     console.warn('[Terrain] ⚠️ Terrain seed not available, using fallback height');
     return 2.0; // Fallback height
@@ -72,14 +78,26 @@ export function getTerrainHeightSync(x: number, z: number): number {
   const size = 200;
   const height = 5;
   
-  // Same calculation as in createTerrain
-  const xNorm = (x + size / 2) / size;
-  const zNorm = (z + size / 2) / size;
-  const noiseValue = Math.sin(xNorm * 10 + terrainSeed) * Math.cos(zNorm * 10 + terrainSeed);
-  const terrainHeight = (noiseValue + 1) * (height / 2);
-  
-  // Clamp to valid range
-  return Math.max(0, Math.min(height, terrainHeight));
+  try {
+    // Same calculation as in createTerrain
+    const xNorm = (x + size / 2) / size;
+    const zNorm = (z + size / 2) / size;
+    const noiseValue = Math.sin(xNorm * 10 + terrainSeed) * Math.cos(zNorm * 10 + terrainSeed);
+    const terrainHeight = (noiseValue + 1) * (height / 2);
+    
+    // Industry Standard: Validate output
+    const clampedHeight = Math.max(0, Math.min(height, terrainHeight));
+    
+    if (!isFinite(clampedHeight)) {
+      console.warn(`[Terrain] Invalid height calculation for (${x}, ${z}), using fallback`);
+      return 2.0;
+    }
+    
+    return clampedHeight;
+  } catch (error) {
+    console.error(`[Terrain] Height calculation error for (${x}, ${z}):`, error);
+    return 2.0;
+  }
 }
 
 // Industry Standard: Initialize terrain system

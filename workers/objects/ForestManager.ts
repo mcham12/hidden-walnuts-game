@@ -269,99 +269,86 @@ export class ForestManager implements DurableObject {
   }
 
   async handleSocket(socket: WebSocket, squirrelId: string, token: string) {
-    // FIX: Check resource limits before accepting new connections
-    if (this.sessions.size >= MAX_CONCURRENT_SESSIONS) {
-      console.warn(`[Warning] Session limit reached (${MAX_CONCURRENT_SESSIONS}), rejecting ${squirrelId}`);
-      socket.close(4003, "Server at capacity");
-      return;
-    }
-
-    // FIX: Implement proper authentication before accepting socket
-    console.log(`[Log] Validating WebSocket connection for ${squirrelId}`);
+    console.log(`[Log] 🔌 New WebSocket connection: ${squirrelId}`);
     
-    try {
-      // Validate token with SquirrelSession (single source of truth)
-      const isValid = await this.validateToken(squirrelId, token);
-      if (!isValid) {
-        console.error(`[Error] Invalid token for ${squirrelId}, rejecting WebSocket`);
-        socket.close(4001, "Invalid token");
-        return;
-      }
-      
-      // Only accept socket after successful validation
-      socket.accept();
-      console.log(`[Log] ✅ WebSocket authenticated for ${squirrelId}`);
-      
-    } catch (error) {
-      console.error(`[Error] Token validation failed for ${squirrelId}:`, error);
-      socket.close(4002, "Authentication error");
+    // FIX: Validate token first
+    const isValidToken = await this.validateToken(squirrelId, token);
+    if (!isValidToken) {
+      console.log(`[Log] ❌ Invalid token for ${squirrelId}`);
+      socket.close(4001, "Invalid token");
       return;
     }
 
-    // Store authenticated session with timeout
+    // Store the socket session
     this.sessions.set(squirrelId, socket);
     this.socketToPlayer.set(socket, squirrelId);
 
-    // FIX: Set connection timeout
+    // FIX: Set up connection timeout
     const connectionTimeout = setTimeout(() => {
-      console.log(`[Log] Connection timeout for ${squirrelId}`);
-      this.handlePlayerLeave(squirrelId);
-      socket.close(4004, "Connection timeout");
+      if (this.sessions.has(squirrelId)) {
+        console.log(`[Log] Connection timeout for ${squirrelId}`);
+        this.handlePlayerLeave(squirrelId);
+        socket.close(4004, "Connection timeout");
+      }
     }, SESSION_TIMEOUT);
 
-    // Send initial map state
-    const mapState = await this.getMapState();
-    socket.send(JSON.stringify({ type: 'init', mapState }));
+    // Industry Standard: Initialize player with spawn position
+    const spawnPosition = { x: 50, y: 2, z: 50 }; // Standard spawn point
+    const existingPlayer: PlayerData = {
+      squirrelId,
+      position: spawnPosition,
+      rotationY: 0,
+      lastUpdate: Date.now(),
+      messageCount: 1,
+      messageResetTime: Date.now() + 60000
+    };
 
-    // FIX: Check if player already exists (reconnection) or create new
-    let existingPlayer = this.players.get(squirrelId);
-    if (!existingPlayer) {
-      // New player - initialize with default position
-      existingPlayer = {
-        squirrelId,
-        position: { x: 50, y: 2, z: 50 }, // Better spawn position
-        rotationY: 0,
-        lastUpdate: Date.now(),
-        messageCount: 1,
-        messageResetTime: Date.now() + 60000
-      };
-      this.players.set(squirrelId, existingPlayer);
-      await this.persistPlayerData(); // FIX: Persist new player
-      console.log(`[Log] 🆕 Created new player ${squirrelId} at spawn position`);
-    } else {
-      // Returning player - update connection time but keep position
-      existingPlayer.lastUpdate = Date.now();
-      existingPlayer.messageCount = 1;
-      existingPlayer.messageResetTime = Date.now() + 60000;
-      console.log(`[Log] 🔄 Player ${squirrelId} reconnected at (${existingPlayer.position.x}, ${existingPlayer.position.z})`);
-    }
+    // Add to players map immediately
+    this.players.set(squirrelId, existingPlayer);
+    console.log(`[Log] ✅ Added player ${squirrelId} at spawn position (${spawnPosition.x}, ${spawnPosition.z})`);
 
-    // FIX: CRITICAL - Send existing players to the new joiner
-    const existingPlayers = Array.from(this.players.entries())
-      .filter(([id]) => id !== squirrelId) // Don't include self
-      .map(([id, player]) => ({
-        squirrelId: id,
-        position: player.position,
-        rotationY: player.rotationY
-      }));
-
-    if (existingPlayers.length > 0) {
-      console.log(`[Log] 📤 Sending ${existingPlayers.length} existing players to ${squirrelId}`);
+    // Industry Standard: Send game state to new player immediately
+    try {
+      // Send map state first
+      const mapState = await this.getMapState();
       socket.send(JSON.stringify({ 
-        type: 'existing_players', 
-        players: existingPlayers 
+        type: 'init', 
+        mapState 
       }));
-      console.log(`[Log] 📤 Sent ${existingPlayers.length} existing players to ${squirrelId}`);
-    }
+      console.log(`[Log] 📤 Sent init with ${mapState.length} walnuts to ${squirrelId}`);
 
-    // FIX: Wait for client ready acknowledgment before broadcasting join
-    let clientReady = false;
-    const clientReadyTimeout = setTimeout(() => {
-      if (!clientReady) {
-        console.log(`[Log] ⚠️ Client ${squirrelId} didn't send ready signal, proceeding anyway`);
-        this.broadcastPlayerJoin(squirrelId, existingPlayer);
+      // Industry Standard: Send existing players to new joiner immediately
+      const existingPlayers = Array.from(this.players.entries())
+        .filter(([id]) => id !== squirrelId) // Don't include self
+        .map(([id, player]) => ({
+          squirrelId: id,
+          position: {
+            x: player.position.x,
+            y: player.position.y,
+            z: player.position.z,
+            rotationY: player.rotationY
+          }
+        }));
+
+      if (existingPlayers.length > 0) {
+        socket.send(JSON.stringify({ 
+          type: 'existing_players', 
+          players: existingPlayers 
+        }));
+        console.log(`[Log] 📤 Sent ${existingPlayers.length} existing players to ${squirrelId}`);
+      } else {
+        console.log(`[Log] 📤 No existing players to send to ${squirrelId}`);
       }
-    }, 5000); // 5 second timeout
+
+      // Industry Standard: Broadcast new player join to existing players immediately
+      if (this.players.size > 1) { // Only broadcast if there are other players
+        this.broadcastPlayerJoin(squirrelId, existingPlayer);
+        console.log(`[Log] 📢 Broadcasted player_join for ${squirrelId} to ${this.players.size - 1} existing players`);
+      }
+
+    } catch (error) {
+      console.error(`[Error] Failed to send initial game state to ${squirrelId}:`, error);
+    }
 
     socket.addEventListener('message', async (event) => {
       try {
@@ -374,9 +361,7 @@ export class ForestManager implements DurableObject {
         const data = JSON.parse(event.data);
         
         // FIX: Handle client ready signal
-        if (data.type === 'client_ready' && !clientReady) {
-          clientReady = true;
-          clearTimeout(clientReadyTimeout);
+        if (data.type === 'client_ready') {
           console.log(`[Log] ✅ Client ${squirrelId} is ready, broadcasting join`);
           this.broadcastPlayerJoin(squirrelId, existingPlayer);
           return;

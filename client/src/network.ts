@@ -28,11 +28,12 @@ class NetworkManager {
     reconnectAttempts: 0
   }
 
-  // Industry Standard: Message rate limiting
-  private readonly MAX_MESSAGES_PER_SECOND = 60
+  // Industry Standard: Message rate limiting (more appropriate for real-time games)
+  private readonly MAX_MESSAGES_PER_SECOND = 120 // Increased for responsive gameplay
   private readonly MAX_QUEUE_SIZE = 1000
   private messageCount = 0
   private lastSecond = 0
+  private readonly RATE_LIMIT_WINDOW = 1000 // 1 second window
 
   // Industry Standard: Heartbeat system
   private heartbeatInterval: number | null = null
@@ -144,15 +145,23 @@ class NetworkManager {
       priority: options.priority ?? 1
     }
 
-    // Rate limiting
-    const now = Math.floor(Date.now() / 1000)
-    if (now !== this.lastSecond) {
+    // Industry Standard: Smart rate limiting with burst allowance
+    const now = Date.now()
+    const windowStart = Math.floor(now / this.RATE_LIMIT_WINDOW) * this.RATE_LIMIT_WINDOW
+    
+    if (windowStart !== this.lastSecond) {
       this.messageCount = 0
-      this.lastSecond = now
+      this.lastSecond = windowStart
     }
 
-    if (this.messageCount >= this.MAX_MESSAGES_PER_SECOND) {
-      console.warn('[Network] Rate limit exceeded, dropping message')
+    // Allow burst for high-priority messages (ping, movement)
+    const rateLimit = message.priority === 0 ? this.MAX_MESSAGES_PER_SECOND * 2 : this.MAX_MESSAGES_PER_SECOND
+    
+    if (this.messageCount >= rateLimit) {
+      // Only warn periodically to avoid spam
+      if (this.messageCount % 100 === 0) {
+        console.warn(`[Network] Rate limit exceeded, dropping message (${this.messageCount}/${rateLimit})`)
+      }
       return
     }
     this.messageCount++
