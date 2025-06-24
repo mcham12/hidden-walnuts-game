@@ -81,6 +81,8 @@ class MultiplayerSystem {
 
   // Industry Standard: Efficient player mesh loading
   private async loadPlayerMesh(playerData: PlayerData): Promise<void> {
+    console.log(`[Multiplayer] 🎮 Loading mesh for player ${playerData.id}...`)
+    
     try {
       const gltf = await this.loader.loadAsync('/assets/models/squirrel.glb')
       playerData.mesh = gltf.scene.clone()
@@ -111,8 +113,11 @@ class MultiplayerSystem {
       this.scene.add(playerData.mesh)
       playerData.isVisible = true
       
+      console.log(`[Multiplayer] ✅ Player mesh loaded and added to scene for ${playerData.id}`)
+      
     } catch (error) {
-      console.warn(`[Multiplayer] Failed to load mesh for ${playerData.id}, using fallback`)
+      console.error(`[Multiplayer] ❌ Failed to load mesh for ${playerData.id}:`, error)
+      console.log(`[Multiplayer] 🔄 Using fallback mesh for ${playerData.id}`)
       this.createFallbackMesh(playerData)
     }
   }
@@ -167,8 +172,11 @@ class MultiplayerSystem {
     const shouldBeVisible = distance <= this.AOI_RADIUS
     const shouldBeLoaded = distance <= this.CULLING_RADIUS
 
+    console.log(`[Multiplayer] 🔍 Visibility check for ${player.id}: distance=${distance.toFixed(1)}m, shouldBeVisible=${shouldBeVisible}, hasVisibleFlag=${player.isVisible}, hasMesh=${!!player.mesh}`)
+
     if (shouldBeVisible && !player.isVisible && !player.mesh) {
       // Load player mesh
+      console.log(`[Multiplayer] 🚀 Triggering mesh load for ${player.id} (within AOI, no mesh yet)`)
       this.loadPlayerMesh(player)
     } else if (!shouldBeVisible && player.isVisible && player.mesh) {
       // Hide player but keep in memory
@@ -186,6 +194,8 @@ class MultiplayerSystem {
       player.mesh = undefined
       player.isVisible = false
       console.log(`[Multiplayer] 🗑️ Unloaded player ${player.id} (distance: ${distance.toFixed(1)}m)`)
+    } else {
+      console.log(`[Multiplayer] ⏸️ No action needed for ${player.id} (shouldBeVisible=${shouldBeVisible}, isVisible=${player.isVisible}, hasMesh=${!!player.mesh})`)
     }
   }
 

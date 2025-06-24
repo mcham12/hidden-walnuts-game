@@ -228,6 +228,19 @@ function setupNetworkHandlers() {
       setupThirdPersonCamera(avatar.mesh);
       
       console.log('[Log] ✅ Avatar ready at:', spawnPos);
+      
+      // FIX: Process any pending existing players now that avatar is ready
+      const pendingPlayers = (window as any).pendingExistingPlayers;
+      if (pendingPlayers && pendingPlayers.length > 0) {
+        console.log(`[Log] 🔄 Processing ${pendingPlayers.length} deferred existing players`);
+        for (const player of pendingPlayers) {
+          const position = new THREE.Vector3(player.position.x, player.position.y, player.position.z);
+          await multiplayerSystem.addPlayer(player.squirrelId, position, player.position.rotationY || 0);
+          console.log(`[Debug] Added deferred player ${player.squirrelId} at (${position.x}, ${position.z})`);
+        }
+        (window as any).pendingExistingPlayers = null; // Clear pending list
+      }
+      
     } else {
       console.error('[Error] ❌ Avatar not ready for server init');
     }
@@ -239,9 +252,21 @@ function setupNetworkHandlers() {
   // Handle existing players
   networkManager.on('existing_players', async (data) => {
     console.log(`[Log] 👥 Received ${data.players.length} existing players`);
+    
+    // Check if local avatar is ready
+    const avatar = getSquirrelAvatar();
+    if (!avatar.mesh || !avatar.isLoaded) {
+      console.log(`[Log] ⏳ Avatar not ready yet, will defer existing players`);
+      
+      // Store existing players to add later
+      (window as any).pendingExistingPlayers = data.players;
+      return;
+    }
+    
+    // Add existing players now
     for (const player of data.players) {
       const position = new THREE.Vector3(player.position.x, player.position.y, player.position.z);
-      await multiplayerSystem.addPlayer(player.squirrelId, position, player.rotationY || 0);
+      await multiplayerSystem.addPlayer(player.squirrelId, position, player.position.rotationY || 0);
       console.log(`[Debug] Added existing player ${player.squirrelId} at (${position.x}, ${position.z})`);
     }
   });

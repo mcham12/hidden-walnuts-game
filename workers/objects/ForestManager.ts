@@ -311,12 +311,37 @@ export class ForestManager implements DurableObject {
       }
     }, SESSION_TIMEOUT);
 
-    // Industry Standard: Initialize player with spawn position
-    const spawnPosition = { x: 50, y: 2, z: 50 }; // Standard spawn point
+    // Industry Standard: Initialize player with spawn position or last known position
+    let playerPosition = { x: 50, y: 2, z: 50 }; // Default spawn point
+    let playerRotation = 0;
+    
+    // FIX: Try to load last known position from storage
+    try {
+      const storedPlayers = await this.state.storage.get<[string, PlayerData][]>('active-players');
+      if (storedPlayers) {
+        const storedPlayer = storedPlayers.find(([id]) => id === squirrelId);
+        if (storedPlayer && storedPlayer[1]) {
+          const lastPos = storedPlayer[1].position;
+          const lastRot = storedPlayer[1].rotationY;
+          
+          // Validate stored position is reasonable
+          if (this.isValidPosition(lastPos)) {
+            playerPosition = lastPos;
+            playerRotation = lastRot;
+            console.log(`[Log] 🔄 Restored ${squirrelId} to last position: (${lastPos.x.toFixed(1)}, ${lastPos.z.toFixed(1)})`);
+          } else {
+            console.log(`[Log] ⚠️ Invalid stored position for ${squirrelId}, using spawn`);
+          }
+        }
+      }
+    } catch (error) {
+      console.log(`[Log] ⚠️ Could not load stored position for ${squirrelId}, using spawn:`, error);
+    }
+    
     const existingPlayer: PlayerData = {
       squirrelId,
-      position: spawnPosition,
-      rotationY: 0,
+      position: playerPosition,
+      rotationY: playerRotation,
       lastUpdate: Date.now(),
       messageCount: 1,
       messageResetTime: Date.now() + 60000
@@ -324,7 +349,7 @@ export class ForestManager implements DurableObject {
 
     // Add to players map immediately
     this.players.set(squirrelId, existingPlayer);
-    console.log(`[Log] ✅ Added player ${squirrelId} at spawn position (${spawnPosition.x}, ${spawnPosition.z})`);
+    console.log(`[Log] ✅ Added player ${squirrelId} at position (${playerPosition.x}, ${playerPosition.y}, ${playerPosition.z})`)
 
     // Industry Standard: Send game state to new player immediately
     try {
