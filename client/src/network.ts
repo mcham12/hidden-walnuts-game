@@ -116,6 +116,9 @@ class NetworkManager {
     try {
       const message = JSON.parse(event.data)
       
+      // Debug: Log all received messages
+      console.log(`[Network] 📨 Received message:`, message.type, message)
+      
       // Handle system messages
       if (message.type === 'pong') {
         this.handlePong(message.timestamp)
@@ -125,6 +128,7 @@ class NetworkManager {
       // Dispatch to registered handlers
       const handler = this.onMessageCallbacks.get(message.type)
       if (handler) {
+        console.log(`[Network] ✅ Dispatching ${message.type} to handler`)
         handler(message)
       } else {
         console.warn('[Network] Unhandled message type:', message.type)
