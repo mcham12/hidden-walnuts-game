@@ -82,55 +82,45 @@ class AvatarSystem {
 
   // Industry Standard: Proper input handling
   private setupInputHandlers() {
-    // Industry Standard: WASD movement keys
+    // Simple WASD detection that actually works
     const keys: Record<string, boolean> = {}
     
-    // Industry Standard: Keyboard input handling
     document.addEventListener('keydown', (event) => {
       keys[event.code] = true
       this.updateInputState(keys)
-      event.preventDefault()
+      console.log(`[Avatar] Key down: ${event.code}`)
     })
 
     document.addEventListener('keyup', (event) => {
       keys[event.code] = false
       this.updateInputState(keys)
-      event.preventDefault()
+      console.log(`[Avatar] Key up: ${event.code}`)
     })
 
-    // Industry Standard: Mouse look (with lock for FPS-style controls)
-    let isLocked = false
-    
-    document.addEventListener('click', () => {
-      if (!isLocked) {
-        document.body.requestPointerLock()
-      }
-    })
-
-    document.addEventListener('pointerlockchange', () => {
-      isLocked = document.pointerLockElement === document.body
-    })
-
+    // Simple mouse look without pointer lock for now
     document.addEventListener('mousemove', (event) => {
-      if (isLocked) {
-        // Industry Standard: Mouse sensitivity and rotation
-        const sensitivity = 0.002
-        this.currentInput.mouseX -= event.movementX * sensitivity
-        this.currentInput.mouseY = Math.max(-Math.PI/3, Math.min(Math.PI/3, 
-          this.currentInput.mouseY - event.movementY * sensitivity))
-      }
+      this.currentInput.mouseX += event.movementX * 0.002
     })
 
     console.log('[Avatar] ✅ Input handlers configured')
   }
 
   private updateInputState(keys: Record<string, boolean>) {
-    // Industry Standard: WASD + Arrow key support
+    const oldInput = { ...this.currentInput }
+    
     this.currentInput.forward = keys['KeyW'] || keys['ArrowUp'] || false
     this.currentInput.backward = keys['KeyS'] || keys['ArrowDown'] || false
     this.currentInput.left = keys['KeyA'] || keys['ArrowLeft'] || false
     this.currentInput.right = keys['KeyD'] || keys['ArrowRight'] || false
     this.currentInput.timestamp = performance.now()
+    
+    // Log when input changes
+    if (oldInput.forward !== this.currentInput.forward || 
+        oldInput.backward !== this.currentInput.backward ||
+        oldInput.left !== this.currentInput.left || 
+        oldInput.right !== this.currentInput.right) {
+      console.log(`[Avatar] Input changed: W:${this.currentInput.forward} A:${this.currentInput.left} S:${this.currentInput.backward} D:${this.currentInput.right}`)
+    }
   }
 
   // Industry Standard: Load avatar with proper error handling

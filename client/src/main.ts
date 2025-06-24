@@ -85,13 +85,33 @@ async function connectWebSocket(squirrelId: string, token: string) {
   const wsHost = API_BASE.replace(/^https?:\/\//, "");
   const wsUrl = `${wsProtocol}://${wsHost}/ws?squirrelId=${squirrelId}&token=${token}`;
   
+  console.log(`[Network] Attempting WebSocket connection to: ${wsUrl}`);
+  console.log(`[Network] API_BASE: ${API_BASE}`);
+  console.log(`[Network] Protocol: ${wsProtocol}, Host: ${wsHost}`);
+  
   try {
     await networkManager.connect(wsUrl);
     setupNetworkHandlers();
     console.log("✅ Network connection established");
   } catch (error) {
     console.error("❌ Failed to connect to server:", error);
-    throw error;
+    console.error("❌ Connection details:", { wsUrl, squirrelId, token });
+    
+    // Don't throw - continue game in offline mode for debugging
+    console.warn("⚠️ Continuing in offline mode for debugging");
+    
+    // Set up a fallback to add avatar to scene manually
+    setTimeout(() => {
+      console.log("[Fallback] Adding avatar to scene manually");
+      const avatar = getSquirrelAvatar();
+      if (avatar.mesh && avatar.isLoaded) {
+        scene.add(avatar.mesh);
+        const spawnPos = new THREE.Vector3(50, 2, 50);
+        setPlayerPosition(spawnPos);
+        setupThirdPersonCamera(avatar.mesh);
+        console.log('[Fallback] ✅ Avatar added manually');
+      }
+    }, 1000);
   }
 }
 
