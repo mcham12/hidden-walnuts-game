@@ -356,9 +356,10 @@ renderer.shadowMap.enabled = true
 renderer.shadowMap.type = THREE.PCFSoftShadowMap
 appContainer.appendChild(renderer.domElement)
 
-// Industry Standard: Initialize network and multiplayer systems
+// Initialize systems after scene is created
 networkManager = new NetworkManager();
 multiplayerSystem = new MultiplayerSystem(scene);
+console.log('[Log] 🔧 Network and multiplayer systems initialized');
 
 // Setup network connection state monitoring
 networkManager.onConnectionState((state) => {
