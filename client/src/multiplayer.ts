@@ -40,12 +40,19 @@ class MultiplayerSystem {
   
   // Industry Standard: Update local player position for distance calculations
   updateLocalPlayerPosition(position: THREE.Vector3): void {
+    const oldPos = this.localPlayerPosition.clone()
     this.localPlayerPosition.copy(position)
+    
+    // Debug position updates
+    if (oldPos.distanceTo(position) > 0.1) {
+      console.log(`[Multiplayer] 📍 Local player position updated: (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`)
+    }
   }
 
   // Industry Standard: Add player with visibility culling
   async addPlayer(playerId: string, position: THREE.Vector3, rotation: number): Promise<void> {
     if (this.players.has(playerId)) {
+      // Update existing player
       this.updatePlayer(playerId, position, rotation)
       return
     }
@@ -56,19 +63,20 @@ class MultiplayerSystem {
       rotation,
       velocity: new THREE.Vector3(),
       lastUpdate: performance.now(),
-      isVisible: false
-    }
-
-    // Industry Standard: Only load mesh if player is within AOI
-    const distance = this.getDistanceToLocalPlayer(position)
-    if (distance <= this.AOI_RADIUS) {
-      await this.loadPlayerMesh(playerData)
+      isVisible: false,
+      mesh: undefined
     }
 
     this.players.set(playerId, playerData)
-    this.networkStates.set(playerId, [])
     
-    console.log(`[Multiplayer] ✅ Added player ${playerId} (distance: ${distance.toFixed(1)}m)`)
+    // Debug player addition with distance calculation
+    const distance = this.getDistanceToLocalPlayer(position)
+    console.log(`[Multiplayer] ➕ Added player ${playerId} at (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`)
+    console.log(`[Multiplayer] 📏 Distance to local player: ${distance.toFixed(1)}m (local at ${this.localPlayerPosition.x.toFixed(1)}, ${this.localPlayerPosition.y.toFixed(1)}, ${this.localPlayerPosition.z.toFixed(1)})`)
+    console.log(`[Multiplayer] 🎯 AOI_RADIUS: ${this.AOI_RADIUS}m, should be visible: ${distance <= this.AOI_RADIUS}`)
+
+    // Trigger immediate visibility check
+    this.handleVisibilityCulling(playerData, distance)
   }
 
   // Industry Standard: Efficient player mesh loading
