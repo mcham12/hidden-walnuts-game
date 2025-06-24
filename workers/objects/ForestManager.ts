@@ -286,6 +286,10 @@ export class ForestManager implements DurableObject {
     console.log(`[ForestManager] 🔌 handleSocket called for: ${squirrelId}`);
     console.log(`[ForestManager] Socket state: ${socket.readyState}`);
     
+    // CRITICAL FIX: Accept the WebSocket connection before doing anything else
+    socket.accept();
+    console.log(`[ForestManager] ✅ WebSocket connection accepted for: ${squirrelId}`);
+    
     // FIX: Validate token first
     const isValidToken = await this.validateToken(squirrelId, token);
     if (!isValidToken) {
