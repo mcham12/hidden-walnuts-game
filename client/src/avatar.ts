@@ -95,12 +95,27 @@ export function updateSquirrelMovement(deltaTime: number) {
   const turnSpeed = Math.PI; // Radians per second
   const mesh = avatar.mesh;
   
+  // Store position before any processing to detect external changes
+  const prevPos = {
+    x: mesh.position.x,
+    y: mesh.position.y, 
+    z: mesh.position.z
+  };
+  
   // Debug: Log input state and position periodically
   const now = Date.now();
   if (!lastDebugLog || now - lastDebugLog > 2000) {
     console.log(`🎮 Input: W:${moveState.forward}, A:${moveState.turnLeft}, S:${moveState.backward}, D:${moveState.turnRight}`);
     console.log(`📍 Position: x:${mesh.position.x.toFixed(1)}, y:${mesh.position.y.toFixed(1)}, z:${mesh.position.z.toFixed(1)}`);
     lastDebugLog = now;
+  }
+  
+  // Check if position was externally corrupted since last frame
+  if (isNaN(mesh.position.x) || isNaN(mesh.position.y) || isNaN(mesh.position.z)) {
+    console.error('🚨 [Avatar] Position corrupted externally! Previous:', prevPos);
+    console.error('🚨 [Avatar] Current position:', mesh.position.x, mesh.position.y, mesh.position.z);
+    mesh.position.set(50, 2, 50);
+    return;
   }
 
   // Store previous position for movement detection
@@ -114,17 +129,39 @@ export function updateSquirrelMovement(deltaTime: number) {
     mesh.rotation.y -= turnSpeed * deltaTime;
   }
 
-  // Handle movement (W/S)
-  const direction = new THREE.Vector3();
-  mesh.getWorldDirection(direction); // Get facing direction
-  direction.y = 0;
-  direction.normalize();
+  // Handle movement (W/S) with detailed debugging
+  if (moveState.forward || moveState.backward) {
+    const direction = new THREE.Vector3();
+    mesh.getWorldDirection(direction); // Get facing direction
+    
+    console.log(`🧭 [Debug] Raw direction:`, direction.x, direction.y, direction.z);
+    
+    direction.y = 0;
+    
+    console.log(`🧭 [Debug] Direction after y=0:`, direction.x, direction.y, direction.z);
+    
+    if (direction.length() === 0) {
+      console.error('🚨 [Debug] Direction vector has zero length!');
+      direction.set(0, 0, -1); // Default forward direction
+    }
+    
+    direction.normalize();
+    
+    console.log(`🧭 [Debug] Normalized direction:`, direction.x, direction.y, direction.z);
+    
+    const moveDistance = moveSpeed * deltaTime;
+    console.log(`🏃 [Debug] Move distance:`, moveDistance, `(speed: ${moveSpeed}, deltaTime: ${deltaTime})`);
 
-  if (moveState.forward) {
-    mesh.position.addScaledVector(direction, moveSpeed * deltaTime); // Forward (W)
-  }
-  if (moveState.backward) {
-    mesh.position.addScaledVector(direction, -moveSpeed * deltaTime); // Backward (S)
+    if (moveState.forward) {
+      console.log(`🏃 [Debug] Moving forward by:`, direction.x * moveDistance, direction.y * moveDistance, direction.z * moveDistance);
+      mesh.position.addScaledVector(direction, moveDistance); // Forward (W)
+    }
+    if (moveState.backward) {
+      console.log(`🔙 [Debug] Moving backward by:`, direction.x * -moveDistance, direction.y * -moveDistance, direction.z * -moveDistance);
+      mesh.position.addScaledVector(direction, -moveDistance); // Backward (S)
+    }
+    
+    console.log(`📍 [Debug] Position after movement:`, mesh.position.x, mesh.position.y, mesh.position.z);
   }
 
   // Check if position actually changed
@@ -144,17 +181,21 @@ export function updateSquirrelMovement(deltaTime: number) {
     return;
   }
 
-  // Update y-position to stay grounded
-  getTerrainHeight(mesh.position.x, mesh.position.z).then((terrainHeight) => {
-    if (isNaN(terrainHeight) || terrainHeight < 0 || terrainHeight > 10) {
-      console.warn('⚠️ [Avatar] Invalid terrain height:', terrainHeight, 'using fallback');
-      terrainHeight = 2;
-    }
-    mesh.position.y = terrainHeight;
-  }).catch((error) => {
-    console.error('[Log] Failed to update squirrel height:', error);
-    mesh.position.y = 2; // Fallback
-  });
+  // Update y-position to stay grounded (with NaN protection)
+  if (!isNaN(mesh.position.x) && !isNaN(mesh.position.z)) {
+    getTerrainHeight(mesh.position.x, mesh.position.z).then((terrainHeight) => {
+      if (isNaN(terrainHeight) || terrainHeight < 0 || terrainHeight > 10) {
+        console.warn('⚠️ [Avatar] Invalid terrain height:', terrainHeight, 'using fallback');
+        terrainHeight = 2;
+      }
+      mesh.position.y = terrainHeight;
+    }).catch((error) => {
+      console.error('[Log] Failed to update squirrel height:', error);
+      mesh.position.y = 2; // Fallback
+    });
+  } else {
+    console.error('🚨 [Avatar] Cannot update terrain height - position x/z is NaN');
+  }
 }
 
 export function updateSquirrelCamera(camera: THREE.PerspectiveCamera) {
