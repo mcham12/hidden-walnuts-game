@@ -1,6 +1,6 @@
 // Network Compression System - Batching and compressing network messages for performance
 
-import { System, Entity } from '../ecs';
+import { System } from '../ecs';
 import { EventBus } from '../core/EventBus';
 import { Logger, LogCategory } from '../core/Logger';
 

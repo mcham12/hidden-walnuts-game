@@ -1,6 +1,6 @@
 // Area of Interest System - Optimizes network traffic by managing player visibility
 
-import { System, Entity } from '../ecs';
+import { System } from '../ecs';
 import { EventBus } from '../core/EventBus';
 import { Logger, LogCategory } from '../core/Logger';
 

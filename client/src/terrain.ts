@@ -3,7 +3,7 @@
 // The terrain is a 200x200 unit plane with heights up to 20 units, using a sin/cos-based noise function.
 
 import * as THREE from 'three';
-import { API_BASE } from './main';
+// import { API_BASE } from './main';
 import { Logger, LogCategory } from './core/Logger';
 
 // Global terrain data

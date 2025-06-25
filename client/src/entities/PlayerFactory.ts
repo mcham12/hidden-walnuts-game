@@ -1,6 +1,6 @@
 // Player Entity Factory - Clean entity creation with all components
 
-import { Entity, EntityManager, PositionComponent, RotationComponent, RenderComponent, InputComponent, NetworkComponent, InterpolationComponent } from '../ecs';
+import { Entity, EntityManager, PositionComponent, RotationComponent, RenderComponent, InputComponent, NetworkComponent } from '../ecs';
 import { Vector3, Rotation, EntityId, MovementConfig } from '../core/types';
 // Removed unused container import - using pure DI now
 import { IAssetManager, ISceneManager } from '../GameComposition';
@@ -14,13 +14,12 @@ export class PlayerFactory {
     private sceneManager: ISceneManager,
     private assetManager: IAssetManager,
     private entityManager: EntityManager,
-    private terrainService: ITerrainService,
-    private movementConfig: MovementConfig
+    private terrainService: ITerrainService
   ) {}
 
   async createLocalPlayer(spawnPosition?: Vector3): Promise<Entity> {
     // Calculate terrain-aware spawn position
-    const finalSpawnPosition = await this.calculateSafeSpawnPosition(spawnPosition);
+    const finalSpawnPosition = await this.calculateSafeSpawnPosition();
     
     const entity = this.entityManager.createEntity();
 
@@ -114,7 +113,7 @@ export class PlayerFactory {
     }
   }
 
-  private async calculateSafeSpawnPosition(preferredPosition?: Vector3): Promise<Vector3> {
+  private async calculateSafeSpawnPosition(): Promise<Vector3> {
     try {
       // Find a safe spawn position using terrain height
       const spawnX = (Math.random() - 0.5) * 20; // Random X between -10 and 10

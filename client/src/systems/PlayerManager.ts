@@ -39,12 +39,12 @@ export class PlayerManager extends System {
     this.assetManager = assetManager;
   }
 
-  update(deltaTime: number): void {
+  update(_deltaTime: number): void {
     // Update all remote players
-    for (const [squirrelId, player] of this.remotePlayers) {
+    for (const [_squirrelId, player] of this.remotePlayers) {
       if (player.isVisible && player.mesh) {
         // Smooth interpolation would go here
-        this.updatePlayerMesh(player, deltaTime);
+        this.updatePlayerMesh(player, _deltaTime);
       }
     }
   }
@@ -164,7 +164,7 @@ export class PlayerManager extends System {
     }
   }
 
-  private updatePlayerMesh(player: RemotePlayer, deltaTime: number): void {
+  private updatePlayerMesh(player: RemotePlayer, _deltaTime: number): void {
     if (!player.mesh) return;
     
     // Simple position update (interpolation would be more complex)
