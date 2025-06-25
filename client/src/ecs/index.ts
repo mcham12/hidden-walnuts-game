@@ -2,7 +2,6 @@
 
 import { EntityId, Vector3, Rotation } from '../core/types';
 import { EventBus } from '../core/EventBus';
-import { Logger, LogCategory } from '../core/Logger';
 
 // Component base interface
 export interface Component {

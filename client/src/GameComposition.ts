@@ -609,11 +609,10 @@ export function configureServices(): void {
 
   container.registerSingleton(ServiceTokens.PLAYER_FACTORY, () => 
     new (require('./entities/PlayerFactory').PlayerFactory)(
-      container.resolve<EventBus>(ServiceTokens.EVENT_BUS),
       container.resolve<ISceneManager>(ServiceTokens.SCENE_MANAGER),
       container.resolve<IAssetManager>(ServiceTokens.ASSET_MANAGER),
-      container.resolve(ServiceTokens.TERRAIN_SERVICE),
-      MovementConfig.default()
+      container.resolve(ServiceTokens.ENTITY_MANAGER),
+      container.resolve(ServiceTokens.TERRAIN_SERVICE)
     )
   );
 } 

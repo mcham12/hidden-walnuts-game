@@ -1,23 +1,21 @@
 // Player Entity Factory - Clean entity creation with all components
 
 import { Entity, EntityManager, PositionComponent, RotationComponent, RenderComponent, InputComponent, NetworkComponent } from '../ecs';
-import { Vector3, Rotation, EntityId, MovementConfig } from '../core/types';
+import { Vector3, Rotation, EntityId } from '../core/types';
 // Removed unused container import - using pure DI now
 import { IAssetManager, ISceneManager } from '../GameComposition';
 import { ITerrainService } from '../services/TerrainService';
-import { EventBus } from '../core/EventBus';
 import { Logger, LogCategory } from '../core/Logger';
 
 export class PlayerFactory {
   constructor(
-    private eventBus: EventBus,
     private sceneManager: ISceneManager,
     private assetManager: IAssetManager,
     private entityManager: EntityManager,
     private terrainService: ITerrainService
   ) {}
 
-  async createLocalPlayer(spawnPosition?: Vector3): Promise<Entity> {
+  async createLocalPlayer(_spawnPosition?: Vector3): Promise<Entity> {
     // Calculate terrain-aware spawn position
     const finalSpawnPosition = await this.calculateSafeSpawnPosition();
     
