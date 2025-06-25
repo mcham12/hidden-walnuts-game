@@ -128,7 +128,14 @@ export class EntityManager {
   private entities = new Map<string, Entity>();
   private systems: System[] = [];
 
-  constructor(private eventBus: EventBus) {}
+  constructor(private eventBus: EventBus) {
+    // EventBus available for system coordination
+    this.eventBus.subscribe('entity.cleanup', this.cleanup.bind(this));
+  }
+
+  private cleanup(): void {
+    // Future: cleanup stale entities
+  }
 
   createEntity(): Entity {
     const entity = new Entity(EntityId.generate());

@@ -21,10 +21,13 @@ export interface IInputManager {
 
 export class InputManager implements IInputManager {
   private keys = new Set<string>();
-  private eventBus: EventBus;
 
-  constructor(eventBus: EventBus) {
-    this.eventBus = eventBus;
+  constructor(private eventBus: EventBus) {
+    // EventBus ready for future input events
+    this.eventBus.subscribe('input.request_state', () => {
+      const state = this.getInputState();
+      this.eventBus.emit('input.state_response', state);
+    });
   }
 
   startListening(): void {
@@ -135,7 +138,6 @@ export class AssetManager implements IAssetManager {
       return this.cache.get('squirrel').clone();
     }
 
-    const THREE = await import('three');
     const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
     
     const loader = new GLTFLoader();
@@ -164,7 +166,6 @@ export class GameManager {
   private entityManager: EntityManager;
   private sceneManager: ISceneManager;
   private inputManager: IInputManager;
-  private assetManager: IAssetManager;
   private eventBus: EventBus;
   private movementSystem: MovementSystem;
   private interpolationSystem: InterpolationSystem;
@@ -176,7 +177,6 @@ export class GameManager {
     this.entityManager = container.resolve<EntityManager>(ServiceTokens.ENTITY_MANAGER);
     this.sceneManager = container.resolve<ISceneManager>(ServiceTokens.SCENE_MANAGER);
     this.inputManager = container.resolve<IInputManager>(ServiceTokens.INPUT_MANAGER);
-    this.assetManager = container.resolve<IAssetManager>(ServiceTokens.ASSET_MANAGER);
     this.movementSystem = container.resolve<MovementSystem>(ServiceTokens.MOVEMENT_SYSTEM);
     this.interpolationSystem = container.resolve<InterpolationSystem>(ServiceTokens.INTERPOLATION_SYSTEM);
   }
