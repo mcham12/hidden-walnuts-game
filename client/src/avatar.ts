@@ -33,7 +33,7 @@ export async function loadSquirrelAvatar(scene: THREE.Scene): Promise<SquirrelAv
     terrainHeight = 2;
   }
   mesh.position.set(x, terrainHeight, z);
-  mesh.rotation.y = Math.PI;
+  mesh.rotation.y = 0; // Face forward (positive Z direction)
   
   try {
     scene.add(mesh);
@@ -88,100 +88,58 @@ export async function loadSquirrelAvatar(scene: THREE.Scene): Promise<SquirrelAv
   return avatar;
 }
 
-export function updateSquirrelMovement(deltaTime: number) {
+export function updateSquirrelMovement(deltaTime: number, moveStateOverride?: any) {
   if (!avatar) return;
 
-  const moveSpeed = 5; // Units per second
-  const turnSpeed = Math.PI; // Radians per second
+  const moveSpeed = 5;
+  const turnSpeed = Math.PI;
   const mesh = avatar.mesh;
   
-  // Store position before any processing to detect external changes
-  const prevPos = {
-    x: mesh.position.x,
-    y: mesh.position.y, 
-    z: mesh.position.z
-  };
+  // Use override state if provided, otherwise use internal state
+  const currentMoveState = moveStateOverride || moveState;
   
-  // Debug: Log input state and position periodically
+  // Debug logging
   const now = Date.now();
   if (!lastDebugLog || now - lastDebugLog > 2000) {
-    console.log(`🎮 Input: W:${moveState.forward}, A:${moveState.turnLeft}, S:${moveState.backward}, D:${moveState.turnRight}`);
+    console.log(`🎮 Input: W:${currentMoveState.forward}, A:${currentMoveState.turnLeft}, S:${currentMoveState.backward}, D:${currentMoveState.turnRight}`);
     console.log(`📍 Position: x:${mesh.position.x.toFixed(1)}, y:${mesh.position.y.toFixed(1)}, z:${mesh.position.z.toFixed(1)}`);
     lastDebugLog = now;
   }
-  
-  // Check if position was externally corrupted since last frame
-  if (isNaN(mesh.position.x) || isNaN(mesh.position.y) || isNaN(mesh.position.z)) {
-    console.error('🚨 [Avatar] Position corrupted externally! Previous:', prevPos);
-    console.error('🚨 [Avatar] Current position:', mesh.position.x, mesh.position.y, mesh.position.z);
-    mesh.position.set(50, 2, 50);
-    return;
-  }
 
-  // Store previous position for movement detection
-  const prevPosition = mesh.position.clone();
-
-  // Handle rotation (A/D)
-  if (moveState.turnLeft) {
+  // Standard game movement pattern: rotation first
+  if (currentMoveState.turnLeft) {
     mesh.rotation.y += turnSpeed * deltaTime;
   }
-  if (moveState.turnRight) {
+  if (currentMoveState.turnRight) {
     mesh.rotation.y -= turnSpeed * deltaTime;
   }
 
-  // Handle movement (W/S) - use rotation-based direction (more reliable than getWorldDirection)
-  if (moveState.forward || moveState.backward) {
-    // Calculate direction from rotation (avoids Three.js matrix corruption issues)
-    const direction = new THREE.Vector3(
-      Math.sin(mesh.rotation.y),
-      0,
-      Math.cos(mesh.rotation.y)
-    );
-    
-    // Ensure direction is normalized (should be by construction, but safety first)
-    direction.normalize();
-    
+  // Standard game movement pattern: XZ movement only (never touch Y during movement)
+  if (currentMoveState.forward || currentMoveState.backward) {
     const moveDistance = moveSpeed * deltaTime;
+    const direction = {
+      x: Math.sin(mesh.rotation.y),
+      z: Math.cos(mesh.rotation.y)
+    };
 
-    if (moveState.forward) {
-      mesh.position.addScaledVector(direction, moveDistance); // Forward (W)
+    if (currentMoveState.forward) {
+      mesh.position.x += direction.x * moveDistance;
+      mesh.position.z += direction.z * moveDistance;
     }
-    if (moveState.backward) {
-      mesh.position.addScaledVector(direction, -moveDistance); // Backward (S)
+    if (currentMoveState.backward) {
+      mesh.position.x -= direction.x * moveDistance;
+      mesh.position.z -= direction.z * moveDistance;
     }
   }
 
-  // Check if position actually changed
-  const positionChanged = prevPosition.distanceTo(mesh.position) > 0.001;
-  if (positionChanged && (moveState.forward || moveState.backward || moveState.turnLeft || moveState.turnRight)) {
-    console.log(`✅ Movement applied! Delta: ${prevPosition.distanceTo(mesh.position).toFixed(3)}`);
-  }
-
-  // Clamp position to terrain bounds
+  // Clamp to bounds
   mesh.position.x = Math.max(-100, Math.min(100, mesh.position.x));
   mesh.position.z = Math.max(-100, Math.min(100, mesh.position.z));
 
-  // Protect against NaN positions (causes blue screen crash)
+  // Safety check for NaN (if this happens, something else is corrupting position)
   if (isNaN(mesh.position.x) || isNaN(mesh.position.y) || isNaN(mesh.position.z)) {
     console.error('🚨 [Avatar] Position became NaN! Resetting to safe position');
     mesh.position.set(50, 2, 50);
-    return;
-  }
-
-  // Update y-position to stay grounded (with NaN protection)
-  if (!isNaN(mesh.position.x) && !isNaN(mesh.position.z)) {
-    getTerrainHeight(mesh.position.x, mesh.position.z).then((terrainHeight) => {
-      if (isNaN(terrainHeight) || terrainHeight < 0 || terrainHeight > 10) {
-        console.warn('⚠️ [Avatar] Invalid terrain height:', terrainHeight, 'using fallback');
-        terrainHeight = 2;
-      }
-      mesh.position.y = terrainHeight;
-    }).catch((error) => {
-      console.error('[Log] Failed to update squirrel height:', error);
-      mesh.position.y = 2; // Fallback
-    });
-  } else {
-    console.error('🚨 [Avatar] Cannot update terrain height - position x/z is NaN');
   }
 }
 
@@ -210,4 +168,4 @@ export function updateSquirrelCamera(camera: THREE.PerspectiveCamera) {
 
 export function getSquirrelAvatar(): SquirrelAvatar | null {
   return avatar;
-} 
+}

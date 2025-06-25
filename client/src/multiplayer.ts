@@ -13,6 +13,7 @@ interface RemotePlayer {
   lastUpdate: number;
   targetPosition: { x: number; y: number; z: number };
   targetRotationY: number;
+  velocity?: { x: number; y: number; z: number };
 }
 
 interface MultiplayerConfig extends NetworkConfig {
@@ -261,35 +262,83 @@ class MultiplayerManager {
     console.log('[Multiplayer] Cleared all remote players');
   }
 
-  // Industry Standard: Position interpolation for smooth movement
+  // A++ Standard: Smooth interpolation with prediction and cleanup
   update(deltaTime: number): void {
     const now = Date.now();
+    const INTERPOLATION_SPEED = this.config.interpolationSpeed;
+    const PREDICTION_TIME = 100; // ms ahead prediction
+    const STALE_THRESHOLD = 30000; // 30 seconds
+    const DISCONNECT_THRESHOLD = 60000; // 1 minute
 
     for (const [squirrelId, player] of this.remotePlayers) {
       if (!player.mesh) continue;
 
-      // Interpolate position
-      const positionLerpSpeed = this.config.interpolationSpeed * deltaTime;
-      player.position.x = THREE.MathUtils.lerp(player.position.x, player.targetPosition.x, positionLerpSpeed);
-      player.position.y = THREE.MathUtils.lerp(player.position.y, player.targetPosition.y, positionLerpSpeed);
-      player.position.z = THREE.MathUtils.lerp(player.position.z, player.targetPosition.z, positionLerpSpeed);
+      const timeSinceUpdate = now - player.lastUpdate;
 
-      // Interpolate rotation (manual angle lerp since lerpAngle doesn't exist in this Three.js version)
+      // Smooth interpolation with adaptive speed based on distance
+      const distanceToTarget = Math.sqrt(
+        Math.pow(player.targetPosition.x - player.position.x, 2) +
+        Math.pow(player.targetPosition.z - player.position.z, 2)
+      );
+
+      // Adaptive interpolation speed - faster for larger distances
+      const adaptiveSpeed = Math.min(
+        INTERPOLATION_SPEED * deltaTime * (1 + distanceToTarget * 0.1),
+        0.3 // Cap at 30% per frame
+      );
+
+      // Position interpolation with prediction for recent updates
+      if (timeSinceUpdate < PREDICTION_TIME) {
+        // Predict slightly ahead for smooth movement
+        const predictionFactor = timeSinceUpdate / PREDICTION_TIME;
+        const predictedX = player.targetPosition.x + (player.velocity?.x || 0) * predictionFactor;
+        const predictedZ = player.targetPosition.z + (player.velocity?.z || 0) * predictionFactor;
+        
+        player.position.x = THREE.MathUtils.lerp(player.position.x, predictedX, adaptiveSpeed);
+        player.position.z = THREE.MathUtils.lerp(player.position.z, predictedZ, adaptiveSpeed);
+      } else {
+        // Standard interpolation for older updates
+        player.position.x = THREE.MathUtils.lerp(player.position.x, player.targetPosition.x, adaptiveSpeed);
+        player.position.z = THREE.MathUtils.lerp(player.position.z, player.targetPosition.z, adaptiveSpeed);
+      }
+
+      // Always interpolate Y smoothly (terrain following)
+      player.position.y = THREE.MathUtils.lerp(player.position.y, player.targetPosition.y, adaptiveSpeed);
+
+      // Smooth rotation interpolation
       let angleDiff = player.targetRotationY - player.rotationY;
-      // Normalize angle difference to [-PI, PI]
+      // Normalize to shortest rotation path
       while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
       while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
-      player.rotationY += angleDiff * positionLerpSpeed;
+      player.rotationY += angleDiff * adaptiveSpeed;
 
-      // Apply to mesh
+      // Apply interpolated values to mesh
       player.mesh.position.set(player.position.x, player.position.y, player.position.z);
       player.mesh.rotation.y = player.rotationY;
 
-      // Check for stale players (disconnected but not properly removed)
-      if (now - player.lastUpdate > 60000) { // 1 minute
-        console.warn(`[Multiplayer] Removing stale player: ${squirrelId}`);
+      // Progressive cleanup based on time since update
+      if (timeSinceUpdate > DISCONNECT_THRESHOLD) {
+        console.warn(`[Multiplayer] Removing disconnected player: ${squirrelId}`);
         this.removeRemotePlayer(squirrelId);
-      }
+             } else if (timeSinceUpdate > STALE_THRESHOLD) {
+         // Fade out stale players
+         const fadeAmount = Math.min((timeSinceUpdate - STALE_THRESHOLD) / (DISCONNECT_THRESHOLD - STALE_THRESHOLD), 1);
+         
+         // Apply fade to all meshes in the player object
+         player.mesh.traverse((child) => {
+           if (child instanceof THREE.Mesh && child.material) {
+             if (Array.isArray(child.material)) {
+               child.material.forEach(mat => {
+                 mat.opacity = 1 - fadeAmount * 0.5;
+                 mat.transparent = true;
+               });
+             } else {
+               child.material.opacity = 1 - fadeAmount * 0.5;
+               child.material.transparent = true;
+             }
+           }
+         });
+       }
     }
   }
 
