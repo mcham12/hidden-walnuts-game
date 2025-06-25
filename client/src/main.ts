@@ -172,34 +172,34 @@ createTerrain().then((mesh) => {
   loadSquirrelAvatar(scene).then(async () => {
     console.log('🐿️ Squirrel avatar loaded');
     
-    // Initialize multiplayer system
-    const squirrelAvatar = getSquirrelAvatar();
-    if (squirrelAvatar) {
-      try {
-        multiplayerManager = new MultiplayerManager(multiplayerConfig, scene, squirrelAvatar.mesh);
-        const authData = await multiplayerManager.initialize();
-        console.log(`🎯 [Multiplayer] Connected as ${authData.squirrelId.substring(0, 8)}`);
-        
-        // Debug: Check scene integrity before positioning
-        console.log(`🔍 Scene children: ${scene.children.length}, Camera pos: ${camera.position.x}, ${camera.position.y}, ${camera.position.z}`);
-        
-        // Position player at spawn location from server (with bounds checking)
-        const pos = authData.position;
-        if (pos.x >= -100 && pos.x <= 100 && pos.z >= -100 && pos.z <= 100 && pos.y >= 0 && pos.y <= 50) {
-          squirrelAvatar.mesh.position.set(pos.x, pos.y, pos.z);
-          squirrelAvatar.mesh.rotation.y = authData.rotationY;
-          
-          // Ensure camera is positioned correctly relative to player
-          camera.position.set(pos.x + 30, pos.y + 60, pos.z + 50);
-          camera.lookAt(pos.x, pos.y, pos.z);
-        } else {
-          console.warn('⚠️ Invalid spawn position from server, using default');
-          squirrelAvatar.mesh.position.set(50, 2, 50);
-          camera.position.set(80, 62, 100);
-          camera.lookAt(50, 2, 50);
-        }
-        
-        console.log(`📍 [Multiplayer] Spawned at:`, authData.position);
+            // Initialize multiplayer system
+        const squirrelAvatar = getSquirrelAvatar();
+        if (squirrelAvatar) {
+          try {
+            multiplayerManager = new MultiplayerManager(multiplayerConfig, scene, squirrelAvatar.mesh);
+            const authData = await multiplayerManager.initialize();
+            console.log(`🎯 [Multiplayer] Connected as ${authData.squirrelId.substring(0, 8)}`);
+            
+            // Debug: Check scene integrity before positioning
+            console.log(`🔍 Scene children: ${scene.children.length}, Camera pos: ${camera.position.x}, ${camera.position.y}, ${camera.position.z}`);
+            
+            // Position player at spawn location from server (with bounds checking)
+            const pos = authData.position;
+            if (pos.x >= -100 && pos.x <= 100 && pos.z >= -100 && pos.z <= 100 && pos.y >= 0 && pos.y <= 50) {
+              squirrelAvatar.mesh.position.set(pos.x, pos.y, pos.z);
+              squirrelAvatar.mesh.rotation.y = authData.rotationY;
+              
+              // Ensure camera is positioned correctly relative to player
+              camera.position.set(pos.x + 30, pos.y + 60, pos.z + 50);
+              camera.lookAt(pos.x, pos.y, pos.z);
+            } else {
+              console.warn('⚠️ Invalid spawn position from server, using default');
+              squirrelAvatar.mesh.position.set(50, 2, 50);
+              camera.position.set(80, 62, 100);
+              camera.lookAt(50, 2, 50);
+            }
+            
+            console.log(`📍 [Multiplayer] Spawned at:`, authData.position);
       } catch (error) {
         console.error('❌ [Multiplayer] Initialization failed:', error);
         // Ensure game still works without multiplayer
@@ -457,129 +457,7 @@ async function animate() {
 
 animate();
 
-// WebSocket heartbeat setup
-let heartbeatInterval: number | null = null;
-const HEARTBEAT_INTERVAL = 20000; // 20 seconds
-
-function startHeartbeat() {
-  if (heartbeatInterval) {
-    clearInterval(heartbeatInterval);
-  }
-  heartbeatInterval = window.setInterval(() => {
-    if (socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ type: 'ping' }));
-    }
-  }, HEARTBEAT_INTERVAL);
-}
-
-function stopHeartbeat() {
-  if (heartbeatInterval) {
-    clearInterval(heartbeatInterval);
-    heartbeatInterval = null;
-  }
-}
-
-// WebSocket connection
-const wsProtocol = API_BASE.startsWith('https') ? 'wss' : 'ws';
-const wsHost = API_BASE.replace(/^https?:\/\//, '');
-const squirrelId = crypto.randomUUID();
-const wsUrl = `${wsProtocol}://${wsHost}/join?squirrelId=${squirrelId}`;
-const socket = new WebSocket(wsUrl);
-
-socket.addEventListener("open", () => {
-  console.log("✅ WebSocket connection established");
-  startHeartbeat();
-});
-
-socket.addEventListener("message", (event) => {
-  console.log("Raw WS message received:", event.data);
-  const data = JSON.parse(event.data);
-
-  if (data.type === "pong") {
-    console.debug("💓 Heartbeat acknowledged");
-    return;
-  }
-
-  if (data.type === "map_reset") {
-    const mapState = data.data.mapState;
-    console.log(`Received map_reset with ${mapState.length} walnuts`);
-    // Clear both walnutMap and walnutMeshes
-    Object.values(walnutMap).forEach(mesh => {
-      scene.remove(mesh);
-    });
-    walnutMap = {};
-    walnutMeshes.forEach(mesh => {
-      scene.remove(mesh);
-    });
-    walnutMeshes.clear();
-    // Clear forest meshes
-    forestMeshes.forEach(mesh => {
-      scene.remove(mesh);
-    });
-    forestMeshes = [];
-    // Re-render walnuts and forest
-    for (const walnut of mapState) {
-      if (!walnut.found) {
-        const mesh = createWalnutMesh(walnut);
-        scene.add(mesh);
-        walnutMap[walnut.id] = mesh;
-        walnutMeshes.set(walnut.id, mesh);
-        console.log(`Added walnut ${walnut.id} to scene after map_reset`);
-      }
-    }
-    createForest().then((meshes) => {
-      forestMeshes = meshes;
-      meshes.forEach((mesh) => scene.add(mesh));
-      console.log('Forest re-added to scene after map_reset');
-    });
-    return;
-  }
-
-  if (data.type === "init") {
-    console.log(`Received mapState with ${data.mapState.length} walnuts`);
-    Object.values(walnutMap).forEach(mesh => {
-      scene.remove(mesh);
-    });
-    walnutMap = {};
-    for (const walnut of data.mapState) {
-      if (!walnut.found) {
-        const mesh = createWalnutMesh(walnut);
-        scene.add(mesh);
-        walnutMap[walnut.id] = mesh;
-        console.log(`Added walnut ${walnut.id} to scene`);
-      }
-    }
-  }
-
-  if (data.type === "walnut-rehidden") {
-    const { walnutId, location } = data;
-    console.log(`Received rehidden message for ${walnutId} at location:`, location);
-    Object.values(walnutMap).forEach(mesh => {
-      scene.remove(mesh);
-    });
-    walnutMap = {};
-    fetchWalnutMap().then(updatedWalnuts => {
-      for (const walnut of updatedWalnuts) {
-        if (!walnut.found) {
-          const mesh = createWalnutMesh(walnut);
-          scene.add(mesh);
-          walnutMap[walnut.id] = mesh;
-          console.log(`Synced walnut ${walnut.id} at position (${walnut.location.x}, ${walnut.location.y}, ${walnut.location.z})`);
-        }
-      }
-    });
-  }
-});
-
-socket.addEventListener("error", (event) => {
-  console.error("WebSocket error:", event);
-  stopHeartbeat();
-});
-
-socket.addEventListener("close", (event) => {
-  console.warn("WebSocket closed:", event);
-  stopHeartbeat();
-});
+// Legacy WebSocket system removed - now using modern multiplayer system
 
 // Update exports
 export {
@@ -592,7 +470,6 @@ export {
   renderWalnuts,
   getHidingMethod,
   createWalnutMaterial,
-  socket,
   terrain,
   getTerrainHeight,
   forestMeshes,

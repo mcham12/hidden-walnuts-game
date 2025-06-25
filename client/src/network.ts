@@ -90,21 +90,23 @@ class NetworkManager {
       wsUrl.searchParams.set('squirrelId', this.authData.squirrelId);
       wsUrl.searchParams.set('token', this.authData.token);
 
-      // Connecting to WebSocket
+      console.log('🔗 [Network] Attempting WebSocket connection to:', wsUrl.toString());
 
       // Create WebSocket connection
       this.socket = new WebSocket(wsUrl.toString());
+      console.log('🔌 [Network] WebSocket object created, readyState:', this.socket.readyState);
       
       // Set up event handlers
       this.setupSocketHandlers();
 
       // Wait for connection to open
+      console.log('⏳ [Network] Waiting for WebSocket connection...');
       await this.waitForConnection();
       
       console.log('🚀 [Network] Connected to multiplayer');
 
     } catch (error) {
-      console.error('[Network] Connection error:', error);
+      console.error('❌ [Network] Connection error:', error);
       this.connectionState = 'disconnected';
       this.scheduleReconnect();
       throw error;

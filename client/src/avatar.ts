@@ -6,6 +6,7 @@ import type { SquirrelAvatar } from './types';
 
 let avatar: SquirrelAvatar | null = null;
 const moveState = { forward: false, backward: false, turnLeft: false, turnRight: false };
+let lastDebugLog = 0;
 
 export async function loadSquirrelAvatar(scene: THREE.Scene): Promise<SquirrelAvatar> {
   const loader = new GLTFLoader();
@@ -74,6 +75,17 @@ export function updateSquirrelMovement(deltaTime: number) {
   const moveSpeed = 5; // Units per second
   const turnSpeed = Math.PI; // Radians per second
   const mesh = avatar.mesh;
+  
+  // Debug: Log input state and position periodically
+  const now = Date.now();
+  if (!lastDebugLog || now - lastDebugLog > 2000) {
+    console.log(`🎮 Input: W:${moveState.forward}, A:${moveState.turnLeft}, S:${moveState.backward}, D:${moveState.turnRight}`);
+    console.log(`📍 Position: x:${mesh.position.x.toFixed(1)}, y:${mesh.position.y.toFixed(1)}, z:${mesh.position.z.toFixed(1)}`);
+    lastDebugLog = now;
+  }
+
+  // Store previous position for movement detection
+  const prevPosition = mesh.position.clone();
 
   // Handle rotation (A/D)
   if (moveState.turnLeft) {
@@ -94,6 +106,12 @@ export function updateSquirrelMovement(deltaTime: number) {
   }
   if (moveState.backward) {
     mesh.position.addScaledVector(direction, -moveSpeed * deltaTime); // Backward (S)
+  }
+
+  // Check if position actually changed
+  const positionChanged = prevPosition.distanceTo(mesh.position) > 0.001;
+  if (positionChanged && (moveState.forward || moveState.backward || moveState.turnLeft || moveState.turnRight)) {
+    console.log(`✅ Movement applied! Delta: ${prevPosition.distanceTo(mesh.position).toFixed(3)}`);
   }
 
   // Clamp position to terrain bounds
