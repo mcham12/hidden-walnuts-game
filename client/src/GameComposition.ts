@@ -14,6 +14,10 @@ import { AreaOfInterestSystem } from './systems/AreaOfInterestSystem';
 import { NetworkCompressionSystem } from './systems/NetworkCompressionSystem';
 import { MovementConfig, WorldBounds } from './core/types';
 import { Logger, LogCategory } from './core/Logger';
+import { ThreeJSRenderAdapter } from './rendering/IRenderAdapter';
+import { InputSystem } from './systems/InputSystem';
+import { TerrainService } from './services/TerrainService';
+import { PlayerFactory } from './entities/PlayerFactory';
 
 // Refactored InputManager with dependency injection
 export interface IInputManager {
@@ -556,7 +560,7 @@ export function configureServices(): void {
   );
 
   container.registerSingleton(ServiceTokens.RENDER_ADAPTER, () => 
-    new (require('./rendering/IRenderAdapter').ThreeJSRenderAdapter)()
+    new ThreeJSRenderAdapter()
   );
 
   container.registerSingleton(ServiceTokens.RENDER_SYSTEM, () => 
@@ -567,7 +571,7 @@ export function configureServices(): void {
   );
 
   container.registerSingleton(ServiceTokens.INPUT_SYSTEM, () => 
-    new (require('./systems/InputSystem').InputSystem)(
+    new InputSystem(
       container.resolve<EventBus>(ServiceTokens.EVENT_BUS),
       container.resolve<IInputManager>(ServiceTokens.INPUT_MANAGER)
     )
@@ -578,7 +582,7 @@ export function configureServices(): void {
   );
 
   container.registerSingleton(ServiceTokens.TERRAIN_SERVICE, () => 
-    new (require('./services/TerrainService').TerrainService)(
+    new TerrainService(
       import.meta.env.VITE_API_URL || 'http://localhost:8787'
     )
   );
@@ -608,7 +612,7 @@ export function configureServices(): void {
   );
 
   container.registerSingleton(ServiceTokens.PLAYER_FACTORY, () => 
-    new (require('./entities/PlayerFactory').PlayerFactory)(
+    new PlayerFactory(
       container.resolve<ISceneManager>(ServiceTokens.SCENE_MANAGER),
       container.resolve<IAssetManager>(ServiceTokens.ASSET_MANAGER),
       container.resolve(ServiceTokens.ENTITY_MANAGER),
