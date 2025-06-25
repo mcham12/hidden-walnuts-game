@@ -106,6 +106,16 @@ export const ServiceTokens = {
   MOVEMENT_SYSTEM: 'MovementSystem',
   INTERPOLATION_SYSTEM: 'InterpolationSystem',
   RENDER_SYSTEM: 'RenderSystem',
+  NETWORK_SYSTEM: 'NetworkSystem',
+  NETWORK_TICK_SYSTEM: 'NetworkTickSystem',
+  CLIENT_PREDICTION_SYSTEM: 'ClientPredictionSystem',
+  AREA_OF_INTEREST_SYSTEM: 'AreaOfInterestSystem',
+  NETWORK_COMPRESSION_SYSTEM: 'NetworkCompressionSystem',
+  INPUT_SYSTEM: 'InputSystem',
+  PLAYER_MANAGER: 'PlayerManager',
+  TERRAIN_SERVICE: 'TerrainService',
+  RENDER_ADAPTER: 'RenderAdapter',
+  PLAYER_FACTORY: 'PlayerFactory',
   CAMERA_SYSTEM: 'CameraSystem'
 } as const;
 

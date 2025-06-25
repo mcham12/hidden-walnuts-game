@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { API_BASE, getTerrainHeight, DEBUG } from './main';
+import { Logger, LogCategory } from './core/Logger';
 
 interface ForestObject {
   id: string;
@@ -27,7 +28,7 @@ export async function createForest(): Promise<THREE.Object3D[]> {
     forestObjects.push(...data);
     // Forest objects fetched
   } catch (error) {
-    console.error('Failed to fetch forest objects:', error);
+    Logger.error(LogCategory.TERRAIN, 'Failed to fetch forest objects', error);
     return [];
   }
 
@@ -43,7 +44,7 @@ export async function createForest(): Promise<THREE.Object3D[]> {
     await response.text(); // Test completed
     // Asset fetch test completed
     } catch (error) {
-      console.error('Failed to fetch test asset:', error);
+      Logger.error(LogCategory.TERRAIN, 'Failed to fetch test asset', error);
     }
   }
 

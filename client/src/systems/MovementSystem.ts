@@ -10,7 +10,7 @@ export class MovementSystem extends System {
     private config: MovementConfig,
     private worldBounds: WorldBounds
   ) {
-    super(eventBus, ['position', 'rotation', 'input']);
+    super(eventBus, ['position', 'rotation', 'input'], 'MovementSystem');
   }
 
   update(deltaTime: number): void {
@@ -20,6 +20,12 @@ export class MovementSystem extends System {
   }
 
   private updateEntityMovement(entity: Entity, deltaTime: number): void {
+    // Skip local players - they're handled by ClientPredictionSystem
+    const network = entity.getComponent<import('../ecs').NetworkComponent>('network');
+    if (network?.isLocalPlayer) {
+      return;
+    }
+    
     const position = entity.getComponent<PositionComponent>('position')!;
     const rotation = entity.getComponent<RotationComponent>('rotation')!;
     const input = entity.getComponent<InputComponent>('input')!;

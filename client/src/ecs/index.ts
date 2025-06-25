@@ -2,6 +2,7 @@
 
 import { EntityId, Vector3, Rotation } from '../core/types';
 import { EventBus } from '../core/EventBus';
+import { Logger, LogCategory } from '../core/Logger';
 
 // Component base interface
 export interface Component {
@@ -86,7 +87,8 @@ export abstract class System {
   
   constructor(
     protected eventBus: EventBus,
-    protected requiredComponents: string[]
+    protected requiredComponents: string[],
+    public readonly systemId: string
   ) {}
 
   addEntity(entity: Entity): void {
@@ -127,6 +129,9 @@ export abstract class System {
 export class EntityManager {
   private entities = new Map<string, Entity>();
   private systems: System[] = [];
+  private systemExecutionOrder: string[] = [];
+  // CHEN'S FIX: Indexed system lookup to avoid O(n²) performance
+  private systemLookup = new Map<string, System>();
 
   constructor(private eventBus: EventBus) {
     // EventBus available for system coordination
@@ -170,6 +175,8 @@ export class EntityManager {
 
   addSystem(system: System): void {
     this.systems.push(system);
+    // CHEN'S FIX: Index system for O(1) lookup
+    this.systemLookup.set(system.systemId, system);
     
     // Add existing entities to the new system
     for (const entity of this.entities.values()) {
@@ -177,9 +184,31 @@ export class EntityManager {
     }
   }
 
+  setSystemExecutionOrder(systemIds: string[]): void {
+    this.systemExecutionOrder = systemIds;
+    // Validate that all systems exist
+    const missingSystemIds = systemIds.filter(id => !this.systemLookup.has(id));
+    if (missingSystemIds.length > 0) {
+      console.warn('⚠️ Missing systems in execution order:', missingSystemIds);
+    }
+  }
+
   update(deltaTime: number): void {
-    for (const system of this.systems) {
-      system.update(deltaTime);
+    if (this.systemExecutionOrder.length > 0) {
+      // CHEN'S FIX: O(1) system lookup instead of O(n) find
+      for (const systemId of this.systemExecutionOrder) {
+        const system = this.systemLookup.get(systemId);
+        if (system) {
+          system.update(deltaTime);
+        } else {
+          console.warn(`⚠️ System ${systemId} not found for ordered execution`);
+        }
+      }
+    } else {
+      // Fallback to registration order
+      for (const system of this.systems) {
+        system.update(deltaTime);
+      }
     }
   }
 

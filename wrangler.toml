@@ -1,5 +1,34 @@
-name = "hidden-walnuts"
-compatibility_date = "2025-05-23"
+name = "hidden-walnuts-game"
+
+# CHEN'S FIX: Correct entry point for workers
+main = "workers/dist/worker/api.js"
+
+compatibility_date = "2024-01-01"
+
+# Cloudflare Workers configuration
+[env.production]
+workers_dev = false
+
+# Durable Objects configuration
+[[durable_objects.bindings]]
+name = "SQUIRREL_SESSION"
+class_name = "SquirrelSession"
+
+[[durable_objects.bindings]]
+name = "FOREST_MANAGER"
+class_name = "ForestManager"
+
+[[durable_objects.bindings]]
+name = "WALNUT_REGISTRY"
+class_name = "WalnutRegistry"
+
+[[durable_objects.bindings]]
+name = "LEADERBOARD"
+class_name = "Leaderboard"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "production"
 
 [build]
 command = "npm run build"
@@ -7,15 +36,6 @@ command = "npm run build"
 # Enable logging for debugging
 [observability.logs]
 enabled = true
-
-# Durable Object bindings
-[durable_objects]
-bindings = [
-  { name = "FOREST", class_name = "ForestManager" },
-  { name = "SQUIRREL", class_name = "SquirrelSession" },
-  { name = "WALNUTS", class_name = "WalnutRegistry" },
-  { name = "LEADERBOARD", class_name = "Leaderboard" }
-]
 
 # Durable Objects migrations
 [[migrations]]
@@ -57,6 +77,3 @@ bindings = [
   { name = "WALNUTS", class_name = "WalnutRegistry" },
   { name = "LEADERBOARD", class_name = "Leaderboard" }
 ]
-
-# Specify the main entry point
-main = "dist/worker/api.js"

@@ -1,5 +1,7 @@
 // Event-Driven Architecture - No more tight coupling!
 
+import { Logger, LogCategory } from './Logger';
+
 export interface GameEvent {
   readonly type: string;
   readonly timestamp: number;
@@ -14,6 +16,8 @@ export class EventBus {
   private handlers = new Map<string, Set<EventHandler>>();
   private isProcessing = false;
   private eventQueue: GameEvent[] = [];
+  private eventHistory: GameEvent[] = [];
+  private maxHistorySize = 100;
 
   subscribe<T = any>(eventType: string, handler: EventHandler<T>): () => void {
     if (!this.handlers.has(eventType)) {
@@ -41,6 +45,12 @@ export class EventBus {
       data
     };
 
+    // Store in history
+    this.eventHistory.push(event);
+    if (this.eventHistory.length > this.maxHistorySize) {
+      this.eventHistory.shift();
+    }
+
     if (this.isProcessing) {
       // Queue events to prevent recursion
       this.eventQueue.push(event);
@@ -61,7 +71,7 @@ export class EventBus {
       try {
         handler(event.data);
       } catch (error) {
-        console.error(`Error in event handler for ${event.type}:`, error);
+        Logger.error(LogCategory.CORE, `Error in event handler for ${event.type}`, error);
       }
     }
     
@@ -78,6 +88,7 @@ export class EventBus {
   clear(): void {
     this.handlers.clear();
     this.eventQueue = [];
+    this.eventHistory = [];
   }
 
   getEventTypes(): string[] {
@@ -107,6 +118,9 @@ export const GameEvents = {
   REMOTE_PLAYER_JOINED: 'multiplayer.player_joined',
   REMOTE_PLAYER_LEFT: 'multiplayer.player_left',
   REMOTE_PLAYER_UPDATED: 'multiplayer.player_updated',
+  ENTITY_CLEANUP: 'entity.cleanup',
+  UPDATE_INTERPOLATION_TARGET: 'interpolation.update_target',
+  SERVER_STATE_UPDATE: 'network.server_state_update',
   
   // System events
   SYSTEM_ERROR: 'system.error',

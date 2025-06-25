@@ -5,12 +5,13 @@ import { EventBus } from '../core/EventBus';
 import { Vector3, Rotation } from '../core/types';
 
 export class InterpolationSystem extends System {
-  private static readonly PREDICTION_TIME = 100; // ms
-  private static readonly STALE_THRESHOLD = 30000; // 30 seconds
-  private static readonly MAX_INTERPOLATION_SPEED = 0.3; // 30% per frame
+  // private static readonly INTERPOLATION_DELAY = 100; // Future: Render 100ms behind for smoothness
+  private static readonly EXTRAPOLATION_LIMIT = 50; // Max 50ms extrapolation
+  private static readonly STALE_THRESHOLD = 5000; // 5 seconds (not 30!)
+  private static readonly MAX_INTERPOLATION_SPEED = 0.15; // Slower for smoothness
 
   constructor(eventBus: EventBus) {
-    super(eventBus, ['position', 'rotation', 'interpolation', 'network']);
+    super(eventBus, ['position', 'rotation', 'interpolation', 'network'], 'InterpolationSystem');
   }
 
   update(deltaTime: number): void {
@@ -41,16 +42,16 @@ export class InterpolationSystem extends System {
 
     let newPosition: Vector3;
 
-    // Use prediction for recent updates
-    if (timeSinceUpdate < InterpolationSystem.PREDICTION_TIME) {
-      newPosition = this.predictPosition(
+    // Use extrapolation for very recent updates, interpolation for delayed rendering
+    if (timeSinceUpdate < InterpolationSystem.EXTRAPOLATION_LIMIT) {
+      newPosition = this.extrapolatePosition(
         position.value,
         interpolation.targetPosition,
         timeSinceUpdate,
         adaptiveSpeed
       );
     } else {
-      // Standard interpolation for older updates
+      // Standard interpolation for lag-compensated rendering
       newPosition = position.value.lerp(interpolation.targetPosition, adaptiveSpeed);
     }
 
@@ -77,18 +78,18 @@ export class InterpolationSystem extends System {
     }
   }
 
-  private predictPosition(
+  private extrapolatePosition(
     currentPosition: Vector3,
     targetPosition: Vector3,
     timeSinceUpdate: number,
     adaptiveSpeed: number
   ): Vector3 {
-    // Simple prediction - in a real game, you'd use velocity and acceleration
-    const predictionFactor = timeSinceUpdate / InterpolationSystem.PREDICTION_TIME;
+    // Extrapolate forward based on recent movement
+    const extrapolationFactor = timeSinceUpdate / InterpolationSystem.EXTRAPOLATION_LIMIT;
     const direction = targetPosition.add(currentPosition.multiply(-1));
-    const predictedTarget = targetPosition.add(direction.multiply(predictionFactor * 0.1));
+    const extrapolatedTarget = targetPosition.add(direction.multiply(extrapolationFactor * 0.2));
     
-    return currentPosition.lerp(predictedTarget, adaptiveSpeed);
+    return currentPosition.lerp(extrapolatedTarget, adaptiveSpeed);
   }
 
   private applyStaleEffect(entity: Entity, timeSinceUpdate: number): void {
