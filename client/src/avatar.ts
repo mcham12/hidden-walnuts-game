@@ -45,19 +45,35 @@ export async function loadSquirrelAvatar(scene: THREE.Scene): Promise<SquirrelAv
   
   avatar = { mesh, gltf };
   
-  // Add WASD event listeners
+  // Add WASD event listeners with debugging
+  console.log('🎮 [Avatar] Setting up WASD event listeners...');
+  
   document.addEventListener('keydown', (event) => {
     const key = event.key.toLowerCase();
+    console.log('⌨️ [Input] Keydown:', key);
     switch (key) {
-      case 'w': moveState.forward = true; break;
-      case 's': moveState.backward = true; break;
-      case 'a': moveState.turnLeft = true; break;
-      case 'd': moveState.turnRight = true; break;
+      case 'w': 
+        moveState.forward = true; 
+        console.log('🏃 [Input] Moving forward');
+        break;
+      case 's': 
+        moveState.backward = true; 
+        console.log('🔙 [Input] Moving backward');
+        break;
+      case 'a': 
+        moveState.turnLeft = true; 
+        console.log('↩️ [Input] Turning left');
+        break;
+      case 'd': 
+        moveState.turnRight = true; 
+        console.log('↪️ [Input] Turning right');
+        break;
     }
   });
 
   document.addEventListener('keyup', (event) => {
     const key = event.key.toLowerCase();
+    console.log('⌨️ [Input] Keyup:', key);
     switch (key) {
       case 'w': moveState.forward = false; break;
       case 's': moveState.backward = false; break;
@@ -65,6 +81,9 @@ export async function loadSquirrelAvatar(scene: THREE.Scene): Promise<SquirrelAv
       case 'd': moveState.turnRight = false; break;
     }
   });
+
+  // Test if focus is on the page
+  console.log('🎯 [Input] Document focus test - activeElement:', document.activeElement?.tagName);
 
   return avatar;
 }
@@ -118,8 +137,19 @@ export function updateSquirrelMovement(deltaTime: number) {
   mesh.position.x = Math.max(-100, Math.min(100, mesh.position.x));
   mesh.position.z = Math.max(-100, Math.min(100, mesh.position.z));
 
+  // Protect against NaN positions (causes blue screen crash)
+  if (isNaN(mesh.position.x) || isNaN(mesh.position.y) || isNaN(mesh.position.z)) {
+    console.error('🚨 [Avatar] Position became NaN! Resetting to safe position');
+    mesh.position.set(50, 2, 50);
+    return;
+  }
+
   // Update y-position to stay grounded
   getTerrainHeight(mesh.position.x, mesh.position.z).then((terrainHeight) => {
+    if (isNaN(terrainHeight) || terrainHeight < 0 || terrainHeight > 10) {
+      console.warn('⚠️ [Avatar] Invalid terrain height:', terrainHeight, 'using fallback');
+      terrainHeight = 2;
+    }
     mesh.position.y = terrainHeight;
   }).catch((error) => {
     console.error('[Log] Failed to update squirrel height:', error);
