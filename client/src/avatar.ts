@@ -129,39 +129,26 @@ export function updateSquirrelMovement(deltaTime: number) {
     mesh.rotation.y -= turnSpeed * deltaTime;
   }
 
-  // Handle movement (W/S) with detailed debugging
+  // Handle movement (W/S) - use rotation-based direction (more reliable than getWorldDirection)
   if (moveState.forward || moveState.backward) {
-    const direction = new THREE.Vector3();
-    mesh.getWorldDirection(direction); // Get facing direction
+    // Calculate direction from rotation (avoids Three.js matrix corruption issues)
+    const direction = new THREE.Vector3(
+      Math.sin(mesh.rotation.y),
+      0,
+      Math.cos(mesh.rotation.y)
+    );
     
-    console.log(`🧭 [Debug] Raw direction:`, direction.x, direction.y, direction.z);
-    
-    direction.y = 0;
-    
-    console.log(`🧭 [Debug] Direction after y=0:`, direction.x, direction.y, direction.z);
-    
-    if (direction.length() === 0) {
-      console.error('🚨 [Debug] Direction vector has zero length!');
-      direction.set(0, 0, -1); // Default forward direction
-    }
-    
+    // Ensure direction is normalized (should be by construction, but safety first)
     direction.normalize();
     
-    console.log(`🧭 [Debug] Normalized direction:`, direction.x, direction.y, direction.z);
-    
     const moveDistance = moveSpeed * deltaTime;
-    console.log(`🏃 [Debug] Move distance:`, moveDistance, `(speed: ${moveSpeed}, deltaTime: ${deltaTime})`);
 
     if (moveState.forward) {
-      console.log(`🏃 [Debug] Moving forward by:`, direction.x * moveDistance, direction.y * moveDistance, direction.z * moveDistance);
       mesh.position.addScaledVector(direction, moveDistance); // Forward (W)
     }
     if (moveState.backward) {
-      console.log(`🔙 [Debug] Moving backward by:`, direction.x * -moveDistance, direction.y * -moveDistance, direction.z * -moveDistance);
       mesh.position.addScaledVector(direction, -moveDistance); // Backward (S)
     }
-    
-    console.log(`📍 [Debug] Position after movement:`, mesh.position.x, mesh.position.y, mesh.position.z);
   }
 
   // Check if position actually changed
@@ -204,12 +191,13 @@ export function updateSquirrelCamera(camera: THREE.PerspectiveCamera) {
   const mesh = avatar.mesh;
   const offsetDistance = 5; // Units behind
   const offsetHeight = 3; // Units above
-  const direction = new THREE.Vector3();
   
-  // Get squirrel's facing direction
-  mesh.getWorldDirection(direction);
-  direction.y = 0;
-  direction.normalize();
+  // Calculate direction from rotation (more reliable than getWorldDirection)
+  const direction = new THREE.Vector3(
+    Math.sin(mesh.rotation.y),
+    0,
+    Math.cos(mesh.rotation.y)
+  );
   
   // Position camera behind and above
   const cameraPosition = mesh.position.clone()
