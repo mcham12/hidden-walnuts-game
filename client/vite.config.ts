@@ -34,9 +34,11 @@ export default defineConfig(({ mode }) => {
     throw new Error("VITE_API_URL must be set in production!");
   }
 
-  return {
+    return {
     publicDir: '../public', // Point to game root's public directory
+    
 
+    
     build: {
       outDir: 'dist',
       // Add source maps for better debugging
