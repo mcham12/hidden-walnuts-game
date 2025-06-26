@@ -36,6 +36,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     publicDir: '../public', // Point to game root's public directory
+
     build: {
       outDir: 'dist',
       // Add source maps for better debugging
@@ -47,10 +48,15 @@ export default defineConfig(({ mode }) => {
         }
       },
       // Ensure public assets are copied to dist
-      assetsInclude: ['**/*.glb', '**/*.txt']
+      assetsInclude: ['**/*.glb', '**/*.txt'],
+      // CHEN & ZERO'S FIX: Enable CommonJS to ES6 conversion
+      commonjsOptions: {
+        include: [/node_modules/, /src/]
+      }
     },
-    // Explicitly define environment variables
+    // Explicitly define environment variables + CommonJS support
     define: {
+      global: 'globalThis', // Fix global reference issues for CommonJS
       'import.meta.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL),
       'import.meta.env.MODE': JSON.stringify(mode),
       'import.meta.env.DEV': JSON.stringify(mode === 'development'),
