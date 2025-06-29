@@ -1,11 +1,10 @@
 // Player Entity Factory - Clean entity creation with all components
 
 import { Entity, PositionComponent, RotationComponent, RenderComponent, NetworkComponent } from '../ecs';
-import { Vector3, Rotation, EntityId } from '../core/types';
+import { Vector3, Rotation } from '../core/types';
 import { ISceneManager, IAssetManager } from '../GameComposition';
 import { ITerrainService } from '../services/TerrainService';
 import { Logger, LogCategory } from '../core/Logger';
-import * as THREE from 'three';
 
 export class PlayerFactory {
   constructor(
@@ -129,24 +128,5 @@ export class PlayerFactory {
     return entity;
   }
 
-  private async calculateSafeSpawnPosition(): Promise<Vector3> {
-    // Calculate a spawn position that's above terrain
-    const maxAttempts = 10;
-    
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const x = (Math.random() - 0.5) * 50; // Random position in 50x50 area
-      const z = (Math.random() - 0.5) * 50;
-      
-      try {
-        const terrainHeight = await this.terrainService.getTerrainHeight(x, z);
-        return new Vector3(x, terrainHeight + 2, z); // 2 units above terrain
-      } catch (error) {
-        Logger.warn(LogCategory.PLAYER, `Spawn position attempt ${attempt + 1} failed: ${error}`);
-      }
-    }
-    
-    // Fallback to origin if all attempts fail
-    Logger.warn(LogCategory.PLAYER, 'Using fallback spawn position at origin');
-    return new Vector3(0, 5, 0);
-  }
+
 } 

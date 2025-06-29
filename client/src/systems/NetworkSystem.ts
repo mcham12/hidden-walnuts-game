@@ -3,7 +3,7 @@
 import { System, Entity, NetworkComponent } from '../ecs';
 import { EventBus, GameEvents } from '../core/EventBus';
 import { Vector3, Rotation } from '../core/types';
-import { API_BASE } from '../main';
+
 import { Logger, LogCategory } from '../core/Logger';
 
 interface NetworkMessage {
@@ -42,7 +42,7 @@ export class NetworkSystem extends System {
       this.localSquirrelId = crypto.randomUUID();
       
       // Get authentication token
-      const authResponse = await fetch(`${API_BASE}/join?squirrelId=${this.localSquirrelId}`, {
+      const authResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8787'}/join?squirrelId=${this.localSquirrelId}`, {
         method: 'POST'
       });
       
@@ -51,7 +51,8 @@ export class NetworkSystem extends System {
       }
       
       const authData = await authResponse.json();
-      const wsUrl = `${API_BASE.replace('http', 'ws')}/ws?squirrelId=${authData.squirrelId}&token=${authData.token}`;
+      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+      const wsUrl = `${apiBase.replace('http', 'ws')}/ws?squirrelId=${authData.squirrelId}&token=${authData.token}`;
       
       Logger.info(LogCategory.NETWORK, '🌐 Connecting to: ' + wsUrl);
       
@@ -217,15 +218,7 @@ export class NetworkSystem extends System {
     }
   }
 
-  private findRemotePlayer(squirrelId: string): Entity | null {
-    for (const entity of this.entities.values()) {
-      const networkComponent = entity.getComponent<NetworkComponent>('network');
-      if (networkComponent && networkComponent.squirrelId === squirrelId && !networkComponent.isLocalPlayer) {
-        return entity;
-      }
-    }
-    return null;
-  }
+
 
   private startHeartbeat(): void {
     this.heartbeatInterval = setInterval(() => {

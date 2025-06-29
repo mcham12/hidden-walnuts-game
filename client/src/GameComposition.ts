@@ -327,12 +327,7 @@ export class GameManager {
     await this.sceneManager.loadTerrain();
     await this.sceneManager.loadForest();
     
-    // Movement and game configuration with all required properties
-    const movementConfig = new MovementConfig(8, 2.5, 5.0); // moveSpeed, turnSpeed, interpolationSpeed
-    const worldBounds = new WorldBounds(-100, 100, 0, 50, -100, 100);
-
-    // Initialize render adapter for RenderSystem
-    const renderAdapter = new ThreeJSRenderAdapter();
+    // Systems are resolved from container with their configurations
 
     // Get systems from container instead of creating new instances
     this.movementSystem = container.resolve<MovementSystem>(ServiceTokens.MOVEMENT_SYSTEM);

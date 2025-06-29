@@ -204,7 +204,7 @@ export class PlayerManager extends System {
 
   // Cleanup
   destroy(): void {
-    for (const [squirrelId, player] of this.remotePlayers) {
+    for (const [, player] of this.remotePlayers) {
       if (player.mesh && this.scene) {
         this.scene.remove(player.mesh);
       }

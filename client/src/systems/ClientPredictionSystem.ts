@@ -30,16 +30,6 @@ export class ClientPredictionSystem extends System {
   private terrainService: any; // TerrainService for height checks
   
   // Prediction and rollback state
-  private pendingInputs: Array<{
-    sequenceNumber: number;
-    input: InputComponent;
-    timestamp: number;
-    position: Vector3;
-    rotation: Rotation;
-  }> = [];
-  
-  private inputSequence = 0;
-  private lastServerUpdate = 0;
   
   constructor(
     eventBus: EventBus,
