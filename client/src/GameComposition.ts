@@ -2,7 +2,7 @@
 
 import { container, ServiceTokens } from './core/Container';
 import { EventBus } from './core/EventBus';
-import { EntityManager, Entity } from './ecs';
+import { EntityManager, Entity, PositionComponent, RotationComponent } from './ecs';
 import { MovementSystem } from './systems/MovementSystem';
 import { InterpolationSystem } from './systems/InterpolationSystem';
 import { RenderSystem } from './systems/RenderSystem';
@@ -78,6 +78,8 @@ export interface ISceneManager {
   getCamera(): import('three').PerspectiveCamera;
   getRenderer(): import('three').WebGLRenderer;
   loadTerrain(): Promise<void>;
+  loadForest(): Promise<void>;
+  updateCameraToFollowPlayer(playerPosition: { x: number; y: number; z: number }, playerRotation: { y: number }): void;
 }
 
 export class SceneManager implements ISceneManager {
@@ -97,17 +99,22 @@ export class SceneManager implements ISceneManager {
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.Fog(0x87CEEB, 10, 100);
 
-    // Camera setup
+    // Camera setup - wider field of view and extended far plane
     this.camera = new THREE.PerspectiveCamera(
       75,
       canvas.clientWidth / canvas.clientHeight,
       0.1,
-      1000
+      2000  // Extended to see the entire 200x200 terrain
     );
+    
+    // CHEN'S FIX: Set initial camera position (much higher up to see the entire forest)
+    this.camera.position.set(0, 50, 50);
+    this.camera.lookAt(0, 0, 0);
 
-    // Renderer setup
+    // Renderer setup with sky blue background
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+    this.renderer.setClearColor(0x87CEEB); // Sky blue background
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -122,6 +129,13 @@ export class SceneManager implements ISceneManager {
     directionalLight.shadow.mapSize.height = 2048;
     this.scene.add(directionalLight);
 
+    // CHEN'S DEBUG: Add a bright red cube at origin as reference point
+    const debugGeometry = new THREE.BoxGeometry(5, 5, 5);
+    const debugMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+    const debugCube = new THREE.Mesh(debugGeometry, debugMaterial);
+    debugCube.position.set(0, 2.5, 0); // Slightly above ground
+    this.scene.add(debugCube);
+
     this.eventBus.emit('scene.initialized', null);
   }
 
@@ -133,9 +147,49 @@ export class SceneManager implements ISceneManager {
     this.eventBus.emit('terrain.loaded');
   }
 
+  async loadForest(): Promise<void> {
+    // CHEN'S FIX: Load forest objects (trees and shrubs)
+    const { Logger, LogCategory } = await import('./core/Logger');
+    try {
+      const { createForest } = await import('./forest');
+      const forestObjects = await createForest();
+      
+      // Add all forest objects to the scene
+      forestObjects.forEach(obj => this.scene.add(obj));
+      
+      Logger.info(LogCategory.TERRAIN, `Added ${forestObjects.length} forest objects to scene`);
+      this.eventBus.emit('forest.loaded');
+    } catch (error) {
+      Logger.error(LogCategory.TERRAIN, 'Failed to load forest objects', error);
+    }
+  }
+
   getScene(): import('three').Scene { return this.scene; }
   getCamera(): import('three').PerspectiveCamera { return this.camera; }
   getRenderer(): import('three').WebGLRenderer { return this.renderer; }
+
+  // CHEN'S FIX: Add camera follow functionality
+  updateCameraToFollowPlayer(playerPosition: { x: number; y: number; z: number }, playerRotation: { y: number }): void {
+    if (!this.camera) return;
+    
+    // Position camera behind and above the player
+    const distance = 8;
+    const height = 5;
+    const angle = playerRotation.y;
+    
+    const cameraX = playerPosition.x - Math.sin(angle) * distance;
+    const cameraZ = playerPosition.z - Math.cos(angle) * distance;
+    const cameraY = playerPosition.y + height;
+    
+    // Smooth camera movement
+    this.camera.position.lerp(
+      { x: cameraX, y: cameraY, z: cameraZ } as any,
+      0.1
+    );
+    
+    // Look at the player
+    this.camera.lookAt(playerPosition.x, playerPosition.y + 1, playerPosition.z);
+  }
 }
 
 // Asset Management - Single Responsibility
@@ -157,9 +211,7 @@ export class AssetManager implements IAssetManager {
     const loader = new GLTFLoader();
     
     // CHEN'S FIX: Use correct asset path for both dev and production
-    const assetPath = import.meta.env.PROD 
-      ? '/assets/models/squirrel.glb'      // Production path
-      : '/public/assets/models/squirrel.glb'; // Development path
+    const assetPath = '/assets/models/squirrel.glb'; // Works in both dev and production
     
     return new Promise((resolve, reject) => {
       loader.load(
@@ -255,84 +307,91 @@ export class GameManager {
   }
 
   async initialize(canvas: HTMLCanvasElement): Promise<void> {
+    // Initialize services
+    this.entityManager = container.resolve<EntityManager>(ServiceTokens.ENTITY_MANAGER);
+    this.sceneManager = container.resolve<ISceneManager>(ServiceTokens.SCENE_MANAGER);
+    this.inputManager = container.resolve<IInputManager>(ServiceTokens.INPUT_MANAGER);
+    this.eventBus = container.resolve<EventBus>(ServiceTokens.EVENT_BUS);
+
+    // Initialize scene first
+    await this.sceneManager.initialize(canvas);
+    
+    // Initialize terrain service EARLY before systems
+    const terrainService = container.resolve(ServiceTokens.TERRAIN_SERVICE) as any;
+    await terrainService.initialize();
+
+    // Wait for scene to be fully ready
+    await this.waitForSceneReady();
+
+    // Initialize terrain and forest
+    await this.sceneManager.loadTerrain();
+    await this.sceneManager.loadForest();
+    
+    // Movement and game configuration with all required properties
+    const movementConfig = new MovementConfig(8, 2.5, 5.0); // moveSpeed, turnSpeed, interpolationSpeed
+    const worldBounds = new WorldBounds(-100, 100, 0, 50, -100, 100);
+
+    // Initialize render adapter for RenderSystem
+    const renderAdapter = new ThreeJSRenderAdapter();
+
+    // Get systems from container instead of creating new instances
+    this.movementSystem = container.resolve<MovementSystem>(ServiceTokens.MOVEMENT_SYSTEM);
+    this.interpolationSystem = container.resolve<InterpolationSystem>(ServiceTokens.INTERPOLATION_SYSTEM);
+    this.renderSystem = container.resolve<RenderSystem>(ServiceTokens.RENDER_SYSTEM);
+    this.networkSystem = container.resolve<NetworkSystem>(ServiceTokens.NETWORK_SYSTEM);
+    this.networkTickSystem = container.resolve<NetworkTickSystem>(ServiceTokens.NETWORK_TICK_SYSTEM);
+    this.clientPredictionSystem = container.resolve<ClientPredictionSystem>(ServiceTokens.CLIENT_PREDICTION_SYSTEM);
+    this.areaOfInterestSystem = container.resolve<AreaOfInterestSystem>(ServiceTokens.AREA_OF_INTEREST_SYSTEM);
+    this.networkCompressionSystem = container.resolve<NetworkCompressionSystem>(ServiceTokens.NETWORK_COMPRESSION_SYSTEM);
+    this.playerManager = new PlayerManager(this.eventBus);
+    this.inputSystem = new InputSystem(this.eventBus, this.inputManager);
+
+    // Register systems with entity manager
+    this.entityManager.addSystem(this.movementSystem);
+    this.entityManager.addSystem(this.interpolationSystem);
+    this.entityManager.addSystem(this.renderSystem);
+    this.entityManager.addSystem(this.networkSystem);
+    this.entityManager.addSystem(this.networkTickSystem);
+    this.entityManager.addSystem(this.clientPredictionSystem);
+    this.entityManager.addSystem(this.areaOfInterestSystem);
+    this.entityManager.addSystem(this.networkCompressionSystem);
+    this.entityManager.addSystem(this.playerManager);
+    this.entityManager.addSystem(this.inputSystem);
+
+    // Create local player AFTER terrain is loaded and systems are initialized
+    await this.createLocalPlayer();
+
+    // Start input listening
+    this.inputManager.startListening();
+
+    // CHEN'S FIX: Setup WebSocket event handling BEFORE attempting connection
+    this.eventBus.subscribe('network.websocket_ready', (websocket: WebSocket) => {
+      this.networkTickSystem.setWebSocket(websocket);
+      this.networkCompressionSystem.setWebSocket(websocket);
+      
+      // CHEN'S FIX: Start independent network timer - Source Engine style!
+      this.networkTickSystem.startNetworkTimer();
+      
+      Logger.debug(LogCategory.NETWORK, 'WebSocket properly wired to systems via event');
+    });
+
+    // CHEN'S FIX: Complete scene setup BEFORE network connection
+    await this.setupScene();
+    Logger.info(LogCategory.CORE, 'Scene initialized');
+
+    // CHEN'S FIX: Connect to multiplayer LAST, after everything is ready
     try {
-      Logger.info(LogCategory.CORE, 'Game started with A++ architecture!');
-      
-      await this.sceneManager.initialize(canvas);
-      
-      // Wait for scene to be fully ready
-      await this.waitForSceneReady();
-      
-      await this.sceneManager.loadTerrain();
-      
-      // ZERO'S FIX: Initialize terrain service for proper player spawning
-      const terrainService = container.resolve(ServiceTokens.TERRAIN_SERVICE) as any;
-      await terrainService.initialize();
-      
-      this.inputManager.startListening();
-      
-      // Setup ECS systems IN GUARANTEED ORDER
-      this.entityManager.addSystem(this.inputSystem);
-      this.entityManager.addSystem(this.clientPredictionSystem); // Immediate local input
-      this.entityManager.addSystem(this.movementSystem); // Remote players only now
-      this.entityManager.addSystem(this.interpolationSystem);
-      this.entityManager.addSystem(this.areaOfInterestSystem); // Spatial optimization
-      this.entityManager.addSystem(this.renderSystem);
-      this.entityManager.addSystem(this.networkCompressionSystem); // Message batching
-      this.entityManager.addSystem(this.networkTickSystem); // Controlled network updates
-      this.entityManager.addSystem(this.networkSystem);
-      this.entityManager.addSystem(this.playerManager);
-
-      // Set explicit execution order - OPTIMIZED FOR MULTIPLAYER GAMES
-      this.entityManager.setSystemExecutionOrder([
-        'InputSystem',              // Capture input
-        'ClientPredictionSystem',   // Immediate local movement
-        'MovementSystem',           // Remote player movement only
-        'InterpolationSystem',      // Smooth remote players
-        'AreaOfInterestSystem',     // Spatial optimization (distance-based culling)
-        'RenderSystem',             // Visual updates
-        'NetworkCompressionSystem', // Message batching and compression
-        'NetworkTickSystem',        // Rate-limited network updates
-        'NetworkSystem',            // Network message handling
-        'PlayerManager'             // Player lifecycle
-      ]);
-
-      // Ensure all systems are registered before creating entities
-      await this.createLocalPlayer();
-
-      // CHEN'S FIX: Setup WebSocket event handling BEFORE attempting connection
-      this.eventBus.subscribe('network.websocket_ready', (websocket: WebSocket) => {
-        this.networkTickSystem.setWebSocket(websocket);
-        this.networkCompressionSystem.setWebSocket(websocket);
-        
-        // CHEN'S FIX: Start independent network timer - Source Engine style!
-        this.networkTickSystem.startNetworkTimer();
-        
-        Logger.debug(LogCategory.NETWORK, 'WebSocket properly wired to systems via event');
-      });
-
-      // CHEN'S FIX: Complete scene setup BEFORE network connection
-      await this.setupScene();
-      Logger.info(LogCategory.CORE, 'Scene initialized');
-
-      // CHEN'S FIX: Connect to multiplayer LAST, after everything is ready
-      try {
-        await this.networkSystem.connect();
-        Logger.info(LogCategory.NETWORK, 'Multiplayer connection established');
-      } catch (error) {
-        Logger.warn(LogCategory.NETWORK, 'Multiplayer connection failed, continuing in offline mode', error);
-        // Continue without multiplayer - graceful degradation
-      }
-
-      this.eventBus.emit('game.initialized');
-      Logger.info(LogCategory.CORE, 'Game systems initialized');
-      
-      this.start();
-      
+      await this.networkSystem.connect();
+      Logger.info(LogCategory.NETWORK, 'Multiplayer connection established');
     } catch (error) {
-      Logger.error(LogCategory.CORE, 'System Error', error);
-      throw error; // Re-throw to trigger error screen
+      Logger.warn(LogCategory.NETWORK, 'Multiplayer connection failed, continuing in offline mode', error);
+      // Continue without multiplayer - graceful degradation
     }
+
+    this.eventBus.emit('game.initialized');
+    Logger.info(LogCategory.CORE, 'Game systems initialized');
+    
+    this.start();
   }
 
   private async waitForSceneReady(): Promise<void> {
@@ -367,10 +426,13 @@ export class GameManager {
   private async createLocalPlayer(): Promise<void> {
     const playerFactory = container.resolve(ServiceTokens.PLAYER_FACTORY) as any;
     
-    this.localPlayer = await playerFactory.createLocalPlayer();
+    // Generate a unique player ID
+    const playerId = `player-${crypto.randomUUID()}`;
+    this.localPlayer = await playerFactory.createLocalPlayer(playerId);
     
     if (this.localPlayer) {
       Logger.info(LogCategory.PLAYER, '🐿️ Local player created with ID:', this.localPlayer.id.value);
+      this.entityManager.addEntity(this.localPlayer);
     }
   }
 
@@ -444,10 +506,27 @@ export class GameManager {
         return;
       }
       
+      // CHEN'S FIX: Update camera to follow local player
+      this.updateCameraToFollowLocalPlayer();
+      
       renderer.render(scene, camera);
     } catch (error) {
       Logger.error(LogCategory.RENDER, '🚨 [GameLoop] Render failed:', error);
       throw error;
+    }
+  }
+
+  private updateCameraToFollowLocalPlayer(): void {
+    if (!this.localPlayer) return;
+    
+    const position = this.localPlayer.getComponent<PositionComponent>('position');
+    const rotation = this.localPlayer.getComponent<RotationComponent>('rotation');
+    
+    if (position && rotation) {
+      this.sceneManager.updateCameraToFollowPlayer(
+        { x: position.value.x, y: position.value.y, z: position.value.z },
+        { y: rotation.value.y }
+      );
     }
   }
 
@@ -552,7 +631,8 @@ export function configureServices(): void {
     new MovementSystem(
       container.resolve<EventBus>(ServiceTokens.EVENT_BUS),
       MovementConfig.default(),
-      WorldBounds.default()
+      WorldBounds.default(),
+      container.resolve(ServiceTokens.TERRAIN_SERVICE)
     )
   );
 
@@ -595,8 +675,10 @@ export function configureServices(): void {
   container.registerSingleton(ServiceTokens.CLIENT_PREDICTION_SYSTEM, () => 
     new ClientPredictionSystem(
       container.resolve<EventBus>(ServiceTokens.EVENT_BUS),
+      container.resolve<IInputManager>(ServiceTokens.INPUT_MANAGER) as InputManager,
       MovementConfig.default(),
-      WorldBounds.default()
+      WorldBounds.default(),
+      container.resolve(ServiceTokens.TERRAIN_SERVICE)
     )
   );
 

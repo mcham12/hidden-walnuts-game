@@ -4,21 +4,24 @@ import { System, Entity, NetworkComponent } from '../ecs';
 import { EventBus, GameEvents } from '../core/EventBus';
 import { Vector3, Rotation } from '../core/types';
 import { API_BASE } from '../main';
-import { NetworkLog } from '../core/Logger';
+import { Logger, LogCategory } from '../core/Logger';
 
 interface NetworkMessage {
-  type: 'position_update' | 'player_joined' | 'player_left' | 'heartbeat';
+  type: 'position_update' | 'player_joined' | 'player_left' | 'heartbeat' | 'player_join' | 'player_update' | 'world_state';
   squirrelId: string;
   data?: any;
   timestamp: number;
+  position?: { x: number; y: number; z: number };
+  rotationY?: number;
 }
 
 export class NetworkSystem extends System {
   private websocket: WebSocket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
-  private heartbeatInterval: number | null = null;
+  private heartbeatInterval: any = null;
   private isConnecting = false;
+  private localSquirrelId: string | null = null;
   
   constructor(eventBus: EventBus) {
     super(eventBus, ['network'], 'NetworkSystem');
@@ -35,8 +38,11 @@ export class NetworkSystem extends System {
     this.isConnecting = true;
     
     try {
+      // Generate unique squirrel ID
+      this.localSquirrelId = crypto.randomUUID();
+      
       // Get authentication token
-      const authResponse = await fetch(`${API_BASE}/join?squirrelId=${crypto.randomUUID()}`, {
+      const authResponse = await fetch(`${API_BASE}/join?squirrelId=${this.localSquirrelId}`, {
         method: 'POST'
       });
       
@@ -47,13 +53,13 @@ export class NetworkSystem extends System {
       const authData = await authResponse.json();
       const wsUrl = `${API_BASE.replace('http', 'ws')}/ws?squirrelId=${authData.squirrelId}&token=${authData.token}`;
       
-      NetworkLog.info('Connecting to: ' + wsUrl);
+      Logger.info(LogCategory.NETWORK, '🌐 Connecting to: ' + wsUrl);
       
       this.websocket = new WebSocket(wsUrl);
       this.setupWebSocketHandlers();
       
     } catch (error) {
-      NetworkLog.error('Connection failed', error);
+      Logger.error(LogCategory.NETWORK, '❌ Connection failed', error);
       this.scheduleReconnect();
     } finally {
       this.isConnecting = false;
@@ -64,12 +70,12 @@ export class NetworkSystem extends System {
     if (!this.websocket) return;
 
     this.websocket.onopen = () => {
-      NetworkLog.info('Connected to multiplayer server');
+      Logger.info(LogCategory.NETWORK, '✅ Connected to multiplayer server');
       this.reconnectAttempts = 0;
       this.startHeartbeat();
       this.eventBus.emit(GameEvents.MULTIPLAYER_CONNECTED);
       
-      // ZERO'S FIX: Notify systems that websocket is ready
+      // Notify systems that websocket is ready
       this.eventBus.emit('network.websocket_ready', this.websocket);
     };
 
@@ -78,96 +84,143 @@ export class NetworkSystem extends System {
         const message: NetworkMessage = JSON.parse(event.data);
         this.handleNetworkMessage(message);
       } catch (error) {
-        NetworkLog.error('Failed to parse message', error);
+        Logger.error(LogCategory.NETWORK, '❌ Failed to parse message', error);
       }
     };
 
     this.websocket.onclose = () => {
-      NetworkLog.info('Connection closed');
+      Logger.info(LogCategory.NETWORK, '🔴 Connection closed');
       this.stopHeartbeat();
       this.scheduleReconnect();
     };
 
     this.websocket.onerror = (error) => {
-      NetworkLog.error('WebSocket error', error);
+      Logger.error(LogCategory.NETWORK, '⚠️ WebSocket error', error);
     };
   }
 
   private handleNetworkMessage(message: NetworkMessage): void {
+    // Skip our own messages
+    if (message.squirrelId === this.localSquirrelId) {
+      return;
+    }
+
+    Logger.debug(LogCategory.NETWORK, `📨 Received ${message.type} from ${message.squirrelId}`);
+
     switch (message.type) {
       case 'position_update':
+      case 'player_update':
         this.handleRemotePlayerUpdate(message);
         break;
       case 'player_joined':
+      case 'player_join':
         this.handlePlayerJoined(message);
         break;
       case 'player_left':
         this.handlePlayerLeft(message);
         break;
+      case 'world_state':
+        this.handleWorldState(message);
+        break;
       case 'heartbeat':
         // Server heartbeat - connection is alive
         break;
+      default:
+        Logger.debug(LogCategory.NETWORK, `Unknown message type: ${message.type}`);
     }
   }
 
   private handleRemotePlayerUpdate(message: NetworkMessage): void {
-    const { squirrelId, data } = message;
+    const { squirrelId, data, position, rotationY } = message;
     
-    // Find existing remote player entity
-    const remotePlayer = this.findRemotePlayer(squirrelId);
+    // Extract position and rotation from either data object or direct properties
+    const playerPosition = data?.position || position || { x: 0, y: 2, z: 0 };
+    const playerRotation = data?.rotation?.y || rotationY || 0;
     
-    if (remotePlayer && data.position && data.rotation) {
-      // Update interpolation targets
-      this.eventBus.emit(GameEvents.REMOTE_PLAYER_UPDATED, {
-        entityId: remotePlayer.id.value,
-        position: new Vector3(data.position.x, data.position.y, data.position.z),
-        rotation: Rotation.fromRadians(data.rotation.y)
-      });
-    }
+    // Emit player state for PlayerManager and other systems
+    this.eventBus.emit('remote_player_state', {
+      squirrelId,
+      position: playerPosition,
+      rotation: { x: 0, y: playerRotation, z: 0, w: 1 },
+      velocity: data?.velocity,
+      timestamp: message.timestamp || performance.now()
+    });
+
+    Logger.debugExpensive(LogCategory.NETWORK, () => 
+      `🎮 Updated player ${squirrelId} at (${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)})`
+    );
   }
 
   private handlePlayerJoined(message: NetworkMessage): void {
-    const { squirrelId, data } = message;
+    const { squirrelId, data, position, rotationY } = message;
     
-    NetworkLog.debug('Remote player joined: ' + squirrelId);
+    Logger.info(LogCategory.NETWORK, `🎯 Remote player joined: ${squirrelId}`);
     
-    this.eventBus.emit(GameEvents.REMOTE_PLAYER_JOINED, {
+    // Extract position and rotation from either data object or direct properties
+    const playerPosition = data?.position || position || { x: 0, y: 2, z: 0 };
+    const playerRotation = rotationY || data?.rotationY || 0;
+
+    // Emit player state to create the remote player
+    this.eventBus.emit('remote_player_state', {
       squirrelId,
-      position: new Vector3(data.position.x, data.position.y, data.position.z),
-      rotation: Rotation.fromRadians(data.rotation.y)
+      position: playerPosition,
+      rotation: { x: 0, y: playerRotation, z: 0, w: 1 },
+      timestamp: message.timestamp || performance.now()
     });
   }
 
   private handlePlayerLeft(message: NetworkMessage): void {
     const { squirrelId } = message;
     
-    NetworkLog.debug('Remote player left: ' + squirrelId);
+    Logger.info(LogCategory.NETWORK, `👋 Remote player left: ${squirrelId}`);
     
-    this.eventBus.emit(GameEvents.REMOTE_PLAYER_LEFT, {
+    this.eventBus.emit('player_disconnected', {
       squirrelId
     });
+  }
+
+  private handleWorldState(message: NetworkMessage): void {
+    Logger.info(LogCategory.NETWORK, '🌍 Received world state from server');
+    
+    // The world state contains initial terrain seed, map state, etc.
+    // For now, we're primarily interested in any existing players
+    if (message.data?.activePlayers) {
+      for (const [squirrelId, playerData] of Object.entries(message.data.activePlayers)) {
+        if (squirrelId !== this.localSquirrelId) {
+          this.handlePlayerJoined({
+            type: 'player_joined',
+            squirrelId,
+            position: (playerData as any).position,
+            rotationY: (playerData as any).rotationY,
+            timestamp: performance.now()
+          } as NetworkMessage);
+        }
+      }
+    }
   }
 
   private handleLocalPlayerMove(data: any): void {
     if (this.websocket?.readyState === WebSocket.OPEN) {
       const message: NetworkMessage = {
-        type: 'position_update',
-        squirrelId: data.entityId,
-        data: {
-          position: { x: data.position.x, y: data.position.y, z: data.position.z },
-          rotation: { y: data.rotation.y }
-        },
+        type: 'player_update',
+        squirrelId: this.localSquirrelId || 'unknown',
+        position: { x: data.position.x, y: data.position.y, z: data.position.z },
+        rotationY: data.rotation.y,
         timestamp: performance.now()
       };
       
       this.websocket.send(JSON.stringify(message));
+      
+      Logger.debugExpensive(LogCategory.NETWORK, () => 
+        `📤 Sent position update: (${data.position.x.toFixed(1)}, ${data.position.z.toFixed(1)})`
+      );
     }
   }
 
   private findRemotePlayer(squirrelId: string): Entity | null {
     for (const entity of this.entities.values()) {
       const networkComponent = entity.getComponent<NetworkComponent>('network');
-      if (networkComponent && !networkComponent.isLocalPlayer && networkComponent.squirrelId === squirrelId) {
+      if (networkComponent && networkComponent.squirrelId === squirrelId && !networkComponent.isLocalPlayer) {
         return entity;
       }
     }
@@ -175,16 +228,15 @@ export class NetworkSystem extends System {
   }
 
   private startHeartbeat(): void {
-    this.heartbeatInterval = window.setInterval(() => {
+    this.heartbeatInterval = setInterval(() => {
       if (this.websocket?.readyState === WebSocket.OPEN) {
-        const heartbeat: NetworkMessage = {
+        this.websocket.send(JSON.stringify({
           type: 'heartbeat',
-          squirrelId: 'local',
+          squirrelId: this.localSquirrelId,
           timestamp: performance.now()
-        };
-        this.websocket.send(JSON.stringify(heartbeat));
+        }));
       }
-    }, 30000); // 30 seconds
+    }, 30000); // Every 30 seconds
   }
 
   private stopHeartbeat(): void {
@@ -195,32 +247,23 @@ export class NetworkSystem extends System {
   }
 
   private scheduleReconnect(): void {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
-      
-      NetworkLog.info(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts + 1})`);
-      
-      setTimeout(() => {
-        this.reconnectAttempts++;
-        this.connect();
-      }, delay);
-    } else {
-      NetworkLog.error('Max reconnection attempts reached');
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      Logger.error(LogCategory.NETWORK, '💥 Max reconnection attempts reached');
+      return;
     }
-  }
 
-  // ZERO'S FIX: Proper websocket accessor instead of unsafe casting
-  getWebSocket(): WebSocket | null {
-    return this.websocket;
-  }
-
-  isConnected(): boolean {
-    return this.websocket?.readyState === WebSocket.OPEN;
+    this.reconnectAttempts++;
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+    
+    Logger.info(LogCategory.NETWORK, `🔄 Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+    
+    setTimeout(() => {
+      this.connect();
+    }, delay);
   }
 
   update(_deltaTime: number): void {
-    // NetworkSystem doesn't need frame updates - it's event-driven
-    // All logic happens in WebSocket event handlers
+    // NetworkSystem handles WebSocket events, no per-frame updates needed
   }
 
   disconnect(): void {

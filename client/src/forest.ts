@@ -21,11 +21,36 @@ export async function createForest(): Promise<THREE.Object3D[]> {
 
   // Fetch forest object positions from backend
   try {
-    const response = await fetch(`${API_BASE}/forest-objects`);
-    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}, Response: ${await response.text()}`);
-    const data = await response.json();
+    const fetchUrl = `${API_BASE}/forest-objects`;
+    Logger.info(LogCategory.TERRAIN, `Fetching forest objects from: ${fetchUrl}`);
+    
+    const response = await fetch(fetchUrl);
+    Logger.info(LogCategory.TERRAIN, `Forest response status: ${response.status}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      Logger.error(LogCategory.TERRAIN, `HTTP ${response.status}: ${errorText}`);
+      throw new Error(`HTTP error! Status: ${response.status}, Response: ${errorText}`);
+    }
+    
+    // Debug: Log raw response
+    const responseText = await response.text();
+    Logger.info(LogCategory.TERRAIN, `Forest raw response length: ${responseText.length} chars`);
+    Logger.info(LogCategory.TERRAIN, `Forest raw response preview: ${responseText.substring(0, 200)}...`);
+    
+    // Try to parse JSON
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      Logger.error(LogCategory.TERRAIN, `Forest JSON Parse Error: ${parseError instanceof Error ? parseError.message : 'Unknown parse error'}`);
+      Logger.error(LogCategory.TERRAIN, `Forest response that failed: ${responseText.substring(0, 500)}`);
+      throw parseError;
+    }
+    
     if (!Array.isArray(data)) throw new Error('Invalid forest objects data: not an array');
     forestObjects.push(...data);
+    Logger.info(LogCategory.TERRAIN, `Successfully loaded ${data.length} forest objects`);
     // Forest objects fetched
   } catch (error) {
     Logger.error(LogCategory.TERRAIN, 'Failed to fetch forest objects', error);

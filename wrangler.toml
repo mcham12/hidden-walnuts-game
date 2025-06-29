@@ -17,17 +17,17 @@ enabled = true
 ENVIRONMENT = "production"
 CYCLE_DURATION_SECONDS = "86400"
 
-# Durable Objects configuration
+# Durable Objects configuration (matching preview/production names)
 [[durable_objects.bindings]]
-name = "SQUIRREL_SESSION"
+name = "SQUIRREL"
 class_name = "SquirrelSession"
 
 [[durable_objects.bindings]]
-name = "FOREST_MANAGER"
+name = "FOREST"
 class_name = "ForestManager"
 
 [[durable_objects.bindings]]
-name = "WALNUT_REGISTRY"
+name = "WALNUTS"
 class_name = "WalnutRegistry"
 
 [[durable_objects.bindings]]

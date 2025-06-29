@@ -1,16 +1,21 @@
 // Movement System - Single Responsibility: Handle entity movement
 
-import { System, Entity, PositionComponent, RotationComponent, InputComponent, VelocityComponent } from '../ecs';
-import { EventBus, GameEvents } from '../core/EventBus';
-import { MovementConfig, WorldBounds } from '../core/types';
+import { System, Entity, PositionComponent, RotationComponent, InputComponent, RenderComponent } from '../ecs';
+import { EventBus } from '../core/EventBus';
+import { MovementConfig, WorldBounds, Vector3 } from '../core/types';
+import { Logger, LogCategory } from '../core/Logger';
 
 export class MovementSystem extends System {
+  private terrainService: any; // TerrainService for collision
+
   constructor(
     eventBus: EventBus,
     private config: MovementConfig,
-    private worldBounds: WorldBounds
+    private worldBounds: WorldBounds,
+    terrainService?: any // Add terrain service
   ) {
     super(eventBus, ['position', 'rotation', 'input'], 'MovementSystem');
+    this.terrainService = terrainService;
   }
 
   update(deltaTime: number): void {
@@ -19,7 +24,7 @@ export class MovementSystem extends System {
     }
   }
 
-  private updateEntityMovement(entity: Entity, deltaTime: number): void {
+  private async updateEntityMovement(entity: Entity, deltaTime: number): Promise<void> {
     // Skip local players - they're handled by ClientPredictionSystem
     const network = entity.getComponent<import('../ecs').NetworkComponent>('network');
     if (network?.isLocalPlayer) {
@@ -62,36 +67,42 @@ export class MovementSystem extends System {
     // Apply world bounds
     newPosition = this.worldBounds.clamp(newPosition);
 
-    // Update components if movement occurred
+    // TERRAIN COLLISION: Ensure remote players stay on terrain surface
+    if (moved && this.terrainService) {
+      try {
+        const terrainHeight = await this.terrainService.getTerrainHeight(newPosition.x, newPosition.z);
+        // Keep player 0.5 units above terrain (squirrel height)
+        newPosition = new Vector3(newPosition.x, Math.max(newPosition.y, terrainHeight + 0.5), newPosition.z);
+      } catch (error) {
+        Logger.warn(LogCategory.PLAYER, 'Failed to get terrain height for remote player, using minimum Y=1', error);
+        newPosition = new Vector3(newPosition.x, Math.max(newPosition.y, 1), newPosition.z);
+      }
+    }
+
+    // Update components
     if (moved) {
-      // Update position component
-      const positionComponent: PositionComponent = {
+      entity.addComponent<PositionComponent>({
         type: 'position',
         value: newPosition
-      };
-      entity.addComponent(positionComponent);
+      });
 
-      // Update rotation component
-      const rotationComponent: RotationComponent = {
+      entity.addComponent<RotationComponent>({
         type: 'rotation',
         value: newRotation
-      };
-      entity.addComponent(rotationComponent);
+      });
 
-      // Calculate and store velocity for other systems
-      const velocity = newPosition.add(position.value.multiply(-1)).multiply(1 / deltaTime);
-      const velocityComponent: VelocityComponent = {
-        type: 'velocity',
-        value: velocity
-      };
-      entity.addComponent(velocityComponent);
+      // Update render mesh position immediately
+      const renderComponent = entity.getComponent<RenderComponent>('render');
+      if (renderComponent?.mesh) {
+        renderComponent.mesh.position.set(newPosition.x, newPosition.y, newPosition.z);
+        renderComponent.mesh.rotation.y = newRotation.y;
+      }
 
-      // Emit movement event for other systems
-      this.eventBus.emit(GameEvents.PLAYER_MOVED, {
+      // Notify movement
+      this.eventBus.emit('entity_moved', {
         entityId: entity.id,
         position: newPosition,
-        rotation: newRotation,
-        velocity: velocity
+        rotation: newRotation
       });
     }
   }

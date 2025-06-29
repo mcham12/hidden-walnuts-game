@@ -17,23 +17,44 @@ export class TerrainService implements ITerrainService {
   async initialize(): Promise<void> {
     try {
       Logger.info(LogCategory.TERRAIN, 'Initializing terrain height map...');
+      Logger.info(LogCategory.TERRAIN, `API Base URL: ${this.apiBase}`);
       
       // ZERO'S FIX: Add timeout to prevent hanging
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
       
       // Get terrain seed from API
-      const response = await fetch(`${this.apiBase}/terrain-seed`, {
+      const fetchUrl = `${this.apiBase}/terrain-seed`;
+      Logger.info(LogCategory.TERRAIN, `Fetching from: ${fetchUrl}`);
+      
+      const response = await fetch(fetchUrl, {
         signal: controller.signal
       });
       clearTimeout(timeoutId);
       
+      Logger.info(LogCategory.TERRAIN, `Response status: ${response.status}`);
+      Logger.info(LogCategory.TERRAIN, `Response headers: ${JSON.stringify(Object.fromEntries(response.headers))}`);
+      
       if (!response.ok) {
+        const errorText = await response.text();
+        Logger.error(LogCategory.TERRAIN, `HTTP ${response.status}: ${errorText}`);
         throw new Error(`Failed to fetch terrain seed: ${response.status}`);
       }
       
-      const data = await response.json();
-      Logger.debug(LogCategory.TERRAIN, `Terrain seed: ${data.seed}`);
+      // Debug: Log the raw response text first
+      const responseText = await response.text();
+      Logger.info(LogCategory.TERRAIN, `Raw response: ${responseText}`);
+      
+      // Try to parse as JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        Logger.debug(LogCategory.TERRAIN, `Terrain seed: ${data.seed}`);
+      } catch (parseError) {
+        Logger.error(LogCategory.TERRAIN, `JSON Parse Error: ${parseError instanceof Error ? parseError.message : 'Unknown parse error'}`);
+        Logger.error(LogCategory.TERRAIN, `Response that failed to parse: ${responseText.substring(0, 500)}`);
+        throw parseError;
+      }
       
       // Generate height map based on seed (simplified implementation)
       this.generateHeightMap(data.seed);
@@ -42,6 +63,7 @@ export class TerrainService implements ITerrainService {
       Logger.info(LogCategory.TERRAIN, 'Terrain service ready with server data');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      Logger.error(LogCategory.TERRAIN, `TerrainService initialization failed: ${errorMessage}`);
       Logger.warn(LogCategory.TERRAIN, `Server unavailable, using offline terrain: ${errorMessage}`);
       // ZERO'S FIX: Better fallback with procedural terrain
       this.generateProceduralHeightMap();

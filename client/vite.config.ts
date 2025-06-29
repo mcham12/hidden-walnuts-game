@@ -37,7 +37,18 @@ export default defineConfig(({ mode }) => {
     return {
     publicDir: '../public', // Point to game root's public directory
     
-
+    // CHEN'S FIX: Proxy API requests to the workers server
+    server: {
+      proxy: {
+        '/terrain-seed': 'http://localhost:8787',
+        '/forest-objects': 'http://localhost:8787',
+        '/join': 'http://localhost:8787',
+        '/ws': {
+          target: 'ws://localhost:8787',
+          ws: true
+        }
+      }
+    },
     
     build: {
       outDir: 'dist',

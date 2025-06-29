@@ -2,8 +2,9 @@
 
 import { System, Entity, PositionComponent, RotationComponent, InputComponent, VelocityComponent, NetworkComponent } from '../ecs';
 import { EventBus, GameEvents } from '../core/EventBus';
-import { Vector3, MovementConfig, WorldBounds } from '../core/types';
+import { Vector3, MovementConfig, WorldBounds, Rotation } from '../core/types';
 import { Logger, LogCategory } from '../core/Logger';
+import { InputManager } from '../GameComposition';
 
 interface InputSnapshot {
   sequenceNumber: number;
@@ -14,7 +15,6 @@ interface InputSnapshot {
     turnLeft: boolean;
     turnRight: boolean;
   };
-  deltaTime: number;
 }
 
 export class ClientPredictionSystem extends System {
@@ -24,16 +24,38 @@ export class ClientPredictionSystem extends System {
   private inputHistory: InputSnapshot[] = [];
   private sequenceNumber = 0;
   private lastProcessedSequence = 0;
+  private inputManager?: InputManager;
+  private movementConfig!: MovementConfig;
+  private worldBounds!: WorldBounds;
+  private terrainService: any; // TerrainService for height checks
+  
+  // Prediction and rollback state
+  private pendingInputs: Array<{
+    sequenceNumber: number;
+    input: InputComponent;
+    timestamp: number;
+    position: Vector3;
+    rotation: Rotation;
+  }> = [];
+  
+  private inputSequence = 0;
+  private lastServerUpdate = 0;
   
   constructor(
     eventBus: EventBus,
-    private movementConfig: MovementConfig,
-    private worldBounds: WorldBounds
+    inputManager: InputManager,
+    movementConfig: MovementConfig,
+    worldBounds: WorldBounds,
+    terrainService: any // Add terrain service
   ) {
     super(eventBus, ['position', 'rotation', 'input', 'network'], 'ClientPredictionSystem');
+    this.inputManager = inputManager;
+    this.movementConfig = movementConfig;
+    this.worldBounds = worldBounds;
+    this.terrainService = terrainService; // Store terrain service
     
     // Listen for server reconciliation
-    this.eventBus.subscribe('network.position_corrected', this.handleServerReconciliation.bind(this));
+    this.eventBus.subscribe('network.player_update_ack', this.handleServerReconciliation.bind(this));
     
     // CHEN'S FIX: Listen for server acknowledgments
     this.eventBus.subscribe('network.server_acknowledged', this.handleServerAcknowledgment.bind(this));
@@ -62,50 +84,52 @@ export class ClientPredictionSystem extends System {
   }
 
   private processLocalPlayerInput(deltaTime: number): void {
-    if (!this.localPlayerEntity) return;
+    if (!this.inputManager || !this.localPlayerEntity) return;
+
+    const inputState = this.inputManager.getInputState();
     
-    const input = this.localPlayerEntity.getComponent<InputComponent>('input');
-    if (!input) return;
-    
-    // Record input for potential replay
+    // Create input component
+    const input: InputComponent = {
+      type: 'input',
+      forward: inputState.forward,
+      backward: inputState.backward,
+      turnLeft: inputState.turnLeft,
+      turnRight: inputState.turnRight
+    };
+
+    // Store input snapshot for potential rollback
     this.sequenceNumber++;
     const inputSnapshot: InputSnapshot = {
       sequenceNumber: this.sequenceNumber,
       timestamp: performance.now(),
-      input: {
-        forward: input.forward,
-        backward: input.backward,
-        turnLeft: input.turnLeft,
-        turnRight: input.turnRight
-      },
-      deltaTime: deltaTime
+      input: inputState
     };
     
     this.inputHistory.push(inputSnapshot);
     
     // Apply movement immediately (client-side prediction)
-    const moved = this.applyMovement(this.localPlayerEntity, input, deltaTime);
-    
-    if (moved) {
-      // Emit for other systems (network, rendering, etc.)
-      const position = this.localPlayerEntity.getComponent<PositionComponent>('position')!;
-      const rotation = this.localPlayerEntity.getComponent<RotationComponent>('rotation')!;
-      const velocity = this.localPlayerEntity.getComponent<VelocityComponent>('velocity')!;
-      
-      this.eventBus.emit(GameEvents.PLAYER_MOVED, {
-        entityId: this.localPlayerEntity.id,
-        position: position.value,
-        rotation: rotation.value,
-        velocity: velocity.value,
-        sequenceNumber: this.sequenceNumber,
-        predicted: true // Mark as client prediction
-      });
-      
-      Logger.debug(LogCategory.INPUT, `Applied input ${this.sequenceNumber} locally`);
-    }
+    this.applyMovement(this.localPlayerEntity, input, deltaTime).then((moved) => {
+      if (moved) {
+        // Emit movement event for network system
+        const position = this.localPlayerEntity!.getComponent<PositionComponent>('position')!;
+        const rotation = this.localPlayerEntity!.getComponent<RotationComponent>('rotation')!;
+        
+        this.eventBus.emit(GameEvents.PLAYER_MOVED, {
+          entityId: this.localPlayerEntity!.id.value,
+          position: position.value,
+          rotation: rotation.value,
+          sequenceNumber: this.sequenceNumber,
+          predicted: true // Mark as client prediction
+        });
+        
+        Logger.debugExpensive(LogCategory.INPUT, () => 
+          `📤 Applied local input ${this.sequenceNumber} at (${position.value.x.toFixed(1)}, ${position.value.z.toFixed(1)})`
+        );
+      }
+    });
   }
 
-  private applyMovement(entity: Entity, input: InputComponent, deltaTime: number): boolean {
+  private async applyMovement(entity: Entity, input: InputComponent, deltaTime: number): Promise<boolean> {
     const position = entity.getComponent<PositionComponent>('position')!;
     const rotation = entity.getComponent<RotationComponent>('rotation')!;
     
@@ -141,6 +165,18 @@ export class ClientPredictionSystem extends System {
     // Apply world bounds (client-side validation)
     newPosition = this.worldBounds.clamp(newPosition);
 
+    // TERRAIN COLLISION: Ensure player stays on terrain surface
+    if (moved && this.terrainService) {
+      try {
+        const terrainHeight = await this.terrainService.getTerrainHeight(newPosition.x, newPosition.z);
+        // Keep player 0.5 units above terrain (squirrel height)
+        newPosition = new Vector3(newPosition.x, Math.max(newPosition.y, terrainHeight + 0.5), newPosition.z);
+      } catch (error) {
+        Logger.warn(LogCategory.PLAYER, 'Failed to get terrain height for collision, using minimum Y=1', error);
+        newPosition = new Vector3(newPosition.x, Math.max(newPosition.y, 1), newPosition.z);
+      }
+    }
+
     // Update components immediately
     if (moved) {
       entity.addComponent<PositionComponent>({
@@ -159,6 +195,13 @@ export class ClientPredictionSystem extends System {
         type: 'velocity',
         value: velocity
       });
+      
+      // Update render mesh position immediately for responsiveness
+      const renderComponent = entity.getComponent<import('../ecs').RenderComponent>('render');
+      if (renderComponent?.mesh) {
+        renderComponent.mesh.position.set(newPosition.x, newPosition.y, newPosition.z);
+        renderComponent.mesh.rotation.y = newRotation.y;
+      }
     }
 
     return moved;
@@ -206,7 +249,7 @@ export class ClientPredictionSystem extends System {
         ...inputSnapshot.input
       };
         
-      this.applyMovement(this.localPlayerEntity, inputComponent, inputSnapshot.deltaTime);
+              this.applyMovement(this.localPlayerEntity, inputComponent, 1/60); // Use fixed timestep for replay
     }
     
     Logger.debug(LogCategory.NETWORK, `Replayed ${inputsToReplay.length} inputs after reconciliation`);

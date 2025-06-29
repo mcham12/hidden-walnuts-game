@@ -29,14 +29,24 @@ export class PlayerManager extends System {
     this.eventBus.subscribe('player_entered_interest', this.handlePlayerEnteredInterest.bind(this));
     this.eventBus.subscribe('player_left_interest', this.handlePlayerLeftInterest.bind(this));
     this.eventBus.subscribe('player_culled', this.handlePlayerCulled.bind(this));
+    
+    // Listen for scene initialization
+    this.eventBus.subscribe('scene.initialized', () => {
+      this.initializeWithSceneAndAssets();
+    });
   }
 
-  setScene(scene: THREE.Scene): void {
-    this.scene = scene;
-  }
-
-  setAssetManager(assetManager: any): void {
-    this.assetManager = assetManager;
+  private async initializeWithSceneAndAssets(): Promise<void> {
+    try {
+      // Get scene and asset manager from container
+      const { container, ServiceTokens } = await import('../core/Container');
+      this.scene = (container.resolve(ServiceTokens.SCENE_MANAGER) as any).getScene();
+      this.assetManager = container.resolve(ServiceTokens.ASSET_MANAGER);
+      
+      Logger.info(LogCategory.PLAYER, '✅ PlayerManager initialized with scene and assets');
+    } catch (error) {
+      Logger.error(LogCategory.PLAYER, '❌ Failed to initialize PlayerManager with scene', error);
+    }
   }
 
   update(_deltaTime: number): void {
@@ -65,10 +75,11 @@ export class PlayerManager extends System {
       existing.lastUpdate = data.timestamp;
       
       Logger.debugExpensive(LogCategory.PLAYER, () => 
-        `Updated remote player ${data.squirrelId} at (${data.position.x.toFixed(1)}, ${data.position.z.toFixed(1)})`
+        `🔄 Updated remote player ${data.squirrelId} at (${data.position.x.toFixed(1)}, ${data.position.z.toFixed(1)})`
       );
     } else {
       // Create new remote player
+      Logger.info(LogCategory.PLAYER, `🆕 Creating new remote player: ${data.squirrelId}`);
       this.createRemotePlayer(data);
     }
   }
@@ -78,7 +89,7 @@ export class PlayerManager extends System {
     position: { x: number; y: number; z: number };
     rotation: { x: number; y: number; z: number; w: number };
   }): Promise<void> {
-    Logger.info(LogCategory.PLAYER, `Creating remote player: ${data.squirrelId}`);
+    Logger.info(LogCategory.PLAYER, `🎯 Creating remote player: ${data.squirrelId}`);
     
     // Create entity
     const entity = new Entity(EntityId.generate());
@@ -87,18 +98,37 @@ export class PlayerManager extends System {
     let mesh: THREE.Mesh | null = null;
     if (this.assetManager && this.scene) {
       try {
-        const squirrelModel = await this.assetManager.loadModel('/assets/models/squirrel.glb');
-        mesh = squirrelModel.scene.clone() as THREE.Mesh;
-        if (mesh) {
+        Logger.debug(LogCategory.PLAYER, `🎨 Loading squirrel model for ${data.squirrelId}`);
+        const squirrelModel = await this.assetManager.loadSquirrelModel();
+        
+        if (squirrelModel) {
+          // Clone the model for this player
+          mesh = squirrelModel.clone() as THREE.Mesh;
           mesh.position.set(data.position.x, data.position.y, data.position.z);
           mesh.quaternion.set(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w);
+          mesh.scale.set(1, 1, 1);
+          
+          // Make it slightly different color to distinguish from local player
+          mesh.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.material) {
+              const material = child.material.clone();
+              if (material instanceof THREE.MeshStandardMaterial) {
+                // Slightly darker for remote players
+                material.color.multiplyScalar(0.8);
+              }
+              child.material = material;
+            }
+          });
+          
           this.scene.add(mesh);
+          Logger.info(LogCategory.PLAYER, `✅ Added mesh for remote player ${data.squirrelId}`);
         }
         
-        Logger.debug(LogCategory.PLAYER, `Added mesh for remote player ${data.squirrelId}`);
       } catch (error) {
-        Logger.error(LogCategory.PLAYER, `Failed to load squirrel model for ${data.squirrelId}`, error);
+        Logger.error(LogCategory.PLAYER, `❌ Failed to load squirrel model for ${data.squirrelId}`, error);
       }
+    } else {
+      Logger.warn(LogCategory.PLAYER, `⚠️ Scene or AssetManager not ready for ${data.squirrelId}, will retry later`);
     }
     
     const remotePlayer: RemotePlayer = {
@@ -112,7 +142,7 @@ export class PlayerManager extends System {
     };
     
     this.remotePlayers.set(data.squirrelId, remotePlayer);
-    Logger.info(LogCategory.PLAYER, `Remote player ${data.squirrelId} created successfully`);
+    Logger.info(LogCategory.PLAYER, `🎮 Remote player ${data.squirrelId} created successfully (${this.remotePlayers.size} total remote players)`);
   }
 
   private handlePlayerDisconnected(data: { squirrelId: string }): void {
@@ -121,12 +151,12 @@ export class PlayerManager extends System {
       // Remove mesh from scene
       if (player.mesh && this.scene) {
         this.scene.remove(player.mesh);
-        Logger.debug(LogCategory.PLAYER, `Removed mesh for disconnected player ${data.squirrelId}`);
+        Logger.debug(LogCategory.PLAYER, `🗑️ Removed mesh for disconnected player ${data.squirrelId}`);
       }
       
       // Remove from tracking
       this.remotePlayers.delete(data.squirrelId);
-      Logger.info(LogCategory.PLAYER, `Removed disconnected player: ${data.squirrelId}`);
+      Logger.info(LogCategory.PLAYER, `👋 Removed disconnected player: ${data.squirrelId} (${this.remotePlayers.size} remaining)`);
     }
   }
 
@@ -137,7 +167,7 @@ export class PlayerManager extends System {
       if (player.mesh) {
         player.mesh.visible = true;
       }
-      Logger.debug(LogCategory.PLAYER, `Player ${data.squirrelId} entered interest range (${data.distance.toFixed(1)}m)`);
+      Logger.debug(LogCategory.PLAYER, `👁️ Player ${data.squirrelId} entered interest range (${data.distance.toFixed(1)}m)`);
     }
   }
 
@@ -148,7 +178,7 @@ export class PlayerManager extends System {
       if (player.mesh) {
         player.mesh.visible = false;
       }
-      Logger.debug(LogCategory.PLAYER, `Player ${data.squirrelId} left interest range (${data.distance.toFixed(1)}m)`);
+      Logger.debug(LogCategory.PLAYER, `🙈 Player ${data.squirrelId} left interest range (${data.distance.toFixed(1)}m)`);
     }
   }
 
@@ -160,7 +190,7 @@ export class PlayerManager extends System {
         this.scene.remove(player.mesh);
       }
       player.isVisible = false;
-      Logger.debug(LogCategory.PLAYER, `Player ${data.squirrelId} culled at distance ${data.distance.toFixed(1)}m`);
+      Logger.debug(LogCategory.PLAYER, `✂️ Player ${data.squirrelId} culled at distance ${data.distance.toFixed(1)}m`);
     }
   }
 
@@ -172,11 +202,17 @@ export class PlayerManager extends System {
     player.mesh.quaternion.copy(player.lastRotation);
   }
 
-  // Public API
-  getRemotePlayerCount(): number {
-    return this.remotePlayers.size;
+  // Cleanup
+  destroy(): void {
+    for (const [squirrelId, player] of this.remotePlayers) {
+      if (player.mesh && this.scene) {
+        this.scene.remove(player.mesh);
+      }
+    }
+    this.remotePlayers.clear();
   }
 
+  // Debug information
   getVisiblePlayerCount(): number {
     return Array.from(this.remotePlayers.values()).filter(p => p.isVisible).length;
   }
@@ -185,8 +221,8 @@ export class PlayerManager extends System {
     return this.remotePlayers.get(squirrelId)?.mesh || null;
   }
 
-  hasPlayer(squirrelId: string): boolean {
-    return this.remotePlayers.has(squirrelId);
+  getAllPlayers(): Map<string, RemotePlayer> {
+    return this.remotePlayers;
   }
 
   // Debug information

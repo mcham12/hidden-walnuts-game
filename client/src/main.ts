@@ -37,15 +37,33 @@ class Application {
   }
 
   private setupCanvas(): HTMLCanvasElement {
-    const canvas = document.querySelector('canvas');
+    let canvas = document.querySelector('canvas');
+    
     if (!canvas) {
-      throw new Error('Canvas element not found');
+      // Create canvas if it doesn't exist
+      canvas = document.createElement('canvas');
+      const app = document.getElementById('app');
+      if (app) {
+        app.appendChild(canvas);
+      } else {
+        document.body.appendChild(canvas);
+      }
     }
+
+    // Set canvas size and style
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    canvas.style.display = 'block';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.position = 'absolute';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
 
     // Handle window resize
     window.addEventListener('resize', () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      canvas!.width = window.innerWidth;
+      canvas!.height = window.innerHeight;
     });
 
     return canvas;
@@ -70,6 +88,20 @@ class Application {
 
     eventBus.subscribe('terrain.loaded', () => {
       Logger.info(LogCategory.CORE, '🌲 Terrain loaded');
+    });
+
+    // Add multiplayer event logging for debugging using proper Logger system
+    eventBus.subscribe(GameEvents.MULTIPLAYER_CONNECTED, () => {
+      Logger.info(LogCategory.NETWORK, '🌐 ✅ Multiplayer connected!');
+      this.updateMultiplayerStatus('Connected', 'status-connected');
+    });
+    
+    eventBus.subscribe('remote_player_state', (data: any) => {
+      Logger.debug(LogCategory.NETWORK, `🎮 Remote player update: ${data.squirrelId} at (${data.position.x.toFixed(1)}, ${data.position.z.toFixed(1)})`);
+    });
+    
+    eventBus.subscribe('player_disconnected', (data: any) => {
+      Logger.info(LogCategory.NETWORK, `👋 Player disconnected: ${data.squirrelId}`);
     });
   }
 
@@ -116,21 +148,16 @@ class Application {
           100% { transform: translateX(100%); }
         }
       </style>
-      <canvas style="display: none;"></canvas>
     `;
   }
 
   private hideLoadingScreen(): void {
     const loadingScreen = document.getElementById('loading-screen');
-    const canvas = document.querySelector('canvas');
     
     if (loadingScreen) {
       loadingScreen.style.opacity = '0';
       setTimeout(() => {
         loadingScreen.remove();
-        if (canvas) {
-          canvas.style.display = 'block';
-        }
       }, 500);
     }
   }
@@ -171,6 +198,20 @@ class Application {
       this.gameManager.stop();
     }
   }
+
+  private updateMultiplayerStatus(status: string, className: string): void {
+    const statusElement = document.getElementById('connection-status');
+    const containerElement = document.getElementById('multiplayer-status');
+    
+    if (statusElement) {
+      statusElement.textContent = status;
+    }
+    
+    if (containerElement) {
+      containerElement.className = '';
+      containerElement.classList.add(className);
+    }
+  }
 }
 
 // Application entry point
@@ -196,7 +237,8 @@ window.addEventListener('beforeunload', () => {
 });
 
 // Legacy exports for backward compatibility with existing terrain/forest code
-export const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+// CHEN'S FIX: Use relative URLs in dev (proxy handles routing) and absolute in production
+export const API_BASE = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8787');
 export const DEBUG = false;
 
 export async function getTerrainHeight(x: number, z: number): Promise<number> {
