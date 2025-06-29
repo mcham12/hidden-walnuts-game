@@ -23,8 +23,14 @@ class Application {
       this.gameManager = new GameManager();
       await this.gameManager.initialize(this.canvas);
       
+      // Make game manager accessible for debugging
+      (window as any).gameManager = this.gameManager;
+      
       // Setup event handlers
       this.setupEventHandlers();
+      
+      // Start debug overlay updates
+      this.startDebugOverlay();
       
       this.hideLoadingScreen();
       this.gameManager.start();
@@ -199,18 +205,70 @@ class Application {
     }
   }
 
-  private updateMultiplayerStatus(status: string, className: string): void {
-    const statusElement = document.getElementById('connection-status');
-    const containerElement = document.getElementById('multiplayer-status');
-    
-    if (statusElement) {
-      statusElement.textContent = status;
+  private updateMultiplayerStatus(_status: string, className: string): void {
+    let statusDiv = document.getElementById('multiplayer-status');
+    if (!statusDiv) {
+      statusDiv = document.createElement('div');
+      statusDiv.id = 'multiplayer-status';
+      statusDiv.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: monospace;
+        font-size: 12px;
+        z-index: 1000;
+        min-width: 200px;
+      `;
+      document.body.appendChild(statusDiv);
     }
     
-    if (containerElement) {
-      containerElement.className = '';
-      containerElement.classList.add(className);
-    }
+    // Get additional debug info
+    const debugInfo = this.getDebugInfo();
+    
+    statusDiv.innerHTML = `
+      <div style="color: ${className === 'status-connected' ? '#4CAF50' : '#FF9800'}">
+        <strong>🎮 Hidden Walnuts Debug</strong>
+      </div>
+      <div style="margin-top: 5px; font-size: 11px;">
+        <div>🌐 Network: ${debugInfo.networkState || 'Unknown'}</div>
+        <div>🐿️ Local Player: ${debugInfo.localPlayer?.substring(0, 8) || 'None'}</div>
+        <div>👥 Remote Players: ${debugInfo.remotePlayers}/${debugInfo.totalRemotePlayers}</div>
+        <div>⚙️ Systems: ${debugInfo.systems || 'Unknown'}</div>
+        <div>📡 Events: ${debugInfo.events || 'Unknown'}</div>
+        <div style="margin-top: 3px; color: #888;">
+          ${new Date().toLocaleTimeString()}
+        </div>
+      </div>
+    `;
+    statusDiv.className = className;
+  }
+
+  private getDebugInfo(): any {
+    if (!this.gameManager) return {};
+    
+    const eventBus = (this.gameManager as any).eventBus;
+    const playerManager = (this.gameManager as any).playerManager;
+    const networkSystem = (this.gameManager as any).networkSystem;
+    
+    return {
+      systems: 'Running',
+      localPlayer: (this.gameManager as any).localPlayer?.id?.value || 'None',
+      networkState: networkSystem?.websocket?.readyState === WebSocket.OPEN ? 'Connected' : 'Disconnected',
+      remotePlayers: playerManager?.getVisiblePlayerCount() || 0,
+      totalRemotePlayers: playerManager?.getAllPlayers()?.size || 0,
+      events: eventBus ? 'Active' : 'None'
+    };
+  }
+
+  private startDebugOverlay(): void {
+    // Update debug info every second
+    setInterval(() => {
+      this.updateMultiplayerStatus('Debug Info', 'status-debug');
+    }, 1000);
   }
 }
 
@@ -241,19 +299,11 @@ window.addEventListener('beforeunload', () => {
 export const API_BASE = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8787');
 export const DEBUG = false;
 
-export async function getTerrainHeight(x: number, z: number): Promise<number> {
-  const size = 200;
-  const height = 5;
-  
-  // Simple terrain height calculation (keeping legacy behavior)
-  const xNorm = (x + size / 2) / size;
-  const zNorm = (z + size / 2) / size;
-  const noiseValue = Math.sin(xNorm * 10) * Math.cos(zNorm * 10);
-  let terrainHeight = (noiseValue + 1) * (height / 2);
-  
-  if (terrainHeight < 0 || terrainHeight > 5) {
-    terrainHeight = 2; // Safe fallback
-  }
-  
-  return terrainHeight;
-} 
+async function main() {
+  // ... existing main function content ...
+}
+
+// Start the game
+main().catch((error) => {
+  Logger.error(LogCategory.CORE, 'Game initialization failed:', error);
+}); 

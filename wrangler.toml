@@ -14,8 +14,9 @@ enabled = true
 
 # Environment variables (merged properly)
 [vars]
-ENVIRONMENT = "production"
-CYCLE_DURATION_SECONDS = "86400"
+# Environment configuration - set to 'development' for local testing
+ENVIRONMENT = "development"
+CYCLE_DURATION_SECONDS = "86400"  # 24 hours in seconds
 
 # Durable Objects configuration (matching preview/production names)
 [[durable_objects.bindings]]

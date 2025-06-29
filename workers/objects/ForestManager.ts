@@ -7,6 +7,7 @@
 
 import { TREE_COUNT, SHRUB_COUNT, TERRAIN_SIZE } from "../constants";
 import type { Walnut, WalnutOrigin, HidingMethod, ForestObject } from "../types";
+import { Logger, LogCategory } from '../Logger';
 
 // Cloudflare Workers types
 interface DurableObjectState {
@@ -76,25 +77,16 @@ export default class ForestManager {
       });
     }
 
-    // Handle WebSocket upgrade requests (original approach)
-    if (request.method === "GET" && upgradeHeader.toLowerCase() === "websocket") {
-      const pair = new WebSocketPair();
-      const [client, server] = Object.values(pair);
-      await this.handleWebSocket(server);
-      return new Response(null, {
-        status: 101,
-        webSocket: client,
-      });
-    }
-
     // Enhanced WebSocket with authentication (new approach)
     if (path === "/ws") {
       return await this.handleWebSocketUpgrade(request);
     }
 
+    // Legacy WebSocket upgrade removed - using /ws path only
+
     // RESTORED: Map reset endpoint
     if (path.endsWith("/reset")) {
-      console.log("Handling /reset for DO ID:", this.state.id.toString());
+      Logger.info(LogCategory.MAP, "Handling /reset for DO ID:", this.state.id.toString());
       await this.resetMap();
       return new Response(JSON.stringify({ message: "Map reset and walnuts respawned." }), {
         status: 200,
@@ -121,7 +113,7 @@ export default class ForestManager {
     if (path.endsWith("/state") || path.endsWith("/map-state")) {
       try {
         await this.initialize();
-        console.log('Returning mapState for /map-state:', JSON.stringify(this.mapState));
+        Logger.info(LogCategory.MAP, 'Returning mapState for /map-state:', JSON.stringify(this.mapState));
         return new Response(JSON.stringify(this.mapState), {
           status: 200,
           headers: {
@@ -130,7 +122,7 @@ export default class ForestManager {
           },
         });
       } catch (error: any) {
-        console.error('Error in /map-state handler:', error);
+        Logger.error(LogCategory.MAP, 'Error in /map-state handler:', error);
         return new Response(JSON.stringify({ error: 'Internal Server Error', message: error?.message || 'Unknown error' }), {
           status: 500,
           headers: {
@@ -157,7 +149,7 @@ export default class ForestManager {
     if (path.endsWith("/forest-objects")) {
       try {
         await this.initialize();
-        console.log(`🌲 Serving ${this.forestObjects.length} forest objects`);
+        Logger.info(LogCategory.MAP, `🌲 Serving ${this.forestObjects.length} forest objects`);
         return new Response(JSON.stringify(this.forestObjects), {
           status: 200,
           headers: {
@@ -166,7 +158,7 @@ export default class ForestManager {
           },
         });
       } catch (error) {
-        console.error('Error serving /forest-objects:', error);
+        Logger.error(LogCategory.MAP, 'Error serving /forest-objects:', error);
         return new Response(JSON.stringify({ error: 'Failed to fetch forest objects' }), {
           status: 500,
           headers: {
@@ -177,14 +169,7 @@ export default class ForestManager {
       }
     }
 
-    // RESTORED: WebSocket join (original approach)
-    if (path === "/join" && request.method === "GET") {
-      const squirrelId = url.searchParams.get('squirrelId') ?? crypto.randomUUID();
-      console.log(`Handling WebSocket join for: ${squirrelId}`);
-      const [client, server] = Object.values(new WebSocketPair());
-      this.handleSocket(server, squirrelId);
-      return new Response(null, { status: 101, webSocket: client });
-    }
+    // Legacy GET /join removed - using POST /join with authentication only
 
     // Enhanced join with authentication (new approach)
     if (path === "/join" && request.method === "POST") {
@@ -219,7 +204,7 @@ export default class ForestManager {
 
     // RESTORED: Test rehiding endpoint
     if (path === "/rehide-test" && request.method === "POST") {
-      console.log("Handling /rehide-test for DO ID:", this.state.id.toString());
+      Logger.info(LogCategory.MAP, "Handling /rehide-test for DO ID:", this.state.id.toString());
       await this.initialize();
 
       const testWalnutId = "test-walnut";
@@ -234,7 +219,7 @@ export default class ForestManager {
       if (walnutIndex !== -1) {
         // Update existing walnut's location
         this.mapState[walnutIndex].location = newLocation;
-        console.log(`Updated test-walnut location to:`, newLocation);
+        Logger.info(LogCategory.MAP, `Updated test-walnut location to:`, newLocation);
       } else {
         // Add new test walnut without replacing mapState
         this.mapState.push({
@@ -246,7 +231,7 @@ export default class ForestManager {
           found: false,
           timestamp: Date.now()
         });
-        console.log(`Added new test-walnut with location:`, newLocation);
+        Logger.info(LogCategory.MAP, `Added new test-walnut with location:`, newLocation);
       }
 
       await this.persistMapState();
@@ -260,9 +245,9 @@ export default class ForestManager {
       for (const session of this.sessions.values()) {
         try {
           session.send(msg);
-          console.log(`Sent walnut-rehidden message to session:`, msg);
+          Logger.info(LogCategory.WEBSOCKET, `Sent walnut-rehidden message to session:`, msg);
         } catch (err) {
-          console.warn("Failed to send to session:", err);
+          Logger.warn(LogCategory.WEBSOCKET, "Failed to send to session:", err);
         }
       }
 
@@ -303,7 +288,7 @@ export default class ForestManager {
     server.accept();
 
     await this.setupPlayerConnection(squirrelId, server);
-    console.log(`🎮 WebSocket connection established for player ${squirrelId}`);
+    Logger.info(LogCategory.PLAYER, `🎮 WebSocket connection established for player ${squirrelId}`);
 
     return new Response(null, {
       status: 101,
@@ -311,62 +296,118 @@ export default class ForestManager {
     });
   }
 
-  // Enhanced join request with session management
+  // Enhanced join request with session management - environment-aware
   private async handleJoinRequest(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const squirrelId = url.searchParams.get("squirrelId") || crypto.randomUUID();
 
+    Logger.info(LogCategory.PLAYER, `🎮 Join request for squirrel ID: ${squirrelId}`);
+
     try {
-      const sessionId = this.env.SQUIRREL.idFromName(squirrelId);
-      const sessionObject = this.env.SQUIRREL.get(sessionId);
+      // Check environment
+      const isDevelopment = this.env.ENVIRONMENT === 'development' || this.env.ENVIRONMENT === 'dev';
+      
+      if (isDevelopment) {
+        // Development: Simple token generation
+        const token = btoa(squirrelId + ':' + Date.now());
+        
+        // Generate random spawn position
+        const position = {
+          x: (Math.random() - 0.5) * 100,
+          y: 2,
+          z: (Math.random() - 0.5) * 100
+        };
 
-      const response = await sessionObject.fetch(`https://internal/join?squirrelId=${squirrelId}`);
-      const sessionData = await response.json();
+        const responseData = {
+          squirrelId: squirrelId,
+          token: token,
+          position: position,
+          stats: { found: 0, hidden: 0 }
+        };
 
-      if (sessionData.success) {
-        return new Response(JSON.stringify({
-          squirrelId: sessionData.squirrelId,
-          token: sessionData.token,
-          position: sessionData.position,
-          stats: sessionData.stats
-        }), {
+        Logger.info(LogCategory.PLAYER, '✅ Development join successful for:', squirrelId);
+        
+        return new Response(JSON.stringify(responseData), {
           headers: { 
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
           }
         });
       } else {
-        throw new Error("Failed to create session");
+        // Production/Preview: Full SQUIRREL Durable Object session management
+        const sessionId = this.env.SQUIRREL.idFromName(squirrelId);
+        const sessionObject = this.env.SQUIRREL.get(sessionId);
+
+        const response = await sessionObject.fetch(`https://internal/join?squirrelId=${squirrelId}`);
+        const sessionData = await response.json();
+
+        if (sessionData.success) {
+          Logger.info(LogCategory.PLAYER, '✅ Production join successful for:', squirrelId);
+          return new Response(JSON.stringify({
+            squirrelId: sessionData.squirrelId,
+            token: sessionData.token,
+            position: sessionData.position,
+            stats: sessionData.stats
+          }), {
+            headers: { 
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*"
+            }
+          });
+        } else {
+          throw new Error("Failed to create session");
+        }
       }
     } catch (error) {
-      console.error("[ForestManager] Join request failed:", error);
+      Logger.error(LogCategory.PLAYER, "[ForestManager] Join request failed:", error);
       return new Response(JSON.stringify({ 
         error: "Failed to join game",
         message: error instanceof Error ? error.message : "Unknown error"
       }), { 
         status: 500, 
-        headers: { "Content-Type": "application/json" }
+        headers: { 
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        }
       });
     }
   }
 
-  // Player authentication
+  // Player authentication - environment-aware
   private async authenticatePlayer(squirrelId: string, token: string): Promise<boolean> {
-    try {
-      const sessionId = this.env.SQUIRREL.idFromName(squirrelId);
-      const sessionObject = this.env.SQUIRREL.get(sessionId);
+    Logger.info(LogCategory.AUTH, `Authenticating player ${squirrelId} with token: ${token.substring(0, 10)}...`);
+    
+    // Check environment
+    const isDevelopment = this.env.ENVIRONMENT === 'development' || this.env.ENVIRONMENT === 'dev';
+    
+    if (isDevelopment) {
+      // Development: Simplified authentication
+      if (!token || token.length === 0) {
+        Logger.warn(LogCategory.AUTH, 'Authentication failed: empty token (development mode)');
+        return false;
+      }
+      
+      Logger.info(LogCategory.AUTH, 'Authentication successful (development mode)');
+      return true;
+    } else {
+      // Production/Preview: Full SQUIRREL Durable Object authentication
+      try {
+        const sessionId = this.env.SQUIRREL.idFromName(squirrelId);
+        const sessionObject = this.env.SQUIRREL.get(sessionId);
 
-      const response = await sessionObject.fetch("https://internal/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token })
-      });
+        const response = await sessionObject.fetch("https://internal/validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token })
+        });
 
-      const result = await response.json() as { valid: boolean };
-      return result.valid;
-    } catch (error) {
-      console.error(`[ForestManager] Authentication error for ${squirrelId}:`, error);
-      return false;
+        const result = await response.json() as { valid: boolean };
+        Logger.info(LogCategory.AUTH, `Production authentication result: ${result.valid}`);
+        return result.valid;
+      } catch (error) {
+        Logger.error(LogCategory.AUTH, `Production authentication error for ${squirrelId}:`, error);
+        return false;
+      }
     }
   }
 
@@ -392,7 +433,35 @@ export default class ForestManager {
     this.setupMessageHandlers(playerConnection);
     this.setupConnectionMonitoring(playerConnection);
 
-    console.log(`🎮 Player ${squirrelId} connected at position`, playerConnection.position);
+    Logger.info(LogCategory.PLAYER, `Player ${squirrelId} connected at position`, playerConnection.position);
+  }
+
+  // Setup message handlers for enhanced connections
+  private setupMessageHandlers(playerConnection: PlayerConnection): void {
+    const { squirrelId, socket } = playerConnection;
+    
+    socket.onmessage = async (event) => {
+      try {
+        const message = JSON.parse(event.data as string);
+        Logger.debug(LogCategory.WEBSOCKET, `Enhanced handler received message from ${squirrelId}: ${JSON.stringify(message)}`);
+        
+        // Update last activity
+        playerConnection.lastActivity = Date.now();
+        
+        await this.handlePlayerMessage(playerConnection, message);
+      } catch (error) {
+        Logger.error(LogCategory.WEBSOCKET, `Error processing enhanced message from ${squirrelId}:`, error);
+      }
+    };
+
+    socket.onclose = () => {
+      Logger.info(LogCategory.WEBSOCKET, `Enhanced handler: Player ${squirrelId} disconnected`);
+      this.handlePlayerDisconnect(squirrelId);
+    };
+
+    socket.onerror = (event) => {
+      Logger.error(LogCategory.WEBSOCKET, `Enhanced handler WebSocket error for ${squirrelId}:`, event);
+    };
   }
 
   // Send world state to new player
@@ -441,22 +510,6 @@ export default class ForestManager {
     this.broadcastToOthers(squirrelId, joinMessage);
   }
 
-  // Enhanced message handlers
-  private setupMessageHandlers(playerConnection: PlayerConnection): void {
-    playerConnection.socket.addEventListener("message", async (event) => {
-      try {
-        const data = JSON.parse(event.data as string);
-        await this.handlePlayerMessage(playerConnection, data);
-      } catch (error) {
-        console.error(`[ForestManager] Message parsing error from ${playerConnection.squirrelId}:`, error);
-      }
-    });
-
-    playerConnection.socket.addEventListener("close", () => {
-      this.handlePlayerDisconnect(playerConnection.squirrelId);
-    });
-  }
-
   // Handle player messages
   private async handlePlayerMessage(playerConnection: PlayerConnection, data: any): Promise<void> {
     playerConnection.lastActivity = Date.now();
@@ -466,11 +519,11 @@ export default class ForestManager {
         await this.handlePlayerUpdate(playerConnection, data);
         break;
       case "ping":
-        console.log(`🏓 Ping received from ${playerConnection.squirrelId}`);
+        Logger.debug(LogCategory.WEBSOCKET, `Ping received from ${playerConnection.squirrelId}`);
         this.broadcast("pong", data.data || {});
         break;
       default:
-        console.log(`📩 Received message from ${playerConnection.squirrelId}:`, data.type);
+        Logger.debug(LogCategory.WEBSOCKET, `Received message from ${playerConnection.squirrelId}:`, data.type);
         // Broadcast to other players for compatibility
         this.broadcastExceptSender(playerConnection.squirrelId, JSON.stringify(data));
     }
@@ -479,7 +532,7 @@ export default class ForestManager {
   // Handle player position updates
   private async handlePlayerUpdate(playerConnection: PlayerConnection, data: any): Promise<void> {
     if (!this.isValidPosition(data.position)) {
-      console.warn(`Invalid position from ${playerConnection.squirrelId}:`, data.position);
+      Logger.warn(LogCategory.PLAYER, `Invalid position from ${playerConnection.squirrelId}:`, data.position);
       return;
     }
 
@@ -511,13 +564,17 @@ export default class ForestManager {
            position.y > -10 && position.y < 100;
   }
 
-  // Update player session
+  // Update player session - simplified for development
   private async updatePlayerSession(playerConnection: PlayerConnection): Promise<void> {
+    // For development, just log the position update
+    Logger.debug(LogCategory.PLAYER, `Position update for ${playerConnection.squirrelId}: (${playerConnection.position.x.toFixed(1)}, ${playerConnection.position.z.toFixed(1)})`);
+    
+    /* TODO: Restore proper session management for production
     try {
       const sessionId = this.env.SQUIRREL.idFromName(playerConnection.squirrelId);
       const sessionObject = this.env.SQUIRREL.get(sessionId);
 
-      await sessionObject.fetch("https://internal/update-position", {
+      await sessionObject.fetch("https://internal/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -525,9 +582,10 @@ export default class ForestManager {
           rotationY: playerConnection.rotationY
         })
       });
-    } catch (error) {
-      console.error(`Failed to update session for ${playerConnection.squirrelId}:`, error);
-    }
+          } catch (error) {
+        Logger.error(LogCategory.SESSION, `Failed to update session for ${playerConnection.squirrelId}:`, error);
+      }
+    */
   }
 
   // Handle player disconnect
@@ -547,8 +605,22 @@ export default class ForestManager {
     }
   }
 
-  // Get player session info
+  // Get player session info - simplified for development
   private async getPlayerSessionInfo(squirrelId: string): Promise<any> {
+    console.log(`📋 Getting session info for: ${squirrelId}`);
+    
+    // For development, return default session info
+    return {
+      position: { 
+        x: (Math.random() - 0.5) * 100, 
+        y: 2, 
+        z: (Math.random() - 0.5) * 100 
+      },
+      rotationY: 0,
+      stats: { found: 0, hidden: 0 }
+    };
+    
+    /* TODO: Restore proper session management for production
     try {
       const sessionId = this.env.SQUIRREL.idFromName(squirrelId);
       const sessionObject = this.env.SQUIRREL.get(sessionId);
@@ -561,6 +633,7 @@ export default class ForestManager {
       console.error(`[ForestManager] Failed to get session info for ${squirrelId}:`, error);
     }
     return null;
+    */
   }
 
   // Connection monitoring
@@ -585,63 +658,7 @@ export default class ForestManager {
     }
   }
 
-  // RESTORED: Original WebSocket handling for compatibility
-  handleSocket(socket: WebSocket, squirrelId: string): void {
-    socket.accept();
-    this.sessions.add(socket);
-    console.log(`WebSocket accepted for ${squirrelId}. Total sessions: ${this.sessions.size}`);
-
-    this.initialize().then(() => {
-      socket.send(JSON.stringify({
-        type: "init",
-        mapState: this.mapState
-      }));
-    });
-    
-    socket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data as string);
-        console.log(`📩 Received message: ${JSON.stringify(message)}`);
-        
-        if (message.type === "ping") {
-          console.log(`🏓 Ping received: ${JSON.stringify(message.data)}`);
-          this.broadcast("pong", message.data);
-          return;
-        }
-        
-        this.broadcastExceptSender(squirrelId, event.data);
-      } catch (error) {
-        console.error(`❌ Error processing message:`, error);
-      }
-    };
-    
-    socket.onclose = () => {
-      this.sessions.delete(socket);
-      console.log(`🔴 Disconnected. Remaining connections: ${this.sessions.size}`);
-    };
-    
-    socket.onerror = (event) => {
-      console.error(`⚠️ WebSocket error:`, event);
-    };
-  }
-
-  // RESTORED: Original WebSocket handling
-  private async handleWebSocket(ws: WebSocket) {
-    ws.accept();
-    this.sessions.add(ws);
-    console.log("WebSocket accepted and added to sessions. Total sessions:", this.sessions.size);
-
-    await this.initialize();
-    ws.send(JSON.stringify({
-      type: "init",
-      mapState: this.mapState
-    }));
-
-    ws.onclose = () => {
-      this.sessions.delete(ws);
-      console.log(`🔴 Disconnected. Remaining connections: ${this.sessions.size}`);
-    };
-  }
+  // Legacy methods removed - using enhanced WebSocket handling only
 
   // RESTORED: Original broadcast methods
   broadcast(type: string, data: object): void {

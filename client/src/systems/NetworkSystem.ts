@@ -5,12 +5,13 @@ import { EventBus, GameEvents } from '../core/EventBus';
 import { Logger, LogCategory } from '../core/Logger';
 
 interface NetworkMessage {
-  type: 'position_update' | 'player_joined' | 'player_left' | 'heartbeat' | 'player_join' | 'player_update' | 'world_state';
+  type: 'position_update' | 'player_joined' | 'player_left' | 'heartbeat' | 'player_join' | 'player_update' | 'world_state' | 'init' | 'existing_players' | 'player_leave';
   squirrelId: string;
   data?: any;
   timestamp: number;
   position?: { x: number; y: number; z: number };
   rotationY?: number;
+  players?: any[]; // For existing_players message
 }
 
 export class NetworkSystem extends System {
@@ -36,10 +37,21 @@ export class NetworkSystem extends System {
     this.isConnecting = true;
     
     try {
-      // Generate unique squirrel ID
-      this.localSquirrelId = crypto.randomUUID();
+      // PERSISTENCE FIX: Try to restore existing squirrel ID from localStorage
+      const existingSquirrelId = localStorage.getItem('squirrelId');
       
-      // Get authentication token
+      if (existingSquirrelId !== null && existingSquirrelId.length > 0) {
+        Logger.info(LogCategory.NETWORK, `🔄 Restoring existing squirrel ID: ${existingSquirrelId}`);
+        this.localSquirrelId = existingSquirrelId;
+      } else {
+        // Generate new squirrel ID only if none exists
+        const newSquirrelId = crypto.randomUUID();
+        this.localSquirrelId = newSquirrelId;
+        localStorage.setItem('squirrelId', newSquirrelId);
+        Logger.info(LogCategory.NETWORK, `🆕 Generated new squirrel ID: ${newSquirrelId}`);
+      }
+      
+      // Get authentication token (existing session will be restored on backend)
       const authResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8787'}/join?squirrelId=${this.localSquirrelId}`, {
         method: 'POST'
       });
@@ -49,10 +61,15 @@ export class NetworkSystem extends System {
       }
       
       const authData = await authResponse.json();
+      
+      // Update local squirrel ID with what the server returned (in case of session restoration)
+      this.localSquirrelId = authData.squirrelId;
+      localStorage.setItem('squirrelId', authData.squirrelId);
+      
       const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8787';
       const wsUrl = `${apiBase.replace('http', 'ws')}/ws?squirrelId=${authData.squirrelId}&token=${authData.token}`;
       
-      Logger.info(LogCategory.NETWORK, '🌐 Connecting to: ' + wsUrl);
+      Logger.info(LogCategory.NETWORK, `🌐 Connecting to: ${wsUrl} (ID: ${this.localSquirrelId})`);
       
       this.websocket = new WebSocket(wsUrl);
       this.setupWebSocketHandlers();
@@ -79,6 +96,7 @@ export class NetworkSystem extends System {
     };
 
     this.websocket.onmessage = (event) => {
+      Logger.debug(LogCategory.NETWORK, 'RAW WEBSOCKET MESSAGE DATA:', event.data);
       try {
         const message: NetworkMessage = JSON.parse(event.data);
         this.handleNetworkMessage(message);
@@ -99,33 +117,50 @@ export class NetworkSystem extends System {
   }
 
   private handleNetworkMessage(message: NetworkMessage): void {
-    // Skip our own messages
-    if (message.squirrelId === this.localSquirrelId) {
+    Logger.debug(LogCategory.NETWORK, 'RAW WEBSOCKET MESSAGE RECEIVED:', message);
+    
+    // Skip our own messages, but only if we have a valid squirrelId
+    if (message.squirrelId && message.squirrelId === this.localSquirrelId) {
+      Logger.debug(LogCategory.NETWORK, '🔄 Skipping own message from:', message.squirrelId);
       return;
     }
 
-    Logger.debug(LogCategory.NETWORK, `📨 Received ${message.type} from ${message.squirrelId}`);
+    Logger.debug(LogCategory.NETWORK, '🎯 PROCESSING REMOTE MESSAGE:', message.type, 'from:', message.squirrelId || 'server');
 
     switch (message.type) {
+      case 'init':
+        Logger.info(LogCategory.NETWORK, '🚀 Server initialization message received');
+        this.handleInitMessage(message);
+        break;
+      case 'existing_players':
+        Logger.debug(LogCategory.NETWORK, '👥 HANDLING EXISTING PLAYERS');
+        this.handleExistingPlayers(message);
+        break;
       case 'position_update':
       case 'player_update':
+        Logger.debug(LogCategory.NETWORK, '📍 HANDLING POSITION UPDATE for:', message.squirrelId);
         this.handleRemotePlayerUpdate(message);
         break;
       case 'player_joined':
       case 'player_join':
+        Logger.debug(LogCategory.NETWORK, '🎯 HANDLING PLAYER JOINED for:', message.squirrelId);
         this.handlePlayerJoined(message);
         break;
       case 'player_left':
+      case 'player_leave':
+        Logger.debug(LogCategory.NETWORK, '👋 HANDLING PLAYER LEFT for:', message.squirrelId);
         this.handlePlayerLeft(message);
         break;
       case 'world_state':
+        Logger.debug(LogCategory.NETWORK, '🌍 HANDLING WORLD STATE');
         this.handleWorldState(message);
         break;
       case 'heartbeat':
+        Logger.debug(LogCategory.NETWORK, '💓 HEARTBEAT received');
         // Server heartbeat - connection is alive
         break;
       default:
-        Logger.debug(LogCategory.NETWORK, `Unknown message type: ${message.type}`);
+        Logger.debug(LogCategory.NETWORK, '❓ UNKNOWN MESSAGE TYPE:', message.type);
     }
   }
 
@@ -135,6 +170,8 @@ export class NetworkSystem extends System {
     // Extract position and rotation from either data object or direct properties
     const playerPosition = data?.position || position || { x: 0, y: 2, z: 0 };
     const playerRotation = data?.rotation?.y || rotationY || 0;
+    
+    Logger.debug(LogCategory.NETWORK, '🔄 EMITTING remote_player_state for:', squirrelId, 'at position:', playerPosition);
     
     // Emit player state for PlayerManager and other systems
     this.eventBus.emit('remote_player_state', {
@@ -154,6 +191,7 @@ export class NetworkSystem extends System {
     const { squirrelId, data, position, rotationY } = message;
     
     Logger.info(LogCategory.NETWORK, `🎯 Remote player joined: ${squirrelId}`);
+    Logger.debug(LogCategory.NETWORK, '🎯 PLAYER JOINED - emitting remote_player_state for:', squirrelId);
     
     // Extract position and rotation from either data object or direct properties
     const playerPosition = data?.position || position || { x: 0, y: 2, z: 0 };
@@ -166,11 +204,14 @@ export class NetworkSystem extends System {
       rotation: { x: 0, y: playerRotation, z: 0, w: 1 },
       timestamp: message.timestamp || performance.now()
     });
+    
+    Logger.info(LogCategory.NETWORK, '✅ EMITTED remote_player_state event for joined player:', squirrelId);
   }
 
   private handlePlayerLeft(message: NetworkMessage): void {
     const { squirrelId } = message;
     
+    Logger.debug(LogCategory.NETWORK, '👋 PLAYER LEFT/LEAVE MESSAGE received for:', squirrelId);
     Logger.info(LogCategory.NETWORK, `👋 Remote player left: ${squirrelId}`);
     
     this.eventBus.emit('player_disconnected', {
@@ -208,15 +249,16 @@ export class NetworkSystem extends System {
         timestamp: performance.now()
       };
       
+      Logger.debug(LogCategory.NETWORK, '📤 SENDING LOCAL PLAYER UPDATE:', this.localSquirrelId, 'at position:', message.position);
       this.websocket.send(JSON.stringify(message));
       
       Logger.debugExpensive(LogCategory.NETWORK, () => 
         `📤 Sent position update: (${data.position.x.toFixed(1)}, ${data.position.z.toFixed(1)})`
       );
+    } else {
+      Logger.warn(LogCategory.NETWORK, '❌ CANNOT SEND - WebSocket not open. State:', this.websocket?.readyState);
     }
   }
-
-
 
   private startHeartbeat(): void {
     this.heartbeatInterval = setInterval(() => {
@@ -262,6 +304,56 @@ export class NetworkSystem extends System {
     if (this.websocket) {
       this.websocket.close();
       this.websocket = null;
+    }
+  }
+
+  private handleInitMessage(message: NetworkMessage): void {
+    Logger.info(LogCategory.NETWORK, '🚀 Server initialization message received');
+    
+    // The init message may contain session restoration data or world state
+    if (message.data?.existingPlayers) {
+      Logger.debug(LogCategory.NETWORK, '👥 Server sent existing players:', message.data.existingPlayers);
+      for (const playerData of message.data.existingPlayers) {
+        if (playerData.squirrelId !== this.localSquirrelId) {
+          this.handlePlayerJoined({
+            type: 'player_joined',
+            squirrelId: playerData.squirrelId,
+            position: playerData.position,
+            rotationY: playerData.rotationY,
+            timestamp: performance.now()
+          } as NetworkMessage);
+        }
+      }
+    }
+    
+    // Server confirms our squirrel ID
+    if (message.data?.confirmedSquirrelId) {
+      Logger.info(LogCategory.NETWORK, '✅ Server confirmed squirrel ID:', message.data.confirmedSquirrelId);
+      this.localSquirrelId = message.data.confirmedSquirrelId;
+      localStorage.setItem('squirrelId', message.data.confirmedSquirrelId);
+    }
+  }
+
+  private handleExistingPlayers(message: NetworkMessage): void {
+    Logger.debug(LogCategory.NETWORK, '👥 EXISTING PLAYERS MESSAGE received:', message);
+    
+    // The existing_players message has a players array
+    if (message.players) {
+      Logger.debug(LogCategory.NETWORK, '👥 Processing existing players:', message.players.length);
+      for (const playerData of message.players) {
+        if (playerData.squirrelId !== this.localSquirrelId) {
+          Logger.debug(LogCategory.NETWORK, '🎯 Creating existing player:', playerData.squirrelId);
+          this.handlePlayerJoined({
+            type: 'player_joined',
+            squirrelId: playerData.squirrelId,
+            position: playerData.position,
+            rotationY: playerData.rotationY,
+            timestamp: performance.now()
+          } as NetworkMessage);
+        }
+      }
+    } else {
+      Logger.warn(LogCategory.NETWORK, '⚠️ No players array in existing_players message');
     }
   }
 } 

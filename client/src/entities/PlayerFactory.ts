@@ -1,6 +1,6 @@
 // Player Entity Factory - Clean entity creation with all components
 
-import { Entity, PositionComponent, RotationComponent, RenderComponent, NetworkComponent } from '../ecs';
+import { Entity, PositionComponent, RotationComponent, RenderComponent, NetworkComponent, InputComponent } from '../ecs';
 import { Vector3, Rotation } from '../core/types';
 import { ISceneManager, IAssetManager } from '../GameComposition';
 import { ITerrainService } from '../services/TerrainService';
@@ -20,7 +20,15 @@ export class PlayerFactory {
     // Get terrain height at spawn point  
     const spawnX = Math.random() * 20 - 10; // Random spawn between -10 and 10
     const spawnZ = Math.random() * 20 - 10;
-    const terrainHeight = await this.terrainService.getTerrainHeight(spawnX, spawnZ);
+    
+    let terrainHeight = 0;
+    try {
+      terrainHeight = await this.terrainService.getTerrainHeight(spawnX, spawnZ);
+    } catch (error) {
+      Logger.warn(LogCategory.PLAYER, '⚠️ Failed to get terrain height during spawn, using default height', error);
+      terrainHeight = 0;
+    }
+    
     const spawnY = terrainHeight + 2; // 2 units above terrain
     
     Logger.info(LogCategory.PLAYER, `🎯 Player spawn position: (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
@@ -68,9 +76,17 @@ export class PlayerFactory {
         isLocalPlayer: true,
         squirrelId: playerId,
         lastUpdate: performance.now()
+      })
+      .addComponent<InputComponent>({
+        type: 'input',
+        forward: false,
+        backward: false,
+        turnLeft: false,
+        turnRight: false
       });
     
     Logger.info(LogCategory.PLAYER, `✅ Local player entity created with ${entity.getComponents().length} components`);
+    Logger.info(LogCategory.PLAYER, `🎮 WASD controls should now work for local player!`);
     return entity;
   }
 

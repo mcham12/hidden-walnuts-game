@@ -86,11 +86,11 @@ class GameLogger {
       case 'development':
         return LogLevel.DEBUG;
       case 'preview':
-        return LogLevel.INFO; // Full visibility but not as verbose
+        return LogLevel.DEBUG; // Temporarily increase to debug multiplayer issues
       case 'production':
         return LogLevel.ERROR;
       default:
-        return LogLevel.INFO;
+        return LogLevel.DEBUG; // More verbose for debugging
     }
   }
 

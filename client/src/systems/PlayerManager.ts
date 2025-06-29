@@ -59,30 +59,43 @@ export class PlayerManager extends System {
     }
   }
 
-  private handleRemotePlayerState(data: {
-    squirrelId: string;
-    position: { x: number; y: number; z: number };
-    rotation: { x: number; y: number; z: number; w: number };
-    velocity?: { x: number; y: number; z: number };
-    timestamp: number;
-  }): void {
-    const existing = this.remotePlayers.get(data.squirrelId);
+  private handleRemotePlayerState = (data: any) => {
+    Logger.debug(LogCategory.PLAYER, 'PLAYER MANAGER RECEIVED remote_player_state event for:', data.squirrelId);
+    Logger.debug(LogCategory.PLAYER, 'Player position:', data.position);
+    Logger.debug(LogCategory.PLAYER, 'Current remote players count:', this.remotePlayers.size);
     
-    if (existing) {
+    const existingPlayer = this.remotePlayers.get(data.squirrelId);
+    if (existingPlayer) {
+      Logger.debug(LogCategory.PLAYER, 'UPDATING existing remote player:', data.squirrelId);
       // Update existing player
-      existing.lastPosition.set(data.position.x, data.position.y, data.position.z);
-      existing.lastRotation.set(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w);
-      existing.lastUpdate = data.timestamp;
-      
-      Logger.debugExpensive(LogCategory.PLAYER, () => 
-        `🔄 Updated remote player ${data.squirrelId} at (${data.position.x.toFixed(1)}, ${data.position.z.toFixed(1)})`
-      );
+      if (data.position) {
+        existingPlayer.lastPosition.set(data.position.x, data.position.y, data.position.z);
+        if (existingPlayer.mesh) {
+          existingPlayer.mesh.position.set(data.position.x, data.position.y, data.position.z);
+        }
+      }
+      if (typeof data.rotationY === 'number') {
+        existingPlayer.lastRotation.setFromAxisAngle(new THREE.Vector3(0, 1, 0), data.rotationY);
+        if (existingPlayer.mesh) {
+          existingPlayer.mesh.rotation.y = data.rotationY;
+        }
+      }
+      existingPlayer.lastUpdate = performance.now();
     } else {
+      Logger.debug(LogCategory.PLAYER, 'CREATING new remote player:', data.squirrelId);
       // Create new remote player
-      Logger.info(LogCategory.PLAYER, `🆕 Creating new remote player: ${data.squirrelId}`);
-      this.createRemotePlayer(data);
+      this.createRemotePlayer({
+        squirrelId: data.squirrelId,
+        position: data.position,
+        rotation: {
+          x: 0,
+          y: data.rotationY || 0,
+          z: 0,
+          w: 1
+        }
+      });
     }
-  }
+  };
 
   private async createRemotePlayer(data: {
     squirrelId: string;
@@ -94,6 +107,12 @@ export class PlayerManager extends System {
     // Create entity
     const entity = new Entity(EntityId.generate());
     
+    // Wait for scene and assets to be ready
+    if (!this.scene || !this.assetManager) {
+      Logger.warn(LogCategory.PLAYER, `⚠️ Scene or AssetManager not ready for ${data.squirrelId}, initializing...`);
+      await this.initializeWithSceneAndAssets();
+    }
+
     // Create mesh if we have assets and scene
     let mesh: THREE.Mesh | null = null;
     if (this.assetManager && this.scene) {
@@ -121,14 +140,16 @@ export class PlayerManager extends System {
           });
           
           this.scene.add(mesh);
-          Logger.info(LogCategory.PLAYER, `✅ Added mesh for remote player ${data.squirrelId}`);
+          Logger.info(LogCategory.PLAYER, `✅ Added mesh for remote player ${data.squirrelId} at (${data.position.x.toFixed(1)}, ${data.position.y.toFixed(1)}, ${data.position.z.toFixed(1)})`);
+        } else {
+          Logger.error(LogCategory.PLAYER, `❌ Failed to load squirrel model for ${data.squirrelId}: model was null`);
         }
         
       } catch (error) {
         Logger.error(LogCategory.PLAYER, `❌ Failed to load squirrel model for ${data.squirrelId}`, error);
       }
     } else {
-      Logger.warn(LogCategory.PLAYER, `⚠️ Scene or AssetManager not ready for ${data.squirrelId}, will retry later`);
+      Logger.error(LogCategory.PLAYER, `❌ Scene (${!!this.scene}) or AssetManager (${!!this.assetManager}) not available for ${data.squirrelId}`);
     }
     
     const remotePlayer: RemotePlayer = {

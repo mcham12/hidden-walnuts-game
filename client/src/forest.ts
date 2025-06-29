@@ -3,7 +3,8 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { API_BASE, getTerrainHeight, DEBUG } from './main';
+import { API_BASE, DEBUG } from './main';
+import { getTerrainHeight } from './terrain';
 import { Logger, LogCategory } from './core/Logger';
 
 interface ForestObject {
@@ -119,13 +120,13 @@ export async function createForest(): Promise<THREE.Object3D[]> {
       const model = obj.type === 'tree' ? treeModel.scene.clone() : shrubModel.scene.clone();
       let terrainHeight;
       try {
-        terrainHeight = await getTerrainHeight(obj.x, obj.z);
+        terrainHeight = getTerrainHeight(obj.x, obj.z);
         if (terrainHeight < 0 || terrainHeight > 5) {
-          console.warn(`Invalid terrain height for ${obj.type} ${obj.id} at (${obj.x}, ${obj.z}): ${terrainHeight}, using 0`);
+          Logger.warn(LogCategory.TERRAIN, `Invalid terrain height for ${obj.type} ${obj.id} at (${obj.x}, ${obj.z}): ${terrainHeight}, using 0`);
           terrainHeight = 0;
         }
       } catch (error) {
-        console.error(`[Log] Failed to get terrain height for ${obj.type} ${obj.id}:`, error);
+        Logger.error(LogCategory.TERRAIN, `Failed to get terrain height for ${obj.type} ${obj.id}:`, error);
         terrainHeight = 0;
       }
       model.position.set(obj.x, terrainHeight, obj.z);
@@ -140,7 +141,7 @@ export async function createForest(): Promise<THREE.Object3D[]> {
       meshes.push(model);
       // Forest mesh created
     } catch (error) {
-      console.error(`[Log] Failed to create mesh for ${obj.id}:`, error);
+      Logger.error(LogCategory.TERRAIN, `Failed to create mesh for ${obj.id}:`, error);
     }
   }
 

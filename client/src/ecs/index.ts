@@ -2,6 +2,7 @@
 
 import { EntityId, Vector3, Rotation } from '../core/types';
 import { EventBus } from '../core/EventBus';
+import { Logger, LogCategory } from '../core/Logger';
 
 // Component base interface
 export interface Component {
@@ -188,7 +189,7 @@ export class EntityManager {
     // Validate that all systems exist
     const missingSystemIds = systemIds.filter(id => !this.systemLookup.has(id));
     if (missingSystemIds.length > 0) {
-      console.warn('⚠️ Missing systems in execution order:', missingSystemIds);
+      Logger.warn(LogCategory.ECS, 'Missing systems in execution order:', missingSystemIds);
     }
   }
 
@@ -200,7 +201,7 @@ export class EntityManager {
         if (system) {
           system.update(deltaTime);
         } else {
-          console.warn(`⚠️ System ${systemId} not found for ordered execution`);
+          Logger.warn(LogCategory.ECS, `System ${systemId} not found for ordered execution`);
         }
       }
     } else {

@@ -1,5 +1,7 @@
 // Rich Domain Models - No more primitive obsession!
 
+import * as THREE from 'three';
+
 export class Vector3 {
   constructor(
     public readonly x: number,
@@ -42,8 +44,8 @@ export class Vector3 {
     );
   }
 
-  toThreeVector(): import('three').Vector3 {
-    return new (require('three').Vector3)(this.x, this.y, this.z);
+  toThreeVector3(): THREE.Vector3 {
+    return new THREE.Vector3(this.x, this.y, this.z);
   }
 }
 
