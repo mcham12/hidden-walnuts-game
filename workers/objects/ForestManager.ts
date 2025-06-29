@@ -3,7 +3,7 @@
 // It is responsible for spawning system-generated walnuts, resetting the map every 24 hours,
 // tracking walnut activity (for hot zones), and handling Nut Rush mini-events.
 // Each day is identified by a cycle key like "2025-05-03".
-// This object should also maintain a list of walnut spawn locations and recent actions.
+// This object should also maintain a list of walnut spawn locations and recent actions..
 
 import { TREE_COUNT, SHRUB_COUNT, TERRAIN_SIZE } from "../constants";
 import type { Walnut, WalnutOrigin, HidingMethod, ForestObject } from "../types";
