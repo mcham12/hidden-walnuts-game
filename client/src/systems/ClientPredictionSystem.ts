@@ -2,7 +2,7 @@
 
 import { System, Entity, PositionComponent, RotationComponent, InputComponent, VelocityComponent, NetworkComponent } from '../ecs';
 import { EventBus, GameEvents } from '../core/EventBus';
-import { Vector3, MovementConfig, WorldBounds, Rotation } from '../core/types';
+import { Vector3, MovementConfig, WorldBounds } from '../core/types';
 import { Logger, LogCategory } from '../core/Logger';
 import { InputManager } from '../GameComposition';
 

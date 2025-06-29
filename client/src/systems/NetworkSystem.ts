@@ -1,9 +1,7 @@
 // Network System - Single Responsibility: Handle multiplayer connections and remote player updates
 
-import { System, Entity, NetworkComponent } from '../ecs';
+import { System } from '../ecs';
 import { EventBus, GameEvents } from '../core/EventBus';
-import { Vector3, Rotation } from '../core/types';
-
 import { Logger, LogCategory } from '../core/Logger';
 
 interface NetworkMessage {
