@@ -45,6 +45,11 @@ new_sqlite_classes = [
   "Leaderboard"
 ]
 
+[[migrations]]
+tag = "v2"
+# v2 migration - maintaining consistency with deployed version
+# No changes needed as classes already exist
+
 # Environment configurations
 [env.preview]
 workers_dev = true
