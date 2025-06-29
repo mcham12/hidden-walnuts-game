@@ -29,13 +29,16 @@ export class PlayerFactory {
     const entity = this.entityManager.createEntity();
     
     // Load squirrel model
-    const model = await this.assetManager.loadModel('/assets/models/squirrel.glb');
-    if (!model) {
+    const gltf = await this.assetManager.loadModel('/assets/models/squirrel.glb');
+    if (!gltf || !gltf.scene) {
       Logger.error(LogCategory.PLAYER, '❌ Failed to load squirrel model');
       throw new Error('Failed to load squirrel model');
     }
     
     Logger.info(LogCategory.PLAYER, '✅ Squirrel model loaded successfully');
+    
+    // Get the actual model from the GLTF scene
+    const model = gltf.scene.clone();
     
     // Scale the model to appropriate size
     model.scale.setScalar(0.5); // Make it smaller
@@ -78,11 +81,14 @@ export class PlayerFactory {
     const entity = this.entityManager.createEntity();
     
     // Load squirrel model for remote player
-    const model = await this.assetManager.loadModel('/assets/models/squirrel.glb');
-    if (!model) {
+    const gltf = await this.assetManager.loadModel('/assets/models/squirrel.glb');
+    if (!gltf || !gltf.scene) {
       Logger.error(LogCategory.PLAYER, '❌ Failed to load squirrel model for remote player');
       throw new Error('Failed to load squirrel model for remote player');
     }
+    
+    // Get the actual model from the GLTF scene
+    const model = gltf.scene.clone();
     
     // Scale and position the model
     model.scale.setScalar(0.5);
