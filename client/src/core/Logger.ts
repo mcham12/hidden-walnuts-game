@@ -72,7 +72,8 @@ class GameLogger {
           hostname.includes('-dev') ||
           hostname.includes('test') ||
           hostname.includes('localhost') ||
-          hostname === '127.0.0.1') {
+          hostname === '127.0.0.1' ||
+          hostname.endsWith('.pages.dev')) {
         return 'preview';
       }
     }
