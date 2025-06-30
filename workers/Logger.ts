@@ -25,7 +25,7 @@ export enum LogCategory {
 interface LogConfig {
   level: LogLevel;
   enabledCategories: Set<LogCategory>;
-  environment: 'development' | 'production';
+  environment: 'development' | 'production' | 'preview';
 }
 
 class WorkerLogger {
@@ -38,7 +38,16 @@ class WorkerLogger {
     this.config = {
       level: this.getLogLevel(env),
       enabledCategories: this.getEnabledCategories(env),
-      environment: env as 'development' | 'production'
+      environment: env as 'development' | 'production' | 'preview'
+    };
+  }
+
+  // Method to initialize/update the logger with environment context
+  public initializeEnvironment(environment: string): void {
+    this.config = {
+      level: this.getLogLevel(environment),
+      enabledCategories: this.getEnabledCategories(environment),
+      environment: environment as 'development' | 'production' | 'preview'
     };
   }
 
@@ -47,6 +56,8 @@ class WorkerLogger {
       case 'development':
       case 'dev':
         return LogLevel.DEBUG;
+      case 'preview':
+        return LogLevel.INFO; // Preview should have INFO level logging
       case 'production':
         return LogLevel.ERROR;
       default:
@@ -59,6 +70,13 @@ class WorkerLogger {
       case 'development':
       case 'dev':
         return new Set(Object.values(LogCategory)); // All categories
+      case 'preview':
+        return new Set([
+          LogCategory.CORE, 
+          LogCategory.AUTH, 
+          LogCategory.PLAYER, 
+          LogCategory.WEBSOCKET
+        ]); // Essential categories for preview
       case 'production':
         return new Set([LogCategory.CORE, LogCategory.AUTH]); // Critical only
       default:
@@ -101,7 +119,7 @@ class WorkerLogger {
     const levelEmoji = this.getLevelEmoji(level);
     const categoryTag = `[${category}]`;
     const timeTag = `+${timestamp}ms`;
-    const envTag = this.config.environment === 'production' ? '[PROD]' : '[DEV]';
+    const envTag = this.getEnvironmentTag();
     
     const logMessage = `${levelEmoji} ${timeTag} ${envTag} ${categoryTag} ${message}`;
     
@@ -122,6 +140,18 @@ class WorkerLogger {
     }
   }
 
+  private getEnvironmentTag(): string {
+    switch (this.config.environment) {
+      case 'production':
+        return '[PROD]';
+      case 'preview':
+        return '[PREVIEW]';
+      case 'development':
+      default:
+        return '[DEV]';
+    }
+  }
+
   private getLevelEmoji(level: LogLevel): string {
     switch (level) {
       case LogLevel.TRACE: return '🔍';
@@ -132,7 +162,19 @@ class WorkerLogger {
       default: return '📝';
     }
   }
+
+  // Getter for current environment (useful for debugging)
+  public getCurrentEnvironment(): string {
+    return this.config.environment;
+  }
 }
 
 // Create singleton instance
 export const Logger = new WorkerLogger(); 
+
+// Helper function to initialize logger with environment from worker context
+export function initializeLogger(environment?: string): void {
+  if (environment) {
+    Logger.initializeEnvironment(environment);
+  }
+} 

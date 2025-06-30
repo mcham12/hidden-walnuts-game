@@ -241,6 +241,8 @@ export class NetworkSystem extends System {
   }
 
   private handleLocalPlayerMove(data: any): void {
+    Logger.info(LogCategory.NETWORK, '🎯 RECEIVED PLAYER_MOVED EVENT! Data:', data);
+    
     if (this.websocket?.readyState === WebSocket.OPEN) {
       const message: NetworkMessage = {
         type: 'player_update',
@@ -250,7 +252,7 @@ export class NetworkSystem extends System {
         timestamp: performance.now()
       };
       
-      Logger.debug(LogCategory.NETWORK, '📤 SENDING LOCAL PLAYER UPDATE:', this.localSquirrelId, 'at position:', message.position);
+      Logger.info(LogCategory.NETWORK, '📤 SENDING LOCAL PLAYER UPDATE to server:', this.localSquirrelId, 'at position:', message.position);
       this.websocket.send(JSON.stringify(message));
       
       Logger.debugExpensive(LogCategory.NETWORK, () => 

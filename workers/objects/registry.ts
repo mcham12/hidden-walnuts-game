@@ -3,10 +3,15 @@
 export type DOName = 'forest' | 'squirrel' | 'walnuts' | 'leaderboard';
 
 export interface EnvWithBindings {
+  // Durable Object bindings
   FOREST: DurableObjectNamespace;
   SQUIRREL: DurableObjectNamespace;
   WALNUTS: DurableObjectNamespace;
   LEADERBOARD: DurableObjectNamespace;
+  
+  // Environment variables from wrangler.toml
+  ENVIRONMENT: string;
+  CYCLE_DURATION_SECONDS: string;
 }
 
 // Get the Durable Object ID by name and key

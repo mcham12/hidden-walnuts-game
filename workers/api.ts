@@ -3,6 +3,7 @@
 
 import { getObjectInstance } from "./objects/registry";
 import type { EnvWithBindings } from "./objects/registry";
+import { initializeLogger } from "./Logger";
 
 // Import the Durable Objects so we can export them
 import ForestManager from "./objects/ForestManager";
@@ -28,6 +29,9 @@ const CORS_HEADERS = {
 
 export default {
   async fetch(request: Request, env: EnvWithBindings, ctx: ExecutionContext): Promise<Response> {
+    // Initialize Logger with environment from Cloudflare Worker context
+    initializeLogger(env.ENVIRONMENT);
+    
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         headers: {

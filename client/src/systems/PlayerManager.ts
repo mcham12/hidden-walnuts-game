@@ -85,8 +85,9 @@ export class PlayerManager extends System {
 
   private handleRemotePlayerState = async (data: any) => {
     Logger.info(LogCategory.PLAYER, '🎯 PLAYER MANAGER RECEIVED remote_player_state event for:', data.squirrelId);
-    Logger.debug(LogCategory.PLAYER, 'Player position:', data.position);
+    Logger.info(LogCategory.PLAYER, '📍 Player position:', data.position);
     Logger.info(LogCategory.PLAYER, '👥 Current remote players count BEFORE processing:', this.remotePlayers.size);
+    Logger.info(LogCategory.PLAYER, '📊 Full event data:', JSON.stringify(data, null, 2));
     
     const existingPlayer = this.remotePlayers.get(data.squirrelId);
     if (existingPlayer) {

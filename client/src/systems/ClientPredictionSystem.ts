@@ -55,6 +55,11 @@ export class ClientPredictionSystem extends System {
     // Find local player
     if (!this.localPlayerEntity) {
       this.findLocalPlayer();
+      if (this.localPlayerEntity) {
+        Logger.info(LogCategory.INPUT, '✅ ClientPredictionSystem found local player:', this.localPlayerEntity.id.value);
+      } else {
+        Logger.warn(LogCategory.INPUT, '⚠️ ClientPredictionSystem: No local player found yet. Total entities:', this.entities.size);
+      }
     }
     
     if (this.localPlayerEntity) {
@@ -112,6 +117,7 @@ export class ClientPredictionSystem extends System {
           predicted: true // Mark as client prediction
         });
         
+        Logger.info(LogCategory.INPUT, `🚀 EMITTED PLAYER_MOVED event - Seq: ${this.sequenceNumber} Pos: (${position.value.x.toFixed(1)}, ${position.value.z.toFixed(1)})`);
         Logger.debugExpensive(LogCategory.INPUT, () => 
           `📤 Applied local input ${this.sequenceNumber} at (${position.value.x.toFixed(1)}, ${position.value.z.toFixed(1)})`
         );

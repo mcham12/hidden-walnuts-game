@@ -282,50 +282,31 @@ export class GameManager {
   private maxErrors = 10;
 
   constructor() {
-    console.log('🔍 DIAGNOSTIC: GameManager constructor called');
     // Get dependencies from container
-    console.log('🔍 DIAGNOSTIC: Resolving dependencies from container...');
     this.eventBus = container.resolve<EventBus>(ServiceTokens.EVENT_BUS);
-    console.log('🔍 DIAGNOSTIC: EventBus resolved');
     this.entityManager = container.resolve<EntityManager>(ServiceTokens.ENTITY_MANAGER);
-    console.log('🔍 DIAGNOSTIC: EntityManager resolved');
     this.sceneManager = container.resolve<ISceneManager>(ServiceTokens.SCENE_MANAGER);
-    console.log('🔍 DIAGNOSTIC: SceneManager resolved');
     this.inputManager = container.resolve<IInputManager>(ServiceTokens.INPUT_MANAGER);
-    console.log('🔍 DIAGNOSTIC: InputManager resolved');
 
     // Initialize all systems
-    console.log('🔍 DIAGNOSTIC: Resolving systems from container...');
     this.inputSystem = container.resolve(ServiceTokens.INPUT_SYSTEM);
-    console.log('🔍 DIAGNOSTIC: InputSystem resolved');
     this.clientPredictionSystem = container.resolve(ServiceTokens.CLIENT_PREDICTION_SYSTEM);
-    console.log('🔍 DIAGNOSTIC: ClientPredictionSystem resolved');
     this.movementSystem = container.resolve(ServiceTokens.MOVEMENT_SYSTEM);
-    console.log('🔍 DIAGNOSTIC: MovementSystem resolved');
     this.networkSystem = container.resolve(ServiceTokens.NETWORK_SYSTEM);
-    console.log('🔍 DIAGNOSTIC: NetworkSystem resolved');
     this.playerManager = container.resolve(ServiceTokens.PLAYER_MANAGER);
-    console.log('🔍 DIAGNOSTIC: PlayerManager resolved');
 
     // Initialize remaining systems (placeholders for now)
-    console.log('🔍 DIAGNOSTIC: Creating remaining systems...');
     this.interpolationSystem = new InterpolationSystem(this.eventBus);
-    console.log('🔍 DIAGNOSTIC: InterpolationSystem created');
     
     // RenderSystem needs a render adapter
     const renderAdapter = new ThreeJSRenderAdapter();
     this.renderSystem = new RenderSystem(this.eventBus, renderAdapter);
-    console.log('🔍 DIAGNOSTIC: RenderSystem created');
     
     this.networkTickSystem = new NetworkTickSystem(this.eventBus);
-    console.log('🔍 DIAGNOSTIC: NetworkTickSystem created');
     this.areaOfInterestSystem = new AreaOfInterestSystem(this.eventBus);
-    console.log('🔍 DIAGNOSTIC: AreaOfInterestSystem created');
     this.networkCompressionSystem = new NetworkCompressionSystem(this.eventBus);
-    console.log('🔍 DIAGNOSTIC: NetworkCompressionSystem created');
 
     // Register all systems with EntityManager in correct execution order
-    console.log('🔍 DIAGNOSTIC: Registering systems with EntityManager...');
     this.entityManager.addSystem(this.inputSystem);
     this.entityManager.addSystem(this.clientPredictionSystem);
     this.entityManager.addSystem(this.movementSystem);
@@ -336,70 +317,48 @@ export class GameManager {
     this.entityManager.addSystem(this.networkTickSystem);
     this.entityManager.addSystem(this.networkSystem);
     this.entityManager.addSystem(this.playerManager);
-    console.log('🔍 DIAGNOSTIC: All systems registered');
 
-    console.log('🔍 DIAGNOSTIC: GameManager constructor complete');
     Logger.info(LogCategory.CORE, '🎮 GameManager initialized with 10 systems');
   }
 
   async initialize(canvas: HTMLCanvasElement): Promise<void> {
-    console.log('🔍 DIAGNOSTIC: GameManager.initialize() called');
     try {
-      console.log('🔍 DIAGNOSTIC: Starting game initialization...');
       Logger.info(LogCategory.CORE, '🎯 Starting game initialization...');
 
       // 1. Initialize terrain service early
-      console.log('🔍 DIAGNOSTIC: Initializing terrain service...');
       const terrainService = container.resolve(ServiceTokens.TERRAIN_SERVICE) as any;
       await terrainService.initialize();
-      console.log('🔍 DIAGNOSTIC: Terrain service initialized');
 
       // 2. Initialize scene
-      console.log('🔍 DIAGNOSTIC: Initializing scene...');
       await this.sceneManager.initialize(canvas);
-      console.log('🔍 DIAGNOSTIC: Scene initialized');
       await this.sceneManager.loadTerrain();
-      console.log('🔍 DIAGNOSTIC: Terrain loaded');
       await this.sceneManager.loadForest();
-      console.log('🔍 DIAGNOSTIC: Forest loaded');
       
       // 3. Wait for scene readiness
-      console.log('🔍 DIAGNOSTIC: Waiting for scene readiness...');
       await this.waitForSceneReady();
-      console.log('🔍 DIAGNOSTIC: Scene ready');
       
       // 4. Create local player
-      console.log('🔍 DIAGNOSTIC: Creating local player...');
       await this.createLocalPlayer();
-      console.log('🔍 DIAGNOSTIC: Local player created:', this.localPlayer?.id.value);
       Logger.info(LogCategory.PLAYER, `🎮 Local player created: ${this.localPlayer?.id.value}`);
       
       // 5. Start input listening
-      console.log('🔍 DIAGNOSTIC: Starting input listening...');
       this.inputManager.startListening();
-      console.log('🔍 DIAGNOSTIC: Input listening started');
       Logger.info(LogCategory.INPUT, '🎮 Input listening started - WASD controls active!');
       
       // 6. Connect to multiplayer after scene is ready
-      console.log('🔍 DIAGNOSTIC: Attempting multiplayer connection...');
       Logger.info(LogCategory.NETWORK, '🌐 Attempting multiplayer connection...');
       try {
         await this.networkSystem.connect();
-        console.log('🔍 DIAGNOSTIC: Multiplayer connection established');
         Logger.info(LogCategory.NETWORK, '✅ Multiplayer connection established');
       } catch (networkError) {
-        console.warn('🔍 DIAGNOSTIC: Multiplayer connection failed:', networkError);
         Logger.warn(LogCategory.NETWORK, '⚠️ Multiplayer connection failed, continuing in single-player mode', networkError);
       }
 
       // Emit initialization complete
-      console.log('🔍 DIAGNOSTIC: Emitting game.initialized event');
       this.eventBus.emit('game.initialized');
-      console.log('🔍 DIAGNOSTIC: Game initialization complete!');
       Logger.info(LogCategory.CORE, '🚀 Game initialization complete!');
       
     } catch (error) {
-      console.error('🔍 DIAGNOSTIC: Game initialization error:', error);
       Logger.error(LogCategory.CORE, '💥 Game initialization failed:', error);
       throw error;
     }

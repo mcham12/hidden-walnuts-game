@@ -5,6 +5,7 @@
 // It may also support stealing/re-hiding and hot zone analytics.
 
 import type { Walnut, HidingMethod } from "../types";
+import { Logger, LogCategory, initializeLogger } from '../Logger';
 
 // Cloudflare Workers types
 interface DurableObjectState {
@@ -31,9 +32,14 @@ export default class WalnutRegistry {
   walnuts: Map<string, Walnut> = new Map();
   initialized = false;
 
-  constructor(state: DurableObjectState) {
+  constructor(state: DurableObjectState, env?: any) {
     this.state = state;
     this.storage = state.storage;
+    
+    // Initialize Logger with environment from DO context if available
+    if (env?.ENVIRONMENT) {
+      initializeLogger(env.ENVIRONMENT);
+    }
   }
 
   // Initialize by loading all walnuts from storage

@@ -7,7 +7,7 @@
 
 import { TREE_COUNT, SHRUB_COUNT, TERRAIN_SIZE } from "../constants";
 import type { Walnut, WalnutOrigin, HidingMethod, ForestObject } from "../types";
-import { Logger, LogCategory } from '../Logger';
+import { Logger, LogCategory, initializeLogger } from '../Logger';
 
 // Cloudflare Workers types
 interface DurableObjectState {
@@ -56,6 +56,9 @@ export default class ForestManager {
     this.state = state;
     this.storage = state.storage;
     this.env = env;
+    
+    // Initialize Logger with environment from DO context
+    initializeLogger(env.ENVIRONMENT);
   }
 
   async fetch(request: Request): Promise<Response> {

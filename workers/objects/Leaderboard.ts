@@ -4,6 +4,8 @@
 // Players send updates via `/report`, and this object calculates adjusted scores (score × multiplier).
 // At the end of the cycle, it returns the top players and awards cosmetic rewards.
 
+import { Logger, LogCategory, initializeLogger } from '../Logger';
+
 // Cloudflare Workers types
 interface DurableObjectState {
   storage: DurableObjectStorage;
@@ -36,9 +38,14 @@ type ScoreRecord = {
     storage: DurableObjectStorage;
     scores: Map<string, ScoreRecord> = new Map();
   
-    constructor(state: DurableObjectState) {
+    constructor(state: DurableObjectState, env?: any) {
       this.state = state;
       this.storage = state.storage;
+      
+      // Initialize Logger with environment from DO context if available
+      if (env?.ENVIRONMENT) {
+        initializeLogger(env.ENVIRONMENT);
+      }
     }
   
     async fetch(request: Request): Promise<Response> {

@@ -1,16 +1,9 @@
 // Clean Entry Point - A++ Architecture
 
-// DIAGNOSTIC: Let's see if this script even runs
-console.log('🔍 DIAGNOSTIC: main.ts starting...');
-console.log('🔍 Environment:', import.meta.env);
-console.log('🔍 Window object:', typeof window);
-
 import { configureServices, GameManager } from './GameComposition';
 import { container, ServiceTokens } from './core/Container';
 import { EventBus, GameEvents } from './core/EventBus';
 import { Logger, LogCategory } from './core/Logger';
-
-console.log('🔍 DIAGNOSTIC: All imports loaded successfully');
 
 class Application {
   private gameManager?: GameManager;
@@ -20,41 +13,33 @@ class Application {
     console.log('🔍 DIAGNOSTIC: Application.initialize() called');
     try {
       this.showLoadingScreen();
-      console.log('🔍 DIAGNOSTIC: Loading screen shown');
       
       // Configure dependency injection
       configureServices();
-      console.log('🔍 DIAGNOSTIC: Services configured');
       
       // Setup canvas
       this.canvas = this.setupCanvas();
-      console.log('🔍 DIAGNOSTIC: Canvas setup complete');
       
       // Initialize game with clean architecture
       this.gameManager = new GameManager();
-      console.log('🔍 DIAGNOSTIC: GameManager created');
       await this.gameManager.initialize(this.canvas);
-      console.log('🔍 DIAGNOSTIC: GameManager initialized');
       
       // Make game manager accessible for debugging
       (window as any).gameManager = this.gameManager;
       
       // Setup event handlers
       this.setupEventHandlers();
-      console.log('🔍 DIAGNOSTIC: Event handlers setup');
       
       // Start debug overlay updates
       this.startDebugOverlay();
-      console.log('🔍 DIAGNOSTIC: Debug overlay started');
       
       this.hideLoadingScreen();
       this.gameManager.start();
-      console.log('🔍 DIAGNOSTIC: Game started successfully!');
       
       Logger.info(LogCategory.CORE, '🎮 Game started with A++ architecture!');
       
     } catch (error) {
-      console.error('🔍 DIAGNOSTIC: Error in initialize():', error);
+      Logger.error(LogCategory.CORE, '❌ Error in initialize()', error);
       this.showErrorScreen(error as Error);
     }
   }

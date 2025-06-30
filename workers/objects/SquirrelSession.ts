@@ -8,6 +8,7 @@ import { POINTS, PARTICIPATION_INTERVAL_SECONDS, PARTICIPATION_MAX_MULTIPLIER, D
 import type { Squirrel, Walnut, HidingMethod } from "../types";
 import { getObjectInstance } from "./registry";
 import type { EnvWithBindings } from "./registry";
+import { Logger, LogCategory, initializeLogger } from '../Logger';
 
 // Cloudflare Workers types
 interface DurableObjectState {
@@ -51,6 +52,9 @@ export default class SquirrelSession {
 
   constructor(state: DurableObjectState, env: any) {
     this.state = state;
+    
+    // Initialize Logger with environment from DO context
+    initializeLogger(env.ENVIRONMENT);
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -85,7 +89,7 @@ export default class SquirrelSession {
 
       return new Response("Not Found", { status: 404 });
     } catch (error) {
-      console.error("[SquirrelSession] Error:", error);
+      Logger.error(LogCategory.SESSION, "SquirrelSession error:", error);
       return new Response(JSON.stringify({ 
         error: "Internal Server Error",
         message: error instanceof Error ? error.message : "Unknown error"
@@ -141,7 +145,7 @@ export default class SquirrelSession {
     // Set session timeout (industry standard: 30 minutes)
     this.scheduleSessionTimeout();
 
-    console.log(`[SquirrelSession] Player ${squirrelId} authenticated with token ${token}`);
+    Logger.info(LogCategory.SESSION, `Player ${squirrelId} authenticated with token ${token.substring(0, 8)}...`);
     
     return new Response(JSON.stringify({
       success: true,
