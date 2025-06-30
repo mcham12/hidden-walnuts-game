@@ -37,21 +37,18 @@ export class NetworkSystem extends System {
     this.isConnecting = true;
     
     try {
-      // PERSISTENCE FIX: Try to restore existing squirrel ID from localStorage
-      const existingSquirrelId = localStorage.getItem('squirrelId');
+      // FIXED: Generate a unique squirrel ID for each browser window/tab
+      // This allows multiple players to connect to the same server
+      const newSquirrelId = crypto.randomUUID();
+      this.localSquirrelId = newSquirrelId;
       
-      if (existingSquirrelId !== null && existingSquirrelId.length > 0) {
-        Logger.info(LogCategory.NETWORK, `🔄 Restoring existing squirrel ID: ${existingSquirrelId}`);
-        this.localSquirrelId = existingSquirrelId;
-      } else {
-        // Generate new squirrel ID only if none exists
-        const newSquirrelId = crypto.randomUUID();
-        this.localSquirrelId = newSquirrelId;
-        localStorage.setItem('squirrelId', newSquirrelId);
-        Logger.info(LogCategory.NETWORK, `🆕 Generated new squirrel ID: ${newSquirrelId}`);
-      }
+      // Store the ID for this session only (not persistent across browser restarts)
+      // This ensures each browser window gets a unique ID
+      sessionStorage.setItem('squirrelId', newSquirrelId);
       
-      // Get authentication token (existing session will be restored on backend)
+      Logger.info(LogCategory.NETWORK, `🆕 Generated unique squirrel ID for this session: ${newSquirrelId}`);
+      
+      // Get authentication token
       const authResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8787'}/join?squirrelId=${this.localSquirrelId}`, {
         method: 'POST'
       });
@@ -64,7 +61,7 @@ export class NetworkSystem extends System {
       
       // Update local squirrel ID with what the server returned (in case of session restoration)
       this.localSquirrelId = authData.squirrelId;
-      localStorage.setItem('squirrelId', authData.squirrelId);
+      sessionStorage.setItem('squirrelId', authData.squirrelId);
       
       const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8787';
       const wsUrl = `${apiBase.replace('http', 'ws')}/ws?squirrelId=${authData.squirrelId}&token=${authData.token}`;
@@ -338,7 +335,7 @@ export class NetworkSystem extends System {
     if (message.data?.confirmedSquirrelId) {
       Logger.info(LogCategory.NETWORK, '✅ Server confirmed squirrel ID:', message.data.confirmedSquirrelId);
       this.localSquirrelId = message.data.confirmedSquirrelId;
-      localStorage.setItem('squirrelId', message.data.confirmedSquirrelId);
+      sessionStorage.setItem('squirrelId', message.data.confirmedSquirrelId);
     }
   }
 
