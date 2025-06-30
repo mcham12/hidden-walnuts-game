@@ -40,10 +40,34 @@ export class PlayerManager extends System {
     try {
       // Get scene and asset manager from container
       const { container, ServiceTokens } = await import('../core/Container');
-      this.scene = (container.resolve(ServiceTokens.SCENE_MANAGER) as any).getScene();
-      this.assetManager = container.resolve(ServiceTokens.ASSET_MANAGER);
+      const sceneManager = container.resolve(ServiceTokens.SCENE_MANAGER) as any;
       
-      Logger.info(LogCategory.PLAYER, '✅ PlayerManager initialized with scene and assets');
+      // Wait for scene to be ready if it's not yet initialized
+      let attempts = 0;
+      while ((!this.scene || !this.assetManager) && attempts < 50) {
+        try {
+          this.scene = sceneManager.getScene();
+          this.assetManager = container.resolve(ServiceTokens.ASSET_MANAGER);
+          
+          if (this.scene && this.assetManager) {
+            break;
+          }
+        } catch (e) {
+          // Scene might not be ready yet
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      
+      if (!this.scene || !this.assetManager) {
+        throw new Error(`Failed to initialize after ${attempts} attempts`);
+      }
+      
+      Logger.info(LogCategory.PLAYER, '✅ PlayerManager initialized with scene and assets', {
+        sceneObjects: this.scene.children.length,
+        hasAssetManager: !!this.assetManager
+      });
     } catch (error) {
       Logger.error(LogCategory.PLAYER, '❌ Failed to initialize PlayerManager with scene', error);
     }
@@ -59,10 +83,10 @@ export class PlayerManager extends System {
     }
   }
 
-  private handleRemotePlayerState = (data: any) => {
-    Logger.debug(LogCategory.PLAYER, 'PLAYER MANAGER RECEIVED remote_player_state event for:', data.squirrelId);
+  private handleRemotePlayerState = async (data: any) => {
+    Logger.info(LogCategory.PLAYER, '🎯 PLAYER MANAGER RECEIVED remote_player_state event for:', data.squirrelId);
     Logger.debug(LogCategory.PLAYER, 'Player position:', data.position);
-    Logger.debug(LogCategory.PLAYER, 'Current remote players count:', this.remotePlayers.size);
+    Logger.info(LogCategory.PLAYER, '👥 Current remote players count BEFORE processing:', this.remotePlayers.size);
     
     const existingPlayer = this.remotePlayers.get(data.squirrelId);
     if (existingPlayer) {
@@ -82,9 +106,9 @@ export class PlayerManager extends System {
       }
       existingPlayer.lastUpdate = performance.now();
     } else {
-      Logger.debug(LogCategory.PLAYER, 'CREATING new remote player:', data.squirrelId);
+      Logger.info(LogCategory.PLAYER, '🆕 CREATING new remote player:', data.squirrelId);
       // Create new remote player
-      this.createRemotePlayer({
+      await this.createRemotePlayer({
         squirrelId: data.squirrelId,
         position: data.position,
         rotation: {
@@ -95,6 +119,8 @@ export class PlayerManager extends System {
         }
       });
     }
+    
+    Logger.info(LogCategory.PLAYER, '👥 Current remote players count AFTER processing:', this.remotePlayers.size);
   };
 
   private async createRemotePlayer(data: {

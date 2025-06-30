@@ -191,7 +191,7 @@ export class NetworkSystem extends System {
     const { squirrelId, data, position, rotationY } = message;
     
     Logger.info(LogCategory.NETWORK, `🎯 Remote player joined: ${squirrelId}`);
-    Logger.debug(LogCategory.NETWORK, '🎯 PLAYER JOINED - emitting remote_player_state for:', squirrelId);
+    Logger.info(LogCategory.NETWORK, '🎯 PLAYER JOINED - about to emit remote_player_state for:', squirrelId);
     
     // Extract position and rotation from either data object or direct properties
     const playerPosition = data?.position || position || { x: 0, y: 2, z: 0 };
@@ -202,10 +202,11 @@ export class NetworkSystem extends System {
       squirrelId,
       position: playerPosition,
       rotation: { x: 0, y: playerRotation, z: 0, w: 1 },
+      rotationY: playerRotation, // Also include rotationY for compatibility
       timestamp: message.timestamp || performance.now()
     });
     
-    Logger.info(LogCategory.NETWORK, '✅ EMITTED remote_player_state event for joined player:', squirrelId);
+    Logger.info(LogCategory.NETWORK, '✅ EMITTED remote_player_state event for joined player:', squirrelId, 'at position:', playerPosition);
   }
 
   private handlePlayerLeft(message: NetworkMessage): void {
@@ -305,6 +306,11 @@ export class NetworkSystem extends System {
       this.websocket.close();
       this.websocket = null;
     }
+  }
+
+  // Public method for debug UI
+  isConnected(): boolean {
+    return this.websocket?.readyState === WebSocket.OPEN;
   }
 
   private handleInitMessage(message: NetworkMessage): void {

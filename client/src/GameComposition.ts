@@ -563,6 +563,12 @@ export class GameManager {
     `;
     document.body.appendChild(errorDiv);
   }
+
+  // Public getters for debug UI access
+  public getEventBus(): EventBus { return this.eventBus; }
+  public getPlayerManager(): PlayerManager { return this.playerManager; }
+  public getNetworkSystem(): NetworkSystem { return this.networkSystem; }
+  public getLocalPlayer(): Entity | undefined { return this.localPlayer; }
 }
 
 // Configuration and setup

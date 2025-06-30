@@ -250,14 +250,15 @@ class Application {
   private getDebugInfo(): any {
     if (!this.gameManager) return {};
     
-    const eventBus = (this.gameManager as any).eventBus;
-    const playerManager = (this.gameManager as any).playerManager;
-    const networkSystem = (this.gameManager as any).networkSystem;
+    const eventBus = this.gameManager.getEventBus();
+    const playerManager = this.gameManager.getPlayerManager();
+    const networkSystem = this.gameManager.getNetworkSystem();
+    const localPlayer = this.gameManager.getLocalPlayer();
     
     return {
       systems: 'Running',
-      localPlayer: (this.gameManager as any).localPlayer?.id?.value || 'None',
-      networkState: networkSystem?.websocket?.readyState === WebSocket.OPEN ? 'Connected' : 'Disconnected',
+      localPlayer: localPlayer?.id?.value || 'None',
+      networkState: networkSystem?.isConnected() ? 'Connected' : 'Disconnected',
       remotePlayers: playerManager?.getVisiblePlayerCount() || 0,
       totalRemotePlayers: playerManager?.getAllPlayers()?.size || 0,
       events: eventBus ? 'Active' : 'None'
@@ -269,6 +270,28 @@ class Application {
     setInterval(() => {
       this.updateMultiplayerStatus('Debug Info', 'status-debug');
     }, 1000);
+    
+    // Add debug commands to global scope for browser console
+    if (typeof window !== 'undefined') {
+      (window as any).gameDebug = {
+        getPlayerManager: () => this.gameManager?.getPlayerManager(),
+        getNetworkSystem: () => this.gameManager?.getNetworkSystem(),
+        getPlayerCount: () => {
+          const pm = this.gameManager?.getPlayerManager();
+          return {
+            visible: pm?.getVisiblePlayerCount() || 0,
+            total: pm?.getAllPlayers()?.size || 0,
+            stats: pm?.getPlayerStats()
+          };
+        },
+        forceLogLevel: (category: string, level: string) => {
+          Logger.info(LogCategory.CORE, `🔧 Force log test: ${category} ${level}`);
+          Logger.debug(LogCategory.NETWORK, `🔧 Network debug test`);
+          Logger.debug(LogCategory.PLAYER, `🔧 Player debug test`);
+        }
+      };
+      Logger.info(LogCategory.CORE, '🎮 Debug commands available at window.gameDebug');
+    }
   }
 }
 
