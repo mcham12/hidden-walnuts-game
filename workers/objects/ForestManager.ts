@@ -497,13 +497,25 @@ export default class ForestManager {
         players: existingPlayers,
         timestamp: Date.now()
       });
+      
+      // FIXED: Also send individual player_joined messages for each existing player
+      // This ensures the client creates remote player entities properly
+      for (const player of existingPlayers) {
+        this.sendMessage(socket, {
+          type: "player_joined",
+          squirrelId: player.squirrelId,
+          position: player.position,
+          rotationY: player.rotationY,
+          timestamp: Date.now()
+        });
+      }
     }
   }
 
   // Broadcast player join
   private broadcastPlayerJoin(squirrelId: string, playerConnection: PlayerConnection): void {
     const joinMessage = {
-      type: "player_join",
+      type: "player_joined",
       squirrelId,
       position: playerConnection.position,
       rotationY: playerConnection.rotationY,
@@ -546,9 +558,9 @@ export default class ForestManager {
     // Update session
     await this.updatePlayerSession(playerConnection);
 
-    // Broadcast to other players
+    // FIXED: Broadcast to other players using the correct message type
     this.broadcastToOthers(playerConnection.squirrelId, {
-      type: "player_update",
+      type: "position_update", // FIXED: Changed from "player_update" to "position_update" to match client expectations
       squirrelId: playerConnection.squirrelId,
       position: playerConnection.position,
       rotationY: playerConnection.rotationY,
@@ -569,7 +581,15 @@ export default class ForestManager {
 
   // Update player session - simplified for development
   private async updatePlayerSession(playerConnection: PlayerConnection): Promise<void> {
-    // For development, just log the position update
+    // FIXED: For development, update the active player connection with new position
+    // This ensures position persistence across reconnects
+    const existingConnection = this.activePlayers.get(playerConnection.squirrelId);
+    if (existingConnection) {
+      existingConnection.position = { ...playerConnection.position };
+      existingConnection.rotationY = playerConnection.rotationY;
+      existingConnection.lastActivity = Date.now();
+    }
+    
     Logger.debug(LogCategory.PLAYER, `Position update for ${playerConnection.squirrelId}: (${playerConnection.position.x.toFixed(1)}, ${playerConnection.position.z.toFixed(1)})`);
     
     /* TODO: Restore proper session management for production
@@ -599,7 +619,7 @@ export default class ForestManager {
       this.sessions.delete(playerConnection.socket);
 
       this.broadcastToOthers(squirrelId, {
-        type: "player_leave",
+        type: "player_left",
         squirrelId,
         timestamp: Date.now()
       });
@@ -612,31 +632,38 @@ export default class ForestManager {
   private async getPlayerSessionInfo(squirrelId: string): Promise<any> {
     console.log(`📋 Getting session info for: ${squirrelId}`);
     
-    // For development, return default session info
+    // FIXED: For development, check if we have an existing active player connection
+    // This ensures position persistence across reconnects
+    const existingConnection = this.activePlayers.get(squirrelId);
+    if (existingConnection) {
+      console.log(`📋 Found existing connection for ${squirrelId}, returning current position`);
+      return {
+        position: existingConnection.position,
+        rotationY: existingConnection.rotationY,
+        stats: { found: 0, hidden: 0 }
+      };
+    }
+    
+    // FIXED: For new players or reconnects, generate a random spawn position
+    // but make it more predictable based on squirrelId for testing
+    const hash = squirrelId.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    
+    const position = { 
+      x: (hash % 100) - 50, // Generate position based on squirrelId hash
+      y: 2, 
+      z: ((hash * 7) % 100) - 50 
+    };
+    
+    console.log(`📋 Generated new position for ${squirrelId}:`, position);
+    
     return {
-      position: { 
-        x: (Math.random() - 0.5) * 100, 
-        y: 2, 
-        z: (Math.random() - 0.5) * 100 
-      },
+      position: position,
       rotationY: 0,
       stats: { found: 0, hidden: 0 }
     };
-    
-    /* TODO: Restore proper session management for production
-    try {
-      const sessionId = this.env.SQUIRREL.idFromName(squirrelId);
-      const sessionObject = this.env.SQUIRREL.get(sessionId);
-
-      const response = await sessionObject.fetch("https://internal/session-info");
-      if (response.ok) {
-        return await response.json();
-      }
-    } catch (error) {
-      console.error(`[ForestManager] Failed to get session info for ${squirrelId}:`, error);
-    }
-    return null;
-    */
   }
 
   // Connection monitoring

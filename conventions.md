@@ -93,13 +93,50 @@ Logger.error(LogCategory.TERRAIN, 'Failed to load terrain', error);             
   - Test WASD movement for smoothness, ensuring no terrain clipping.
   - Confirm third-person camera follows avatar with proper offset.
 - **Tools**: Use browser dev tools for logs, Cloudflare dashboard for deployment checks.
-- **Workflow**: Test locally (`npm run dev`), then deploy to Cloudflare Pages for production validation.
+- **Workflow**: Test locally, then deploy to Cloudflare Pages for production validation.
+
+## Development Setup
+**⚠️ CRITICAL: Correct Directory Structure**
+```
+hidden-walnuts-game/
+├── client/          # Vite + Three.js frontend
+├── workers/         # Cloudflare Workers backend
+└── public/          # Shared assets
+```
+
+**Development Commands:**
+```bash
+# Start client development server
+cd client && npm run dev
+
+# Start worker development server (MUST be from workers directory)
+cd workers && npx wrangler dev --port 8787
+
+# Build validation
+cd client && npm run build:preview
+cd workers && npm run build
+```
+
+**⚠️ IMPORTANT**: 
+- Always run wrangler commands from the `workers/` directory
+- Never run `npx wrangler dev` from the project root
+- The worker configuration expects to be executed from within the workers directory
 
 ## Contribution Workflow
 - **Branches**: Use `mvp-<number>` (e.g., `mvp-6`) for feature development.
 - **Commits**: Prefix with MVP number (e.g., `MVP-6: Add squirrel avatar`).
 - **PRs**: Include test results and logs in descriptions.
 - **AI Usage**: Document AI contributions in `README_AI.md` (e.g., code generation, debugging).
+
+### **🚨 MANDATORY: Local Build Validation**
+**Before pushing ANY changes to GitHub:**
+
+1. **Validate Client Build**: `cd client && npm run build:preview`
+2. **Validate Worker Build**: `cd workers && npm run build`  
+3. **Fix ALL TypeScript errors** before proceeding
+4. **Only push after successful local builds**
+
+This prevents Cloudflare Pages deployment failures and catches compilation errors early.
 
 ## Example File Structure
 ```

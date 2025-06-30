@@ -34,4 +34,44 @@ This document details how AI tools, including Cursor AI and Grok, are used in th
 - **Process**: AI generates code snippets, which are reviewed and integrated via Git commits. Debug logs are analyzed to refine solutions.
 - **Conventions**: AI adheres to `conventions.md` (e.g., `// AI NOTE:`, TypeScript types, snake_case for files).
 
+### **🚨 CRITICAL: Build Validation Required**
+**After making ANY batch of coding changes, Cursor AI MUST:**
+
+1. **Build Client Locally**: Run `cd client && npm run build:preview` to catch TypeScript errors
+2. **Build Worker Locally**: Run `cd workers && npm run build` to validate worker code  
+3. **Fix All Build Errors**: Resolve any TypeScript/compilation issues before proceeding
+4. **Only Then Push**: After successful local builds, changes can be pushed to GitHub
+
+**Why This Matters**: 
+- Prevents Cloudflare Pages build failures during auto-deployment
+- Catches TypeScript errors early (like `Property 'id' does not exist on type 'never'`)
+- Saves deployment time and reduces failed builds in preview environment
+- Ensures code quality before it reaches the CI/CD pipeline
+
+**Build Commands:**
+```bash
+# From project root - validate both client and worker
+cd client && npm run build:preview
+cd ../workers && npm run build
+
+# Or validate just the component being changed
+cd client && npm run build:preview  # For client changes
+cd workers && npm run build         # For worker changes
+```
+
+**Development Server Commands:**
+```bash
+# Start client development server (from project root)
+cd client && npm run dev
+
+# Start worker development server (from project root)
+cd workers && npx wrangler dev --port 8787
+
+# Start both servers (in separate terminals)
+# Terminal 1: cd client && npm run dev
+# Terminal 2: cd workers && npx wrangler dev --port 8787
+```
+
+**⚠️ IMPORTANT**: Always run wrangler commands from the `workers/` directory, not from the project root. The worker configuration expects to be run from within the workers directory.
+
 This ensures AI contributions are targeted, efficient, and aligned with the project’s goals.

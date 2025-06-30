@@ -10,7 +10,16 @@ class Application {
   private canvas?: HTMLCanvasElement;
 
   async initialize(): Promise<void> {
-    console.log('🔍 DIAGNOSTIC: Application.initialize() called');
+    // TEST: Verify Logger environment detection
+    console.log('🔍 DIAGNOSTIC: Logger environment:', Logger.getEnvironment());
+    console.log('🔍 DIAGNOSTIC: import.meta.env.DEV:', import.meta.env.DEV);
+    console.log('🔍 DIAGNOSTIC: window.location.hostname:', window.location.hostname);
+    
+    Logger.info(LogCategory.CORE, '🚀 Application.initialize() called');
+    Logger.debug(LogCategory.CORE, '🔍 Testing debug level');
+    Logger.warn(LogCategory.CORE, '⚠️ Testing warn level');
+    Logger.error(LogCategory.CORE, '🚨 Testing error level');
+    
     try {
       this.showLoadingScreen();
       

@@ -173,11 +173,11 @@ export class NetworkSystem extends System {
     
     Logger.debug(LogCategory.NETWORK, '🔄 EMITTING remote_player_state for:', squirrelId, 'at position:', playerPosition);
     
-    // Emit player state for PlayerManager and other systems
+    // FIXED: Emit player state for PlayerManager and other systems with correct data structure
     this.eventBus.emit('remote_player_state', {
       squirrelId,
       position: playerPosition,
-      rotation: { x: 0, y: playerRotation, z: 0, w: 1 },
+      rotationY: playerRotation, // FIXED: Use rotationY directly instead of nested rotation object
       velocity: data?.velocity,
       timestamp: message.timestamp || performance.now()
     });
@@ -197,16 +197,16 @@ export class NetworkSystem extends System {
     const playerPosition = data?.position || position || { x: 0, y: 2, z: 0 };
     const playerRotation = rotationY || data?.rotationY || 0;
 
-    // Emit player state to create the remote player
+    // FIXED: Emit player state to create the remote player with correct data structure
     this.eventBus.emit('remote_player_state', {
       squirrelId,
       position: playerPosition,
-      rotation: { x: 0, y: playerRotation, z: 0, w: 1 },
-      rotationY: playerRotation, // Also include rotationY for compatibility
+      rotationY: playerRotation, // FIXED: Use rotationY directly instead of nested rotation object
+      velocity: data?.velocity,
       timestamp: message.timestamp || performance.now()
     });
-    
-    Logger.info(LogCategory.NETWORK, '✅ EMITTED remote_player_state event for joined player:', squirrelId, 'at position:', playerPosition);
+
+    Logger.info(LogCategory.NETWORK, `🎮 Remote player ${squirrelId} joined at (${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
   }
 
   private handlePlayerLeft(message: NetworkMessage): void {
