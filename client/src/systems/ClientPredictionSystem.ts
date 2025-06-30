@@ -56,7 +56,7 @@ export class ClientPredictionSystem extends System {
     if (!this.localPlayerEntity) {
       this.findLocalPlayer();
       if (this.localPlayerEntity) {
-        Logger.info(LogCategory.INPUT, '✅ ClientPredictionSystem found local player:', this.localPlayerEntity.id.value);
+        Logger.info(LogCategory.INPUT, '✅ ClientPredictionSystem found local player');
       } else {
         Logger.warn(LogCategory.INPUT, '⚠️ ClientPredictionSystem: No local player found yet. Total entities:', this.entities.size);
       }
