@@ -106,23 +106,15 @@ export class NetworkSystem extends System {
     try {
       Logger.info(LogCategory.NETWORK, `🔄 Attempting connection (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
       
-      // TASK 3 FIX: Use persistent squirrel ID for position retention across browser refreshes
-      // Try to get existing ID from localStorage (persistent across browser restarts)
-      let existingSquirrelId = localStorage.getItem('squirrelId');
+      // TEMPORARY REVERT: Use session-based ID to test remote player visibility
+      // Generate a unique squirrel ID for each browser window/tab
+      const newSquirrelId = crypto.randomUUID();
+      this.localSquirrelId = newSquirrelId;
       
-      if (existingSquirrelId) {
-        Logger.info(LogCategory.NETWORK, `🔄 Using existing persistent squirrel ID: ${existingSquirrelId}`);
-        this.localSquirrelId = existingSquirrelId;
-      } else {
-        // Generate new persistent ID for first-time users
-        const newSquirrelId = crypto.randomUUID();
-        this.localSquirrelId = newSquirrelId;
-        localStorage.setItem('squirrelId', newSquirrelId);
-        Logger.info(LogCategory.NETWORK, `🆕 Generated new persistent squirrel ID: ${newSquirrelId}`);
-      }
+      // Store the ID for this session only (not persistent across browser restarts)
+      sessionStorage.setItem('squirrelId', newSquirrelId);
       
-      // Also store in sessionStorage for backward compatibility
-      sessionStorage.setItem('squirrelId', this.localSquirrelId);
+      Logger.info(LogCategory.NETWORK, `🆕 Generated unique squirrel ID for this session: ${newSquirrelId}`);
       
       // Get authentication token with enhanced error handling
       const authResponse = await this.authenticatePlayer(this.localSquirrelId!);
@@ -130,7 +122,6 @@ export class NetworkSystem extends System {
       
       // Update local squirrel ID with what the server returned (in case of session restoration)
       this.localSquirrelId = authData.squirrelId;
-      localStorage.setItem('squirrelId', authData.squirrelId); // TASK 3 FIX: Update persistent storage
       sessionStorage.setItem('squirrelId', authData.squirrelId);
       
       const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8787';
@@ -286,7 +277,7 @@ export class NetworkSystem extends System {
   }
 
   private handleNetworkMessage(message: NetworkMessage): void {
-    Logger.debug(LogCategory.NETWORK, 'RAW WEBSOCKET MESSAGE RECEIVED:', message);
+    Logger.info(LogCategory.NETWORK, '📨 RAW WEBSOCKET MESSAGE RECEIVED:', message);
     
     // Skip our own messages, but only if we have a valid squirrelId
     if (message.squirrelId && message.squirrelId === this.localSquirrelId) {
@@ -294,7 +285,7 @@ export class NetworkSystem extends System {
       return;
     }
 
-    Logger.debug(LogCategory.NETWORK, '🎯 PROCESSING REMOTE MESSAGE:', message.type, 'from:', message.squirrelId || 'server');
+    Logger.info(LogCategory.NETWORK, '🎯 PROCESSING REMOTE MESSAGE:', message.type, 'from:', message.squirrelId || 'server');
 
     switch (message.type) {
       case 'init':
@@ -400,6 +391,7 @@ export class NetworkSystem extends System {
     
     Logger.info(LogCategory.NETWORK, `🎯 Remote player joined: ${squirrelId}`);
     Logger.info(LogCategory.NETWORK, '🎯 PLAYER JOINED - about to emit remote_player_state for:', squirrelId);
+    Logger.info(LogCategory.NETWORK, '🎯 PLAYER JOINED - message data:', { squirrelId, data, position, rotationY });
     
     // TASK 3 FIX: Add validation for player join data
     if (!squirrelId || typeof squirrelId !== 'string') {
@@ -713,11 +705,11 @@ export class NetworkSystem extends System {
   }
 
   private handleExistingPlayers(message: NetworkMessage): void {
-    Logger.debug(LogCategory.NETWORK, '👥 EXISTING PLAYERS MESSAGE received:', message);
+    Logger.info(LogCategory.NETWORK, '👥 EXISTING PLAYERS MESSAGE received:', message);
     
     // The existing_players message has a players array
     if (message.players) {
-      Logger.debug(LogCategory.NETWORK, '👥 Processing existing players:', message.players.length);
+      Logger.info(LogCategory.NETWORK, '👥 Processing existing players:', message.players.length);
       for (const playerData of message.players) {
         if (playerData.squirrelId !== this.localSquirrelId) {
           Logger.debug(LogCategory.NETWORK, '🎯 Creating existing player:', playerData.squirrelId);
