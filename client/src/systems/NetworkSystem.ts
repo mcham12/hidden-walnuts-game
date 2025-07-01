@@ -139,6 +139,9 @@ export class NetworkSystem extends System {
       
       this.recordError(networkError);
       Logger.error(LogCategory.NETWORK, '❌ Connection failed', error);
+      
+      // Don't re-throw the error to prevent browser console pollution
+      // The error is already logged and recorded in our error system
       this.scheduleReconnect();
     } finally {
       this.isConnecting = false;
@@ -147,15 +150,23 @@ export class NetworkSystem extends System {
 
   private async authenticatePlayer(squirrelId: string): Promise<any> {
     try {
-      const authResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8787'}/join?squirrelId=${squirrelId}`, {
+      Logger.debug(LogCategory.NETWORK, `🔐 Attempting authentication for squirrel: ${squirrelId}`);
+      
+      const authUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:8787'}/join?squirrelId=${squirrelId}`;
+      Logger.debug(LogCategory.NETWORK, `🌐 Authentication URL: ${authUrl}`);
+      
+      const authResponse = await fetch(authUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         }
       });
       
+      Logger.debug(LogCategory.NETWORK, `📡 Auth response status: ${authResponse.status} ${authResponse.statusText}`);
+      
       if (!authResponse.ok) {
         const errorText = await authResponse.text();
+        Logger.error(LogCategory.NETWORK, `❌ Server returned error: ${authResponse.status} - ${errorText}`);
         throw new Error(`Authentication failed: ${authResponse.status} - ${errorText}`);
       }
       
@@ -173,6 +184,7 @@ export class NetworkSystem extends System {
       };
       
       this.recordError(networkError);
+      Logger.error(LogCategory.NETWORK, '❌ Authentication failed', error);
       throw error;
     }
   }
