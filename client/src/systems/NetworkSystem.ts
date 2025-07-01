@@ -384,9 +384,21 @@ export class NetworkSystem extends System {
     Logger.info(LogCategory.NETWORK, `🎯 Remote player joined: ${squirrelId}`);
     Logger.info(LogCategory.NETWORK, '🎯 PLAYER JOINED - about to emit remote_player_state for:', squirrelId);
     
+    // TASK 3 FIX: Add validation for player join data
+    if (!squirrelId || typeof squirrelId !== 'string') {
+      Logger.error(LogCategory.NETWORK, '❌ Invalid squirrelId in player_joined:', squirrelId);
+      return;
+    }
+    
     // Extract position and rotation from either data object or direct properties
     const playerPosition = data?.position || position || { x: 0, y: 2, z: 0 };
     const playerRotation = rotationY || data?.rotationY || 0;
+
+    // TASK 3 FIX: Validate position data
+    if (!playerPosition || typeof playerPosition.x !== 'number' || typeof playerPosition.y !== 'number' || typeof playerPosition.z !== 'number') {
+      Logger.error(LogCategory.NETWORK, `❌ Invalid position data for player ${squirrelId}:`, playerPosition);
+      return;
+    }
 
     // FIXED: Emit player state to create the remote player with correct data structure
     this.eventBus.emit('remote_player_state', {
@@ -666,6 +678,13 @@ export class NetworkSystem extends System {
       for (const playerData of message.players) {
         if (playerData.squirrelId !== this.localSquirrelId) {
           Logger.debug(LogCategory.NETWORK, '🎯 Creating existing player:', playerData.squirrelId);
+          
+          // TASK 3 FIX: Add validation before creating existing player
+          if (!playerData.position || typeof playerData.position.x !== 'number' || typeof playerData.position.y !== 'number' || typeof playerData.position.z !== 'number') {
+            Logger.warn(LogCategory.NETWORK, `⚠️ Invalid position data for existing player ${playerData.squirrelId}:`, playerData.position);
+            continue;
+          }
+          
           this.handlePlayerJoined({
             type: 'player_joined',
             squirrelId: playerData.squirrelId,

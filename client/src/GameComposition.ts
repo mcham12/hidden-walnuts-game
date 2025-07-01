@@ -203,7 +203,9 @@ export class AssetManager implements IAssetManager {
 
   async loadSquirrelModel(): Promise<import('three').Group> {
     if (this.cache.has('squirrel')) {
-      return this.cache.get('squirrel').clone();
+      const cachedModel = this.cache.get('squirrel');
+      Logger.debug(LogCategory.CORE, `📦 Using cached squirrel model, scale: x=${cachedModel.scale.x.toFixed(2)}, y=${cachedModel.scale.y.toFixed(2)}, z=${cachedModel.scale.z.toFixed(2)}`);
+      return cachedModel.clone();
     }
 
     const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
@@ -218,10 +220,11 @@ export class AssetManager implements IAssetManager {
         assetPath,
         (gltf) => {
           const model = gltf.scene;
-          model.scale.setScalar(0.3);
+          model.scale.setScalar(0.3); // TASK 3 FIX: Match player scaling for consistency
           model.castShadow = true;
           model.receiveShadow = true;
           
+          Logger.debug(LogCategory.CORE, `📦 Caching squirrel model with scale: x=${model.scale.x.toFixed(2)}, y=${model.scale.y.toFixed(2)}, z=${model.scale.z.toFixed(2)}`);
           this.cache.set('squirrel', model);
           resolve(model.clone());
         },

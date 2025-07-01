@@ -107,6 +107,17 @@ export class PlayerManager extends System {
     const existingPlayer = this.remotePlayers.get(data.squirrelId);
     if (existingPlayer) {
       Logger.debug(LogCategory.PLAYER, '🔄 UPDATING existing remote player:', data.squirrelId);
+      
+      // TASK 3 FIX: Additional validation for existing player
+      if (existingPlayer.mesh) {
+        // Check if mesh has correct scale
+        const currentScale = existingPlayer.mesh.scale;
+        if (Math.abs(currentScale.x - 0.3) > 0.01 || Math.abs(currentScale.y - 0.3) > 0.01 || Math.abs(currentScale.z - 0.3) > 0.01) {
+          Logger.warn(LogCategory.PLAYER, `⚠️ Correcting scale for existing player ${data.squirrelId}: current=${currentScale.x.toFixed(2)},${currentScale.y.toFixed(2)},${currentScale.z.toFixed(2)}, setting to 0.3`);
+          existingPlayer.mesh.scale.set(0.3, 0.3, 0.3);
+        }
+      }
+      
       // Update existing player
       if (data.position) {
         // FIXED: Adjust Y position to terrain height for updates
@@ -144,6 +155,12 @@ export class PlayerManager extends System {
       // TASK 3 FIX: Add validation before creating new player
       if (!data.position || typeof data.position.x !== 'number' || typeof data.position.y !== 'number' || typeof data.position.z !== 'number') {
         Logger.error(LogCategory.PLAYER, '❌ Invalid position data for new remote player:', data.squirrelId, data.position);
+        return;
+      }
+      
+      // TASK 3 FIX: Double-check we don't already have this player
+      if (this.remotePlayers.has(data.squirrelId)) {
+        Logger.warn(LogCategory.PLAYER, `⚠️ Attempted to create duplicate player ${data.squirrelId}, skipping`);
         return;
       }
       
@@ -211,6 +228,9 @@ export class PlayerManager extends System {
           mesh.quaternion.set(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w);
           // FIXED: Set smaller scale to prevent huge flat squirrels
           mesh.scale.set(0.3, 0.3, 0.3);
+          
+          // TASK 3 FIX: Verify scale was set correctly
+          Logger.debug(LogCategory.PLAYER, `📏 Set scale for ${data.squirrelId}: x=${mesh.scale.x.toFixed(2)}, y=${mesh.scale.y.toFixed(2)}, z=${mesh.scale.z.toFixed(2)}`);
           
           // Make it slightly different color to distinguish from local player
           mesh.traverse((child) => {
