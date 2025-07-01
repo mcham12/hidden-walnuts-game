@@ -1,7 +1,7 @@
 // Player Manager System - Handles remote player lifecycle and rendering
 
 import { System, Entity } from '../ecs';
-import { EventBus, GameEvents } from '../core/EventBus';
+import { EventBus } from '../core/EventBus';
 import { Logger, LogCategory } from '../core/Logger';
 import { EntityId } from '../core/types';
 import * as THREE from 'three';
