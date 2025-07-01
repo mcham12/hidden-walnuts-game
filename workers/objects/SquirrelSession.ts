@@ -317,7 +317,7 @@ export default class SquirrelSession {
       clearTimeout(this.sessionTimeout);
     }
 
-    // Session expires after 30 minutes of inactivity
+    // TASK URGENTA.11: Session expires after 60 minutes of inactivity (increased from 30)
     this.sessionTimeout = setTimeout(async () => {
       console.log(`[SquirrelSession] Session timeout for ${this.sessionState?.squirrelId}`);
       
@@ -326,7 +326,7 @@ export default class SquirrelSession {
         this.sessionState.isAuthenticated = false;
         await this.state.storage.put("session", this.sessionState);
       }
-    }, 30 * 60 * 1000); // 30 minutes
+    }, 60 * 60 * 1000); // TASK URGENTA.11: Increased from 30 to 60 minutes
   }
 
   // Load session from persistent storage

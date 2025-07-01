@@ -92,9 +92,9 @@ export class PlayerManager extends System {
       }
     }
     
-    // TASK 3 FIX: Periodic scene debugging (every 10 seconds)
+    // TASK URGENTA.9: Reduced debug frequency from 10 to 60 seconds
     const now = performance.now();
-    if (!this.lastDebugTime || now - this.lastDebugTime > 10000) {
+    if (!this.lastDebugTime || now - this.lastDebugTime > 60000) {
       this.debugSceneContents();
       this.lastDebugTime = now;
     }

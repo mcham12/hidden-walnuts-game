@@ -5,7 +5,7 @@ import { EventBus, GameEvents } from '../core/EventBus';
 import { Logger, LogCategory } from '../core/Logger';
 
 interface NetworkMessage {
-  type: 'position_update' | 'player_joined' | 'player_left' | 'heartbeat' | 'player_join' | 'player_update' | 'world_state' | 'init' | 'existing_players' | 'player_leave' | 'position_correction';
+  type: 'position_update' | 'player_joined' | 'player_left' | 'heartbeat' | 'player_join' | 'player_update' | 'world_state' | 'init' | 'existing_players' | 'player_leave' | 'position_correction' | 'batch_update';
   squirrelId: string;
   data?: any;
   timestamp: number;
@@ -13,6 +13,7 @@ interface NetworkMessage {
   rotationY?: number;
   players?: any[]; // For existing_players message
   originalPosition?: { x: number; y: number; z: number }; // For position_correction
+  updates?: any[]; // For batch_update message
 }
 
 // Enhanced connection quality metrics
@@ -71,6 +72,13 @@ export class NetworkSystem extends System {
   // Connection quality throttling
   private lastQualityUpdate: number = 0;
   private lastQualityValue: ConnectionMetrics['quality'] = 'poor';
+  
+  // TASK URGENTA.1: Request Batching & Throttling
+  private batchedUpdates: any[] = [];
+  private batchTimeout: any = null;
+  private batchInterval = 500; // 500ms batching window
+  private lastPositionUpdate = 0;
+  private positionUpdateThrottle = 100; // 100ms minimum between position updates
   
   constructor(eventBus: EventBus) {
     super(eventBus, ['network'], 'NetworkSystem');
@@ -323,6 +331,10 @@ export class NetworkSystem extends System {
         Logger.debug(LogCategory.NETWORK, '💓 HEARTBEAT received');
         this.handleHeartbeatResponse(message);
         break;
+      case 'batch_update':
+        Logger.debug(LogCategory.NETWORK, '🔄 HANDLING BATCH UPDATE');
+        this.handleBatchUpdate(message);
+        break;
       default:
         Logger.debug(LogCategory.NETWORK, '❓ UNKNOWN MESSAGE TYPE:', message.type);
     }
@@ -450,11 +462,88 @@ export class NetworkSystem extends System {
     }
   }
 
+  // TASK URGENTA.1: Request Batching & Throttling
+  private addToBatch(update: any): void {
+    this.batchedUpdates.push(update);
+    
+    if (!this.batchTimeout) {
+      this.batchTimeout = setTimeout(() => {
+        this.sendBatchedUpdates();
+      }, this.batchInterval);
+    }
+  }
+
+  // TASK URGENTA.5: Retry logic with exponential backoff
+  private async retryWithBackoff<T>(operation: () => Promise<T>, maxRetries: number = 3): Promise<T> {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (attempt === maxRetries - 1) {
+          throw error; // Last attempt failed
+        }
+        
+        // Exponential backoff with jitter
+        const delay = Math.min(1000 * Math.pow(2, attempt), 10000) + Math.random() * 1000;
+        Logger.warn(LogCategory.NETWORK, `🔄 Retry attempt ${attempt + 1}/${maxRetries} in ${delay.toFixed(0)}ms`);
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    throw new Error('Max retries reached');
+  }
+
+  private sendBatchedUpdates(): void {
+    if (this.batchedUpdates.length > 0) {
+      const batchedMessage: NetworkMessage = {
+        type: 'batch_update',
+        squirrelId: this.localSquirrelId || 'unknown',
+        updates: this.batchedUpdates,
+        timestamp: performance.now()
+      };
+      
+      Logger.debug(LogCategory.NETWORK, `📦 Sending batch of ${this.batchedUpdates.length} updates`);
+      
+      // TASK URGENTA.5: Use retry logic for batched updates
+      this.retryWithBackoff(async () => {
+        if (this.websocket?.readyState === WebSocket.OPEN) {
+          this.websocket.send(JSON.stringify(batchedMessage));
+          this.messageCount++;
+          this.connectionMetrics.messageCount = this.messageCount;
+        } else {
+          throw new Error('WebSocket not open');
+        }
+      }).catch(error => {
+        const networkError: NetworkError = {
+          type: NetworkErrorType.WEBSOCKET_ERROR,
+          message: `Failed to send batched updates after retries: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          timestamp: Date.now(),
+          details: { batchedMessage, error },
+          recoverable: true
+        };
+        
+        this.recordError(networkError);
+        Logger.error(LogCategory.NETWORK, '❌ Failed to send batched updates after retries', error);
+      });
+      
+      this.batchedUpdates = [];
+    }
+    this.batchTimeout = null;
+  }
+
   private handleLocalPlayerMove(data: any): void {
     Logger.info(LogCategory.NETWORK, '🎯 RECEIVED PLAYER_MOVED EVENT! Data:', data);
     
+    // TASK URGENTA.1: Position update throttling
+    const now = performance.now();
+    if (now - this.lastPositionUpdate < this.positionUpdateThrottle) {
+      Logger.debug(LogCategory.NETWORK, '⏱️ Throttling position update');
+      return;
+    }
+    this.lastPositionUpdate = now;
+    
     if (this.websocket?.readyState === WebSocket.OPEN) {
-      const message: NetworkMessage = {
+      const update = {
         type: 'player_update',
         squirrelId: this.localSquirrelId || 'unknown',
         position: { x: data.position.x, y: data.position.y, z: data.position.z },
@@ -462,27 +551,11 @@ export class NetworkSystem extends System {
         timestamp: performance.now()
       };
       
-      Logger.info(LogCategory.NETWORK, '📤 SENDING LOCAL PLAYER UPDATE to server:', this.localSquirrelId, 'at position:', message.position);
-      
-      try {
-        this.websocket.send(JSON.stringify(message));
-        this.messageCount++;
-        this.connectionMetrics.messageCount = this.messageCount;
-      } catch (error) {
-        const networkError: NetworkError = {
-          type: NetworkErrorType.WEBSOCKET_ERROR,
-          message: `Failed to send player update: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          timestamp: Date.now(),
-          details: { message, error },
-          recoverable: true
-        };
-        
-        this.recordError(networkError);
-        Logger.error(LogCategory.NETWORK, '❌ Failed to send player update', error);
-      }
+      // TASK URGENTA.1: Add to batch instead of sending immediately
+      this.addToBatch(update);
       
       Logger.debugExpensive(LogCategory.NETWORK, () => 
-        `📤 Sent position update: (${data.position.x.toFixed(1)}, ${data.position.z.toFixed(1)})`
+        `📦 Added position update to batch: (${data.position.x.toFixed(1)}, ${data.position.z.toFixed(1)})`
       );
     } else {
       Logger.warn(LogCategory.NETWORK, '❌ CANNOT SEND - WebSocket not open. State:', this.websocket?.readyState);
@@ -509,7 +582,7 @@ export class NetworkSystem extends System {
               this.pendingHeartbeats.delete(heartbeatId);
               this.handleHeartbeatTimeout();
             }
-          }, 5000); // 5 second timeout
+          }, 10000); // TASK URGENTA.2: Increased from 5 to 10 seconds
           
         } catch (error) {
           const networkError: NetworkError = {
@@ -524,7 +597,7 @@ export class NetworkSystem extends System {
           Logger.error(LogCategory.NETWORK, '❌ Failed to send heartbeat', error);
         }
       }
-    }, 30000); // Every 30 seconds
+    }, 90000); // TASK URGENTA.2: Increased from 30 to 90 seconds
   }
 
   private handleHeartbeatTimeout(): void {
@@ -591,7 +664,7 @@ export class NetworkSystem extends System {
   private startConnectionQualityMonitoring(): void {
     this.connectionQualityCheckInterval = setInterval(() => {
       this.updateConnectionMetrics();
-    }, 60000); // Check every 60 seconds to minimize spam
+    }, 120000); // TASK URGENTA.2: Increased from 60 to 120 seconds
   }
 
   private updateConnectionMetrics(): void {
@@ -652,6 +725,18 @@ export class NetworkSystem extends System {
       this.connectionQualityCheckInterval = null;
     }
     
+    // TASK URGENTA.1: Send any remaining batched updates before disconnecting
+    if (this.batchedUpdates.length > 0) {
+      Logger.debug(LogCategory.NETWORK, `📦 Sending final batch of ${this.batchedUpdates.length} updates before disconnect`);
+      this.sendBatchedUpdates();
+    }
+    
+    // Clear batch timeout
+    if (this.batchTimeout) {
+      clearTimeout(this.batchTimeout);
+      this.batchTimeout = null;
+    }
+    
     if (this.websocket) {
       this.websocket.close(1000, 'Client disconnect');
       this.websocket = null;
@@ -664,7 +749,7 @@ export class NetworkSystem extends System {
     return this.websocket?.readyState === WebSocket.OPEN;
   }
 
-  // Enhanced diagnostic methods
+  // TASK URGENTA.6: Enhanced monitoring and analytics
   getConnectionMetrics(): ConnectionMetrics {
     return { ...this.connectionMetrics };
   }
@@ -675,6 +760,60 @@ export class NetworkSystem extends System {
 
   getConnectionQuality(): string {
     return this.connectionMetrics.quality;
+  }
+
+  // TASK URGENTA.6: Usage tracking for DO optimization
+  getUsageStats(): {
+    totalMessages: number;
+    batchedMessages: number;
+    averageBatchSize: number;
+    retryCount: number;
+    lastBatchTime: number;
+    uptime: number;
+  } {
+    const now = performance.now();
+    return {
+      totalMessages: this.messageCount,
+      batchedMessages: this.batchedUpdates.length,
+      averageBatchSize: this.batchedUpdates.length > 0 ? this.batchedUpdates.length : 0,
+      retryCount: this.errorCount,
+      lastBatchTime: this.lastPositionUpdate,
+      uptime: this.connectionStartTime > 0 ? now - this.connectionStartTime : 0
+    };
+  }
+
+  // TASK URGENTA.6: Alert system for approaching limits
+  checkUsageLimits(): {
+    approachingLimit: boolean;
+    warnings: string[];
+    recommendations: string[];
+  } {
+    const stats = this.getUsageStats();
+    const warnings: string[] = [];
+    const recommendations: string[] = [];
+    let approachingLimit = false;
+
+    // Check message frequency
+    if (stats.totalMessages > 1000) {
+      warnings.push('High message count detected');
+      recommendations.push('Consider increasing batching interval');
+      approachingLimit = true;
+    }
+
+    // Check error rate
+    if (stats.retryCount > 10) {
+      warnings.push('High error rate detected');
+      recommendations.push('Check network stability and reduce update frequency');
+      approachingLimit = true;
+    }
+
+    // Check batch efficiency
+    if (stats.averageBatchSize < 2) {
+      warnings.push('Low batch efficiency');
+      recommendations.push('Consider reducing batching interval for better efficiency');
+    }
+
+    return { approachingLimit, warnings, recommendations };
   }
 
   private handleInitMessage(message: NetworkMessage): void {
@@ -731,6 +870,18 @@ export class NetworkSystem extends System {
       }
     } else {
       Logger.warn(LogCategory.NETWORK, '⚠️ No players array in existing_players message');
+    }
+  }
+
+  private handleBatchUpdate(message: NetworkMessage): void {
+    Logger.debug(LogCategory.NETWORK, '🔄 HANDLING BATCH UPDATE');
+    
+    if (message.updates) {
+      for (const update of message.updates) {
+        this.handleRemotePlayerUpdate(update as NetworkMessage);
+      }
+    } else {
+      Logger.warn(LogCategory.NETWORK, '⚠️ No updates in batch_update message');
     }
   }
 } 

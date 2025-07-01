@@ -28,8 +28,8 @@ interface PendingUpdate {
 
 export class NetworkTickSystem extends System {
   // Network constants based on multiplayer research
-  private static readonly TICK_RATE = 10; // 10Hz updates (professional standard)
-  private static readonly TICK_INTERVAL = 1000 / NetworkTickSystem.TICK_RATE; // 100ms
+  private static readonly TICK_RATE = 5; // TASK URGENTA.10: Reduced from 10Hz to 5Hz
+  private static readonly TICK_INTERVAL = 1000 / NetworkTickSystem.TICK_RATE; // 200ms
   private static readonly MAX_PREDICTION_TIME = 150; // Max client prediction ahead
   // CHEN'S FIX: Professional lag compensation threshold (1-2cm like real games)
   private static readonly RECONCILIATION_THRESHOLD = 0.02; // 2cm threshold like CS:GO/Valorant
@@ -73,7 +73,7 @@ export class NetworkTickSystem extends System {
     }, NetworkTickSystem.TICK_INTERVAL);
     
     // Timer started
-    Logger.info(LogCategory.NETWORK, 'Started independent 10Hz network timer');
+    Logger.info(LogCategory.NETWORK, 'Started independent 5Hz network timer'); // TASK URGENTA.10: Updated to reflect new rate
   }
 
   stopNetworkTimer(): void {

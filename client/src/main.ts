@@ -8,6 +8,7 @@ import { Logger, LogCategory } from './core/Logger';
 class Application {
   private gameManager?: GameManager;
   private canvas?: HTMLCanvasElement;
+  private lastQualityUpdate: number = 0; // TASK URGENTA.8: Track last quality update time
 
   async initialize(): Promise<void> {
     // TEST: Verify Logger environment detection
@@ -305,10 +306,10 @@ class Application {
   }
 
   private startDebugOverlay(): void {
-    // Update debug info every second
+    // TASK URGENTA.4: Reduced debug update frequency from 1 to 10 seconds
     setInterval(() => {
       this.updateMultiplayerStatus('Debug Info', 'status-debug');
-    }, 1000);
+    }, 10000); // TASK URGENTA.4: Increased from 1 to 10 seconds
     
     // Add debug commands to global scope for browser console
     if (typeof window !== 'undefined') {
@@ -334,7 +335,14 @@ class Application {
   }
 
   private updateConnectionQualityDisplay(metrics: any): void {
-    Logger.debug(LogCategory.NETWORK, '🎨 Updating connection quality display:', metrics);
+    // TASK URGENTA.8: Reduce connection quality update frequency
+    const now = performance.now();
+    if (!this.lastQualityUpdate || now - this.lastQualityUpdate > 30000) { // Update every 30 seconds
+      this.lastQualityUpdate = now;
+      Logger.debug(LogCategory.NETWORK, '🎨 Updating connection quality display:', metrics);
+    } else {
+      return; // Skip update if too frequent
+    }
     
     // Get or create the multiplayer status container
     let statusContainer = document.getElementById('multiplayer-status');
@@ -464,7 +472,7 @@ class Application {
   }
 
   private startServerMetricsPolling(): void {
-    // Poll server metrics every 10 seconds
+    // TASK URGENTA.4: Reduced polling frequency from 10 to 60 seconds
     setInterval(async () => {
       try {
         const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8787';
@@ -477,7 +485,7 @@ class Application {
       } catch (error) {
         Logger.debug(LogCategory.NETWORK, 'Failed to fetch server metrics:', error);
       }
-    }, 10000);
+    }, 60000); // TASK URGENTA.4: Increased from 10 to 60 seconds
   }
 
   private updateServerMetricsDisplay(metrics: any): void {

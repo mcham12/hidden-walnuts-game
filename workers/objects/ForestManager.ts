@@ -91,6 +91,11 @@ export default class ForestManager {
     averageLatency: 0,
     uptime: 0
   };
+  
+  // TASK URGENTA.3: Storage Optimization - Batching
+  private pendingStorageOps: any[] = [];
+  private storageBatchTimeout: any = null;
+  private storageBatchInterval = 2000; // 2 second batching window
 
   constructor(state: DurableObjectState, env: any) {
     this.state = state;
@@ -746,9 +751,65 @@ export default class ForestManager {
     };
   }
 
-  // Enhanced session update with error handling
+  // TASK URGENTA.3: Storage Optimization - Batching methods
+  private async batchStorageOperation(operation: any): Promise<void> {
+    this.pendingStorageOps.push(operation);
+    
+    if (!this.storageBatchTimeout) {
+      this.storageBatchTimeout = setTimeout(async () => {
+        await this.executeBatchStorage();
+      }, this.storageBatchInterval);
+    }
+  }
+
+  private async executeBatchStorage(): Promise<void> {
+    if (this.pendingStorageOps.length > 0) {
+      Logger.debug(LogCategory.SESSION, `💾 Executing batch of ${this.pendingStorageOps.length} storage operations`);
+      
+      try {
+        // Execute all operations in parallel for better performance
+        const storagePromises = this.pendingStorageOps.map(op => this.executeStorageOperation(op));
+        await Promise.all(storagePromises);
+        
+        Logger.debug(LogCategory.SESSION, `✅ Successfully executed ${this.pendingStorageOps.length} storage operations`);
+      } catch (error) {
+        Logger.error(LogCategory.SESSION, `❌ Failed to execute batch storage operations:`, error);
+      }
+      
+      this.pendingStorageOps = [];
+    }
+    this.storageBatchTimeout = null;
+  }
+
+  private async executeStorageOperation(operation: any): Promise<void> {
+    try {
+      const { squirrelId, position, rotationY } = operation;
+      
+      // Update player position in storage
+      await this.storage.put(`player:${squirrelId}`, {
+        position,
+        rotationY,
+        lastUpdate: Date.now()
+      });
+      
+    } catch (error) {
+      Logger.error(LogCategory.SESSION, `❌ Failed to execute storage operation:`, error);
+    }
+  }
+
+  // Enhanced session update with error handling and batching
   private async updatePlayerSession(playerConnection: PlayerConnection): Promise<void> {
     try {
+      // TASK URGENTA.3: Add to batch instead of immediate storage
+      const storageOp = {
+        squirrelId: playerConnection.squirrelId,
+        position: playerConnection.position,
+        rotationY: playerConnection.rotationY
+      };
+      
+      await this.batchStorageOperation(storageOp);
+      
+      // Also update SquirrelSession for immediate consistency
       const sessionRequest = new Request(`https://dummy.com/update-state`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -797,13 +858,13 @@ export default class ForestManager {
     this.connectionMonitoringInterval = setInterval(() => {
       this.cleanupStaleConnections();
       this.updateServerMetrics();
-    }, 30000); // Every 30 seconds
+    }, 120000); // TASK URGENTA.7: Increased from 30 to 120 seconds
   }
 
   // Enhanced stale connection cleanup
   private cleanupStaleConnections(): void {
     const now = Date.now();
-    const timeoutThreshold = 60000; // 1 minute
+    const timeoutThreshold = 180000; // TASK URGENTA.7: Increased from 1 minute to 3 minutes
     
     for (const [squirrelId, playerConnection] of this.activePlayers) {
       const timeSinceActivity = now - playerConnection.lastActivity;

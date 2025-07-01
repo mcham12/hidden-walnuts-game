@@ -6,9 +6,9 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
 
 ## Current Status
 - **Current MVP**: MVP 7 (Multiplayer Foundation, in progress)
-- **Current Task**: Task 3 - Multiplayer Visual Synchronization
+- **Current Task**: Task "UrgentA" - Durable Objects Optimization & Free Tier Compliance
 - **Deployment**: Hosted on Cloudflare (Workers for backend, Pages for frontend)
-- **Focus**: Resolving issues with multiplayer visibility, model rendering (trees/shrubs with bounding boxes), and walnut visibility
+- **Focus**: Resolving critical Durable Objects free tier limits and optimizing multiplayer infrastructure
 
 ---
 
@@ -43,14 +43,65 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
      - Real-time connection metrics and error categorization
      - Enhanced UI for connection quality and error display
      - Server-side error tracking and diagnostics
-  3. **Multiplayer Visual Synchronization** 🔄 **CURRENT TASK**
+  3. **Durable Objects Optimization & Free Tier Compliance** 🔄 **CURRENT TASK**
+     - **Task UrgentA.1: Request Batching & Throttling**
+       - Client-side batching of multiple game updates into single requests
+       - Debounce position updates to reduce request frequency
+       - Batch storage operations and implement update queues
+       - Reduce Durable Object requests by 70%
+     - **Task UrgentA.2: Optimize Durable Object Lifecycle**
+       - Reduce object instantiation using single ForestManager for all players
+       - Implement proper hibernation by removing pending callbacks
+       - Remove unnecessary setTimeout and optimize WebSocket connections
+       - Reduce object active time by 50%
+     - **Task UrgentA.3: Storage Optimization**
+       - Batch SQLite operations into single transactions
+       - Implement regular data cleanup and optimize data structures
+       - Add storage monitoring and alerts for approaching limits
+       - Reduce storage operations by 60%
+     - **Task UrgentA.4: Client-Side Caching & State Management**
+       - Implement client caching for static game data
+       - Reduce server polling using WebSocket events
+       - Implement smart sync strategy for essential data only
+       - Add offline capability for basic gameplay
+     - **Task UrgentA.5: Error Handling & Graceful Degradation**
+       - Implement retry logic with exponential backoff
+       - Add graceful degradation for non-critical features
+       - Provide user notifications for service limitations
+       - Implement fallback mechanisms for high load
+     - **Task UrgentA.6: Monitoring & Analytics**
+       - Add usage tracking for Durable Object duration and requests
+       - Implement alerts for approaching free tier limits
+       - Add performance profiling and usage analytics
+       - Monitor peak usage times for optimization
+     - **Task UrgentA.7: Reduce Heartbeat Frequency** ⚠️ **CAUTIOUS**
+       - Reduce client heartbeat from 30s to 60-90s
+       - Optimize server heartbeat processing
+       - Increase heartbeat timeout from 5s to 10-15s
+     - **Task UrgentA.8: Optimize Connection Monitoring** ⚠️ **CAUTIOUS**
+       - Reduce server monitoring from 30s to 60-120s
+       - Reduce client quality checks from 60s to 120-180s
+       - Increase connection timeout from 1min to 2-3min
+     - **Task UrgentA.9: Reduce Client-Side Polling** ⚠️ **CAUTIOUS**
+       - Reduce server metrics polling from 10s to 30-60s
+       - Reduce debug updates from 1s to 5-10s
+       - Reduce connection quality updates from 10s to 30s
+     - **Task UrgentA.10: Optimize Network Tick System** ⚠️ **CAUTIOUS**
+       - Reduce network tick rate from 10Hz to 5Hz
+       - Reduce input history cleanup frequency
+       - Implement position update throttling
+     - **Task UrgentA.11: Reduce Session Management Overhead** ⚠️ **CAUTIOUS**
+       - Increase session timeout from 30min to 60-90min
+       - Reduce session validation frequency during gameplay
+       - Batch session storage operations
+  4. **Multiplayer Visual Synchronization** 📋 **PLANNED**
      - Fix squirrel player position issues relative to terrain
      - Resolve duplicate player creation and rendering
      - Fix camera perspective issues when remote players join
      - Ensure consistent player scaling and positioning
      - Implement proper terrain height synchronization
      - Fix player sinking/floating issues
-  4. **API Architecture Consolidation** 📋 **PLANNED**
+  5. **API Architecture Consolidation** 📋 **PLANNED**
      - Remove unused `api/` directory (Hono-based API)
      - Consolidate all API logic in `workers/api.ts` (raw Workers)
      - Eliminate code duplication and confusion
@@ -88,8 +139,8 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
      - Network failure recovery testing
      - Position validation and anti-cheat verification
      - Performance profiling under load
-- **Estimated Time**: 4-5 weeks (increased due to visual synchronization task)
-- **Current Focus**: Task 3 - Multiplayer Visual Synchronization
+- **Estimated Time**: 5-6 weeks (increased due to Durable Objects optimization task)
+- **Current Focus**: Task "UrgentA" - Durable Objects Optimization & Free Tier Compliance
 
 ---
 
@@ -198,9 +249,11 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
 ---
 
 ## Summary of Changes
+- **MVP 7 Task "UrgentA"** has been prioritized ahead of visual synchronization to address critical Durable Objects free tier limits.
+- **Task "UrgentA"** includes 11 sub-tasks categorized into best practices (Tasks 1-6) and cautious optimizations (Tasks 7-11).
 - **MVP 13: Predators** follows **MVP 12: Performance Optimizations** to prioritize performance before adding complex NPC mechanics.
 - **MVP 14: Power-Ups** is scheduled after Predators to enhance gameplay mechanics.
 - **MVP 15 to MVP 17** remain in sequence, culminating with **Enhanced Authentication** for a secure user experience.
-- **Current Focus**: Completing Task 3 of MVP 7, ensuring robust WebSocket communication, multiplayer visibility, and proper rendering of game assets.
+- **Current Focus**: Completing Task "UrgentA" of MVP 7, ensuring Durable Objects stay within free tier limits while maintaining multiplayer functionality.
 
-This plan ensures the game builds a solid foundation, delivering a visually appealing and performant experience before introducing advanced features like predators, power-ups, and social interactions.
+This plan ensures the game builds a solid foundation with optimized infrastructure, delivering a stable and cost-effective multiplayer experience before introducing advanced features like predators, power-ups, and social interactions.
