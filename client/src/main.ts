@@ -42,6 +42,9 @@ class Application {
       // Start debug overlay updates
       this.startDebugOverlay();
       
+      // Start server metrics polling
+      this.startServerMetricsPolling();
+      
       this.hideLoadingScreen();
       this.gameManager.start();
       
@@ -119,6 +122,15 @@ class Application {
     
     eventBus.subscribe('player_disconnected', (data: any) => {
       Logger.info(LogCategory.NETWORK, `👋 Player disconnected: ${data.squirrelId}`);
+    });
+
+    // Enhanced connection quality monitoring
+    eventBus.subscribe('network.connection_quality', (metrics: any) => {
+      this.updateConnectionQualityDisplay(metrics);
+    });
+
+    eventBus.subscribe('network.error', (error: any) => {
+      this.displayNetworkError(error);
     });
   }
 
@@ -303,6 +315,115 @@ class Application {
       };
       Logger.info(LogCategory.CORE, '🎮 Debug commands available at window.gameDebug');
     }
+  }
+
+  private updateConnectionQualityDisplay(metrics: any): void {
+    const qualityElement = document.getElementById('connection-quality');
+    if (!qualityElement) return;
+
+    const qualityColors = {
+      excellent: '#00ff00',
+      good: '#90EE90',
+      fair: '#ffff00',
+      poor: '#ffa500',
+      critical: '#ff0000'
+    };
+
+    const quality = (metrics.quality as keyof typeof qualityColors) || 'poor';
+    const color = qualityColors[quality] || '#ff0000';
+    
+    qualityElement.style.color = color;
+    qualityElement.textContent = `Connection: ${quality.toUpperCase()}`;
+    
+    // Update detailed metrics if available
+    const metricsElement = document.getElementById('connection-metrics');
+    if (metricsElement) {
+      metricsElement.innerHTML = `
+        <div>Latency: ${metrics.latency?.toFixed(1) || 'N/A'}ms</div>
+        <div>Packet Loss: ${metrics.packetLoss?.toFixed(1) || '0'}%</div>
+        <div>Uptime: ${this.formatUptime(metrics.connectionUptime)}</div>
+        <div>Messages: ${metrics.messageCount || 0}</div>
+        <div>Errors: ${metrics.errorCount || 0}</div>
+      `;
+    }
+  }
+
+  private displayNetworkError(error: any): void {
+    const errorElement = document.getElementById('network-errors');
+    if (!errorElement) return;
+
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'network-error';
+    errorDiv.innerHTML = `
+      <span class="error-time">${new Date(error.timestamp).toLocaleTimeString()}</span>
+      <span class="error-type">${error.type}</span>
+      <span class="error-message">${error.message}</span>
+      <span class="error-recoverable">${error.recoverable ? '🔄' : '❌'}</span>
+    `;
+
+    errorElement.appendChild(errorDiv);
+
+    // Keep only last 5 errors
+    while (errorElement.children.length > 5) {
+      errorElement.removeChild(errorElement.firstChild!);
+    }
+
+    // Auto-remove after 10 seconds
+    setTimeout(() => {
+      if (errorDiv.parentNode) {
+        errorDiv.parentNode.removeChild(errorDiv);
+      }
+    }, 10000);
+  }
+
+  private formatUptime(ms: number): string {
+    if (!ms) return '0s';
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes % 60}m`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds % 60}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  }
+
+  private startServerMetricsPolling(): void {
+    // Poll server metrics every 10 seconds
+    setInterval(async () => {
+      try {
+        const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+        const response = await fetch(`${apiBase}/server-metrics`);
+        
+        if (response.ok) {
+          const metrics = await response.json();
+          this.updateServerMetricsDisplay(metrics);
+        }
+      } catch (error) {
+        Logger.debug(LogCategory.NETWORK, 'Failed to fetch server metrics:', error);
+      }
+    }, 10000);
+  }
+
+  private updateServerMetricsDisplay(metrics: any): void {
+    const metricsElement = document.getElementById('server-metrics');
+    if (!metricsElement) return;
+
+    const serverMetrics = metrics.serverMetrics || {};
+    const uptime = this.formatUptime(serverMetrics.uptime || 0);
+    const avgLatency = serverMetrics.averageLatency ? `${serverMetrics.averageLatency.toFixed(1)}ms` : 'N/A';
+
+    metricsElement.innerHTML = `
+      <h4>🖥️ Server Metrics</h4>
+      <div>Active Players: ${metrics.activePlayers || 0}</div>
+      <div>Total Connections: ${serverMetrics.totalConnections || 0}</div>
+      <div>Server Uptime: ${uptime}</div>
+      <div>Average Latency: ${avgLatency}</div>
+      <div>Total Errors: ${serverMetrics.totalErrors || 0}</div>
+    `;
   }
 }
 

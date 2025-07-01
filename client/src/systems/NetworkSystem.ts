@@ -14,29 +14,93 @@ interface NetworkMessage {
   players?: any[]; // For existing_players message
 }
 
+// Enhanced connection quality metrics
+interface ConnectionMetrics {
+  latency: number;
+  packetLoss: number;
+  reconnectAttempts: number;
+  lastHeartbeat: number;
+  connectionUptime: number;
+  messageCount: number;
+  errorCount: number;
+  quality: 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+}
+
+// Enhanced error types for better diagnostics
+enum NetworkErrorType {
+  CONNECTION_FAILED = 'connection_failed',
+  AUTHENTICATION_FAILED = 'authentication_failed',
+  WEBSOCKET_ERROR = 'websocket_error',
+  MESSAGE_PARSE_ERROR = 'message_parse_error',
+  HEARTBEAT_TIMEOUT = 'heartbeat_timeout',
+  RECONNECTION_FAILED = 'reconnection_failed',
+  SERVER_ERROR = 'server_error'
+}
+
+interface NetworkError {
+  type: NetworkErrorType;
+  message: string;
+  timestamp: number;
+  details?: any;
+  recoverable: boolean;
+}
+
 export class NetworkSystem extends System {
   private websocket: WebSocket | null = null;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  private maxReconnectAttempts = 10; // Increased for better resilience
   private heartbeatInterval: any = null;
+  private heartbeatTimeout: any = null;
   private isConnecting = false;
   private localSquirrelId: string | null = null;
+  
+  // Enhanced connection monitoring
+  private connectionStartTime: number = 0;
+  private heartbeatResponses: number[] = []; // Track last 10 heartbeats for latency
+  private pendingHeartbeats: Map<number, number> = new Map(); // timestamp -> sent time
+  private messageCount: number = 0;
+  private errorCount: number = 0;
+  private connectionMetrics: ConnectionMetrics;
+  
+  // Enhanced error handling
+  private errorHistory: NetworkError[] = [];
+  private maxErrorHistory = 50;
+  private connectionQualityCheckInterval: any = null;
   
   constructor(eventBus: EventBus) {
     super(eventBus, ['network'], 'NetworkSystem');
     
+    // Initialize connection metrics
+    this.connectionMetrics = {
+      latency: 0,
+      packetLoss: 0,
+      reconnectAttempts: 0,
+      lastHeartbeat: 0,
+      connectionUptime: 0,
+      messageCount: 0,
+      errorCount: 0,
+      quality: 'poor'
+    };
+    
     // Listen for local player movement to broadcast
     this.eventBus.subscribe(GameEvents.PLAYER_MOVED, this.handleLocalPlayerMove.bind(this));
+    
+    // Start connection quality monitoring
+    this.startConnectionQualityMonitoring();
   }
 
   async connect(): Promise<void> {
     if (this.isConnecting || this.websocket?.readyState === WebSocket.OPEN) {
+      Logger.debug(LogCategory.NETWORK, '🔄 Connection already in progress or established');
       return;
     }
 
     this.isConnecting = true;
+    this.connectionMetrics.reconnectAttempts = this.reconnectAttempts;
     
     try {
+      Logger.info(LogCategory.NETWORK, `🔄 Attempting connection (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
+      
       // FIXED: Generate a unique squirrel ID for each browser window/tab
       // This allows multiple players to connect to the same server
       const newSquirrelId = crypto.randomUUID();
@@ -48,16 +112,9 @@ export class NetworkSystem extends System {
       
       Logger.info(LogCategory.NETWORK, `🆕 Generated unique squirrel ID for this session: ${newSquirrelId}`);
       
-      // Get authentication token
-      const authResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8787'}/join?squirrelId=${this.localSquirrelId}`, {
-        method: 'POST'
-      });
-      
-      if (!authResponse.ok) {
-        throw new Error(`Auth failed: ${authResponse.status}`);
-      }
-      
-      const authData = await authResponse.json();
+      // Get authentication token with enhanced error handling
+      const authResponse = await this.authenticatePlayer(newSquirrelId);
+      const authData = authResponse;
       
       // Update local squirrel ID with what the server returned (in case of session restoration)
       this.localSquirrelId = authData.squirrelId;
@@ -72,6 +129,15 @@ export class NetworkSystem extends System {
       this.setupWebSocketHandlers();
       
     } catch (error) {
+      const networkError: NetworkError = {
+        type: NetworkErrorType.CONNECTION_FAILED,
+        message: `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: Date.now(),
+        details: error,
+        recoverable: this.reconnectAttempts < this.maxReconnectAttempts
+      };
+      
+      this.recordError(networkError);
       Logger.error(LogCategory.NETWORK, '❌ Connection failed', error);
       this.scheduleReconnect();
     } finally {
@@ -79,10 +145,47 @@ export class NetworkSystem extends System {
     }
   }
 
+  private async authenticatePlayer(squirrelId: string): Promise<any> {
+    try {
+      const authResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8787'}/join?squirrelId=${squirrelId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!authResponse.ok) {
+        const errorText = await authResponse.text();
+        throw new Error(`Authentication failed: ${authResponse.status} - ${errorText}`);
+      }
+      
+      const authData = await authResponse.json();
+      Logger.info(LogCategory.NETWORK, `✅ Authentication successful for ${squirrelId}`);
+      return authData;
+      
+    } catch (error) {
+      const networkError: NetworkError = {
+        type: NetworkErrorType.AUTHENTICATION_FAILED,
+        message: `Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: Date.now(),
+        details: error,
+        recoverable: false // Authentication failures are not recoverable
+      };
+      
+      this.recordError(networkError);
+      throw error;
+    }
+  }
+
   private setupWebSocketHandlers(): void {
     if (!this.websocket) return;
 
     this.websocket.onopen = () => {
+      this.connectionStartTime = Date.now();
+      this.connectionMetrics.connectionUptime = 0;
+      this.connectionMetrics.messageCount = 0;
+      this.connectionMetrics.errorCount = 0;
+      
       Logger.info(LogCategory.NETWORK, '✅ Connected to multiplayer server');
       this.reconnectAttempts = 0;
       this.startHeartbeat();
@@ -90,25 +193,69 @@ export class NetworkSystem extends System {
       
       // Notify systems that websocket is ready
       this.eventBus.emit('network.websocket_ready', this.websocket);
+      
+      // Update connection quality
+      this.updateConnectionQuality('excellent');
     };
 
     this.websocket.onmessage = (event) => {
+      this.messageCount++;
+      this.connectionMetrics.messageCount = this.messageCount;
+      
       Logger.debug(LogCategory.NETWORK, 'RAW WEBSOCKET MESSAGE DATA:', event.data);
       try {
         const message: NetworkMessage = JSON.parse(event.data);
         this.handleNetworkMessage(message);
       } catch (error) {
+        const networkError: NetworkError = {
+          type: NetworkErrorType.MESSAGE_PARSE_ERROR,
+          message: `Failed to parse message: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          timestamp: Date.now(),
+          details: { rawData: event.data, error },
+          recoverable: true
+        };
+        
+        this.recordError(networkError);
         Logger.error(LogCategory.NETWORK, '❌ Failed to parse message', error);
       }
     };
 
-    this.websocket.onclose = () => {
-      Logger.info(LogCategory.NETWORK, '🔴 Connection closed');
+    this.websocket.onclose = (event) => {
+      const wasClean = event.wasClean;
+      const code = event.code;
+      const reason = event.reason;
+      
+      Logger.info(LogCategory.NETWORK, `🔴 Connection closed - Clean: ${wasClean}, Code: ${code}, Reason: ${reason}`);
+      
       this.stopHeartbeat();
+      this.updateConnectionQuality('poor');
+      
+      // Record connection close details
+      if (!wasClean) {
+        const networkError: NetworkError = {
+          type: NetworkErrorType.WEBSOCKET_ERROR,
+          message: `Connection closed unexpectedly - Code: ${code}, Reason: ${reason}`,
+          timestamp: Date.now(),
+          details: { code, reason, wasClean },
+          recoverable: true
+        };
+        
+        this.recordError(networkError);
+      }
+      
       this.scheduleReconnect();
     };
 
     this.websocket.onerror = (error) => {
+      const networkError: NetworkError = {
+        type: NetworkErrorType.WEBSOCKET_ERROR,
+        message: 'WebSocket error occurred',
+        timestamp: Date.now(),
+        details: error,
+        recoverable: true
+      };
+      
+      this.recordError(networkError);
       Logger.error(LogCategory.NETWORK, '⚠️ WebSocket error', error);
     };
   }
@@ -154,11 +301,46 @@ export class NetworkSystem extends System {
         break;
       case 'heartbeat':
         Logger.debug(LogCategory.NETWORK, '💓 HEARTBEAT received');
-        // Server heartbeat - connection is alive
+        this.handleHeartbeatResponse(message);
         break;
       default:
         Logger.debug(LogCategory.NETWORK, '❓ UNKNOWN MESSAGE TYPE:', message.type);
     }
+  }
+
+  private handleHeartbeatResponse(message: NetworkMessage): void {
+    const now = Date.now();
+    this.connectionMetrics.lastHeartbeat = now;
+    
+    // Calculate latency if we have a pending heartbeat
+    if (message.timestamp && this.pendingHeartbeats.has(message.timestamp)) {
+      const sentTime = this.pendingHeartbeats.get(message.timestamp)!;
+      const latency = now - sentTime;
+      
+      this.heartbeatResponses.push(latency);
+      if (this.heartbeatResponses.length > 10) {
+        this.heartbeatResponses.shift(); // Keep only last 10
+      }
+      
+      // Calculate average latency
+      const avgLatency = this.heartbeatResponses.reduce((a, b) => a + b, 0) / this.heartbeatResponses.length;
+      this.connectionMetrics.latency = avgLatency;
+      
+      Logger.debug(LogCategory.NETWORK, `💓 Heartbeat latency: ${latency}ms (avg: ${avgLatency.toFixed(1)}ms)`);
+      
+      // Update connection quality based on latency
+      if (avgLatency < 50) {
+        this.updateConnectionQuality('excellent');
+      } else if (avgLatency < 100) {
+        this.updateConnectionQuality('good');
+      } else if (avgLatency < 200) {
+        this.updateConnectionQuality('fair');
+      } else {
+        this.updateConnectionQuality('poor');
+      }
+    }
+    
+    this.pendingHeartbeats.delete(message.timestamp);
   }
 
   private handleRemotePlayerUpdate(message: NetworkMessage): void {
@@ -198,42 +380,22 @@ export class NetworkSystem extends System {
     this.eventBus.emit('remote_player_state', {
       squirrelId,
       position: playerPosition,
-      rotationY: playerRotation, // FIXED: Use rotationY directly instead of nested rotation object
-      velocity: data?.velocity,
+      rotationY: playerRotation,
       timestamp: message.timestamp || performance.now()
     });
-
-    Logger.info(LogCategory.NETWORK, `🎮 Remote player ${squirrelId} joined at (${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
   }
 
   private handlePlayerLeft(message: NetworkMessage): void {
     const { squirrelId } = message;
-    
-    Logger.debug(LogCategory.NETWORK, '👋 PLAYER LEFT/LEAVE MESSAGE received for:', squirrelId);
     Logger.info(LogCategory.NETWORK, `👋 Remote player left: ${squirrelId}`);
-    
-    this.eventBus.emit('player_disconnected', {
-      squirrelId
-    });
+    this.eventBus.emit('player_disconnected', { squirrelId });
   }
 
   private handleWorldState(message: NetworkMessage): void {
-    Logger.info(LogCategory.NETWORK, '🌍 Received world state from server');
-    
-    // The world state contains initial terrain seed, map state, etc.
-    // For now, we're primarily interested in any existing players
-    if (message.data?.activePlayers) {
-      for (const [squirrelId, playerData] of Object.entries(message.data.activePlayers)) {
-        if (squirrelId !== this.localSquirrelId) {
-          this.handlePlayerJoined({
-            type: 'player_joined',
-            squirrelId,
-            position: (playerData as any).position,
-            rotationY: (playerData as any).rotationY,
-            timestamp: performance.now()
-          } as NetworkMessage);
-        }
-      }
+    Logger.debug(LogCategory.NETWORK, '🌍 World state received');
+    // Handle world state updates
+    if (message.data) {
+      this.eventBus.emit('world_state_update', message.data);
     }
   }
 
@@ -250,7 +412,23 @@ export class NetworkSystem extends System {
       };
       
       Logger.info(LogCategory.NETWORK, '📤 SENDING LOCAL PLAYER UPDATE to server:', this.localSquirrelId, 'at position:', message.position);
-      this.websocket.send(JSON.stringify(message));
+      
+      try {
+        this.websocket.send(JSON.stringify(message));
+        this.messageCount++;
+        this.connectionMetrics.messageCount = this.messageCount;
+      } catch (error) {
+        const networkError: NetworkError = {
+          type: NetworkErrorType.WEBSOCKET_ERROR,
+          message: `Failed to send player update: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          timestamp: Date.now(),
+          details: { message, error },
+          recoverable: true
+        };
+        
+        this.recordError(networkError);
+        Logger.error(LogCategory.NETWORK, '❌ Failed to send player update', error);
+      }
       
       Logger.debugExpensive(LogCategory.NETWORK, () => 
         `📤 Sent position update: (${data.position.x.toFixed(1)}, ${data.position.z.toFixed(1)})`
@@ -263,13 +441,53 @@ export class NetworkSystem extends System {
   private startHeartbeat(): void {
     this.heartbeatInterval = setInterval(() => {
       if (this.websocket?.readyState === WebSocket.OPEN) {
-        this.websocket.send(JSON.stringify({
+        const heartbeatId = Date.now();
+        const heartbeatMessage = {
           type: 'heartbeat',
           squirrelId: this.localSquirrelId,
-          timestamp: performance.now()
-        }));
+          timestamp: heartbeatId
+        };
+        
+        try {
+          this.websocket.send(JSON.stringify(heartbeatMessage));
+          this.pendingHeartbeats.set(heartbeatId, Date.now());
+          
+          // Set timeout for heartbeat response
+          this.heartbeatTimeout = setTimeout(() => {
+            if (this.pendingHeartbeats.has(heartbeatId)) {
+              this.pendingHeartbeats.delete(heartbeatId);
+              this.handleHeartbeatTimeout();
+            }
+          }, 5000); // 5 second timeout
+          
+        } catch (error) {
+          const networkError: NetworkError = {
+            type: NetworkErrorType.HEARTBEAT_TIMEOUT,
+            message: `Failed to send heartbeat: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            timestamp: Date.now(),
+            details: { heartbeatId, error },
+            recoverable: true
+          };
+          
+          this.recordError(networkError);
+          Logger.error(LogCategory.NETWORK, '❌ Failed to send heartbeat', error);
+        }
       }
     }, 30000); // Every 30 seconds
+  }
+
+  private handleHeartbeatTimeout(): void {
+    const networkError: NetworkError = {
+      type: NetworkErrorType.HEARTBEAT_TIMEOUT,
+      message: 'Heartbeat timeout - no response from server',
+      timestamp: Date.now(),
+      details: { pendingHeartbeats: this.pendingHeartbeats.size },
+      recoverable: true
+    };
+    
+    this.recordError(networkError);
+    Logger.warn(LogCategory.NETWORK, '⏰ Heartbeat timeout - connection may be unstable');
+    this.updateConnectionQuality('critical');
   }
 
   private stopHeartbeat(): void {
@@ -277,39 +495,126 @@ export class NetworkSystem extends System {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
     }
+    
+    if (this.heartbeatTimeout) {
+      clearTimeout(this.heartbeatTimeout);
+      this.heartbeatTimeout = null;
+    }
+    
+    this.pendingHeartbeats.clear();
   }
 
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      const networkError: NetworkError = {
+        type: NetworkErrorType.RECONNECTION_FAILED,
+        message: `Max reconnection attempts reached (${this.maxReconnectAttempts})`,
+        timestamp: Date.now(),
+        details: { reconnectAttempts: this.reconnectAttempts, maxAttempts: this.maxReconnectAttempts },
+        recoverable: false
+      };
+      
+      this.recordError(networkError);
       Logger.error(LogCategory.NETWORK, '💥 Max reconnection attempts reached');
+      this.updateConnectionQuality('critical');
       return;
     }
 
     this.reconnectAttempts++;
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+    this.connectionMetrics.reconnectAttempts = this.reconnectAttempts;
     
-    Logger.info(LogCategory.NETWORK, `🔄 Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+    // Enhanced exponential backoff with jitter
+    const baseDelay = 1000;
+    const maxDelay = 30000;
+    const exponentialDelay = Math.min(baseDelay * Math.pow(2, this.reconnectAttempts - 1), maxDelay);
+    const jitter = Math.random() * 1000; // Add up to 1 second of jitter
+    const delay = exponentialDelay + jitter;
+    
+    Logger.info(LogCategory.NETWORK, `🔄 Reconnecting in ${delay.toFixed(0)}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
     
     setTimeout(() => {
       this.connect();
     }, delay);
   }
 
+  private startConnectionQualityMonitoring(): void {
+    this.connectionQualityCheckInterval = setInterval(() => {
+      this.updateConnectionMetrics();
+    }, 10000); // Check every 10 seconds
+  }
+
+  private updateConnectionMetrics(): void {
+    if (this.connectionStartTime > 0) {
+      this.connectionMetrics.connectionUptime = Date.now() - this.connectionStartTime;
+    }
+    
+    this.connectionMetrics.errorCount = this.errorCount;
+    
+    // Calculate packet loss based on heartbeat responses
+    if (this.heartbeatResponses.length > 0) {
+      const totalHeartbeats = this.messageCount;
+      const successfulHeartbeats = this.heartbeatResponses.length;
+      this.connectionMetrics.packetLoss = Math.max(0, (totalHeartbeats - successfulHeartbeats) / totalHeartbeats * 100);
+    }
+    
+    // Emit connection quality update
+    this.eventBus.emit('network.connection_quality', this.connectionMetrics);
+  }
+
+  private updateConnectionQuality(quality: ConnectionMetrics['quality']): void {
+    this.connectionMetrics.quality = quality;
+    Logger.debug(LogCategory.NETWORK, `📊 Connection quality: ${quality}`);
+    this.eventBus.emit('network.connection_quality', this.connectionMetrics);
+  }
+
+  private recordError(error: NetworkError): void {
+    this.errorCount++;
+    this.connectionMetrics.errorCount = this.errorCount;
+    
+    this.errorHistory.push(error);
+    if (this.errorHistory.length > this.maxErrorHistory) {
+      this.errorHistory.shift(); // Keep only recent errors
+    }
+    
+    // Emit error event for UI updates
+    this.eventBus.emit('network.error', error);
+  }
+
   update(_deltaTime: number): void {
-    // NetworkSystem handles WebSocket events, no per-frame updates needed
+    // Update connection metrics
+    this.updateConnectionMetrics();
   }
 
   disconnect(): void {
     this.stopHeartbeat();
+    if (this.connectionQualityCheckInterval) {
+      clearInterval(this.connectionQualityCheckInterval);
+      this.connectionQualityCheckInterval = null;
+    }
+    
     if (this.websocket) {
-      this.websocket.close();
+      this.websocket.close(1000, 'Client disconnect');
       this.websocket = null;
     }
+    
+    this.updateConnectionQuality('poor');
   }
 
-  // Public method for debug UI
   isConnected(): boolean {
     return this.websocket?.readyState === WebSocket.OPEN;
+  }
+
+  // Enhanced diagnostic methods
+  getConnectionMetrics(): ConnectionMetrics {
+    return { ...this.connectionMetrics };
+  }
+
+  getErrorHistory(): NetworkError[] {
+    return [...this.errorHistory];
+  }
+
+  getConnectionQuality(): string {
+    return this.connectionMetrics.quality;
   }
 
   private handleInitMessage(message: NetworkMessage): void {
