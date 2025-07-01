@@ -55,28 +55,35 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
      - Consolidate all API logic in `workers/api.ts` (raw Workers)
      - Eliminate code duplication and confusion
      - Clean up project structure and reduce technical debt
-  5. **Authoritative Server Architecture**
+  6. **Authoritative Server Architecture**
      - Server owns all game state (player positions, session data)
      - Implement server-side position validation and anti-cheat (speed limits, bounds)
      - Client sends inputs, server validates and broadcasts authoritative results
-  6. **WebSocket Connection Lifecycle**
+  7. **WebSocket Connection Lifecycle**
      - Secure WebSocket connections with proper upgrade handling
      - Connection heartbeats and automatic reconnection logic
      - Graceful disconnect handling with session cleanup
-  7. **Core Multiplayer Events**
+  8. **Core Multiplayer Events**
      - `player_join`: When player connects and is ready
      - `player_update`: Position/state changes (with validation)
      - `player_leave`: Clean disconnection
      - `world_state`: Full state on connect, delta updates afterward
-  8. **Client-Side Prediction & Reconciliation**
+     - Implement future-proof session management for both anonymous and authenticated users
+     - Add session validation on reconnection with configurable timeouts
+     - Implement progressive cleanup states: active → away → disconnected → expired
+     - Add client-side cleanup for invalid sessions
+     - Design authentication-ready interfaces for future user accounts
+     - Configure cleanup rules: 10 minutes for anonymous, 30 minutes for authenticated users
+     - Add data migration hooks for when authentication is implemented
+  9. **Client-Side Prediction & Reconciliation**
      - Client predicts movement locally for responsiveness
      - Server sends authoritative position corrections
      - Client reconciles differences smoothly
-  9. **Interest Management**
+  10. **Interest Management**
      - Only sync players within visible range (Area of Interest)
      - Efficient message broadcasting to relevant players only
      - Handle player entering/leaving interest zones
-  10. **Testing & Validation**
+  11. **Testing & Validation**
      - Multi-browser real-time synchronization tests
      - Network failure recovery testing
      - Position validation and anti-cheat verification

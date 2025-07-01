@@ -703,10 +703,10 @@ export default class ForestManager {
     // Validate reasonable height (not underground, not too high)
     if (y < -10 || y > 100) return false;
     
-    // TASK 3 FIX: Validate against terrain height to prevent sinking/floating
+    // TASK 3 FIX: Enhanced terrain height validation to prevent floating
     const terrainHeight = this.getTerrainHeight(x, z);
     const minValidHeight = terrainHeight + 0.5; // Squirrel height above terrain
-    const maxValidHeight = terrainHeight + 10; // Allow some floating but not too much
+    const maxValidHeight = terrainHeight + 5; // Reduced max height to prevent excessive floating
     
     if (y < minValidHeight || y > maxValidHeight) {
       Logger.warn(LogCategory.PLAYER, `Position validation failed: player at Y=${y.toFixed(2)}, terrain=${terrainHeight.toFixed(2)}, valid range=[${minValidHeight.toFixed(2)}, ${maxValidHeight.toFixed(2)}]`);
@@ -733,14 +733,15 @@ export default class ForestManager {
     return height;
   }
 
-  // TASK 3 FIX: Add position correction for invalid positions
+  // TASK 3 FIX: Enhanced position correction to prevent floating
   private correctPlayerPosition(position: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
     const terrainHeight = this.getTerrainHeight(position.x, position.z);
     const minValidHeight = terrainHeight + 0.5; // Squirrel height above terrain
+    const maxValidHeight = terrainHeight + 3; // Reduced max height to prevent floating
     
     return {
       x: position.x,
-      y: Math.max(position.y, minValidHeight), // Ensure player is above terrain
+      y: Math.max(minValidHeight, Math.min(position.y, maxValidHeight)), // Clamp to valid terrain range
       z: position.z
     };
   }

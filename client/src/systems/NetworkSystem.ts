@@ -5,13 +5,14 @@ import { EventBus, GameEvents } from '../core/EventBus';
 import { Logger, LogCategory } from '../core/Logger';
 
 interface NetworkMessage {
-  type: 'position_update' | 'player_joined' | 'player_left' | 'heartbeat' | 'player_join' | 'player_update' | 'world_state' | 'init' | 'existing_players' | 'player_leave';
+  type: 'position_update' | 'player_joined' | 'player_left' | 'heartbeat' | 'player_join' | 'player_update' | 'world_state' | 'init' | 'existing_players' | 'player_leave' | 'position_correction';
   squirrelId: string;
   data?: any;
   timestamp: number;
   position?: { x: number; y: number; z: number };
   rotationY?: number;
   players?: any[]; // For existing_players message
+  originalPosition?: { x: number; y: number; z: number }; // For position_correction
 }
 
 // Enhanced connection quality metrics
@@ -67,6 +68,10 @@ export class NetworkSystem extends System {
   private maxErrorHistory = 50;
   private connectionQualityCheckInterval: any = null;
   
+  // Connection quality throttling
+  private lastQualityUpdate: number = 0;
+  private lastQualityValue: ConnectionMetrics['quality'] = 'poor';
+  
   constructor(eventBus: EventBus) {
     super(eventBus, ['network'], 'NetworkSystem');
     
@@ -101,23 +106,31 @@ export class NetworkSystem extends System {
     try {
       Logger.info(LogCategory.NETWORK, `🔄 Attempting connection (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
       
-      // FIXED: Generate a unique squirrel ID for each browser window/tab
-      // This allows multiple players to connect to the same server
-      const newSquirrelId = crypto.randomUUID();
-      this.localSquirrelId = newSquirrelId;
+      // TASK 3 FIX: Use persistent squirrel ID for position retention across browser refreshes
+      // Try to get existing ID from localStorage (persistent across browser restarts)
+      let existingSquirrelId = localStorage.getItem('squirrelId');
       
-      // Store the ID for this session only (not persistent across browser restarts)
-      // This ensures each browser window gets a unique ID
-      sessionStorage.setItem('squirrelId', newSquirrelId);
+      if (existingSquirrelId) {
+        Logger.info(LogCategory.NETWORK, `🔄 Using existing persistent squirrel ID: ${existingSquirrelId}`);
+        this.localSquirrelId = existingSquirrelId;
+      } else {
+        // Generate new persistent ID for first-time users
+        const newSquirrelId = crypto.randomUUID();
+        this.localSquirrelId = newSquirrelId;
+        localStorage.setItem('squirrelId', newSquirrelId);
+        Logger.info(LogCategory.NETWORK, `🆕 Generated new persistent squirrel ID: ${newSquirrelId}`);
+      }
       
-      Logger.info(LogCategory.NETWORK, `🆕 Generated unique squirrel ID for this session: ${newSquirrelId}`);
+      // Also store in sessionStorage for backward compatibility
+      sessionStorage.setItem('squirrelId', this.localSquirrelId);
       
       // Get authentication token with enhanced error handling
-      const authResponse = await this.authenticatePlayer(newSquirrelId);
+      const authResponse = await this.authenticatePlayer(this.localSquirrelId!);
       const authData = authResponse;
       
       // Update local squirrel ID with what the server returned (in case of session restoration)
       this.localSquirrelId = authData.squirrelId;
+      localStorage.setItem('squirrelId', authData.squirrelId); // TASK 3 FIX: Update persistent storage
       sessionStorage.setItem('squirrelId', authData.squirrelId);
       
       const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8787';
@@ -311,6 +324,10 @@ export class NetworkSystem extends System {
         Logger.debug(LogCategory.NETWORK, '🌍 HANDLING WORLD STATE');
         this.handleWorldState(message);
         break;
+      case 'position_correction':
+        Logger.debug(LogCategory.NETWORK, '🔧 HANDLING POSITION CORRECTION');
+        this.handlePositionCorrection(message);
+        break;
       case 'heartbeat':
         Logger.debug(LogCategory.NETWORK, '💓 HEARTBEAT received');
         this.handleHeartbeatResponse(message);
@@ -420,6 +437,24 @@ export class NetworkSystem extends System {
     // Handle world state updates
     if (message.data) {
       this.eventBus.emit('world_state_update', message.data);
+    }
+  }
+
+  private handlePositionCorrection(message: NetworkMessage): void {
+    Logger.info(LogCategory.NETWORK, '🔧 Position correction received from server:', {
+      original: message.originalPosition,
+      corrected: message.position
+    });
+    
+    // TASK 3 FIX: Apply server position correction to local player
+    if (message.position && message.squirrelId === this.localSquirrelId) {
+      // Emit event to update local player position
+      this.eventBus.emit('player_position_corrected', {
+        position: message.position,
+        originalPosition: message.originalPosition
+      });
+      
+      Logger.info(LogCategory.NETWORK, '✅ Applied server position correction to local player');
     }
   }
 
@@ -564,7 +599,7 @@ export class NetworkSystem extends System {
   private startConnectionQualityMonitoring(): void {
     this.connectionQualityCheckInterval = setInterval(() => {
       this.updateConnectionMetrics();
-    }, 10000); // Check every 10 seconds
+    }, 60000); // Check every 60 seconds to minimize spam
   }
 
   private updateConnectionMetrics(): void {
@@ -586,10 +621,18 @@ export class NetworkSystem extends System {
   }
 
   private updateConnectionQuality(quality: ConnectionMetrics['quality']): void {
-    this.connectionMetrics.quality = quality;
-    Logger.debug(LogCategory.NETWORK, `📊 Connection quality: ${quality}`);
-    Logger.debug(LogCategory.NETWORK, `📊 Emitting connection quality event with metrics:`, this.connectionMetrics);
-    this.eventBus.emit('network.connection_quality', this.connectionMetrics);
+    const now = Date.now();
+    
+    // Throttle connection quality updates to prevent console spam
+    // Only update if quality changed or if it's been more than 5 seconds
+    if (quality !== this.lastQualityValue || now - this.lastQualityUpdate > 5000) {
+      this.connectionMetrics.quality = quality;
+      this.lastQualityValue = quality;
+      this.lastQualityUpdate = now;
+      
+      Logger.debug(LogCategory.NETWORK, `📊 Connection quality: ${quality}`);
+      this.eventBus.emit('network.connection_quality', this.connectionMetrics);
+    }
   }
 
   private recordError(error: NetworkError): void {
@@ -606,8 +649,8 @@ export class NetworkSystem extends System {
   }
 
   update(_deltaTime: number): void {
-    // Update connection metrics
-    this.updateConnectionMetrics();
+    // Connection metrics are updated via the interval timer, not every frame
+    // This prevents excessive event emissions
   }
 
   disconnect(): void {

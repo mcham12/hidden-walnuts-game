@@ -124,10 +124,16 @@ class Application {
       Logger.info(LogCategory.NETWORK, `👋 Player disconnected: ${data.squirrelId}`);
     });
 
-    // Enhanced connection quality monitoring
+    // Enhanced connection quality monitoring with throttling
+    let lastQualityUpdate = 0;
     eventBus.subscribe('network.connection_quality', (metrics: any) => {
-      Logger.debug(LogCategory.NETWORK, '🎨 Received connection quality event:', metrics);
-      this.updateConnectionQualityDisplay(metrics);
+      const now = Date.now();
+      // Only update UI every 10 seconds to prevent spam
+      if (now - lastQualityUpdate > 10000) {
+        Logger.debug(LogCategory.NETWORK, '🎨 Received connection quality event:', metrics);
+        this.updateConnectionQualityDisplay(metrics);
+        lastQualityUpdate = now;
+      }
     });
 
     eventBus.subscribe('network.error', (error: any) => {

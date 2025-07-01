@@ -24,6 +24,7 @@ export class PlayerManager extends System {
   private scene: THREE.Scene | null = null;
   private assetManager: any = null;
   private terrainService: TerrainService | null = null; // Add terrain service
+  private lastDebugTime: number | null = null;
 
   constructor(eventBus: EventBus, terrainService: TerrainService) {
     super(eventBus, ['player'], 'PlayerManager');
@@ -89,6 +90,13 @@ export class PlayerManager extends System {
         // Smooth interpolation would go here
         this.updatePlayerMesh(player, _deltaTime);
       }
+    }
+    
+    // TASK 3 FIX: Periodic scene debugging (every 10 seconds)
+    const now = performance.now();
+    if (!this.lastDebugTime || now - this.lastDebugTime > 10000) {
+      this.debugSceneContents();
+      this.lastDebugTime = now;
     }
   }
 
@@ -164,6 +172,9 @@ export class PlayerManager extends System {
         return;
       }
       
+      // TASK 3 FIX: Log all existing players for debugging
+      Logger.info(LogCategory.PLAYER, `🔍 Current players before creating ${data.squirrelId}:`, Array.from(this.remotePlayers.keys()));
+      
       // Create new remote player
       await this.createRemotePlayer({
         squirrelId: data.squirrelId,
@@ -178,6 +189,7 @@ export class PlayerManager extends System {
     }
     
     Logger.info(LogCategory.PLAYER, '👥 Current remote players count AFTER processing:', this.remotePlayers.size);
+    Logger.info(LogCategory.PLAYER, `🔍 All players after processing:`, Array.from(this.remotePlayers.keys()));
   };
 
   private async createRemotePlayer(data: {
@@ -244,6 +256,8 @@ export class PlayerManager extends System {
             }
           });
           
+          // TASK 3 FIX: Log scene operation
+          Logger.info(LogCategory.PLAYER, `🎭 Adding mesh to scene for ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
           this.scene.add(mesh);
           Logger.info(LogCategory.PLAYER, `✅ Added mesh for remote player ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
         } else {
@@ -284,6 +298,8 @@ export class PlayerManager extends System {
       
       // Remove mesh from scene
       if (player.mesh && this.scene) {
+        // TASK 3 FIX: Log scene removal operation
+        Logger.info(LogCategory.PLAYER, `🎭 Removing mesh from scene for ${data.squirrelId}`);
         this.scene.remove(player.mesh);
         // Dispose of geometry and materials to prevent memory leaks
         if (player.mesh.geometry) {
@@ -302,6 +318,7 @@ export class PlayerManager extends System {
       // Remove from tracking
       this.remotePlayers.delete(data.squirrelId);
       Logger.info(LogCategory.PLAYER, `👋 Removed disconnected player: ${data.squirrelId} (${this.remotePlayers.size} remaining)`);
+      Logger.info(LogCategory.PLAYER, `🔍 Remaining players:`, Array.from(this.remotePlayers.keys()));
     } else {
       Logger.warn(LogCategory.PLAYER, `⚠️ Attempted to disconnect non-existent player: ${data.squirrelId}`);
     }
@@ -390,5 +407,33 @@ export class PlayerManager extends System {
         ? players.reduce((sum, p) => sum + (now - p.lastUpdate), 0) / players.length 
         : 0
     };
+  }
+
+  // TASK 3 FIX: Debug method to inspect scene contents
+  debugSceneContents(): void {
+    if (!this.scene) {
+      Logger.warn(LogCategory.PLAYER, '⚠️ No scene available for debugging');
+      return;
+    }
+
+    Logger.info(LogCategory.PLAYER, '🔍 === SCENE DEBUG ===');
+    Logger.info(LogCategory.PLAYER, `📊 Scene children count: ${this.scene.children.length}`);
+    
+    // Count different types of objects in scene
+    const objectTypes = new Map<string, number>();
+    this.scene.traverse((child) => {
+      const type = child.type || 'unknown';
+      objectTypes.set(type, (objectTypes.get(type) || 0) + 1);
+    });
+    
+    Logger.info(LogCategory.PLAYER, '📊 Scene object types:', Object.fromEntries(objectTypes));
+    
+    // List all remote players
+    Logger.info(LogCategory.PLAYER, `👥 Remote players tracked: ${this.remotePlayers.size}`);
+    for (const [squirrelId, player] of this.remotePlayers) {
+      Logger.info(LogCategory.PLAYER, `  - ${squirrelId}: mesh=${!!player.mesh}, visible=${player.isVisible}, inScene=${player.mesh ? this.scene.children.includes(player.mesh) : false}`);
+    }
+    
+    Logger.info(LogCategory.PLAYER, '🔍 === END SCENE DEBUG ===');
   }
 } 
