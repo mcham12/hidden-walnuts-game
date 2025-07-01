@@ -576,6 +576,7 @@ export class NetworkSystem extends System {
   private updateConnectionQuality(quality: ConnectionMetrics['quality']): void {
     this.connectionMetrics.quality = quality;
     Logger.debug(LogCategory.NETWORK, `📊 Connection quality: ${quality}`);
+    Logger.debug(LogCategory.NETWORK, `📊 Emitting connection quality event with metrics:`, this.connectionMetrics);
     this.eventBus.emit('network.connection_quality', this.connectionMetrics);
   }
 

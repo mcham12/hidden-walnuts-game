@@ -126,6 +126,7 @@ class Application {
 
     // Enhanced connection quality monitoring
     eventBus.subscribe('network.connection_quality', (metrics: any) => {
+      Logger.debug(LogCategory.NETWORK, '🎨 Received connection quality event:', metrics);
       this.updateConnectionQualityDisplay(metrics);
     });
 
@@ -135,7 +136,10 @@ class Application {
   }
 
   private showLoadingScreen(): void {
-    document.body.innerHTML = `
+    // Create loading screen without overwriting existing HTML
+    const loadingScreen = document.createElement('div');
+    loadingScreen.id = 'loading-screen';
+    loadingScreen.innerHTML = `
       <div style="
         position: fixed;
         top: 0;
@@ -150,7 +154,7 @@ class Application {
         color: white;
         font-family: -apple-system, BlinkMacSystemFont, sans-serif;
         z-index: 1000;
-      " id="loading-screen">
+      ">
         <div style="font-size: 48px; margin-bottom: 20px;">🐿️</div>
         <h1 style="margin: 0 0 20px 0; font-weight: 300;">Hidden Walnuts</h1>
         <p style="margin: 0; opacity: 0.8;">Initializing A++ architecture...</p>
@@ -170,14 +174,20 @@ class Application {
           "></div>
         </div>
       </div>
-      <style>
-        @keyframes loading {
-          0% { transform: translateX(-100%); }
-          50% { transform: translateX(0%); }
-          100% { transform: translateX(100%); }
-        }
-      </style>
     `;
+    
+    // Add loading styles
+    const loadingStyle = document.createElement('style');
+    loadingStyle.textContent = `
+      @keyframes loading {
+        0% { transform: translateX(-100%); }
+        50% { transform: translateX(0%); }
+        100% { transform: translateX(100%); }
+      }
+    `;
+    
+    document.head.appendChild(loadingStyle);
+    document.body.appendChild(loadingScreen);
   }
 
   private hideLoadingScreen(): void {
@@ -318,8 +328,12 @@ class Application {
   }
 
   private updateConnectionQualityDisplay(metrics: any): void {
+    Logger.debug(LogCategory.NETWORK, '🎨 Updating connection quality display:', metrics);
     const qualityElement = document.getElementById('connection-quality');
-    if (!qualityElement) return;
+    if (!qualityElement) {
+      Logger.warn(LogCategory.NETWORK, '⚠️ Connection quality element not found!');
+      return;
+    }
 
     const qualityColors = {
       excellent: '#00ff00',
