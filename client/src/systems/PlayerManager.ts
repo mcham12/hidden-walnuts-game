@@ -1,10 +1,13 @@
 // Player Manager System - Handles remote player lifecycle and rendering
 
 import { System, Entity } from '../ecs';
-import { EventBus } from '../core/EventBus';
+import { EventBus, GameEvents } from '../core/EventBus';
 import { Logger, LogCategory } from '../core/Logger';
 import { EntityId } from '../core/types';
 import * as THREE from 'three';
+
+// Import TerrainService for height adjustment
+import { TerrainService } from '../services/TerrainService';
 
 interface RemotePlayer {
   entity: Entity;
@@ -20,10 +23,15 @@ export class PlayerManager extends System {
   private remotePlayers = new Map<string, RemotePlayer>();
   private scene: THREE.Scene | null = null;
   private assetManager: any = null;
+  private terrainService: TerrainService | null = null; // Add terrain service
 
-  constructor(eventBus: EventBus) {
-    super(eventBus, [], 'PlayerManager');
+  constructor(eventBus: EventBus, terrainService: TerrainService) {
+    super(eventBus, ['player'], 'PlayerManager');
     
+    // Store terrain service directly
+    this.terrainService = terrainService;
+    
+    // Subscribe to remote player events
     this.eventBus.subscribe('remote_player_state', this.handleRemotePlayerState.bind(this));
     this.eventBus.subscribe('player_disconnected', this.handlePlayerDisconnected.bind(this));
     this.eventBus.subscribe('player_entered_interest', this.handlePlayerEnteredInterest.bind(this));
@@ -37,6 +45,10 @@ export class PlayerManager extends System {
   }
 
   private async initializeWithSceneAndAssets(): Promise<void> {
+    if (this.scene && this.assetManager) {
+      return; // Already initialized
+    }
+
     try {
       // Get scene and asset manager from container
       const { container, ServiceTokens } = await import('../core/Container');
@@ -64,12 +76,9 @@ export class PlayerManager extends System {
         throw new Error(`Failed to initialize after ${attempts} attempts`);
       }
       
-      Logger.info(LogCategory.PLAYER, '✅ PlayerManager initialized with scene and assets', {
-        sceneObjects: this.scene.children.length,
-        hasAssetManager: !!this.assetManager
-      });
+      Logger.info(LogCategory.PLAYER, '✅ PlayerManager initialized with scene, assets, and terrain service');
     } catch (error) {
-      Logger.error(LogCategory.PLAYER, '❌ Failed to initialize PlayerManager with scene', error);
+      Logger.error(LogCategory.PLAYER, '❌ Failed to initialize PlayerManager with scene and assets', error);
     }
   }
 
@@ -94,9 +103,22 @@ export class PlayerManager extends System {
       Logger.debug(LogCategory.PLAYER, 'UPDATING existing remote player:', data.squirrelId);
       // Update existing player
       if (data.position) {
-        existingPlayer.lastPosition.set(data.position.x, data.position.y, data.position.z);
+        // FIXED: Adjust Y position to terrain height for updates
+        let adjustedPosition = { ...data.position };
+        if (this.terrainService) {
+          try {
+            const terrainHeight = await this.terrainService.getTerrainHeight(data.position.x, data.position.z);
+            // Keep player 0.5 units above terrain (squirrel height)
+            adjustedPosition.y = Math.max(data.position.y, terrainHeight + 0.5);
+            Logger.debug(LogCategory.PLAYER, `📏 Adjusted remote player ${data.squirrelId} update height from ${data.position.y.toFixed(2)} to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)})`);
+          } catch (error) {
+            Logger.warn(LogCategory.PLAYER, `Failed to get terrain height for remote player update ${data.squirrelId}, using original Y position`, error);
+          }
+        }
+        
+        existingPlayer.lastPosition.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
         if (existingPlayer.mesh) {
-          existingPlayer.mesh.position.set(data.position.x, data.position.y, data.position.z);
+          existingPlayer.mesh.position.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
         }
       }
       if (typeof data.rotationY === 'number') {
@@ -131,6 +153,19 @@ export class PlayerManager extends System {
   }): Promise<void> {
     Logger.info(LogCategory.PLAYER, `🎯 Creating remote player: ${data.squirrelId}`);
     
+    // FIXED: Adjust Y position to terrain height
+    let adjustedPosition = { ...data.position };
+    if (this.terrainService) {
+      try {
+        const terrainHeight = await this.terrainService.getTerrainHeight(data.position.x, data.position.z);
+        // Keep player 0.5 units above terrain (squirrel height)
+        adjustedPosition.y = Math.max(data.position.y, terrainHeight + 0.5);
+        Logger.debug(LogCategory.PLAYER, `📏 Adjusted remote player ${data.squirrelId} height from ${data.position.y.toFixed(2)} to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)})`);
+      } catch (error) {
+        Logger.warn(LogCategory.PLAYER, `Failed to get terrain height for remote player ${data.squirrelId}, using original Y position`, error);
+      }
+    }
+    
     // Create entity
     const entity = new Entity(EntityId.generate());
     
@@ -150,7 +185,7 @@ export class PlayerManager extends System {
         if (squirrelModel) {
           // Clone the model for this player
           mesh = squirrelModel.clone() as THREE.Mesh;
-          mesh.position.set(data.position.x, data.position.y, data.position.z);
+          mesh.position.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
           mesh.quaternion.set(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w);
           mesh.scale.set(1, 1, 1);
           
@@ -167,7 +202,7 @@ export class PlayerManager extends System {
           });
           
           this.scene.add(mesh);
-          Logger.info(LogCategory.PLAYER, `✅ Added mesh for remote player ${data.squirrelId} at (${data.position.x.toFixed(1)}, ${data.position.y.toFixed(1)}, ${data.position.z.toFixed(1)})`);
+          Logger.info(LogCategory.PLAYER, `✅ Added mesh for remote player ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
         } else {
           Logger.error(LogCategory.PLAYER, `❌ Failed to load squirrel model for ${data.squirrelId}: model was null`);
         }
@@ -183,7 +218,7 @@ export class PlayerManager extends System {
       entity,
       squirrelId: data.squirrelId,
       mesh,
-      lastPosition: new THREE.Vector3(data.position.x, data.position.y, data.position.z),
+      lastPosition: new THREE.Vector3(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z),
       lastRotation: new THREE.Quaternion(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w),
       lastUpdate: performance.now(),
       isVisible: true

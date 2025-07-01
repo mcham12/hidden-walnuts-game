@@ -635,7 +635,10 @@ export function configureServices(): void {
   });
 
   container.registerSingleton(ServiceTokens.PLAYER_MANAGER, () => {
-    return new PlayerManager(container.resolve<EventBus>(ServiceTokens.EVENT_BUS));
+    return new PlayerManager(
+      container.resolve<EventBus>(ServiceTokens.EVENT_BUS),
+      container.resolve(ServiceTokens.TERRAIN_SERVICE)
+    );
   });
 
   Logger.info(LogCategory.CORE, '🏗️ All services configured successfully');
