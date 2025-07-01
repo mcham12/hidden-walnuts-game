@@ -50,28 +50,33 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
      - Ensure consistent player scaling and positioning
      - Implement proper terrain height synchronization
      - Fix player sinking/floating issues
-  4. **Authoritative Server Architecture**
+  4. **API Architecture Consolidation** 📋 **PLANNED**
+     - Remove unused `api/` directory (Hono-based API)
+     - Consolidate all API logic in `workers/api.ts` (raw Workers)
+     - Eliminate code duplication and confusion
+     - Clean up project structure and reduce technical debt
+  5. **Authoritative Server Architecture**
      - Server owns all game state (player positions, session data)
      - Implement server-side position validation and anti-cheat (speed limits, bounds)
      - Client sends inputs, server validates and broadcasts authoritative results
-  5. **WebSocket Connection Lifecycle**
+  6. **WebSocket Connection Lifecycle**
      - Secure WebSocket connections with proper upgrade handling
      - Connection heartbeats and automatic reconnection logic
      - Graceful disconnect handling with session cleanup
-  6. **Core Multiplayer Events**
+  7. **Core Multiplayer Events**
      - `player_join`: When player connects and is ready
      - `player_update`: Position/state changes (with validation)
      - `player_leave`: Clean disconnection
      - `world_state`: Full state on connect, delta updates afterward
-  7. **Client-Side Prediction & Reconciliation**
+  8. **Client-Side Prediction & Reconciliation**
      - Client predicts movement locally for responsiveness
      - Server sends authoritative position corrections
      - Client reconciles differences smoothly
-  8. **Interest Management**
+  9. **Interest Management**
      - Only sync players within visible range (Area of Interest)
      - Efficient message broadcasting to relevant players only
      - Handle player entering/leaving interest zones
-  9. **Testing & Validation**
+  10. **Testing & Validation**
      - Multi-browser real-time synchronization tests
      - Network failure recovery testing
      - Position validation and anti-cheat verification

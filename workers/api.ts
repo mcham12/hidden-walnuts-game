@@ -209,6 +209,33 @@ export default {
         }
       }
 
+      // Handle /server-metrics route for Task 2
+      if (pathname === "/server-metrics") {
+        try {
+          const forest = getObjectInstance(env, "forest", "daily-forest");
+          console.log("Fetching server metrics from ForestManager");
+          const resp = await forest.fetch(request);
+          const result = await resp.text();
+          console.log("Server metrics response:", result);
+          return new Response(result, {
+            status: resp.status,
+            headers: {
+              ...CORS_HEADERS,
+              "Content-Type": "application/json"
+            }
+          });
+        } catch (error) {
+          console.error('Error in /server-metrics route:', error);
+          return new Response(JSON.stringify({ error: 'Internal server error' }), {
+            status: 500,
+            headers: {
+              ...CORS_HEADERS,
+              "Content-Type": "application/json"
+            }
+          });
+        }
+      }
+
       // Handle not found case
       console.log("No matching route for:", pathname);
       return new Response(JSON.stringify({

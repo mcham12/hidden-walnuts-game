@@ -365,7 +365,7 @@ export default class ForestManager {
       }
 
       // Get or create SquirrelSession
-      const squirrelSession = this.env.squirrel.get(this.env.squirrel.idFromName(squirrelId));
+      const squirrelSession = this.env.SQUIRREL.get(this.env.SQUIRREL.idFromName(squirrelId));
       const sessionResponse = await squirrelSession.fetch(request);
       
       if (!sessionResponse.ok) {
@@ -420,7 +420,7 @@ export default class ForestManager {
         body: JSON.stringify({ token })
       });
       
-      const squirrelSession = this.env.squirrel.get(this.env.squirrel.idFromName(squirrelId));
+      const squirrelSession = this.env.SQUIRREL.get(this.env.SQUIRREL.idFromName(squirrelId));
       const response = await squirrelSession.fetch(sessionRequest);
       
       if (!response.ok) {
@@ -711,7 +711,7 @@ export default class ForestManager {
         })
       });
       
-      const squirrelSession = this.env.squirrel.get(this.env.squirrel.idFromName(playerConnection.squirrelId));
+      const squirrelSession = this.env.SQUIRREL.get(this.env.SQUIRREL.idFromName(playerConnection.squirrelId));
       const response = await squirrelSession.fetch(sessionRequest);
       
       if (!response.ok) {
