@@ -49,7 +49,7 @@ export class PlayerFactory {
     const model = gltf.scene.clone();
     
     // Scale the model to appropriate size
-    model.scale.setScalar(0.5); // Make it smaller
+    model.scale.setScalar(0.3); // TASK 3 FIX: Match remote player scale for consistency
     model.position.set(spawnX, spawnY, spawnZ);
     
     // Add to scene
@@ -107,7 +107,7 @@ export class PlayerFactory {
     const model = gltf.scene.clone();
     
     // Scale and position the model
-    model.scale.setScalar(0.5);
+    model.scale.setScalar(0.3); // TASK 3 FIX: Match local player scale for consistency
     model.position.set(position.x, position.y, position.z);
     model.rotation.y = rotation.y; // Use the y rotation value
     

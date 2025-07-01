@@ -218,7 +218,7 @@ export class AssetManager implements IAssetManager {
         assetPath,
         (gltf) => {
           const model = gltf.scene;
-          model.scale.setScalar(0.5);
+          model.scale.setScalar(0.3);
           model.castShadow = true;
           model.receiveShadow = true;
           

@@ -46,13 +46,24 @@ export class TerrainService implements ITerrainService {
 
     try {
       const height = getTerrainHeight(x, z);
+      
+      if (isNaN(height) || !isFinite(height)) {
+        Logger.warn(LogCategory.TERRAIN, `⚠️ Invalid terrain height at (${x}, ${z}): ${height}, using fallback`);
+        return 0.5;
+      }
+      
+      const clampedHeight = Math.max(0.5, Math.min(10, height));
+      if (clampedHeight !== height) {
+        Logger.warn(LogCategory.TERRAIN, `⚠️ Terrain height at (${x}, ${z}) clamped from ${height.toFixed(2)} to ${clampedHeight.toFixed(2)}`);
+      }
+      
       Logger.debugExpensive(LogCategory.TERRAIN, () => 
-        `📏 Terrain height at (${x.toFixed(1)}, ${z.toFixed(1)}): ${height.toFixed(2)}`
+        `📏 Terrain height at (${x.toFixed(1)}, ${z.toFixed(1)}): ${clampedHeight.toFixed(2)}`
       );
-      return height;
+      return clampedHeight;
     } catch (error) {
       Logger.warn(LogCategory.TERRAIN, `⚠️ Failed to get terrain height at (${x}, ${z}), using fallback`, error);
-      return 0; // Safe fallback
+      return 0.5;
     }
   }
 

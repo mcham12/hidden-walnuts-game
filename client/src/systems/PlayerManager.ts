@@ -98,6 +98,12 @@ export class PlayerManager extends System {
     Logger.info(LogCategory.PLAYER, '👥 Current remote players count BEFORE processing:', this.remotePlayers.size);
     Logger.info(LogCategory.PLAYER, '📊 Full event data:', JSON.stringify(data, null, 2));
     
+    // TASK 3 FIX: Enhanced duplicate detection and validation
+    if (!data.squirrelId || typeof data.squirrelId !== 'string') {
+      Logger.error(LogCategory.PLAYER, '❌ Invalid squirrelId in remote_player_state:', data.squirrelId);
+      return;
+    }
+    
     const existingPlayer = this.remotePlayers.get(data.squirrelId);
     if (existingPlayer) {
       Logger.debug(LogCategory.PLAYER, '🔄 UPDATING existing remote player:', data.squirrelId);
@@ -135,6 +141,12 @@ export class PlayerManager extends System {
       existingPlayer.lastUpdate = performance.now();
     } else {
       Logger.info(LogCategory.PLAYER, '🆕 CREATING new remote player:', data.squirrelId);
+      // TASK 3 FIX: Add validation before creating new player
+      if (!data.position || typeof data.position.x !== 'number' || typeof data.position.y !== 'number' || typeof data.position.z !== 'number') {
+        Logger.error(LogCategory.PLAYER, '❌ Invalid position data for new remote player:', data.squirrelId, data.position);
+        return;
+      }
+      
       // Create new remote player
       await this.createRemotePlayer({
         squirrelId: data.squirrelId,
@@ -240,17 +252,38 @@ export class PlayerManager extends System {
   }
 
   private handlePlayerDisconnected(data: { squirrelId: string }): void {
+    // TASK 3 FIX: Enhanced player cleanup with validation
+    if (!data.squirrelId || typeof data.squirrelId !== 'string') {
+      Logger.error(LogCategory.PLAYER, '❌ Invalid squirrelId in player_disconnected:', data.squirrelId);
+      return;
+    }
+    
     const player = this.remotePlayers.get(data.squirrelId);
     if (player) {
+      Logger.info(LogCategory.PLAYER, `🗑️ Cleaning up disconnected player: ${data.squirrelId}`);
+      
       // Remove mesh from scene
       if (player.mesh && this.scene) {
         this.scene.remove(player.mesh);
-        Logger.debug(LogCategory.PLAYER, `🗑️ Removed mesh for disconnected player ${data.squirrelId}`);
+        // Dispose of geometry and materials to prevent memory leaks
+        if (player.mesh.geometry) {
+          player.mesh.geometry.dispose();
+        }
+        if (player.mesh.material) {
+          if (Array.isArray(player.mesh.material)) {
+            player.mesh.material.forEach(mat => mat.dispose());
+          } else {
+            player.mesh.material.dispose();
+          }
+        }
+        Logger.debug(LogCategory.PLAYER, `🗑️ Removed and disposed mesh for disconnected player ${data.squirrelId}`);
       }
       
       // Remove from tracking
       this.remotePlayers.delete(data.squirrelId);
       Logger.info(LogCategory.PLAYER, `👋 Removed disconnected player: ${data.squirrelId} (${this.remotePlayers.size} remaining)`);
+    } else {
+      Logger.warn(LogCategory.PLAYER, `⚠️ Attempted to disconnect non-existent player: ${data.squirrelId}`);
     }
   }
 

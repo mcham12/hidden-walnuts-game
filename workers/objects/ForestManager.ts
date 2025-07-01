@@ -631,22 +631,30 @@ export default class ForestManager {
     }
   }
 
-  // Enhanced player update with validation
+  // Enhanced player update with validation and position correction
   private async handlePlayerUpdate(playerConnection: PlayerConnection, data: any): Promise<void> {
     try {
       if (!this.isValidPosition(data.position)) {
+        // TASK 3 FIX: Correct invalid position instead of rejecting
+        const correctedPosition = this.correctPlayerPosition(data.position);
+        
         const serverError: ServerError = {
           type: ServerErrorType.INVALID_MESSAGE,
-          message: `Invalid position update from ${playerConnection.squirrelId}`,
+          message: `Position corrected for ${playerConnection.squirrelId}: Y=${data.position.y.toFixed(2)} -> ${correctedPosition.y.toFixed(2)}`,
           timestamp: Date.now(),
           squirrelId: playerConnection.squirrelId,
-          details: { position: data.position },
+          details: { originalPosition: data.position, correctedPosition },
           recoverable: true
         };
         this.recordError(serverError);
         
-        Logger.warn(LogCategory.PLAYER, `Invalid position from ${playerConnection.squirrelId}:`, data.position);
-        return;
+        Logger.warn(LogCategory.PLAYER, `Position corrected for ${playerConnection.squirrelId}:`, {
+          original: data.position,
+          corrected: correctedPosition
+        });
+        
+        // Use corrected position
+        data.position = correctedPosition;
       }
 
       playerConnection.position = data.position;
@@ -681,7 +689,7 @@ export default class ForestManager {
     }
   }
 
-  // Enhanced position validation
+  // Enhanced position validation with terrain height
   private isValidPosition(position: any): boolean {
     if (!position || typeof position !== 'object') return false;
     
@@ -695,7 +703,46 @@ export default class ForestManager {
     // Validate reasonable height (not underground, not too high)
     if (y < -10 || y > 100) return false;
     
+    // TASK 3 FIX: Validate against terrain height to prevent sinking/floating
+    const terrainHeight = this.getTerrainHeight(x, z);
+    const minValidHeight = terrainHeight + 0.5; // Squirrel height above terrain
+    const maxValidHeight = terrainHeight + 10; // Allow some floating but not too much
+    
+    if (y < minValidHeight || y > maxValidHeight) {
+      Logger.warn(LogCategory.PLAYER, `Position validation failed: player at Y=${y.toFixed(2)}, terrain=${terrainHeight.toFixed(2)}, valid range=[${minValidHeight.toFixed(2)}, ${maxValidHeight.toFixed(2)}]`);
+      return false;
+    }
+    
     return true;
+  }
+
+  // TASK 3 FIX: Add terrain height calculation matching client-side logic
+  private getTerrainHeight(x: number, z: number): number {
+    // Use the same terrain seed and calculation as client-side terrain.ts
+    if (!this.terrainSeed) {
+      return 0.5; // Default minimum height if terrain not initialized
+    }
+    
+    // Match client-side terrain height calculation exactly
+    const noise1 = Math.sin((x + this.terrainSeed) * 0.1) * Math.cos((z + this.terrainSeed) * 0.1);
+    const noise2 = Math.sin((x + this.terrainSeed) * 0.05) * Math.cos((z + this.terrainSeed) * 0.05) * 2;
+    const noise3 = Math.sin((x + this.terrainSeed) * 0.02) * Math.cos((z + this.terrainSeed) * 0.02) * 1.5;
+    
+    // Ensure minimum height of 0.5 and maximum of 5 units (matching client)
+    const height = Math.max(0.5, Math.min(5, 1.5 + noise1 + noise2 + noise3));
+    return height;
+  }
+
+  // TASK 3 FIX: Add position correction for invalid positions
+  private correctPlayerPosition(position: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
+    const terrainHeight = this.getTerrainHeight(position.x, position.z);
+    const minValidHeight = terrainHeight + 0.5; // Squirrel height above terrain
+    
+    return {
+      x: position.x,
+      y: Math.max(position.y, minValidHeight), // Ensure player is above terrain
+      z: position.z
+    };
   }
 
   // Enhanced session update with error handling
