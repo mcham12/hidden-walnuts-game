@@ -100,7 +100,7 @@ export class PlayerManager extends System {
     
     const existingPlayer = this.remotePlayers.get(data.squirrelId);
     if (existingPlayer) {
-      Logger.debug(LogCategory.PLAYER, 'UPDATING existing remote player:', data.squirrelId);
+      Logger.debug(LogCategory.PLAYER, '🔄 UPDATING existing remote player:', data.squirrelId);
       // Update existing player
       if (data.position) {
         // FIXED: Adjust Y position to terrain height for updates
@@ -113,7 +113,12 @@ export class PlayerManager extends System {
             Logger.debug(LogCategory.PLAYER, `📏 Adjusted remote player ${data.squirrelId} update height from ${data.position.y.toFixed(2)} to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)})`);
           } catch (error) {
             Logger.warn(LogCategory.PLAYER, `Failed to get terrain height for remote player update ${data.squirrelId}, using original Y position`, error);
+            // Fallback: ensure player is at least 0.5 units above ground
+            adjustedPosition.y = Math.max(data.position.y, 0.5);
           }
+        } else {
+          // No terrain service available, ensure minimum height
+          adjustedPosition.y = Math.max(data.position.y, 0.5);
         }
         
         existingPlayer.lastPosition.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
@@ -163,7 +168,12 @@ export class PlayerManager extends System {
         Logger.debug(LogCategory.PLAYER, `📏 Adjusted remote player ${data.squirrelId} height from ${data.position.y.toFixed(2)} to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)})`);
       } catch (error) {
         Logger.warn(LogCategory.PLAYER, `Failed to get terrain height for remote player ${data.squirrelId}, using original Y position`, error);
+        // Fallback: ensure player is at least 0.5 units above ground
+        adjustedPosition.y = Math.max(data.position.y, 0.5);
       }
+    } else {
+      // No terrain service available, ensure minimum height
+      adjustedPosition.y = Math.max(data.position.y, 0.5);
     }
     
     // Create entity
@@ -187,7 +197,8 @@ export class PlayerManager extends System {
           mesh = squirrelModel.clone() as THREE.Mesh;
           mesh.position.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
           mesh.quaternion.set(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w);
-          mesh.scale.set(1, 1, 1);
+          // FIXED: Set smaller scale to prevent huge flat squirrels
+          mesh.scale.set(0.3, 0.3, 0.3);
           
           // Make it slightly different color to distinguish from local player
           mesh.traverse((child) => {

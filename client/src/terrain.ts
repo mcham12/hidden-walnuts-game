@@ -26,15 +26,18 @@ export async function initializeTerrain(apiBase: string): Promise<void> {
 
 export function getTerrainHeight(x: number, z: number): number {
   if (terrainSeed === null) {
-    return 0; // Return ground level if not initialized
+    return 0.5; // Return minimum ground level if not initialized
   }
   
-  // Simple height calculation based on position and seed
-  // This should match the server-side calculation
+  // Improved height calculation based on position and seed
+  // This should match the server-side calculation but with better variation
   const noise1 = Math.sin((x + terrainSeed) * 0.1) * Math.cos((z + terrainSeed) * 0.1);
   const noise2 = Math.sin((x + terrainSeed) * 0.05) * Math.cos((z + terrainSeed) * 0.05) * 2;
+  const noise3 = Math.sin((x + terrainSeed) * 0.02) * Math.cos((z + terrainSeed) * 0.02) * 1.5;
   
-  return Math.max(0, 1 + noise1 + noise2);
+  // Ensure minimum height of 0.5 and maximum of 5 units
+  const height = Math.max(0.5, Math.min(5, 1.5 + noise1 + noise2 + noise3));
+  return height;
 }
 
 export function isTerrainInitialized(): boolean {
@@ -43,21 +46,26 @@ export function isTerrainInitialized(): boolean {
 
 export async function createTerrain(): Promise<THREE.Mesh> {
   const size = 200; // Matches TERRAIN_SIZE from constants.ts
-  const height = 5; // Reduced from 20 to 5 for flatter terrain
   const segments = 200;
 
   // Create plane geometry
   const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
 
-  // Generate heightmap using sin/cos-based noise
+  // Generate heightmap using improved noise function
   const vertices = geometry.attributes.position.array;
   let i = 0;
   for (let z = 0; z <= segments; z++) {
     for (let x = 0; x <= segments; x++) {
-      const xNorm = x / segments;
-      const zNorm = z / segments;
-              const noiseValue = Math.sin(xNorm * 10 + (terrainSeed || 0)) * Math.cos(zNorm * 10 + (terrainSeed || 0));
-      vertices[i + 2] = (noiseValue + 1) * (height / 2); // Scale to 0–5 units
+      const xNorm = (x / segments - 0.5) * size; // Convert to world coordinates
+      const zNorm = (z / segments - 0.5) * size; // Convert to world coordinates
+      
+      // Use the same height calculation as getTerrainHeight
+      const noise1 = Math.sin((xNorm + (terrainSeed || 0)) * 0.1) * Math.cos((zNorm + (terrainSeed || 0)) * 0.1);
+      const noise2 = Math.sin((xNorm + (terrainSeed || 0)) * 0.05) * Math.cos((zNorm + (terrainSeed || 0)) * 0.05) * 2;
+      const noise3 = Math.sin((xNorm + (terrainSeed || 0)) * 0.02) * Math.cos((zNorm + (terrainSeed || 0)) * 0.02) * 1.5;
+      
+      const terrainHeight = Math.max(0.5, Math.min(5, 1.5 + noise1 + noise2 + noise3));
+      vertices[i + 2] = terrainHeight; // Set Y coordinate
       i += 3;
     }
   }
