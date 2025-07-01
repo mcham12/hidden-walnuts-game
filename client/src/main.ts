@@ -329,10 +329,51 @@ class Application {
 
   private updateConnectionQualityDisplay(metrics: any): void {
     Logger.debug(LogCategory.NETWORK, '🎨 Updating connection quality display:', metrics);
-    const qualityElement = document.getElementById('connection-quality');
+    
+    // Get or create the multiplayer status container
+    let statusContainer = document.getElementById('multiplayer-status');
+    if (!statusContainer) {
+      statusContainer = document.createElement('div');
+      statusContainer.id = 'multiplayer-status';
+      statusContainer.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        z-index: 1000;
+        min-width: 200px;
+      `;
+      document.body.appendChild(statusContainer);
+    }
+    
+    // Get or create the connection quality element
+    let qualityElement = document.getElementById('connection-quality');
     if (!qualityElement) {
-      Logger.warn(LogCategory.NETWORK, '⚠️ Connection quality element not found!');
-      return;
+      qualityElement = document.createElement('div');
+      qualityElement.id = 'connection-quality';
+      qualityElement.style.cssText = `
+        font-weight: bold;
+        margin: 5px 0;
+      `;
+      statusContainer.appendChild(qualityElement);
+    }
+    
+    // Get or create the connection metrics element
+    let metricsElement = document.getElementById('connection-metrics');
+    if (!metricsElement) {
+      metricsElement = document.createElement('div');
+      metricsElement.id = 'connection-metrics';
+      metricsElement.style.cssText = `
+        font-size: 12px;
+        margin-top: 5px;
+        opacity: 0.8;
+      `;
+      statusContainer.appendChild(metricsElement);
     }
 
     const qualityColors = {
@@ -350,7 +391,6 @@ class Application {
     qualityElement.textContent = `Connection: ${quality.toUpperCase()}`;
     
     // Update detailed metrics if available
-    const metricsElement = document.getElementById('connection-metrics');
     if (metricsElement) {
       metricsElement.innerHTML = `
         <div>Latency: ${metrics.latency?.toFixed(1) || 'N/A'}ms</div>
@@ -363,8 +403,20 @@ class Application {
   }
 
   private displayNetworkError(error: any): void {
-    const errorElement = document.getElementById('network-errors');
-    if (!errorElement) return;
+    // Get or create the network errors element
+    let errorElement = document.getElementById('network-errors');
+    if (!errorElement) {
+      errorElement = document.createElement('div');
+      errorElement.id = 'network-errors';
+      errorElement.style.cssText = `
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 1000;
+        max-width: 400px;
+      `;
+      document.body.appendChild(errorElement);
+    }
 
     const errorDiv = document.createElement('div');
     errorDiv.className = 'network-error';
@@ -423,8 +475,26 @@ class Application {
   }
 
   private updateServerMetricsDisplay(metrics: any): void {
-    const metricsElement = document.getElementById('server-metrics');
-    if (!metricsElement) return;
+    // Get or create the server metrics element
+    let metricsElement = document.getElementById('server-metrics');
+    if (!metricsElement) {
+      metricsElement = document.createElement('div');
+      metricsElement.id = 'server-metrics';
+      metricsElement.style.cssText = `
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        z-index: 1000;
+        max-width: 250px;
+      `;
+      document.body.appendChild(metricsElement);
+    }
 
     const serverMetrics = metrics.serverMetrics || {};
     const uptime = this.formatUptime(serverMetrics.uptime || 0);
