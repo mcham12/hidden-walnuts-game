@@ -73,14 +73,14 @@ export class NetworkTickSystem extends System {
     }, NetworkTickSystem.TICK_INTERVAL);
     
     // Timer started
-    Logger.info(LogCategory.NETWORK, 'Started independent 5Hz network timer'); // TASK URGENTA.10: Updated to reflect new rate
+    Logger.debug(LogCategory.NETWORK, 'Started independent 5Hz network timer'); // TASK URGENTA.10: Updated to reflect new rate
   }
 
   stopNetworkTimer(): void {
     if (this.networkTimer) {
       clearInterval(this.networkTimer);
       this.networkTimer = null;
-      Logger.info(LogCategory.NETWORK, 'Stopped network timer');
+      Logger.debug(LogCategory.NETWORK, 'Stopped network timer');
     }
   }
 

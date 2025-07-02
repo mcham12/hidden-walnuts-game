@@ -71,8 +71,8 @@ export class MovementSystem extends System {
     if (moved && this.terrainService) {
       try {
         const terrainHeight = await this.terrainService.getTerrainHeight(newPosition.x, newPosition.z);
-        // Keep player 0.5 units above terrain (squirrel height)
-        newPosition = new Vector3(newPosition.x, Math.max(newPosition.y, terrainHeight + 0.5), newPosition.z);
+        // TASK 3 FIX: Match remote player height for consistency
+        newPosition = new Vector3(newPosition.x, Math.max(newPosition.y, terrainHeight + 0.1), newPosition.z);
       } catch (error) {
         Logger.warn(LogCategory.PLAYER, 'Failed to get terrain height for remote player, using minimum Y=1', error);
         newPosition = new Vector3(newPosition.x, Math.max(newPosition.y, 1), newPosition.z);

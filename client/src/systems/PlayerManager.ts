@@ -29,6 +29,10 @@ export class PlayerManager extends System {
   // TASK 3.2: Duplicate Player Prevention - Add tracking
   private trackedSquirrelIds = new Set<string>();
   private entityToSquirrelId = new Map<string, string>(); // entityId -> squirrelId mapping
+  
+  // TASK 3 FIX: Model caching for faster remote player creation
+  private cachedSquirrelModel: THREE.Object3D | null = null;
+  private modelLoadingPromise: Promise<THREE.Object3D> | null = null;
 
   constructor(eventBus: EventBus, terrainService: TerrainService) {
     super(eventBus, ['player'], 'PlayerManager');
@@ -82,9 +86,47 @@ export class PlayerManager extends System {
       }
       
       Logger.info(LogCategory.PLAYER, '✅ PlayerManager initialized with scene, assets, and terrain service');
+      
+      // TASK 3 FIX: Preload squirrel model for faster remote player creation
+      await this.preloadSquirrelModel();
     } catch (error) {
       Logger.error(LogCategory.PLAYER, '❌ Failed to initialize PlayerManager with scene and assets', error);
     }
+  }
+
+  // TASK 3 FIX: Model caching for faster remote player creation
+  private async preloadSquirrelModel(): Promise<void> {
+    if (this.cachedSquirrelModel || this.modelLoadingPromise) {
+      return; // Already loading or loaded
+    }
+
+    if (!this.assetManager) {
+      Logger.warn(LogCategory.PLAYER, '⚠️ AssetManager not ready for model preloading');
+      return;
+    }
+
+    this.modelLoadingPromise = this.loadSquirrelModel();
+    try {
+      this.cachedSquirrelModel = await this.modelLoadingPromise;
+      Logger.debug(LogCategory.PLAYER, '✅ Squirrel model preloaded for remote players');
+    } catch (error) {
+      Logger.error(LogCategory.PLAYER, '❌ Failed to preload squirrel model', error);
+    } finally {
+      this.modelLoadingPromise = null;
+    }
+  }
+
+  private async loadSquirrelModel(): Promise<THREE.Object3D> {
+    if (!this.assetManager) {
+      throw new Error('AssetManager not available');
+    }
+
+    const gltf = await this.assetManager.loadModel('/assets/models/squirrel.glb');
+    if (!gltf || !gltf.scene) {
+      throw new Error('Failed to load squirrel model');
+    }
+
+    return gltf.scene;
   }
 
   update(_deltaTime: number): void {
@@ -257,8 +299,20 @@ export class PlayerManager extends System {
     let mesh: THREE.Mesh | null = null;
     if (this.assetManager && this.scene) {
       try {
-        Logger.debug(LogCategory.PLAYER, `🎨 Loading squirrel model for ${data.squirrelId}`);
-        const squirrelModel = await this.assetManager.loadSquirrelModel();
+        Logger.debug(LogCategory.PLAYER, `🎨 Creating mesh for ${data.squirrelId}`);
+        
+        // TASK 3 FIX: Use cached model for faster creation
+        let squirrelModel: THREE.Object3D;
+        if (this.cachedSquirrelModel) {
+          squirrelModel = this.cachedSquirrelModel;
+        } else if (this.modelLoadingPromise) {
+          // Wait for model to finish loading
+          squirrelModel = await this.modelLoadingPromise;
+        } else {
+          // Load model if not cached
+          squirrelModel = await this.loadSquirrelModel();
+          this.cachedSquirrelModel = squirrelModel;
+        }
         
         if (squirrelModel) {
           // Clone the model for this player
@@ -332,12 +386,12 @@ export class PlayerManager extends System {
     
     const player = this.remotePlayers.get(data.squirrelId);
     if (player) {
-      Logger.info(LogCategory.PLAYER, `🗑️ Cleaning up disconnected player: ${data.squirrelId}`);
+      Logger.debug(LogCategory.PLAYER, `🗑️ Cleaning up disconnected player: ${data.squirrelId}`);
       
       // Remove mesh from scene
       if (player.mesh && this.scene) {
         // TASK 3 FIX: Log scene removal operation
-        Logger.info(LogCategory.PLAYER, `🎭 Removing mesh from scene for ${data.squirrelId}`);
+        Logger.debug(LogCategory.PLAYER, `🎭 Removing mesh from scene for ${data.squirrelId}`);
         this.scene.remove(player.mesh);
         // Dispose of geometry and materials to prevent memory leaks
         if (player.mesh.geometry) {
@@ -359,8 +413,8 @@ export class PlayerManager extends System {
       
       // Remove from tracking
       this.remotePlayers.delete(data.squirrelId);
-      Logger.info(LogCategory.PLAYER, `👋 Removed disconnected player: ${data.squirrelId} (${this.remotePlayers.size} remaining)`);
-      Logger.info(LogCategory.PLAYER, `🔍 Remaining players:`, Array.from(this.remotePlayers.keys()));
+      Logger.debug(LogCategory.PLAYER, `👋 Removed disconnected player: ${data.squirrelId} (${this.remotePlayers.size} remaining)`);
+      Logger.debugExpensive(LogCategory.PLAYER, () => `🔍 Remaining players: ${Array.from(this.remotePlayers.keys()).join(', ')}`);
     } else {
       Logger.warn(LogCategory.PLAYER, `⚠️ Attempted to disconnect non-existent player: ${data.squirrelId}`);
     }
@@ -465,8 +519,8 @@ export class PlayerManager extends System {
       return;
     }
 
-    Logger.info(LogCategory.PLAYER, '🔍 === SCENE DEBUG ===');
-    Logger.info(LogCategory.PLAYER, `📊 Scene children count: ${this.scene.children.length}`);
+    Logger.debug(LogCategory.PLAYER, '🔍 === SCENE DEBUG ===');
+    Logger.debug(LogCategory.PLAYER, `📊 Scene children count: ${this.scene.children.length}`);
     
     // Count different types of objects in scene
     const objectTypes = new Map<string, number>();
@@ -475,14 +529,14 @@ export class PlayerManager extends System {
       objectTypes.set(type, (objectTypes.get(type) || 0) + 1);
     });
     
-    Logger.info(LogCategory.PLAYER, '📊 Scene object types:', Object.fromEntries(objectTypes));
+    Logger.debug(LogCategory.PLAYER, `📊 Scene object types: ${JSON.stringify(Object.fromEntries(objectTypes))}`);
     
     // List all remote players
-    Logger.info(LogCategory.PLAYER, `👥 Remote players tracked: ${this.remotePlayers.size}`);
+    Logger.debug(LogCategory.PLAYER, `👥 Remote players tracked: ${this.remotePlayers.size}`);
     for (const [squirrelId, player] of this.remotePlayers) {
-      Logger.info(LogCategory.PLAYER, `  - ${squirrelId}: mesh=${!!player.mesh}, visible=${player.isVisible}, inScene=${player.mesh ? this.scene.children.includes(player.mesh) : false}`);
+      Logger.debug(LogCategory.PLAYER, `  - ${squirrelId}: mesh=${!!player.mesh}, visible=${player.isVisible}, inScene=${player.mesh ? this.scene.children.includes(player.mesh) : false}`);
     }
     
-    Logger.info(LogCategory.PLAYER, '🔍 === END SCENE DEBUG ===');
+    Logger.debug(LogCategory.PLAYER, '🔍 === END SCENE DEBUG ===');
   }
 } 

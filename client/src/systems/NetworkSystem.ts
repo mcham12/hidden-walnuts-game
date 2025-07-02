@@ -112,7 +112,7 @@ export class NetworkSystem extends System {
     this.connectionMetrics.reconnectAttempts = this.reconnectAttempts;
     
     try {
-      Logger.info(LogCategory.NETWORK, `🔄 Attempting connection (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
+      Logger.debug(LogCategory.NETWORK, `🔄 Attempting connection (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
       
       // TEMPORARY REVERT: Use session-based ID to test remote player visibility
       // Generate a unique squirrel ID for each browser window/tab
@@ -122,7 +122,7 @@ export class NetworkSystem extends System {
       // Store the ID for this session only (not persistent across browser restarts)
       sessionStorage.setItem('squirrelId', newSquirrelId);
       
-      Logger.info(LogCategory.NETWORK, `🆕 Generated unique squirrel ID for this session: ${newSquirrelId}`);
+      Logger.debug(LogCategory.NETWORK, `🆕 Generated unique squirrel ID for this session: ${newSquirrelId}`);
       
       // Get authentication token with enhanced error handling
       const authResponse = await this.authenticatePlayer(this.localSquirrelId!);
@@ -135,7 +135,7 @@ export class NetworkSystem extends System {
       const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8787';
       const wsUrl = `${apiBase.replace('http', 'ws')}/ws?squirrelId=${authData.squirrelId}&token=${authData.token}`;
       
-      Logger.info(LogCategory.NETWORK, `🌐 Connecting to: ${wsUrl} (ID: ${this.localSquirrelId})`);
+      Logger.debug(LogCategory.NETWORK, `🌐 Connecting to: ${wsUrl} (ID: ${this.localSquirrelId})`);
       
       this.websocket = new WebSocket(wsUrl);
       this.setupWebSocketHandlers();
@@ -183,7 +183,7 @@ export class NetworkSystem extends System {
       }
       
       const authData = await authResponse.json();
-      Logger.info(LogCategory.NETWORK, `✅ Authentication successful for ${squirrelId}`);
+      Logger.debug(LogCategory.NETWORK, `✅ Authentication successful for ${squirrelId}`);
       return authData;
       
     } catch (error) {
@@ -210,7 +210,7 @@ export class NetworkSystem extends System {
       this.connectionMetrics.messageCount = 0;
       this.connectionMetrics.errorCount = 0;
       
-      Logger.info(LogCategory.NETWORK, '✅ Connected to multiplayer server');
+      Logger.debug(LogCategory.NETWORK, '✅ Connected to multiplayer server');
       this.reconnectAttempts = 0;
       this.startHeartbeat();
       this.eventBus.emit(GameEvents.MULTIPLAYER_CONNECTED);
@@ -249,7 +249,7 @@ export class NetworkSystem extends System {
       const code = event.code;
       const reason = event.reason;
       
-      Logger.info(LogCategory.NETWORK, `🔴 Connection closed - Clean: ${wasClean}, Code: ${code}, Reason: ${reason}`);
+      Logger.debug(LogCategory.NETWORK, `🔴 Connection closed - Clean: ${wasClean}, Code: ${code}, Reason: ${reason}`);
       
       this.stopHeartbeat();
       this.updateConnectionQuality('poor');
@@ -285,7 +285,7 @@ export class NetworkSystem extends System {
   }
 
   private handleNetworkMessage(message: NetworkMessage): void {
-    Logger.info(LogCategory.NETWORK, '📨 RAW WEBSOCKET MESSAGE RECEIVED:', message);
+    Logger.debug(LogCategory.NETWORK, '📨 RAW WEBSOCKET MESSAGE RECEIVED:', message);
     
     // Skip our own messages, but only if we have a valid squirrelId
     if (message.squirrelId && message.squirrelId === this.localSquirrelId) {
@@ -293,11 +293,11 @@ export class NetworkSystem extends System {
       return;
     }
 
-    Logger.info(LogCategory.NETWORK, '🎯 PROCESSING REMOTE MESSAGE:', message.type, 'from:', message.squirrelId || 'server');
+    Logger.debug(LogCategory.NETWORK, '🎯 PROCESSING REMOTE MESSAGE:', message.type, 'from:', message.squirrelId || 'server');
 
     switch (message.type) {
       case 'init':
-        Logger.info(LogCategory.NETWORK, '🚀 Server initialization message received');
+        Logger.debug(LogCategory.NETWORK, '🚀 Server initialization message received');
         this.handleInitMessage(message);
         break;
       case 'existing_players':
@@ -432,7 +432,7 @@ export class NetworkSystem extends System {
 
   private handlePlayerLeft(message: NetworkMessage): void {
     const { squirrelId } = message;
-    Logger.info(LogCategory.NETWORK, `👋 Remote player left: ${squirrelId}`);
+    Logger.debug(LogCategory.NETWORK, `👋 Remote player left: ${squirrelId}`);
     this.eventBus.emit('player_disconnected', { squirrelId });
   }
 
@@ -445,7 +445,7 @@ export class NetworkSystem extends System {
   }
 
   private handlePositionCorrection(message: NetworkMessage): void {
-    Logger.info(LogCategory.NETWORK, '🔧 Position correction received from server:', {
+    Logger.debug(LogCategory.NETWORK, '🔧 Position correction received from server:', {
       original: message.originalPosition,
       corrected: message.position
     });
@@ -458,7 +458,7 @@ export class NetworkSystem extends System {
         originalPosition: message.originalPosition
       });
       
-      Logger.info(LogCategory.NETWORK, '✅ Applied server position correction to local player');
+      Logger.debug(LogCategory.NETWORK, '✅ Applied server position correction to local player');
     }
   }
 
@@ -817,7 +817,7 @@ export class NetworkSystem extends System {
   }
 
   private handleInitMessage(message: NetworkMessage): void {
-    Logger.info(LogCategory.NETWORK, '🚀 Server initialization message received');
+    Logger.debug(LogCategory.NETWORK, '🚀 Server initialization message received');
     
     // The init message may contain session restoration data or world state
     if (message.data?.existingPlayers) {
@@ -837,18 +837,18 @@ export class NetworkSystem extends System {
     
     // Server confirms our squirrel ID
     if (message.data?.confirmedSquirrelId) {
-      Logger.info(LogCategory.NETWORK, '✅ Server confirmed squirrel ID:', message.data.confirmedSquirrelId);
+      Logger.debug(LogCategory.NETWORK, '✅ Server confirmed squirrel ID:', message.data.confirmedSquirrelId);
       this.localSquirrelId = message.data.confirmedSquirrelId;
       sessionStorage.setItem('squirrelId', message.data.confirmedSquirrelId);
     }
   }
 
   private handleExistingPlayers(message: NetworkMessage): void {
-    Logger.info(LogCategory.NETWORK, '👥 EXISTING PLAYERS MESSAGE received:', message);
+    Logger.debug(LogCategory.NETWORK, '👥 EXISTING PLAYERS MESSAGE received:', message);
     
     // The existing_players message has a players array
     if (message.players) {
-      Logger.info(LogCategory.NETWORK, '👥 Processing existing players:', message.players.length);
+      Logger.debug(LogCategory.NETWORK, '👥 Processing existing players:', message.players.length);
       for (const playerData of message.players) {
         if (playerData.squirrelId !== this.localSquirrelId) {
           Logger.debug(LogCategory.NETWORK, '🎯 Creating existing player:', playerData.squirrelId);

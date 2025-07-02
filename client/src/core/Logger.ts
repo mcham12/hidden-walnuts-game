@@ -87,7 +87,7 @@ class GameLogger {
       case 'development':
         return LogLevel.DEBUG;
       case 'preview':
-        return LogLevel.DEBUG; // Temporarily increase to debug multiplayer issues
+        return LogLevel.INFO; // Reduce console spam in preview
       case 'production':
         return LogLevel.ERROR;
       default:

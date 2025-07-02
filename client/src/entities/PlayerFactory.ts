@@ -29,7 +29,7 @@ export class PlayerFactory {
       terrainHeight = 0;
     }
     
-    const spawnY = terrainHeight + 2; // 2 units above terrain
+    const spawnY = terrainHeight + 0.1; // TASK 3 FIX: Match remote player height for consistency
     
     Logger.info(LogCategory.PLAYER, `🎯 Player spawn position: (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
     
