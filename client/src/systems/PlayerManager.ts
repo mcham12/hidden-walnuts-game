@@ -25,6 +25,10 @@ export class PlayerManager extends System {
   private assetManager: any = null;
   private terrainService: TerrainService | null = null; // Add terrain service
   private lastDebugTime: number | null = null;
+  
+  // TASK 3.2: Duplicate Player Prevention - Add tracking
+  private trackedSquirrelIds = new Set<string>();
+  private entityToSquirrelId = new Map<string, string>(); // entityId -> squirrelId mapping
 
   constructor(eventBus: EventBus, terrainService: TerrainService) {
     super(eventBus, ['player'], 'PlayerManager');
@@ -112,6 +116,13 @@ export class PlayerManager extends System {
       return;
     }
     
+    // TASK 3.2: Check if this is the local player (should not create remote player for local player)
+    const localSquirrelId = this.getLocalPlayerSquirrelId();
+    if (localSquirrelId && data.squirrelId === localSquirrelId) {
+      Logger.debug(LogCategory.PLAYER, `🎯 Skipping remote player creation for local player: ${data.squirrelId}`);
+      return;
+    }
+    
     const existingPlayer = this.remotePlayers.get(data.squirrelId);
     if (existingPlayer) {
       Logger.debug(LogCategory.PLAYER, '🔄 UPDATING existing remote player:', data.squirrelId);
@@ -128,22 +139,27 @@ export class PlayerManager extends System {
       
       // Update existing player
       if (data.position) {
-        // FIXED: Adjust Y position to terrain height for updates
+        // TASK 3.1: Terrain Height Fixes - Enhanced height calculation for updates
         let adjustedPosition = { ...data.position };
         if (this.terrainService) {
           try {
             const terrainHeight = await this.terrainService.getTerrainHeight(data.position.x, data.position.z);
-            // Keep player 0.5 units above terrain (squirrel height)
-            adjustedPosition.y = Math.max(data.position.y, terrainHeight + 0.5);
-            Logger.debug(LogCategory.PLAYER, `📏 Adjusted remote player ${data.squirrelId} update height from ${data.position.y.toFixed(2)} to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)})`);
+            // TASK 3.1: Use consistent height adjustment for updates
+            const minHeight = terrainHeight + 0.3; // Match creation logic
+            const maxHeight = terrainHeight + 2.0; // Match creation logic
+            
+            // Clamp position to valid terrain range
+            adjustedPosition.y = Math.max(minHeight, Math.min(data.position.y, maxHeight));
+            
+            Logger.debug(LogCategory.PLAYER, `📏 TASK 3.1: Adjusted remote player ${data.squirrelId} update height from ${data.position.y.toFixed(2)} to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)}, range: [${minHeight.toFixed(2)}, ${maxHeight.toFixed(2)}])`);
           } catch (error) {
-            Logger.warn(LogCategory.PLAYER, `Failed to get terrain height for remote player update ${data.squirrelId}, using original Y position`, error);
-            // Fallback: ensure player is at least 0.5 units above ground
-            adjustedPosition.y = Math.max(data.position.y, 0.5);
+            Logger.warn(LogCategory.PLAYER, `Failed to get terrain height for remote player update ${data.squirrelId}, using fallback`, error);
+            // TASK 3.1: Improved fallback height calculation
+            adjustedPosition.y = Math.max(data.position.y, 0.3);
           }
         } else {
-          // No terrain service available, ensure minimum height
-          adjustedPosition.y = Math.max(data.position.y, 0.5);
+          // TASK 3.1: Improved fallback when no terrain service
+          adjustedPosition.y = Math.max(data.position.y, 0.3);
         }
         
         existingPlayer.lastPosition.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
@@ -160,6 +176,13 @@ export class PlayerManager extends System {
       existingPlayer.lastUpdate = performance.now();
     } else {
       Logger.info(LogCategory.PLAYER, '🆕 CREATING new remote player:', data.squirrelId);
+      
+      // TASK 3.2: Duplicate Player Prevention - Check if already tracked
+      if (this.trackedSquirrelIds.has(data.squirrelId)) {
+        Logger.warn(LogCategory.PLAYER, `⚠️ Duplicate remote player state for ${data.squirrelId}, skipping creation`);
+        return;
+      }
+      
       // TASK 3 FIX: Add validation before creating new player
       if (!data.position || typeof data.position.x !== 'number' || typeof data.position.y !== 'number' || typeof data.position.z !== 'number') {
         Logger.error(LogCategory.PLAYER, '❌ Invalid position data for new remote player:', data.squirrelId, data.position);
@@ -171,6 +194,9 @@ export class PlayerManager extends System {
         Logger.warn(LogCategory.PLAYER, `⚠️ Attempted to create duplicate player ${data.squirrelId}, skipping`);
         return;
       }
+      
+      // TASK 3.2: Duplicate Player Prevention - Mark as tracked before creation
+      this.trackedSquirrelIds.add(data.squirrelId);
       
       // TASK 3 FIX: Log all existing players for debugging
       Logger.info(LogCategory.PLAYER, `🔍 Current players before creating ${data.squirrelId}:`, Array.from(this.remotePlayers.keys()));
@@ -199,22 +225,27 @@ export class PlayerManager extends System {
   }): Promise<void> {
     Logger.info(LogCategory.PLAYER, `🎯 Creating remote player: ${data.squirrelId}`);
     
-    // FIXED: Adjust Y position to terrain height
+    // TASK 3.1: Terrain Height Fixes - Enhanced height calculation
     let adjustedPosition = { ...data.position };
     if (this.terrainService) {
       try {
         const terrainHeight = await this.terrainService.getTerrainHeight(data.position.x, data.position.z);
-        // Keep player 0.5 units above terrain (squirrel height)
-        adjustedPosition.y = Math.max(data.position.y, terrainHeight + 0.5);
-        Logger.debug(LogCategory.PLAYER, `📏 Adjusted remote player ${data.squirrelId} height from ${data.position.y.toFixed(2)} to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)})`);
+        // TASK 3.1: Use more conservative height adjustment to prevent floating
+        const minHeight = terrainHeight + 0.3; // Reduced from 0.5 to 0.3 for better terrain contact
+        const maxHeight = terrainHeight + 2.0; // Add maximum height to prevent excessive floating
+        
+        // Clamp position to valid terrain range
+        adjustedPosition.y = Math.max(minHeight, Math.min(data.position.y, maxHeight));
+        
+        Logger.debug(LogCategory.PLAYER, `📏 TASK 3.1: Adjusted remote player ${data.squirrelId} height from ${data.position.y.toFixed(2)} to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)}, range: [${minHeight.toFixed(2)}, ${maxHeight.toFixed(2)}])`);
       } catch (error) {
-        Logger.warn(LogCategory.PLAYER, `Failed to get terrain height for remote player ${data.squirrelId}, using original Y position`, error);
-        // Fallback: ensure player is at least 0.5 units above ground
-        adjustedPosition.y = Math.max(data.position.y, 0.5);
+        Logger.warn(LogCategory.PLAYER, `Failed to get terrain height for remote player ${data.squirrelId}, using fallback`, error);
+        // TASK 3.1: Improved fallback height calculation
+        adjustedPosition.y = Math.max(data.position.y, 0.3);
       }
     } else {
-      // No terrain service available, ensure minimum height
-      adjustedPosition.y = Math.max(data.position.y, 0.5);
+      // TASK 3.1: Improved fallback when no terrain service
+      adjustedPosition.y = Math.max(data.position.y, 0.3);
     }
     
     // Create entity
@@ -238,11 +269,19 @@ export class PlayerManager extends System {
           mesh = squirrelModel.clone() as THREE.Mesh;
           mesh.position.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
           mesh.quaternion.set(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w);
-          // FIXED: Set smaller scale to prevent huge flat squirrels
-          mesh.scale.set(0.3, 0.3, 0.3);
+          // TASK 3.4: Player Scaling Consistency - Standardized scale values
+          const targetScale = 0.3;
+          mesh.scale.set(targetScale, targetScale, targetScale);
           
-          // TASK 3 FIX: Verify scale was set correctly
-          Logger.debug(LogCategory.PLAYER, `📏 Set scale for ${data.squirrelId}: x=${mesh.scale.x.toFixed(2)}, y=${mesh.scale.y.toFixed(2)}, z=${mesh.scale.z.toFixed(2)}`);
+          // TASK 3.4: Verify scale was set correctly with validation
+          const actualScale = mesh.scale;
+          if (Math.abs(actualScale.x - targetScale) > 0.01 || Math.abs(actualScale.y - targetScale) > 0.01 || Math.abs(actualScale.z - targetScale) > 0.01) {
+            Logger.warn(LogCategory.PLAYER, `⚠️ Scale validation failed for ${data.squirrelId}: expected=${targetScale}, actual=${actualScale.x.toFixed(2)},${actualScale.y.toFixed(2)},${actualScale.z.toFixed(2)}`);
+            // Force correct scale
+            mesh.scale.set(targetScale, targetScale, targetScale);
+          } else {
+            Logger.debug(LogCategory.PLAYER, `✅ Scale validation passed for ${data.squirrelId}: ${actualScale.x.toFixed(2)}, ${actualScale.y.toFixed(2)}, ${actualScale.z.toFixed(2)}`);
+          }
           
           // Make it slightly different color to distinguish from local player
           mesh.traverse((child) => {
@@ -281,6 +320,9 @@ export class PlayerManager extends System {
       isVisible: true
     };
     
+    // TASK 3.2: Duplicate Player Prevention - Track entity mapping
+    this.entityToSquirrelId.set(entity.id.toString(), data.squirrelId);
+    
     this.remotePlayers.set(data.squirrelId, remotePlayer);
     Logger.info(LogCategory.PLAYER, `🎮 Remote player ${data.squirrelId} created successfully (${this.remotePlayers.size} total remote players)`);
   }
@@ -314,6 +356,10 @@ export class PlayerManager extends System {
         }
         Logger.debug(LogCategory.PLAYER, `🗑️ Removed and disposed mesh for disconnected player ${data.squirrelId}`);
       }
+      
+      // TASK 3.2: Duplicate Player Prevention - Clean up tracking
+      this.trackedSquirrelIds.delete(data.squirrelId);
+      this.entityToSquirrelId.delete(player.entity.id.toString());
       
       // Remove from tracking
       this.remotePlayers.delete(data.squirrelId);
@@ -387,6 +433,13 @@ export class PlayerManager extends System {
 
   getAllPlayers(): Map<string, RemotePlayer> {
     return this.remotePlayers;
+  }
+
+  // TASK 3.2: Helper method to get local player squirrel ID
+  private getLocalPlayerSquirrelId(): string | null {
+    // This should be provided by the NetworkSystem or stored locally
+    // For now, we'll use sessionStorage as a fallback
+    return sessionStorage.getItem('squirrelId');
   }
 
   // Debug information
