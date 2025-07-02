@@ -401,9 +401,9 @@ export class NetworkSystem extends System {
   private handlePlayerJoined(message: NetworkMessage): void {
     const { squirrelId, data, position, rotationY } = message;
     
-    Logger.info(LogCategory.NETWORK, `🎯 Remote player joined: ${squirrelId}`);
-    Logger.info(LogCategory.NETWORK, '🎯 PLAYER JOINED - about to emit remote_player_state for:', squirrelId);
-    Logger.info(LogCategory.NETWORK, '🎯 PLAYER JOINED - message data:', { squirrelId, data, position, rotationY });
+    Logger.debug(LogCategory.NETWORK, `🎯 Remote player joined: ${squirrelId}`);
+    Logger.debugExpensive(LogCategory.NETWORK, () => `🎯 PLAYER JOINED - about to emit remote_player_state for: ${squirrelId}`);
+    Logger.debugExpensive(LogCategory.NETWORK, () => `🎯 PLAYER JOINED - message data: ${JSON.stringify({ squirrelId, data, position, rotationY })}`);
     
     // TASK 3 FIX: Add validation for player join data
     if (!squirrelId || typeof squirrelId !== 'string') {
@@ -532,7 +532,7 @@ export class NetworkSystem extends System {
   }
 
   private handleLocalPlayerMove(data: any): void {
-    Logger.info(LogCategory.NETWORK, '🎯 RECEIVED PLAYER_MOVED EVENT! Data:', data);
+    Logger.debugExpensive(LogCategory.NETWORK, () => `🎯 RECEIVED PLAYER_MOVED EVENT! Data: ${JSON.stringify(data)}`);
     
     // TASK URGENTA.1: Position update throttling
     const now = performance.now();

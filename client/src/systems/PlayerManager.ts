@@ -105,10 +105,10 @@ export class PlayerManager extends System {
   }
 
   private handleRemotePlayerState = async (data: any) => {
-    Logger.info(LogCategory.PLAYER, '🎯 PLAYER MANAGER RECEIVED remote_player_state event for:', data.squirrelId);
-    Logger.info(LogCategory.PLAYER, '📍 Player position:', data.position);
-    Logger.info(LogCategory.PLAYER, '👥 Current remote players count BEFORE processing:', this.remotePlayers.size);
-    Logger.info(LogCategory.PLAYER, '📊 Full event data:', JSON.stringify(data, null, 2));
+    Logger.debugExpensive(LogCategory.PLAYER, () => `🎯 PLAYER MANAGER RECEIVED remote_player_state event for: ${data.squirrelId}`);
+    Logger.debugExpensive(LogCategory.PLAYER, () => `📍 Player position: ${JSON.stringify(data.position)}`);
+    Logger.debugExpensive(LogCategory.PLAYER, () => `👥 Current remote players count BEFORE processing: ${this.remotePlayers.size}`);
+    Logger.debugExpensive(LogCategory.PLAYER, () => `📊 Full event data: ${JSON.stringify(data, null, 2)}`);
     
     // TASK 3 FIX: Enhanced duplicate detection and validation
     if (!data.squirrelId || typeof data.squirrelId !== 'string') {
@@ -144,22 +144,20 @@ export class PlayerManager extends System {
         if (this.terrainService) {
           try {
             const terrainHeight = await this.terrainService.getTerrainHeight(data.position.x, data.position.z);
-            // TASK 3.1: Use consistent height adjustment for updates
-            const minHeight = terrainHeight + 0.3; // Match creation logic
-            const maxHeight = terrainHeight + 2.0; // Match creation logic
+            // TASK 3.1: Use terrain height directly to prevent floating
+            adjustedPosition.y = terrainHeight + 0.1; // Minimal offset for ground contact
             
-            // Clamp position to valid terrain range
-            adjustedPosition.y = Math.max(minHeight, Math.min(data.position.y, maxHeight));
-            
-            Logger.debug(LogCategory.PLAYER, `📏 TASK 3.1: Adjusted remote player ${data.squirrelId} update height from ${data.position.y.toFixed(2)} to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)}, range: [${minHeight.toFixed(2)}, ${maxHeight.toFixed(2)}])`);
+            Logger.debugExpensive(LogCategory.PLAYER, () => 
+              `📏 Adjusted remote player ${data.squirrelId} height to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)})`
+            );
           } catch (error) {
             Logger.warn(LogCategory.PLAYER, `Failed to get terrain height for remote player update ${data.squirrelId}, using fallback`, error);
             // TASK 3.1: Improved fallback height calculation
-            adjustedPosition.y = Math.max(data.position.y, 0.3);
+            adjustedPosition.y = Math.max(data.position.y, 0.1);
           }
         } else {
           // TASK 3.1: Improved fallback when no terrain service
-          adjustedPosition.y = Math.max(data.position.y, 0.3);
+          adjustedPosition.y = Math.max(data.position.y, 0.1);
         }
         
         existingPlayer.lastPosition.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
@@ -175,7 +173,7 @@ export class PlayerManager extends System {
       }
       existingPlayer.lastUpdate = performance.now();
     } else {
-      Logger.info(LogCategory.PLAYER, '🆕 CREATING new remote player:', data.squirrelId);
+      Logger.debug(LogCategory.PLAYER, '🆕 CREATING new remote player:', data.squirrelId);
       
       // TASK 3.2: Duplicate Player Prevention - Check if already tracked
       if (this.trackedSquirrelIds.has(data.squirrelId)) {
@@ -199,7 +197,7 @@ export class PlayerManager extends System {
       this.trackedSquirrelIds.add(data.squirrelId);
       
       // TASK 3 FIX: Log all existing players for debugging
-      Logger.info(LogCategory.PLAYER, `🔍 Current players before creating ${data.squirrelId}:`, Array.from(this.remotePlayers.keys()));
+      Logger.debugExpensive(LogCategory.PLAYER, () => `🔍 Current players before creating ${data.squirrelId}: ${Array.from(this.remotePlayers.keys()).join(', ')}`);
       
       // Create new remote player
       await this.createRemotePlayer({
@@ -214,8 +212,8 @@ export class PlayerManager extends System {
       });
     }
     
-    Logger.info(LogCategory.PLAYER, '👥 Current remote players count AFTER processing:', this.remotePlayers.size);
-    Logger.info(LogCategory.PLAYER, `🔍 All players after processing:`, Array.from(this.remotePlayers.keys()));
+    Logger.debugExpensive(LogCategory.PLAYER, () => `👥 Current remote players count AFTER processing: ${this.remotePlayers.size}`);
+    Logger.debugExpensive(LogCategory.PLAYER, () => `🔍 All players after processing: ${Array.from(this.remotePlayers.keys()).join(', ')}`);
   };
 
   private async createRemotePlayer(data: {
@@ -223,29 +221,27 @@ export class PlayerManager extends System {
     position: { x: number; y: number; z: number };
     rotation: { x: number; y: number; z: number; w: number };
   }): Promise<void> {
-    Logger.info(LogCategory.PLAYER, `🎯 Creating remote player: ${data.squirrelId}`);
+    Logger.debug(LogCategory.PLAYER, `🎯 Creating remote player: ${data.squirrelId}`);
     
     // TASK 3.1: Terrain Height Fixes - Enhanced height calculation
     let adjustedPosition = { ...data.position };
     if (this.terrainService) {
       try {
         const terrainHeight = await this.terrainService.getTerrainHeight(data.position.x, data.position.z);
-        // TASK 3.1: Use more conservative height adjustment to prevent floating
-        const minHeight = terrainHeight + 0.3; // Reduced from 0.5 to 0.3 for better terrain contact
-        const maxHeight = terrainHeight + 2.0; // Add maximum height to prevent excessive floating
+        // TASK 3.1: Use terrain height directly to prevent floating
+        adjustedPosition.y = terrainHeight + 0.1; // Minimal offset for ground contact
         
-        // Clamp position to valid terrain range
-        adjustedPosition.y = Math.max(minHeight, Math.min(data.position.y, maxHeight));
-        
-        Logger.debug(LogCategory.PLAYER, `📏 TASK 3.1: Adjusted remote player ${data.squirrelId} height from ${data.position.y.toFixed(2)} to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)}, range: [${minHeight.toFixed(2)}, ${maxHeight.toFixed(2)}])`);
+        Logger.debugExpensive(LogCategory.PLAYER, () => 
+          `📏 Adjusted remote player ${data.squirrelId} height to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)})`
+        );
       } catch (error) {
         Logger.warn(LogCategory.PLAYER, `Failed to get terrain height for remote player ${data.squirrelId}, using fallback`, error);
         // TASK 3.1: Improved fallback height calculation
-        adjustedPosition.y = Math.max(data.position.y, 0.3);
+        adjustedPosition.y = Math.max(data.position.y, 0.1);
       }
     } else {
       // TASK 3.1: Improved fallback when no terrain service
-      adjustedPosition.y = Math.max(data.position.y, 0.3);
+      adjustedPosition.y = Math.max(data.position.y, 0.1);
     }
     
     // Create entity
@@ -296,9 +292,9 @@ export class PlayerManager extends System {
           });
           
           // TASK 3 FIX: Log scene operation
-          Logger.info(LogCategory.PLAYER, `🎭 Adding mesh to scene for ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
+          Logger.debug(LogCategory.PLAYER, `🎭 Adding mesh to scene for ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
           this.scene.add(mesh);
-          Logger.info(LogCategory.PLAYER, `✅ Added mesh for remote player ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
+          Logger.debug(LogCategory.PLAYER, `✅ Added mesh for remote player ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
         } else {
           Logger.error(LogCategory.PLAYER, `❌ Failed to load squirrel model for ${data.squirrelId}: model was null`);
         }
@@ -324,7 +320,7 @@ export class PlayerManager extends System {
     this.entityToSquirrelId.set(entity.id.toString(), data.squirrelId);
     
     this.remotePlayers.set(data.squirrelId, remotePlayer);
-    Logger.info(LogCategory.PLAYER, `🎮 Remote player ${data.squirrelId} created successfully (${this.remotePlayers.size} total remote players)`);
+    Logger.debug(LogCategory.PLAYER, `🎮 Remote player ${data.squirrelId} created successfully (${this.remotePlayers.size} total remote players)`);
   }
 
   private handlePlayerDisconnected(data: { squirrelId: string }): void {
