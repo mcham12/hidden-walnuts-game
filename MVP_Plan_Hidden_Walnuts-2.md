@@ -181,6 +181,7 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
   - Implement advanced lighting techniques (e.g., dynamic shadows).
   - Add environmental details (e.g., grass, weather effects) for a richer game world.
   - Ensure visual consistency across devices and browsers.
+  - **Window Resize Handling**: Fix camera aspect ratio and renderer sizing when browser window is resized; ensure responsive canvas behavior and proper projection matrix updates.
 - **Estimated Time**: 4-6 weeks
 
 ---

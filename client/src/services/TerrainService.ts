@@ -8,6 +8,7 @@ export interface ITerrainService {
   initialize(): Promise<void>;
   getTerrainHeight(x: number, z: number): Promise<number>;
   isInitialized(): boolean;
+  getTerrainHeightSync(x: number, z: number): number | null;
 }
 
 export class TerrainService implements ITerrainService {
@@ -69,5 +70,27 @@ export class TerrainService implements ITerrainService {
 
   isInitialized(): boolean {
     return this.initialized && isTerrainInitialized();
+  }
+
+  // TASK 4: Add synchronous terrain height method for camera system
+  getTerrainHeightSync(x: number, z: number): number | null {
+    try {
+      if (!this.initialized || !isTerrainInitialized()) {
+        return null;
+      }
+
+      // Use the existing getTerrainHeight function from terrain.ts
+      const height = getTerrainHeight(x, z);
+      
+      if (isNaN(height) || !isFinite(height)) {
+        return null;
+      }
+      
+      // Return clamped height similar to async version
+      return Math.max(0.5, Math.min(10, height));
+    } catch (error) {
+      Logger.warn(LogCategory.TERRAIN, 'Synchronous terrain height calculation failed:', error);
+      return null;
+    }
   }
 } 

@@ -86,10 +86,21 @@ export class SceneManager implements ISceneManager {
   private scene!: import('three').Scene;
   private camera!: import('three').PerspectiveCamera;
   private renderer!: import('three').WebGLRenderer;
-  private eventBus: EventBus;
+  private terrainService: import('./services/TerrainService').TerrainService | null = null;
 
-  constructor(eventBus: EventBus) {
-    this.eventBus = eventBus;
+  constructor(private eventBus: EventBus) {
+    // TASK 4: Initialize terrain service for camera collision detection
+    this.initializeTerrainService();
+  }
+
+  // TASK 4: Initialize terrain service for camera system
+  private async initializeTerrainService(): Promise<void> {
+    try {
+      const { TerrainService } = await import('./services/TerrainService');
+      this.terrainService = new TerrainService();
+    } catch (error) {
+      Logger.warn(LogCategory.TERRAIN, 'Failed to initialize terrain service for camera:', error);
+    }
   }
 
   async initialize(canvas: HTMLCanvasElement): Promise<void> {
@@ -107,9 +118,25 @@ export class SceneManager implements ISceneManager {
       2000  // Extended to see the entire 200x200 terrain
     );
     
-    // CHEN'S FIX: Set initial camera position (much higher up to see the entire forest)
-    this.camera.position.set(0, 50, 50);
+    // TASK 4 FIX: Terrain-aware initial camera position
+    let initialCameraY = 50; // Default high position
+    if (this.terrainService) {
+      try {
+        // Get terrain height at initial position and adjust camera accordingly
+        const terrainHeight = this.terrainService.getTerrainHeightSync(0, 50);
+        if (terrainHeight !== null) {
+          initialCameraY = terrainHeight + 25; // 25 units above terrain
+        }
+      } catch (error) {
+        Logger.warn(LogCategory.TERRAIN, 'Failed to get initial terrain height for camera, using default');
+      }
+    }
+    
+    this.camera.position.set(0, initialCameraY, 50);
     this.camera.lookAt(0, 0, 0);
+
+    // TASK 4: Add camera boundary constraints
+    this.constrainCameraToWorldBounds();
 
     // Renderer setup with sky blue background
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -168,27 +195,154 @@ export class SceneManager implements ISceneManager {
   getCamera(): import('three').PerspectiveCamera { return this.camera; }
   getRenderer(): import('three').WebGLRenderer { return this.renderer; }
 
-  // CHEN'S FIX: Add camera follow functionality
+  // TASK 4: Constrain camera to world boundaries
+  private constrainCameraToWorldBounds(): void {
+    if (!this.camera) return;
+    
+    const worldSize = 200; // 200x200 terrain
+    const boundary = worldSize / 2;
+    const heightLimit = 100; // Maximum camera height
+    const minHeight = 2; // Minimum camera height
+    
+    // Constrain X and Z to world bounds with some padding
+    const padding = 10;
+    this.camera.position.x = Math.max(-boundary + padding, Math.min(boundary - padding, this.camera.position.x));
+    this.camera.position.z = Math.max(-boundary + padding, Math.min(boundary - padding, this.camera.position.z));
+    
+    // Constrain Y to reasonable height limits
+    this.camera.position.y = Math.max(minHeight, Math.min(heightLimit, this.camera.position.y));
+  }
+
+  // TASK 4: Enhanced camera follow functionality with terrain awareness and collision detection
   updateCameraToFollowPlayer(playerPosition: { x: number; y: number; z: number }, playerRotation: { y: number }): void {
     if (!this.camera) return;
     
-    // Position camera behind and above the player
-    const distance = 8;
-    const height = 5;
+    // Camera configuration constants
+    const baseDistance = 8;
+    const baseHeight = 5;
+    const minHeight = 2; // Minimum camera height above terrain
+    const maxHeight = 15; // Maximum camera height for steep terrain
+    const lerpSpeed = 0.08; // Slightly slower for smoother movement
     const angle = playerRotation.y;
     
-    const cameraX = playerPosition.x - Math.sin(angle) * distance;
-    const cameraZ = playerPosition.z - Math.cos(angle) * distance;
-    const cameraY = playerPosition.y + height;
+    // Calculate ideal camera position behind player
+    const idealCameraX = playerPosition.x - Math.sin(angle) * baseDistance;
+    const idealCameraZ = playerPosition.z - Math.cos(angle) * baseDistance;
+    let idealCameraY = playerPosition.y + baseHeight;
     
-    // Smooth camera movement
-    this.camera.position.lerp(
-      { x: cameraX, y: cameraY, z: cameraZ } as any,
-      0.1
+    // TASK 4 FIX: Terrain-aware camera height adjustment
+    if (this.terrainService) {
+      try {
+        // Get terrain height at camera position
+        const terrainHeightAtCamera = this.terrainService.getTerrainHeightSync(idealCameraX, idealCameraZ);
+        if (terrainHeightAtCamera !== null) {
+          // Ensure camera is always above terrain + minimum height
+          const minCameraY = terrainHeightAtCamera + minHeight;
+          const maxCameraY = terrainHeightAtCamera + maxHeight;
+          
+          // Adjust camera height based on terrain, but keep it relative to player
+          idealCameraY = Math.max(minCameraY, Math.min(maxCameraY, playerPosition.y + baseHeight));
+        }
+      } catch (error) {
+        // Fallback: ensure camera doesn't go below player level
+        idealCameraY = Math.max(idealCameraY, playerPosition.y + minHeight);
+      }
+    }
+    
+    const idealPosition = { x: idealCameraX, y: idealCameraY, z: idealCameraZ };
+    
+    // TASK 4 FIX: Camera collision detection to prevent clipping through objects
+    const collisionFreePosition = this.checkCameraCollision(
+      { x: playerPosition.x, y: playerPosition.y + 1, z: playerPosition.z }, // Look-at point
+      idealPosition,
+      baseDistance
     );
     
-    // Look at the player
-    this.camera.lookAt(playerPosition.x, playerPosition.y + 1, playerPosition.z);
+    // TASK 4 FIX: Smooth camera movement with improved lerp
+    this.camera.position.lerp(
+      { x: collisionFreePosition.x, y: collisionFreePosition.y, z: collisionFreePosition.z } as any,
+      lerpSpeed
+    );
+    
+    // TASK 4: Apply boundary constraints after positioning
+    this.constrainCameraToWorldBounds();
+    
+    // TASK 4 FIX: Smooth look-at with slight prediction
+    const lookAtTarget = {
+      x: playerPosition.x,
+      y: playerPosition.y + 1.5, // Look slightly above player center
+      z: playerPosition.z
+    };
+    
+    this.camera.lookAt(lookAtTarget.x, lookAtTarget.y, lookAtTarget.z);
+  }
+
+  // TASK 4: Camera collision detection to prevent clipping through terrain/objects
+  private checkCameraCollision(
+    fromPosition: { x: number; y: number; z: number },
+    toPosition: { x: number; y: number; z: number },
+    maxDistance: number
+  ): { x: number; y: number; z: number } {
+    if (!this.scene) return toPosition;
+    
+    try {
+      const THREE = require('three');
+      
+      // Create raycaster from player to ideal camera position
+      const direction = {
+        x: toPosition.x - fromPosition.x,
+        y: toPosition.y - fromPosition.y,
+        z: toPosition.z - fromPosition.z
+      };
+      
+      const distance = Math.sqrt(direction.x * direction.x + direction.y * direction.y + direction.z * direction.z);
+      
+      if (distance === 0) return toPosition;
+      
+      // Normalize direction
+      direction.x /= distance;
+      direction.y /= distance;
+      direction.z /= distance;
+      
+      // Create Three.js raycaster
+      const raycaster = new THREE.Raycaster(
+        new THREE.Vector3(fromPosition.x, fromPosition.y, fromPosition.z),
+        new THREE.Vector3(direction.x, direction.y, direction.z)
+      );
+      
+      // Get all intersectable objects (trees, rocks, etc.)
+      const intersectableObjects: any[] = [];
+      this.scene.traverse((child: any) => {
+        // Only check collision with terrain and forest objects, not players
+        if (child.isMesh && 
+            (child.userData.type === 'terrain' || 
+             child.userData.type === 'forest_object' ||
+             child.userData.type === 'tree' ||
+             child.userData.type === 'rock')) {
+          intersectableObjects.push(child);
+        }
+      });
+      
+      // Check for intersections
+      const intersections = raycaster.intersectObjects(intersectableObjects, false);
+      
+      if (intersections.length > 0) {
+        // Collision detected - move camera closer to player
+        const collisionDistance = intersections[0].distance;
+        const safeDistance = Math.max(collisionDistance - 0.5, maxDistance * 0.3); // Keep some buffer
+        
+        return {
+          x: fromPosition.x + direction.x * safeDistance,
+          y: fromPosition.y + direction.y * safeDistance,
+          z: fromPosition.z + direction.z * safeDistance
+        };
+      }
+      
+      return toPosition;
+    } catch (error) {
+      // Fallback: return original position if raycast fails
+      return toPosition;
+    }
   }
 }
 
