@@ -121,12 +121,17 @@ export class PlayerManager extends System {
       throw new Error('AssetManager not available');
     }
 
-    const gltf = await this.assetManager.loadModel('/assets/models/squirrel.glb');
-    if (!gltf || !gltf.scene) {
-      throw new Error('Failed to load squirrel model');
-    }
+    try {
+      const squirrelModel = await this.assetManager.loadSquirrelModel();
+      if (!squirrelModel) {
+        throw new Error('Failed to load squirrel model - model is null');
+      }
 
-    return gltf.scene;
+      return squirrelModel;
+    } catch (error) {
+      Logger.error(LogCategory.PLAYER, '❌ Failed to load squirrel model:', error);
+      throw new Error(`Squirrel model loading failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   update(_deltaTime: number): void {
@@ -241,17 +246,24 @@ export class PlayerManager extends System {
       // TASK 3 FIX: Log all existing players for debugging
       Logger.debugExpensive(LogCategory.PLAYER, () => `🔍 Current players before creating ${data.squirrelId}: ${Array.from(this.remotePlayers.keys()).join(', ')}`);
       
-      // Create new remote player
-      await this.createRemotePlayer({
-        squirrelId: data.squirrelId,
-        position: data.position,
-        rotation: {
-          x: 0,
-          y: data.rotationY || 0,
-          z: 0,
-          w: 1
-        }
-      });
+      // Create new remote player with error handling
+      try {
+        await this.createRemotePlayer({
+          squirrelId: data.squirrelId,
+          position: data.position,
+          rotation: {
+            x: 0,
+            y: data.rotationY || 0,
+            z: 0,
+            w: 1
+          }
+        });
+      } catch (error) {
+        Logger.error(LogCategory.PLAYER, `❌ Failed to create remote player ${data.squirrelId}:`, error);
+        // Clean up tracking on failure
+        this.trackedSquirrelIds.delete(data.squirrelId);
+        // Don't re-throw to prevent critical errors
+      }
     }
     
     Logger.debugExpensive(LogCategory.PLAYER, () => `👥 Current remote players count AFTER processing: ${this.remotePlayers.size}`);
