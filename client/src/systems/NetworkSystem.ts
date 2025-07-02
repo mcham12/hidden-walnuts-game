@@ -376,57 +376,39 @@ export class NetworkSystem extends System {
   }
 
   private handleRemotePlayerUpdate(message: NetworkMessage): void {
-    const { squirrelId, data, position, rotationY } = message;
+    Logger.debugExpensive(LogCategory.NETWORK, () => `🎯 Remote player update: ${message.squirrelId} at (${message.position?.x.toFixed(1)}, ${message.position?.z.toFixed(1)})`);
     
-    // Extract position and rotation from either data object or direct properties
-    const playerPosition = data?.position || position || { x: 0, y: 2, z: 0 };
-    const playerRotation = data?.rotation?.y || rotationY || 0;
-    
-    Logger.debug(LogCategory.NETWORK, '🔄 EMITTING remote_player_state for:', squirrelId, 'at position:', playerPosition);
-    
-    // FIXED: Emit player state for PlayerManager and other systems with correct data structure
+    // TASK 4 FIX: Remote player updates are CRITICAL for player visibility
+    // Do NOT batch these - send immediately to prevent delays
     this.eventBus.emit('remote_player_state', {
-      squirrelId,
-      position: playerPosition,
-      rotationY: playerRotation, // FIXED: Use rotationY directly instead of nested rotation object
-      velocity: data?.velocity,
-      timestamp: message.timestamp || performance.now()
+      squirrelId: message.squirrelId,
+      position: message.position,
+      rotationY: message.rotationY,
+      timestamp: message.timestamp
     });
-
-    Logger.debugExpensive(LogCategory.NETWORK, () => 
-      `🎮 Updated player ${squirrelId} at (${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)})`
-    );
   }
 
   private handlePlayerJoined(message: NetworkMessage): void {
-    const { squirrelId, data, position, rotationY } = message;
+    Logger.info(LogCategory.NETWORK, `👋 Player joined: ${message.squirrelId}`);
     
-    Logger.debug(LogCategory.NETWORK, `🎯 Remote player joined: ${squirrelId}`);
-    Logger.debugExpensive(LogCategory.NETWORK, () => `🎯 PLAYER JOINED - about to emit remote_player_state for: ${squirrelId}`);
-    Logger.debugExpensive(LogCategory.NETWORK, () => `🎯 PLAYER JOINED - message data: ${JSON.stringify({ squirrelId, data, position, rotationY })}`);
-    
-    // TASK 3 FIX: Add validation for player join data
-    if (!squirrelId || typeof squirrelId !== 'string') {
-      Logger.error(LogCategory.NETWORK, '❌ Invalid squirrelId in player_joined:', squirrelId);
-      return;
+    // TASK 4 FIX: Player join events are CRITICAL for multiplayer experience
+    // Do NOT batch these - emit immediately
+    if (message.position && typeof message.rotationY === 'number') {
+      this.eventBus.emit('remote_player_state', {
+        squirrelId: message.squirrelId,
+        position: message.position,
+        rotationY: message.rotationY,
+        timestamp: message.timestamp
+      });
+    } else {
+      Logger.warn(LogCategory.NETWORK, `⚠️ Player joined without position data: ${message.squirrelId}`);
     }
     
-    // Extract position and rotation from either data object or direct properties
-    const playerPosition = data?.position || position || { x: 0, y: 2, z: 0 };
-    const playerRotation = rotationY || data?.rotationY || 0;
-
-    // TASK 3 FIX: Validate position data
-    if (!playerPosition || typeof playerPosition.x !== 'number' || typeof playerPosition.y !== 'number' || typeof playerPosition.z !== 'number') {
-      Logger.error(LogCategory.NETWORK, `❌ Invalid position data for player ${squirrelId}:`, playerPosition);
-      return;
-    }
-
-    // FIXED: Emit player state to create the remote player with correct data structure
-    this.eventBus.emit('remote_player_state', {
-      squirrelId,
-      position: playerPosition,
-      rotationY: playerRotation,
-      timestamp: message.timestamp || performance.now()
+    // Also emit the join event for other systems
+    this.eventBus.emit('remote_player_joined', {
+      squirrelId: message.squirrelId,
+      position: message.position,
+      rotationY: message.rotationY
     });
   }
 
@@ -844,32 +826,23 @@ export class NetworkSystem extends System {
   }
 
   private handleExistingPlayers(message: NetworkMessage): void {
-    Logger.debug(LogCategory.NETWORK, '👥 EXISTING PLAYERS MESSAGE received:', message);
-    
-    // The existing_players message has a players array
-    if (message.players) {
-      Logger.debug(LogCategory.NETWORK, '👥 Processing existing players:', message.players.length);
-      for (const playerData of message.players) {
-        if (playerData.squirrelId !== this.localSquirrelId) {
-          Logger.debug(LogCategory.NETWORK, '🎯 Creating existing player:', playerData.squirrelId);
+    if (message.players && Array.isArray(message.players)) {
+      Logger.info(LogCategory.NETWORK, `👥 Received ${message.players.length} existing players`);
+      
+      // TASK 4 FIX: Process existing players immediately to prevent delays
+      for (const player of message.players) {
+        if (player.squirrelId && player.position) {
+          Logger.debug(LogCategory.NETWORK, `🎯 Processing existing player: ${player.squirrelId}`);
           
-          // TASK 3 FIX: Add validation before creating existing player
-          if (!playerData.position || typeof playerData.position.x !== 'number' || typeof playerData.position.y !== 'number' || typeof playerData.position.z !== 'number') {
-            Logger.warn(LogCategory.NETWORK, `⚠️ Invalid position data for existing player ${playerData.squirrelId}:`, playerData.position);
-            continue;
-          }
-          
-          this.handlePlayerJoined({
-            type: 'player_joined',
-            squirrelId: playerData.squirrelId,
-            position: playerData.position,
-            rotationY: playerData.rotationY,
-            timestamp: performance.now()
-          } as NetworkMessage);
+          // Emit immediately - do NOT batch critical player visibility events
+          this.eventBus.emit('remote_player_state', {
+            squirrelId: player.squirrelId,
+            position: player.position,
+            rotationY: player.rotationY || 0,
+            timestamp: message.timestamp || performance.now()
+          });
         }
       }
-    } else {
-      Logger.warn(LogCategory.NETWORK, '⚠️ No players array in existing_players message');
     }
   }
 

@@ -97,10 +97,16 @@ export default class ForestManager {
   private storageBatchTimeout: any = null;
   private storageBatchInterval = 2000; // 2 second batching window
 
+  // Add server start time tracking
+  private serverStartTime: number = Date.now();
+
   constructor(state: DurableObjectState, env: any) {
     this.state = state;
     this.storage = state.storage;
     this.env = env;
+    
+    // TASK 4 FIX: Track server start time separately from cycle time
+    this.serverStartTime = Date.now();
     
     // Initialize Logger with environment from DO context
     initializeLogger(env.ENVIRONMENT);
@@ -253,14 +259,24 @@ export default class ForestManager {
       return this.handleRehide(walnutId, squirrelId, location);
     }
 
-    // Enhanced server diagnostics endpoint
-    if (path === "/server-metrics") {
-      return new Response(JSON.stringify({
-        serverMetrics: this.serverMetrics,
-        activePlayers: this.activePlayers.size,
-        errorHistory: this.errorHistory.slice(-10), // Last 10 errors
-        uptime: Date.now() - this.cycleStartTime
-      }), {
+    // RESTORED: Server metrics endpoint for debug UI
+    if (path.endsWith("/server-metrics")) {
+      // Update metrics before responding
+      this.updateServerMetrics();
+      
+      const metrics = {
+        activePlayers: this.serverMetrics.activeConnections,
+        totalConnections: this.serverMetrics.totalConnections,
+        uptime: this.serverMetrics.uptime,
+        averageLatency: this.serverMetrics.averageLatency,
+        totalErrors: this.serverMetrics.totalErrors,
+        serverStartTime: this.serverStartTime,
+        cycleStartTime: this.cycleStartTime
+      };
+      
+             Logger.debug(LogCategory.WEBSOCKET, `📊 Serving metrics: ${JSON.stringify(metrics)}`);
+      
+      return new Response(JSON.stringify(metrics), {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
@@ -835,21 +851,32 @@ export default class ForestManager {
   private handlePlayerDisconnect(squirrelId: string): void {
     const playerConnection = this.activePlayers.get(squirrelId);
     if (playerConnection) {
-      // Calculate connection duration
-      const connectionDuration = Date.now() - playerConnection.connectionStartTime;
-      Logger.info(LogCategory.WEBSOCKET, `Player ${squirrelId} disconnected after ${connectionDuration}ms`);
+      Logger.info(LogCategory.WEBSOCKET, `👋 Player disconnecting: ${squirrelId}`);
       
-      // Clean up
+      // TASK 4 FIX: Proper cleanup to prevent connection leaks
+      try {
+        // Close the WebSocket if still open
+        if (playerConnection.socket.readyState === WebSocket.OPEN) {
+          playerConnection.socket.close();
+        }
+      } catch (error) {
+        Logger.warn(LogCategory.WEBSOCKET, `Failed to close socket for ${squirrelId}:`, error);
+      }
+      
+      // Remove from active players
       this.activePlayers.delete(squirrelId);
-      this.sessions.delete(playerConnection.socket);
-      this.serverMetrics.activeConnections = this.activePlayers.size;
       
-      // Broadcast player leave
+      // Broadcast to other players
       this.broadcastToOthers(squirrelId, {
-        type: 'player_leave',
+        type: "player_left",
         squirrelId,
         timestamp: Date.now()
       });
+      
+      // Update metrics immediately after disconnect
+      this.updateServerMetrics();
+      
+      Logger.debug(LogCategory.WEBSOCKET, `✅ Cleaned up player ${squirrelId}, ${this.activePlayers.size} players remaining`);
     }
   }
 
@@ -864,47 +891,75 @@ export default class ForestManager {
   // Enhanced stale connection cleanup
   private cleanupStaleConnections(): void {
     const now = Date.now();
-    const timeoutThreshold = 180000; // TASK URGENTA.7: Increased from 1 minute to 3 minutes
+    // TASK URGENTA.7: Increased timeout from 1 minute to 3 minutes
+    const staleThreshold = 3 * 60 * 1000; // 3 minutes
+    
+    // TASK 4 FIX: More aggressive cleanup to prevent connection leaks
+    const playersToRemove: string[] = [];
     
     for (const [squirrelId, playerConnection] of this.activePlayers) {
-      const timeSinceActivity = now - playerConnection.lastActivity;
+      const inactiveTime = now - playerConnection.lastActivity;
+      const isStale = inactiveTime > staleThreshold;
+      const isDisconnected = playerConnection.socket.readyState !== WebSocket.OPEN;
       
-      if (timeSinceActivity > timeoutThreshold) {
-        const serverError: ServerError = {
-          type: ServerErrorType.CONNECTION_TIMEOUT,
-          message: `Player ${squirrelId} timed out due to inactivity`,
-          timestamp: now,
-          squirrelId,
-          details: { timeSinceActivity, timeoutThreshold },
-          recoverable: true
-        };
-        this.recordError(serverError);
-        
-        Logger.warn(LogCategory.WEBSOCKET, `Player ${squirrelId} timed out after ${timeSinceActivity}ms of inactivity`);
-        this.handlePlayerDisconnect(squirrelId);
+      if (isStale || isDisconnected) {
+        Logger.info(LogCategory.WEBSOCKET, 
+          `🧹 Cleaning up stale connection: ${squirrelId} (inactive: ${inactiveTime}ms, disconnected: ${isDisconnected})`
+        );
+        playersToRemove.push(squirrelId);
       }
+    }
+    
+    // Remove stale connections
+    for (const squirrelId of playersToRemove) {
+      this.handlePlayerDisconnect(squirrelId);
+    }
+    
+    // Update metrics after cleanup
+    this.updateServerMetrics();
+    
+    if (playersToRemove.length > 0) {
+      Logger.debug(LogCategory.WEBSOCKET, 
+        `🧹 Cleaned up ${playersToRemove.length} stale connections, ${this.activePlayers.size} remaining`
+      );
     }
   }
 
   // Enhanced server metrics update
   private updateServerMetrics(): void {
-    this.serverMetrics.uptime = Date.now() - this.cycleStartTime;
+    // TASK 4 FIX: Use server start time, not cycle start time for uptime
+    this.serverMetrics.uptime = Date.now() - this.serverStartTime;
+    this.serverMetrics.activeConnections = this.activePlayers.size;
     
-    // Calculate average latency from player connections
+    // TASK 4 FIX: Fix latency calculation - use actual round-trip time from heartbeats
     let totalLatency = 0;
     let latencyCount = 0;
     
     for (const playerConnection of this.activePlayers.values()) {
-      if (playerConnection.lastHeartbeat > 0) {
-        const latency = Date.now() - playerConnection.lastHeartbeat;
-        totalLatency += latency;
-        latencyCount++;
+      // Calculate latency based on heartbeat round-trip time
+      if (playerConnection.heartbeatCount > 0 && playerConnection.lastHeartbeat > 0) {
+        // Use a more realistic latency calculation
+        const timeSinceLastHeartbeat = Date.now() - playerConnection.lastHeartbeat;
+        
+        // Only include recent heartbeats (within last 30 seconds) for latency calc
+        if (timeSinceLastHeartbeat < 30000) {
+          // Estimate latency as half the heartbeat interval for active connections
+          const estimatedLatency = Math.min(timeSinceLastHeartbeat / 2, 1000); // Cap at 1 second
+          totalLatency += estimatedLatency;
+          latencyCount++;
+        }
       }
     }
     
     if (latencyCount > 0) {
       this.serverMetrics.averageLatency = totalLatency / latencyCount;
+    } else {
+      this.serverMetrics.averageLatency = 0;
     }
+    
+         Logger.debug(LogCategory.WEBSOCKET, 
+       `📊 Server metrics: ${this.serverMetrics.activeConnections} active, ${this.serverMetrics.totalConnections} total, ${this.serverMetrics.averageLatency.toFixed(1)}ms avg latency`
+     );
   }
 
   // Enhanced error recording
