@@ -58,3 +58,64 @@ export const TERRAIN_HEIGHT = 20; // Maximum terrain height in units
 
 export const TREE_COUNT = 50; // Number of trees in the forest
 export const SHRUB_COUNT = 100; // Number of shrubs in the forest
+
+/**
+ * Authoritative Server Architecture - Anti-Cheat Constants
+ * MVP 7 Task 6: Speed limits and validation rules
+ */
+export const ANTI_CHEAT = {
+  /** Maximum movement speed in units per second (matches client MovementConfig) */
+  MAX_MOVE_SPEED: 5.0,
+  
+  /** Maximum allowed teleportation distance in units (prevents impossible jumps) */
+  MAX_TELEPORT_DISTANCE: 10.0,
+  
+  /** Maximum acceleration in units per second squared */
+  MAX_ACCELERATION: 20.0,
+  
+  /** Minimum time between position updates in milliseconds (prevents spam) */
+  MIN_UPDATE_INTERVAL: 50, // 20Hz max update rate
+  
+  /** Maximum position update rate in Hz */
+  MAX_UPDATE_RATE: 20,
+  
+  /** Tolerance for speed violations (allows for network jitter) */
+  SPEED_TOLERANCE: 1.2, // 20% tolerance
+  
+  /** Number of violations before player is flagged */
+  MAX_VIOLATIONS_BEFORE_FLAG: 3,
+  
+  /** Time window for tracking violations in milliseconds */
+  VIOLATION_WINDOW: 30000, // 30 seconds
+  
+  /** Maximum Y coordinate (prevents flying) */
+  MAX_Y_COORDINATE: 50,
+  
+  /** Minimum Y coordinate (prevents going underground) */
+  MIN_Y_COORDINATE: -5,
+  
+  /** World bounds for X and Z coordinates */
+  WORLD_BOUNDS: {
+    MIN_X: -100,
+    MAX_X: 100,
+    MIN_Z: -100,
+    MAX_Z: 100
+  }
+};
+
+/**
+ * Movement validation thresholds
+ */
+export const MOVEMENT_VALIDATION = {
+  /** Maximum distance a player can move in one update */
+  MAX_SINGLE_UPDATE_DISTANCE: 2.0,
+  
+  /** Minimum time between position updates for speed calculation */
+  MIN_TIME_FOR_SPEED_CALC: 0.05, // 50ms
+  
+  /** Maximum allowed speed for short time periods (burst movement) */
+  MAX_BURST_SPEED: 8.0,
+  
+  /** Time window for burst speed validation */
+  BURST_SPEED_WINDOW: 0.1 // 100ms
+};

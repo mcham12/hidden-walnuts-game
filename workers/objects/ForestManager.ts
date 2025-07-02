@@ -5,7 +5,7 @@
 // Each day is identified by a cycle key like "2025-05-03".
 // This object should also maintain a list of walnut spawn locations and recent actions..
 
-import { TREE_COUNT, SHRUB_COUNT, TERRAIN_SIZE } from "../constants";
+import { TREE_COUNT, SHRUB_COUNT, TERRAIN_SIZE, ANTI_CHEAT, MOVEMENT_VALIDATION } from "../constants";
 import type { Walnut, WalnutOrigin, HidingMethod, ForestObject } from "../types";
 import { Logger, LogCategory, initializeLogger } from '../Logger';
 
@@ -28,7 +28,7 @@ interface DurableObjectId {
   equals(other: DurableObjectId): boolean;
 }
 
-// Enhanced player connection for multiplayer with error tracking
+// Enhanced player connection for multiplayer with error tracking and anti-cheat
 interface PlayerConnection {
   squirrelId: string;
   socket: WebSocket;
@@ -44,6 +44,17 @@ interface PlayerConnection {
   heartbeatCount: number;
   lastHeartbeat: number;
   connectionQuality: 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+  // MVP 7 Task 6: Anti-cheat tracking
+  lastPositionUpdate: number;
+  lastPosition: { x: number; y: number; z: number };
+  violationCount: number;
+  violations: Array<{
+    type: string;
+    timestamp: number;
+    details: any;
+  }>;
+  isFlagged: boolean;
+  flagReason?: string;
 }
 
 // Enhanced error types for server-side diagnostics
@@ -498,7 +509,13 @@ export default class ForestManager {
         messageCount: 0,
         heartbeatCount: 0,
         lastHeartbeat: Date.now(),
-        connectionQuality: 'excellent'
+        connectionQuality: 'excellent',
+        // MVP 7 Task 6: Anti-cheat tracking
+        lastPositionUpdate: Date.now(),
+        lastPosition: sessionInfo?.position || { x: 50, y: 2, z: 50 },
+        violationCount: 0,
+        violations: [],
+        isFlagged: false
       };
 
       this.activePlayers.set(squirrelId, playerConnection);
@@ -660,33 +677,48 @@ export default class ForestManager {
     }
   }
 
-  // Enhanced player update with validation and position correction
+  // MVP 7 Task 6: Enhanced player update with comprehensive anti-cheat validation
   private async handlePlayerUpdate(playerConnection: PlayerConnection, data: any): Promise<void> {
     try {
-      if (!this.isValidPosition(data.position)) {
-        // TASK 3 FIX: Correct invalid position instead of rejecting
-        const correctedPosition = this.correctPlayerPosition(data.position);
+      const now = Date.now();
+      const newPosition = data.position;
+      
+      // MVP 7 Task 6: Comprehensive anti-cheat validation
+      const validation = this.validateMovement(playerConnection, newPosition);
+      
+      if (!validation.isValid) {
+        // Record violations for each detected issue
+        for (const violation of validation.violations) {
+          this.recordViolation(playerConnection, violation, {
+            originalPosition: newPosition,
+            correctedPosition: validation.correctedPosition,
+            lastPosition: playerConnection.lastPosition,
+            deltaTime: (now - playerConnection.lastPositionUpdate) / 1000
+          });
+        }
         
-        const serverError: ServerError = {
-          type: ServerErrorType.INVALID_MESSAGE,
-          message: `Position corrected for ${playerConnection.squirrelId}: Y=${data.position.y.toFixed(2)} -> ${correctedPosition.y.toFixed(2)}`,
-          timestamp: Date.now(),
-          squirrelId: playerConnection.squirrelId,
-          details: { originalPosition: data.position, correctedPosition },
-          recoverable: true
-        };
-        this.recordError(serverError);
-        
-        Logger.warn(LogCategory.PLAYER, `Position corrected for ${playerConnection.squirrelId}:`, {
-          original: data.position,
-          corrected: correctedPosition
-        });
-        
-        // Use corrected position
-        data.position = correctedPosition;
+        // Use corrected position if available, otherwise reject the update
+        if (validation.correctedPosition) {
+          data.position = validation.correctedPosition;
+          Logger.warn(LogCategory.PLAYER, `🚨 Anti-cheat: Position corrected for ${playerConnection.squirrelId}:`, {
+            original: newPosition,
+            corrected: validation.correctedPosition,
+            violations: validation.violations
+          });
+        } else {
+          Logger.warn(LogCategory.PLAYER, `🚨 Anti-cheat: Rejecting invalid position for ${playerConnection.squirrelId}:`, {
+            position: newPosition,
+            violations: validation.violations
+          });
+          return; // Reject the update
+        }
       }
-
+      
+      // Update player connection with new position and timing
+      playerConnection.lastPosition = playerConnection.position;
       playerConnection.position = data.position;
+      playerConnection.lastPositionUpdate = now;
+      
       if (typeof data.rotationY === 'number') {
         playerConnection.rotationY = data.rotationY;
       }
@@ -694,14 +726,26 @@ export default class ForestManager {
       // Update session state
       await this.updatePlayerSession(playerConnection);
 
-      // Broadcast to other players
+      // Broadcast authoritative position to other players
       this.broadcastToOthers(playerConnection.squirrelId, {
         type: 'player_update',
         squirrelId: playerConnection.squirrelId,
         position: data.position,
         rotationY: data.rotationY,
-        timestamp: Date.now()
+        timestamp: now,
+        authoritative: true // Mark as server-authoritative
       });
+      
+      // Send position correction to client if position was modified
+      if (!validation.isValid && validation.correctedPosition) {
+        this.sendMessage(playerConnection.socket, {
+          type: 'position_correction',
+          originalPosition: newPosition,
+          correctedPosition: validation.correctedPosition,
+          violations: validation.violations,
+          timestamp: now
+        });
+      }
       
     } catch (error) {
       const serverError: ServerError = {
@@ -773,6 +817,130 @@ export default class ForestManager {
       y: Math.max(minValidHeight, Math.min(position.y, maxValidHeight)), // Clamp to valid terrain range
       z: position.z
     };
+  }
+
+  // MVP 7 Task 6: Comprehensive Anti-Cheat Validation System
+  private validateMovement(playerConnection: PlayerConnection, newPosition: { x: number; y: number; z: number }): {
+    isValid: boolean;
+    correctedPosition?: { x: number; y: number; z: number };
+    violations: string[];
+  } {
+    const violations: string[] = [];
+    const now = Date.now();
+    const lastPosition = playerConnection.lastPosition;
+    const lastUpdate = playerConnection.lastPositionUpdate;
+    
+    // Calculate time delta and distance
+    const deltaTime = (now - lastUpdate) / 1000; // Convert to seconds
+    const distance = this.calculateDistance(lastPosition, newPosition);
+    
+    // 1. Rate limiting validation
+    if (deltaTime < ANTI_CHEAT.MIN_UPDATE_INTERVAL / 1000) {
+      violations.push(`UPDATE_RATE_TOO_HIGH: ${(1/deltaTime).toFixed(1)}Hz > ${ANTI_CHEAT.MAX_UPDATE_RATE}Hz`);
+    }
+    
+    // 2. Speed validation
+    if (deltaTime > MOVEMENT_VALIDATION.MIN_TIME_FOR_SPEED_CALC) {
+      const speed = distance / deltaTime;
+      const maxAllowedSpeed = ANTI_CHEAT.MAX_MOVE_SPEED * ANTI_CHEAT.SPEED_TOLERANCE;
+      
+      if (speed > maxAllowedSpeed) {
+        violations.push(`SPEED_VIOLATION: ${speed.toFixed(1)} > ${maxAllowedSpeed.toFixed(1)} units/s`);
+      }
+    }
+    
+    // 3. Teleportation detection
+    if (distance > ANTI_CHEAT.MAX_TELEPORT_DISTANCE) {
+      violations.push(`TELEPORTATION_DETECTED: ${distance.toFixed(1)} > ${ANTI_CHEAT.MAX_TELEPORT_DISTANCE} units`);
+    }
+    
+    // 4. Single update distance validation
+    if (distance > MOVEMENT_VALIDATION.MAX_SINGLE_UPDATE_DISTANCE) {
+      violations.push(`SINGLE_UPDATE_TOO_FAR: ${distance.toFixed(1)} > ${MOVEMENT_VALIDATION.MAX_SINGLE_UPDATE_DISTANCE} units`);
+    }
+    
+    // 5. World bounds validation
+    if (newPosition.x < ANTI_CHEAT.WORLD_BOUNDS.MIN_X || newPosition.x > ANTI_CHEAT.WORLD_BOUNDS.MAX_X) {
+      violations.push(`X_OUT_OF_BOUNDS: ${newPosition.x} not in [${ANTI_CHEAT.WORLD_BOUNDS.MIN_X}, ${ANTI_CHEAT.WORLD_BOUNDS.MAX_X}]`);
+    }
+    
+    if (newPosition.z < ANTI_CHEAT.WORLD_BOUNDS.MIN_Z || newPosition.z > ANTI_CHEAT.WORLD_BOUNDS.MAX_Z) {
+      violations.push(`Z_OUT_OF_BOUNDS: ${newPosition.z} not in [${ANTI_CHEAT.WORLD_BOUNDS.MIN_Z}, ${ANTI_CHEAT.WORLD_BOUNDS.MAX_Z}]`);
+    }
+    
+    if (newPosition.y < ANTI_CHEAT.MIN_Y_COORDINATE || newPosition.y > ANTI_CHEAT.MAX_Y_COORDINATE) {
+      violations.push(`Y_OUT_OF_BOUNDS: ${newPosition.y} not in [${ANTI_CHEAT.MIN_Y_COORDINATE}, ${ANTI_CHEAT.MAX_Y_COORDINATE}]`);
+    }
+    
+    // 6. Terrain height validation
+    const terrainHeight = this.getTerrainHeight(newPosition.x, newPosition.z);
+    const minValidHeight = terrainHeight + 0.3; // Squirrel height above terrain
+    const maxValidHeight = terrainHeight + 5; // Maximum height above terrain
+    
+    if (newPosition.y < minValidHeight || newPosition.y > maxValidHeight) {
+      violations.push(`TERRAIN_HEIGHT_VIOLATION: Y=${newPosition.y.toFixed(1)}, terrain=${terrainHeight.toFixed(1)}, valid=[${minValidHeight.toFixed(1)}, ${maxValidHeight.toFixed(1)}]`);
+    }
+    
+    // Determine if movement is valid
+    const isValid = violations.length === 0;
+    
+    // If invalid, provide corrected position
+    let correctedPosition: { x: number; y: number; z: number } | undefined;
+    if (!isValid) {
+      correctedPosition = this.correctPlayerPosition(newPosition);
+      
+      // Also clamp to world bounds
+      correctedPosition.x = Math.max(ANTI_CHEAT.WORLD_BOUNDS.MIN_X, Math.min(ANTI_CHEAT.WORLD_BOUNDS.MAX_X, correctedPosition.x));
+      correctedPosition.z = Math.max(ANTI_CHEAT.WORLD_BOUNDS.MIN_Z, Math.min(ANTI_CHEAT.WORLD_BOUNDS.MAX_Z, correctedPosition.z));
+      correctedPosition.y = Math.max(ANTI_CHEAT.MIN_Y_COORDINATE, Math.min(ANTI_CHEAT.MAX_Y_COORDINATE, correctedPosition.y));
+    }
+    
+    return { isValid, correctedPosition, violations };
+  }
+
+  // MVP 7 Task 6: Calculate distance between two positions
+  private calculateDistance(pos1: { x: number; y: number; z: number }, pos2: { x: number; y: number; z: number }): number {
+    const dx = pos2.x - pos1.x;
+    const dy = pos2.y - pos1.y;
+    const dz = pos2.z - pos1.z;
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
+
+  // MVP 7 Task 6: Record anti-cheat violation
+  private recordViolation(playerConnection: PlayerConnection, violationType: string, details: any): void {
+    const now = Date.now();
+    
+    // Add violation to player's history
+    playerConnection.violations.push({
+      type: violationType,
+      timestamp: now,
+      details
+    });
+    
+    // Clean up old violations (keep only last 30 seconds)
+    playerConnection.violations = playerConnection.violations.filter(
+      v => now - v.timestamp < ANTI_CHEAT.VIOLATION_WINDOW
+    );
+    
+    // Update violation count
+    playerConnection.violationCount = playerConnection.violations.length;
+    
+    // Check if player should be flagged
+    if (playerConnection.violationCount >= ANTI_CHEAT.MAX_VIOLATIONS_BEFORE_FLAG && !playerConnection.isFlagged) {
+      playerConnection.isFlagged = true;
+      playerConnection.flagReason = `Multiple violations: ${playerConnection.violations.map(v => v.type).join(', ')}`;
+      
+      Logger.warn(LogCategory.PLAYER, `🚨 Player ${playerConnection.squirrelId} flagged for anti-cheat violations: ${playerConnection.flagReason}`);
+      
+      // Send warning to player
+      this.sendMessage(playerConnection.socket, {
+        type: 'anti_cheat_warning',
+        message: 'Suspicious movement detected. Please play fairly.',
+        violations: playerConnection.violations.length
+      });
+    }
+    
+    Logger.debug(LogCategory.PLAYER, `⚠️ Anti-cheat violation for ${playerConnection.squirrelId}: ${violationType}`, details);
   }
 
   // TASK URGENTA.3: Storage Optimization - Batching methods
