@@ -153,9 +153,12 @@ export class PlayerManager extends System {
 
   private handleRemotePlayerState = async (data: any) => {
     Logger.debugExpensive(LogCategory.PLAYER, () => `🎯 PLAYER MANAGER RECEIVED remote_player_state event for: ${data.squirrelId}`);
-    Logger.debugExpensive(LogCategory.PLAYER, () => `📍 Player position: ${JSON.stringify(data.position)}`);
-    Logger.debugExpensive(LogCategory.PLAYER, () => `👥 Current remote players count BEFORE processing: ${this.remotePlayers.size}`);
-    Logger.debugExpensive(LogCategory.PLAYER, () => `📊 Full event data: ${JSON.stringify(data, null, 2)}`);
+    
+    // TASK 3 FIX: Check if PlayerManager is ready
+    if (!this.scene || !this.assetManager) {
+      Logger.warn(LogCategory.PLAYER, `⚠️ PlayerManager not ready for ${data.squirrelId}, initializing...`);
+      await this.initializeWithSceneAndAssets();
+    }
     
     // TASK 3 FIX: Enhanced duplicate detection and validation
     if (!data.squirrelId || typeof data.squirrelId !== 'string') {
@@ -246,24 +249,24 @@ export class PlayerManager extends System {
       // TASK 3 FIX: Log all existing players for debugging
       Logger.debugExpensive(LogCategory.PLAYER, () => `🔍 Current players before creating ${data.squirrelId}: ${Array.from(this.remotePlayers.keys()).join(', ')}`);
       
-      // Create new remote player with error handling
-      try {
-        await this.createRemotePlayer({
-          squirrelId: data.squirrelId,
-          position: data.position,
-          rotation: {
-            x: 0,
-            y: data.rotationY || 0,
-            z: 0,
-            w: 1
-          }
-        });
-      } catch (error) {
-        Logger.error(LogCategory.PLAYER, `❌ Failed to create remote player ${data.squirrelId}:`, error);
-        // Clean up tracking on failure
-        this.trackedSquirrelIds.delete(data.squirrelId);
-        // Don't re-throw to prevent critical errors
-      }
+          // Create new remote player with error handling
+    try {
+      await this.createRemotePlayer({
+        squirrelId: data.squirrelId,
+        position: data.position,
+        rotation: {
+          x: 0,
+          y: data.rotationY || 0,
+          z: 0,
+          w: 1
+        }
+      });
+    } catch (error) {
+      Logger.error(LogCategory.PLAYER, `❌ Failed to create remote player ${data.squirrelId}:`, error);
+      // Clean up tracking on failure
+      this.trackedSquirrelIds.delete(data.squirrelId);
+      // Don't re-throw to prevent critical errors
+    }
     }
     
     Logger.debugExpensive(LogCategory.PLAYER, () => `👥 Current remote players count AFTER processing: ${this.remotePlayers.size}`);
@@ -277,17 +280,19 @@ export class PlayerManager extends System {
   }): Promise<void> {
     Logger.debug(LogCategory.PLAYER, `🎯 Creating remote player: ${data.squirrelId}`);
     
-    // TASK 3.1: Terrain Height Fixes - Enhanced height calculation
+    // TASK 3.1: Terrain Height Fixes - Enhanced height calculation with performance optimization
     let adjustedPosition = { ...data.position };
     if (this.terrainService) {
       try {
-        const terrainHeight = await this.terrainService.getTerrainHeight(data.position.x, data.position.z);
+        // Use a timeout to prevent blocking for too long
+        const terrainHeight = await Promise.race([
+          this.terrainService.getTerrainHeight(data.position.x, data.position.z),
+          new Promise<number>((resolve) => setTimeout(() => resolve(0.5), 100)) // 100ms timeout
+        ]);
         // TASK 3.1: Use terrain height directly to prevent floating
         adjustedPosition.y = terrainHeight + 0.1; // Minimal offset for ground contact
         
-        Logger.debugExpensive(LogCategory.PLAYER, () => 
-          `📏 Adjusted remote player ${data.squirrelId} height to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)})`
-        );
+        Logger.debug(LogCategory.PLAYER, `📏 Adjusted remote player ${data.squirrelId} height to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)})`);
       } catch (error) {
         Logger.warn(LogCategory.PLAYER, `Failed to get terrain height for remote player ${data.squirrelId}, using fallback`, error);
         // TASK 3.1: Improved fallback height calculation
