@@ -171,12 +171,24 @@ export default class SquirrelSession {
       await this.loadSessionFromStorage();
     }
 
+    // TASK URGENTA.2: Check session timeout on access instead of using timers
+    const now = Date.now();
+    const sessionTimeout = 60 * 60 * 1000; // 60 minutes
+    const isExpired = this.sessionState && (now - this.sessionState.lastActivity) > sessionTimeout;
+    
+    if (isExpired && this.sessionState) {
+      this.sessionState.connectionState = 'disconnected';
+      this.sessionState.isAuthenticated = false;
+      await this.state.storage.put("session", this.sessionState);
+    }
+
     const isValid = this.sessionState?.token === body.token && 
-                   this.sessionState?.isAuthenticated === true;
+                   this.sessionState?.isAuthenticated === true &&
+                   !isExpired;
 
     if (isValid && this.sessionState) {
       // Update last activity
-      this.sessionState.lastActivity = Date.now();
+      this.sessionState.lastActivity = now;
       await this.state.storage.put("session", this.sessionState);
       this.scheduleSessionTimeout();
     }
@@ -311,22 +323,19 @@ export default class SquirrelSession {
            position.y >= MIN_Y && position.y <= MAX_Y;
   }
 
-  // Industry Standard: Session timeout management
+  // Industry Standard: Session timeout management - TASK URGENTA.2: Remove setTimeout to allow hibernation
   private scheduleSessionTimeout(): void {
+    // TASK URGENTA.2: Remove setTimeout to allow Durable Object hibernation
+    // Session timeout will be checked on next access instead of using timers
     if (this.sessionTimeout) {
       clearTimeout(this.sessionTimeout);
+      this.sessionTimeout = null;
     }
-
-    // TASK URGENTA.11: Session expires after 60 minutes of inactivity (increased from 30)
-    this.sessionTimeout = setTimeout(async () => {
-      console.log(`[SquirrelSession] Session timeout for ${this.sessionState?.squirrelId}`);
-      
-      if (this.sessionState) {
-        this.sessionState.connectionState = 'disconnected';
-        this.sessionState.isAuthenticated = false;
-        await this.state.storage.put("session", this.sessionState);
-      }
-    }, 60 * 60 * 1000); // TASK URGENTA.11: Increased from 30 to 60 minutes
+    
+    // Store the timeout timestamp instead of using setTimeout
+    if (this.sessionState) {
+      this.sessionState.lastActivity = Date.now();
+    }
   }
 
   // Load session from persistent storage

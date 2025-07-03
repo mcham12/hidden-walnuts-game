@@ -126,8 +126,8 @@ export default class ForestManager {
     // Initialize Logger with environment from DO context
     initializeLogger(env.ENVIRONMENT);
     
-    // Start connection monitoring
-    this.startConnectionMonitoring();
+    // TASK URGENTA.2: Remove automatic monitoring start to allow hibernation
+    // Connection monitoring will be started only when needed
     
     // TASK 4 FIX: Load persisted metrics on startup (async, don't block constructor)
     this.loadServerMetrics().catch(error => 
@@ -666,7 +666,9 @@ export default class ForestManager {
       await this.sendExistingPlayers(socket, squirrelId);
       this.broadcastPlayerJoin(squirrelId, playerConnection);
       this.setupMessageHandlers(playerConnection);
-      // Connection monitoring is already started in constructor
+      
+      // TASK URGENTA.2: Start monitoring only when we have active connections
+      this.startConnectionMonitoring();
 
       Logger.info(LogCategory.PLAYER, `Player ${squirrelId} connected at position`, playerConnection.position);
     } catch (error) {
@@ -1298,6 +1300,13 @@ export default class ForestManager {
 
     // MVP 7 Task 7: Update server metrics
     this.updateDisconnectMetrics(squirrelId, connectionDuration, playerConnection);
+    
+    // TASK URGENTA.2: Stop monitoring if no active connections to allow hibernation
+    if (this.activePlayers.size === 0 && this.connectionMonitoringInterval) {
+      Logger.debug(LogCategory.WEBSOCKET, 'No active connections remaining, stopping monitoring to allow hibernation');
+      clearInterval(this.connectionMonitoringInterval);
+      this.connectionMonitoringInterval = null;
+    }
   }
 
   // MVP 7 Task 7: Enhanced session update on disconnect
@@ -1349,19 +1358,25 @@ export default class ForestManager {
     this.serverMetrics.disconnectReasons[reason] = (this.serverMetrics.disconnectReasons[reason] || 0) + 1;
   }
 
-  // Enhanced connection monitoring
+  // Enhanced connection monitoring - TASK URGENTA.2: Only start when needed
   private startConnectionMonitoring(): void {
+    // TASK URGENTA.2: Only start monitoring if not already running and we have active connections
+    if (this.connectionMonitoringInterval || this.activePlayers.size === 0) {
+      return;
+    }
+    
+    Logger.debug(LogCategory.WEBSOCKET, 'Starting connection monitoring for active players');
     this.connectionMonitoringInterval = setInterval(() => {
       this.cleanupStaleConnections();
       this.updateServerMetrics();
-    }, 120000); // TASK URGENTA.7: Increased from 30 to 120 seconds
+    }, 300000); // TASK URGENTA.8: Increased to 5 minutes (300 seconds)
   }
 
-  // Enhanced stale connection cleanup
+  // Enhanced stale connection cleanup - TASK URGENTA.2: More aggressive cleanup
   private cleanupStaleConnections(): void {
     const now = Date.now();
-    // TASK URGENTA.7: Increased timeout from 1 minute to 3 minutes
-    const staleThreshold = 3 * 60 * 1000; // 3 minutes
+    // TASK URGENTA.8: Increased timeout to 5 minutes for more lenient cleanup
+    const staleThreshold = 5 * 60 * 1000; // 5 minutes
     
     // TASK 4 FIX: More aggressive cleanup to prevent connection leaks
     const playersToRemove: string[] = [];
@@ -1386,6 +1401,13 @@ export default class ForestManager {
     
     // Update metrics after cleanup
     this.updateServerMetrics();
+    
+    // TASK URGENTA.2: Stop monitoring if no active connections
+    if (this.activePlayers.size === 0 && this.connectionMonitoringInterval) {
+      Logger.debug(LogCategory.WEBSOCKET, 'No active connections, stopping monitoring to allow hibernation');
+      clearInterval(this.connectionMonitoringInterval);
+      this.connectionMonitoringInterval = null;
+    }
     
     if (playersToRemove.length > 0) {
       Logger.debug(LogCategory.WEBSOCKET, 
