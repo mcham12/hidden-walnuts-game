@@ -100,7 +100,11 @@ export default class ForestManager {
     activeConnections: 0,
     totalErrors: 0,
     averageLatency: 0,
-    uptime: 0
+    uptime: 0,
+    // MVP 7 Task 7: Enhanced disconnect tracking
+    totalDisconnections: 0,
+    averageConnectionDuration: 0,
+    disconnectReasons: {} as Record<string, number>
   };
   
   // TASK URGENTA.3: Storage Optimization - Batching
@@ -304,18 +308,20 @@ export default class ForestManager {
     return new Response("Not Found", { status: 404 });
   }
 
-  // Enhanced WebSocket upgrade with authentication and error handling
+  // MVP 7 Task 7: Enhanced WebSocket upgrade with comprehensive security and validation
   private async handleWebSocketUpgrade(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const squirrelId = url.searchParams.get("squirrelId");
     const token = url.searchParams.get("token");
+    const clientVersion = url.searchParams.get("version") || "unknown";
 
+    // MVP 7 Task 7: Enhanced security validation
     if (!squirrelId || !token) {
       const error: ServerError = {
         type: ServerErrorType.AUTHENTICATION_FAILED,
         message: "Missing squirrelId or token in WebSocket upgrade",
         timestamp: Date.now(),
-        details: { squirrelId: !!squirrelId, token: !!token },
+        details: { squirrelId: !!squirrelId, token: !!token, clientVersion },
         recoverable: false
       };
       this.recordError(error);
@@ -323,13 +329,31 @@ export default class ForestManager {
       return new Response("Missing squirrelId or token", { status: 400 });
     }
 
+    // MVP 7 Task 7: Validate squirrelId format (basic security)
+    if (!this.isValidSquirrelId(squirrelId)) {
+      const error: ServerError = {
+        type: ServerErrorType.AUTHENTICATION_FAILED,
+        message: "Invalid squirrelId format",
+        timestamp: Date.now(),
+        squirrelId,
+        details: { clientVersion },
+        recoverable: false
+      };
+      this.recordError(error);
+      
+      return new Response("Invalid squirrelId format", { status: 400 });
+    }
+
+    // MVP 7 Task 7: Enhanced WebSocket upgrade validation
     const upgradeHeader = request.headers.get("Upgrade");
+    const connectionHeader = request.headers.get("Connection");
+    
     if (upgradeHeader !== "websocket") {
       const error: ServerError = {
         type: ServerErrorType.WEBSOCKET_ERROR,
         message: "Expected Upgrade: websocket header",
         timestamp: Date.now(),
-        details: { upgradeHeader },
+        details: { upgradeHeader, connectionHeader, clientVersion },
         recoverable: false
       };
       this.recordError(error);
@@ -337,15 +361,44 @@ export default class ForestManager {
       return new Response("Expected Upgrade: websocket", { status: 426 });
     }
 
+    if (!connectionHeader || !connectionHeader.toLowerCase().includes("upgrade")) {
+      const error: ServerError = {
+        type: ServerErrorType.WEBSOCKET_ERROR,
+        message: "Expected Connection: upgrade header",
+        timestamp: Date.now(),
+        details: { upgradeHeader, connectionHeader, clientVersion },
+        recoverable: false
+      };
+      this.recordError(error);
+      
+      return new Response("Expected Connection: upgrade", { status: 400 });
+    }
+
+    // MVP 7 Task 7: Rate limiting for connection attempts
+    if (this.isConnectionRateLimited(squirrelId)) {
+      const error: ServerError = {
+        type: ServerErrorType.WEBSOCKET_ERROR,
+        message: "Connection rate limit exceeded",
+        timestamp: Date.now(),
+        squirrelId,
+        details: { clientVersion },
+        recoverable: true
+      };
+      this.recordError(error);
+      
+      return new Response("Too many connection attempts", { status: 429 });
+    }
+
     try {
-      const isAuthenticated = await this.authenticatePlayer(squirrelId, token);
+      // MVP 7 Task 7: Enhanced authentication with timeout
+      const isAuthenticated = await this.authenticatePlayerWithTimeout(squirrelId, token, 5000);
       if (!isAuthenticated) {
         const error: ServerError = {
           type: ServerErrorType.AUTHENTICATION_FAILED,
           message: "Authentication failed for WebSocket connection",
           timestamp: Date.now(),
           squirrelId,
-          details: { token: token.substring(0, 8) + '...' },
+          details: { token: token.substring(0, 8) + '...', clientVersion },
           recoverable: false
         };
         this.recordError(error);
@@ -353,16 +406,33 @@ export default class ForestManager {
         return new Response("Authentication failed", { status: 401 });
       }
 
+      // MVP 7 Task 7: Check if player is already connected (prevent duplicates)
+      if (this.activePlayers.has(squirrelId)) {
+        Logger.warn(LogCategory.WEBSOCKET, `Player ${squirrelId} already connected, closing existing connection`);
+        this.handlePlayerDisconnect(squirrelId);
+      }
+
       const webSocketPair = new WebSocketPair();
       const [client, server] = Object.values(webSocketPair);
+      
+      // MVP 7 Task 7: Enhanced WebSocket configuration
       server.accept();
+      
+      // Set WebSocket properties for better connection handling
+      server.addEventListener('close', (event) => {
+        Logger.debug(LogCategory.WEBSOCKET, `WebSocket closed for ${squirrelId}: code=${event.code}, reason=${event.reason}`);
+      });
 
       await this.setupPlayerConnection(squirrelId, server);
-      Logger.info(LogCategory.PLAYER, `🎮 WebSocket connection established for player ${squirrelId}`);
+      Logger.info(LogCategory.PLAYER, `🎮 WebSocket connection established for player ${squirrelId} (v${clientVersion})`);
 
       return new Response(null, {
         status: 101,
         webSocket: client,
+        headers: {
+          'Sec-WebSocket-Protocol': 'hidden-walnuts-v1',
+          'X-Connection-ID': this.generateConnectionId(squirrelId)
+        }
       });
     } catch (error) {
       const serverError: ServerError = {
@@ -370,7 +440,7 @@ export default class ForestManager {
         message: `WebSocket upgrade failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
         timestamp: Date.now(),
         squirrelId,
-        details: error,
+        details: { error, clientVersion },
         recoverable: true
       };
       this.recordError(serverError);
@@ -488,6 +558,72 @@ export default class ForestManager {
       this.recordError(serverError);
       return false;
     }
+  }
+
+  // MVP 7 Task 7: Enhanced authentication with timeout
+  private async authenticatePlayerWithTimeout(squirrelId: string, token: string, timeoutMs: number): Promise<boolean> {
+    const timeoutPromise = new Promise<boolean>((resolve) => {
+      setTimeout(() => resolve(false), timeoutMs);
+    });
+    
+    const authPromise = this.authenticatePlayer(squirrelId, token);
+    
+    return Promise.race([authPromise, timeoutPromise]);
+  }
+
+  // MVP 7 Task 7: Validate squirrelId format (UUID v4)
+  private isValidSquirrelId(squirrelId: string): boolean {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(squirrelId);
+  }
+
+  // MVP 7 Task 7: Rate limiting for connection attempts
+  private connectionAttempts = new Map<string, { count: number; lastAttempt: number }>();
+  private readonly MAX_CONNECTION_ATTEMPTS = 5;
+  private readonly CONNECTION_ATTEMPT_WINDOW = 60000; // 1 minute
+
+  private isConnectionRateLimited(squirrelId: string): boolean {
+    const now = Date.now();
+    const attempts = this.connectionAttempts.get(squirrelId);
+    
+    if (!attempts) {
+      this.connectionAttempts.set(squirrelId, { count: 1, lastAttempt: now });
+      return false;
+    }
+    
+    // Reset if outside window
+    if (now - attempts.lastAttempt > this.CONNECTION_ATTEMPT_WINDOW) {
+      this.connectionAttempts.set(squirrelId, { count: 1, lastAttempt: now });
+      return false;
+    }
+    
+    // Increment attempt count
+    attempts.count++;
+    attempts.lastAttempt = now;
+    
+    // Clean up old entries periodically
+    if (Math.random() < 0.1) { // 10% chance to clean up
+      this.cleanupConnectionAttempts();
+    }
+    
+    return attempts.count > this.MAX_CONNECTION_ATTEMPTS;
+  }
+
+  // MVP 7 Task 7: Clean up old connection attempts
+  private cleanupConnectionAttempts(): void {
+    const now = Date.now();
+    for (const [squirrelId, attempts] of this.connectionAttempts.entries()) {
+      if (now - attempts.lastAttempt > this.CONNECTION_ATTEMPT_WINDOW) {
+        this.connectionAttempts.delete(squirrelId);
+      }
+    }
+  }
+
+  // MVP 7 Task 7: Generate unique connection ID
+  private generateConnectionId(squirrelId: string): string {
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 8);
+    return `${squirrelId.substring(0, 8)}-${timestamp}-${random}`;
   }
 
   // Enhanced player connection setup with error tracking
@@ -654,26 +790,92 @@ export default class ForestManager {
     }
   }
 
-  // Enhanced heartbeat handling with latency tracking
+  // MVP 7 Task 7: Enhanced heartbeat handling with comprehensive connection monitoring
   private handleHeartbeat(playerConnection: PlayerConnection, data: any): void {
+    const now = Date.now();
     playerConnection.heartbeatCount++;
-    playerConnection.lastHeartbeat = Date.now();
+    playerConnection.lastHeartbeat = now;
+    playerConnection.lastActivity = now;
     
-    // Echo back the heartbeat with timestamp for latency calculation
+    // MVP 7 Task 7: Enhanced heartbeat response with connection health data
     this.sendMessage(playerConnection.socket, {
       type: 'heartbeat',
       timestamp: data.timestamp,
-      serverTime: Date.now()
+      serverTime: now,
+      connectionHealth: {
+        quality: playerConnection.connectionQuality,
+        uptime: now - playerConnection.connectionStartTime,
+        messageCount: playerConnection.messageCount,
+        errorCount: playerConnection.errorCount,
+        violationCount: playerConnection.violationCount
+      }
     });
     
-    // Update connection quality based on heartbeat frequency
-    const timeSinceLastHeartbeat = Date.now() - playerConnection.lastHeartbeat;
-    if (timeSinceLastHeartbeat < 30000) {
-      playerConnection.connectionQuality = 'excellent';
-    } else if (timeSinceLastHeartbeat < 60000) {
-      playerConnection.connectionQuality = 'good';
-    } else {
-      playerConnection.connectionQuality = 'poor';
+    // MVP 7 Task 7: Dynamic connection quality assessment
+    this.updateConnectionQuality(playerConnection);
+    
+    // MVP 7 Task 7: Connection health monitoring
+    this.monitorConnectionHealth(playerConnection);
+  }
+
+  // MVP 7 Task 7: Dynamic connection quality assessment
+  private updateConnectionQuality(playerConnection: PlayerConnection): void {
+    const now = Date.now();
+    const timeSinceLastHeartbeat = now - playerConnection.lastHeartbeat;
+    const timeSinceLastActivity = now - playerConnection.lastActivity;
+    const errorRate = playerConnection.errorCount / Math.max(playerConnection.messageCount, 1);
+    
+    let newQuality: PlayerConnection['connectionQuality'] = 'excellent';
+    
+    // Assess based on multiple factors
+    if (timeSinceLastHeartbeat > 120000 || timeSinceLastActivity > 180000) {
+      newQuality = 'critical';
+    } else if (timeSinceLastHeartbeat > 90000 || timeSinceLastActivity > 120000) {
+      newQuality = 'poor';
+    } else if (timeSinceLastHeartbeat > 60000 || timeSinceLastActivity > 90000) {
+      newQuality = 'fair';
+    } else if (timeSinceLastHeartbeat > 30000 || timeSinceLastActivity > 60000) {
+      newQuality = 'good';
+    }
+    
+    // Adjust based on error rate
+    if (errorRate > 0.1) { // More than 10% errors
+      newQuality = 'poor';
+    } else if (errorRate > 0.05) { // More than 5% errors
+      newQuality = 'fair';
+    }
+    
+    // Adjust based on violations
+    if (playerConnection.violationCount > 5) {
+      newQuality = 'poor';
+    }
+    
+    playerConnection.connectionQuality = newQuality;
+  }
+
+  // MVP 7 Task 7: Connection health monitoring
+  private monitorConnectionHealth(playerConnection: PlayerConnection): void {
+    const now = Date.now();
+    const connectionAge = now - playerConnection.connectionStartTime;
+    
+    // Log connection health periodically
+    if (playerConnection.heartbeatCount % 10 === 0) { // Every 10th heartbeat
+      Logger.debug(LogCategory.WEBSOCKET, 
+        `Connection health for ${playerConnection.squirrelId}: ` +
+        `quality=${playerConnection.connectionQuality}, ` +
+        `uptime=${Math.floor(connectionAge / 1000)}s, ` +
+        `messages=${playerConnection.messageCount}, ` +
+        `errors=${playerConnection.errorCount}, ` +
+        `violations=${playerConnection.violationCount}`
+      );
+    }
+    
+    // Auto-disconnect critical connections
+    if (playerConnection.connectionQuality === 'critical' && connectionAge > 300000) { // 5 minutes
+      Logger.warn(LogCategory.WEBSOCKET, 
+        `Auto-disconnecting critical connection: ${playerConnection.squirrelId}`
+      );
+      this.handlePlayerDisconnect(playerConnection.squirrelId);
     }
   }
 
@@ -1023,37 +1225,128 @@ export default class ForestManager {
     }
   }
 
-  // Enhanced player disconnect with cleanup
-  private handlePlayerDisconnect(squirrelId: string): void {
+  // MVP 7 Task 7: Enhanced graceful disconnect handling with comprehensive cleanup
+  private handlePlayerDisconnect(squirrelId: string, reason: string = 'Player disconnect'): void {
     const playerConnection = this.activePlayers.get(squirrelId);
-    if (playerConnection) {
-      Logger.info(LogCategory.WEBSOCKET, `👋 Player disconnecting: ${squirrelId}`);
-      
-      // TASK 4 FIX: Proper cleanup to prevent connection leaks
-      try {
-        // Close the WebSocket if still open
-        if (playerConnection.socket.readyState === WebSocket.OPEN) {
-          playerConnection.socket.close();
-        }
-      } catch (error) {
-        Logger.warn(LogCategory.WEBSOCKET, `Failed to close socket for ${squirrelId}:`, error);
+    if (!playerConnection) {
+      Logger.warn(LogCategory.PLAYER, `Player ${squirrelId} not found during disconnect`);
+      return;
+    }
+
+    const disconnectTime = Date.now();
+    const connectionDuration = disconnectTime - playerConnection.connectionStartTime;
+
+    // MVP 7 Task 7: Enhanced WebSocket closure with proper error handling
+    try {
+      if (playerConnection.socket.readyState === WebSocket.OPEN) {
+        // Send final disconnect message before closing
+        this.sendMessage(playerConnection.socket, {
+          type: 'disconnect',
+          reason: reason,
+          timestamp: disconnectTime,
+          connectionStats: {
+            duration: connectionDuration,
+            messageCount: playerConnection.messageCount,
+            heartbeatCount: playerConnection.heartbeatCount,
+            errorCount: playerConnection.errorCount,
+            violationCount: playerConnection.violationCount,
+            finalQuality: playerConnection.connectionQuality
+          }
+        });
+        
+        // Close with appropriate code based on reason
+        const closeCode = reason.includes('timeout') ? 1001 : 
+                         reason.includes('error') ? 1011 : 
+                         reason.includes('server') ? 1013 : 1000;
+        
+        playerConnection.socket.close(closeCode, reason);
       }
-      
-      // Remove from active players
-      this.activePlayers.delete(squirrelId);
-      
-      // Broadcast to other players
-      this.broadcastToOthers(squirrelId, {
-        type: "player_left",
-        squirrelId,
-        timestamp: Date.now()
+    } catch (error) {
+      Logger.error(LogCategory.WEBSOCKET, `Error closing WebSocket for ${squirrelId}:`, error);
+    }
+
+    // MVP 7 Task 7: Enhanced cleanup with session preservation
+    this.activePlayers.delete(squirrelId);
+    this.sessions.delete(playerConnection.socket);
+
+    // MVP 7 Task 7: Broadcast enhanced player leave message
+    this.broadcastToOthers(squirrelId, {
+      type: 'player_leave',
+      squirrelId: squirrelId,
+      timestamp: disconnectTime,
+      reason: reason,
+      finalPosition: playerConnection.position,
+      connectionDuration: connectionDuration
+    });
+
+    // MVP 7 Task 7: Enhanced session update with disconnect information
+    this.updatePlayerSessionOnDisconnect(playerConnection, reason, disconnectTime).catch(error => {
+      Logger.error(LogCategory.SESSION, `Error updating session for ${squirrelId}:`, error);
+    });
+
+    // MVP 7 Task 7: Clean up connection attempts for this player
+    this.connectionAttempts.delete(squirrelId);
+
+    // MVP 7 Task 7: Log comprehensive disconnect information
+    Logger.info(LogCategory.PLAYER, 
+      `👋 Player ${squirrelId} disconnected: ` +
+      `reason="${reason}", ` +
+      `duration=${Math.floor(connectionDuration / 1000)}s, ` +
+      `messages=${playerConnection.messageCount}, ` +
+      `quality=${playerConnection.connectionQuality}`
+    );
+
+    // MVP 7 Task 7: Update server metrics
+    this.updateDisconnectMetrics(squirrelId, connectionDuration, playerConnection);
+  }
+
+  // MVP 7 Task 7: Enhanced session update on disconnect
+  private async updatePlayerSessionOnDisconnect(
+    playerConnection: PlayerConnection, 
+    reason: string, 
+    disconnectTime: number
+  ): Promise<void> {
+    try {
+      const sessionRequest = new Request(`https://dummy.com/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          squirrelId: playerConnection.squirrelId,
+          position: playerConnection.position,
+          rotationY: playerConnection.rotationY,
+          disconnectInfo: {
+            timestamp: disconnectTime,
+            reason: reason,
+            connectionDuration: disconnectTime - playerConnection.connectionStartTime,
+            finalQuality: playerConnection.connectionQuality,
+            messageCount: playerConnection.messageCount,
+            errorCount: playerConnection.errorCount,
+            violationCount: playerConnection.violationCount
+          }
+        })
       });
       
-      // Update metrics immediately after disconnect
-      this.updateServerMetrics();
+      const squirrelSession = this.env.SQUIRREL.get(this.env.SQUIRREL.idFromName(playerConnection.squirrelId));
+      await squirrelSession.fetch(sessionRequest);
       
-      Logger.debug(LogCategory.WEBSOCKET, `✅ Cleaned up player ${squirrelId}, ${this.activePlayers.size} players remaining`);
+    } catch (error) {
+      Logger.error(LogCategory.SESSION, `Failed to update session on disconnect for ${playerConnection.squirrelId}:`, error);
     }
+  }
+
+  // MVP 7 Task 7: Update disconnect metrics
+  private updateDisconnectMetrics(squirrelId: string, duration: number, playerConnection: PlayerConnection): void {
+    this.serverMetrics.totalDisconnections++;
+    this.serverMetrics.averageConnectionDuration = 
+      (this.serverMetrics.averageConnectionDuration * (this.serverMetrics.totalDisconnections - 1) + duration) / 
+      this.serverMetrics.totalDisconnections;
+    
+    // Track disconnect reasons
+    if (!this.serverMetrics.disconnectReasons) {
+      this.serverMetrics.disconnectReasons = {};
+    }
+    const reason = playerConnection.connectionQuality === 'critical' ? 'critical_connection' : 'normal_disconnect';
+    this.serverMetrics.disconnectReasons[reason] = (this.serverMetrics.disconnectReasons[reason] || 0) + 1;
   }
 
   // Enhanced connection monitoring

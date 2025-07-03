@@ -4,6 +4,10 @@ import { System } from '../ecs';
 import { EventBus, GameEvents } from '../core/EventBus';
 import { Logger, LogCategory } from '../core/Logger';
 
+// MVP 7 Task 7: Client version for protocol compatibility
+const CLIENT_VERSION = '1.0.0';
+const PROTOCOL_VERSION = 'hidden-walnuts-v1';
+
 interface NetworkMessage {
   type: 'position_update' | 'player_joined' | 'player_left' | 'heartbeat' | 'player_join' | 'player_update' | 'world_state' | 'init' | 'existing_players' | 'player_leave' | 'position_correction' | 'batch_update';
   squirrelId: string;
@@ -36,7 +40,9 @@ enum NetworkErrorType {
   MESSAGE_PARSE_ERROR = 'message_parse_error',
   HEARTBEAT_TIMEOUT = 'heartbeat_timeout',
   RECONNECTION_FAILED = 'reconnection_failed',
-  SERVER_ERROR = 'server_error'
+  SERVER_ERROR = 'server_error',
+  BROWSER_INCOMPATIBLE = 'browser_incompatible',
+  PROTOCOL_VERSION_MISMATCH = 'protocol_version_mismatch'
 }
 
 interface NetworkError {
@@ -47,14 +53,26 @@ interface NetworkError {
   recoverable: boolean;
 }
 
+// MVP 7 Task 7: Connection state management
+enum ConnectionState {
+  DISCONNECTED = 'disconnected',
+  CONNECTING = 'connecting',
+  AUTHENTICATING = 'authenticating',
+  CONNECTED = 'connected',
+  RECONNECTING = 'reconnecting',
+  FAILED = 'failed'
+}
+
 export class NetworkSystem extends System {
   private websocket: WebSocket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10; // Increased for better resilience
   private heartbeatInterval: any = null;
   private heartbeatTimeout: any = null;
-  private isConnecting = false;
   private localSquirrelId: string | null = null;
+  
+  // MVP 7 Task 7: Enhanced connection state management
+  private connectionState: ConnectionState = ConnectionState.DISCONNECTED;
   
   // Enhanced connection monitoring
   private connectionStartTime: number = 0;
@@ -83,6 +101,19 @@ export class NetworkSystem extends System {
   constructor(eventBus: EventBus) {
     super(eventBus, ['network'], 'NetworkSystem');
     
+    // MVP 7 Task 7: Browser compatibility check
+    if (!this.checkBrowserCompatibility()) {
+      const error: NetworkError = {
+        type: NetworkErrorType.BROWSER_INCOMPATIBLE,
+        message: 'Browser does not support required WebSocket features',
+        timestamp: Date.now(),
+        details: { userAgent: navigator.userAgent },
+        recoverable: false
+      };
+      this.recordError(error);
+      throw new Error('Browser incompatible with multiplayer features');
+    }
+    
     // Initialize connection metrics
     this.connectionMetrics = {
       latency: 0,
@@ -100,15 +131,61 @@ export class NetworkSystem extends System {
     
     // Start connection quality monitoring
     this.startConnectionQualityMonitoring();
+    
+    Logger.info(LogCategory.NETWORK, `🚀 NetworkSystem initialized - Client v${CLIENT_VERSION}, Protocol: ${PROTOCOL_VERSION}`);
+  }
+
+  // MVP 7 Task 7: Browser compatibility validation
+  private checkBrowserCompatibility(): boolean {
+    // Check WebSocket support
+    if (typeof WebSocket === 'undefined') {
+      Logger.error(LogCategory.NETWORK, '❌ WebSocket not supported');
+      return false;
+    }
+    
+    // Check crypto API for UUID generation
+    if (typeof crypto === 'undefined' || typeof crypto.randomUUID !== 'function') {
+      Logger.error(LogCategory.NETWORK, '❌ Crypto API not supported');
+      return false;
+    }
+    
+    // Check JSON support
+    if (typeof JSON === 'undefined') {
+      Logger.error(LogCategory.NETWORK, '❌ JSON not supported');
+      return false;
+    }
+    
+    // Check sessionStorage
+    if (typeof sessionStorage === 'undefined') {
+      Logger.warn(LogCategory.NETWORK, '⚠️ SessionStorage not supported - sessions will not persist');
+    }
+    
+    Logger.debug(LogCategory.NETWORK, '✅ Browser compatibility check passed');
+    return true;
+  }
+
+  // MVP 7 Task 7: Enhanced connection state management
+  private setConnectionState(newState: ConnectionState): void {
+    const oldState = this.connectionState;
+    this.connectionState = newState;
+    
+    if (oldState !== newState) {
+      Logger.debug(LogCategory.NETWORK, `🔄 Connection state: ${oldState} → ${newState}`);
+      this.eventBus.emit('network.state_changed', {
+        from: oldState,
+        to: newState,
+        timestamp: Date.now()
+      });
+    }
   }
 
   async connect(): Promise<void> {
-    if (this.isConnecting || this.websocket?.readyState === WebSocket.OPEN) {
+    if (this.connectionState === ConnectionState.CONNECTING || this.websocket?.readyState === WebSocket.OPEN) {
       Logger.debug(LogCategory.NETWORK, '🔄 Connection already in progress or established');
       return;
     }
 
-    this.isConnecting = true;
+    this.setConnectionState(ConnectionState.CONNECTING);
     this.connectionMetrics.reconnectAttempts = this.reconnectAttempts;
     
     try {
@@ -124,6 +201,8 @@ export class NetworkSystem extends System {
       
       Logger.debug(LogCategory.NETWORK, `🆕 Generated unique squirrel ID for this session: ${newSquirrelId}`);
       
+      this.setConnectionState(ConnectionState.AUTHENTICATING);
+      
       // Get authentication token with enhanced error handling
       const authResponse = await this.authenticatePlayer(this.localSquirrelId!);
       const authData = authResponse;
@@ -133,11 +212,13 @@ export class NetworkSystem extends System {
       sessionStorage.setItem('squirrelId', authData.squirrelId);
       
       const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8787';
-      const wsUrl = `${apiBase.replace('http', 'ws')}/ws?squirrelId=${authData.squirrelId}&token=${authData.token}`;
+      // MVP 7 Task 7: Include client version and protocol in WebSocket URL
+      const wsUrl = `${apiBase.replace('http', 'ws')}/ws?squirrelId=${authData.squirrelId}&token=${authData.token}&version=${CLIENT_VERSION}&protocol=${PROTOCOL_VERSION}`;
       
       Logger.debug(LogCategory.NETWORK, `🌐 Connecting to: ${wsUrl} (ID: ${this.localSquirrelId})`);
       
-      this.websocket = new WebSocket(wsUrl);
+      // MVP 7 Task 7: Enhanced WebSocket creation with protocol specification
+      this.websocket = new WebSocket(wsUrl, [PROTOCOL_VERSION]);
       this.setupWebSocketHandlers();
       
     } catch (error) {
@@ -152,11 +233,11 @@ export class NetworkSystem extends System {
       this.recordError(networkError);
       Logger.error(LogCategory.NETWORK, '❌ Connection failed', error);
       
+      this.setConnectionState(ConnectionState.FAILED);
+      
       // Don't re-throw the error to prevent browser console pollution
       // The error is already logged and recorded in our error system
       this.scheduleReconnect();
-    } finally {
-      this.isConnecting = false;
     }
   }
 
@@ -201,25 +282,55 @@ export class NetworkSystem extends System {
     }
   }
 
+  // MVP 7 Task 7: Enhanced WebSocket handlers with comprehensive error handling and reconnection
   private setupWebSocketHandlers(): void {
     if (!this.websocket) return;
 
     this.websocket.onopen = () => {
+      Logger.info(LogCategory.NETWORK, '🔗 WebSocket connected');
+      this.setConnectionState(ConnectionState.CONNECTED);
       this.connectionStartTime = Date.now();
       this.connectionMetrics.connectionUptime = 0;
       this.connectionMetrics.messageCount = 0;
       this.connectionMetrics.errorCount = 0;
       
-      Logger.debug(LogCategory.NETWORK, '✅ Connected to multiplayer server');
-      this.reconnectAttempts = 0;
-      this.startHeartbeat();
-      this.eventBus.emit(GameEvents.MULTIPLAYER_CONNECTED);
+      // MVP 7 Task 7: Protocol validation
+      if (this.websocket!.protocol !== PROTOCOL_VERSION) {
+        Logger.warn(LogCategory.NETWORK, `⚠️ Protocol mismatch: expected ${PROTOCOL_VERSION}, got ${this.websocket!.protocol}`);
+        
+        const protocolError: NetworkError = {
+          type: NetworkErrorType.PROTOCOL_VERSION_MISMATCH,
+          message: `Protocol version mismatch: expected ${PROTOCOL_VERSION}, got ${this.websocket!.protocol}`,
+          timestamp: Date.now(),
+          details: { expected: PROTOCOL_VERSION, actual: this.websocket!.protocol },
+          recoverable: false
+        };
+        this.recordError(protocolError);
+      }
       
-      // Notify systems that websocket is ready
-      this.eventBus.emit('network.websocket_ready', this.websocket);
+      // MVP 7 Task 7: Reset reconnection attempts on successful connection
+      if (this.reconnectAttempts > 0) {
+        Logger.info(LogCategory.NETWORK, `✅ Reconnection successful after ${this.reconnectAttempts} attempts`);
+        this.reconnectAttempts = 0;
+        this.connectionMetrics.reconnectAttempts = 0;
+      }
       
-      // Update connection quality
       this.updateConnectionQuality('excellent');
+      this.startHeartbeat();
+      this.startConnectionQualityMonitoring();
+      
+      // MVP 7 Task 7: Enhanced connection events with version info
+      this.eventBus.emit(GameEvents.MULTIPLAYER_CONNECTED);
+      this.eventBus.emit('network.websocket_ready', this.websocket);
+      this.eventBus.emit('network.connected', {
+        timestamp: Date.now(),
+        reconnectAttempts: this.reconnectAttempts,
+        connectionDuration: 0,
+        quality: this.connectionMetrics.quality,
+        clientVersion: CLIENT_VERSION,
+        protocol: this.websocket!.protocol,
+        squirrelId: this.localSquirrelId
+      });
     };
 
     this.websocket.onmessage = (event) => {
@@ -249,39 +360,107 @@ export class NetworkSystem extends System {
       const code = event.code;
       const reason = event.reason;
       
-      Logger.debug(LogCategory.NETWORK, `🔴 Connection closed - Clean: ${wasClean}, Code: ${code}, Reason: ${reason}`);
-      
+      Logger.warn(LogCategory.NETWORK, `🔌 WebSocket closed: code=${code}, reason=${reason}, clean=${wasClean}`);
       this.stopHeartbeat();
-      this.updateConnectionQuality('poor');
       
-      // Record connection close details
-      if (!wasClean) {
-        const networkError: NetworkError = {
-          type: NetworkErrorType.WEBSOCKET_ERROR,
-          message: `Connection closed unexpectedly - Code: ${code}, Reason: ${reason}`,
-          timestamp: Date.now(),
-          details: { code, reason, wasClean },
-          recoverable: true
-        };
-        
-        this.recordError(networkError);
+      // MVP 7 Task 7: Enhanced reconnection logic based on close codes
+      const shouldReconnect = this.shouldAttemptReconnection(code, reason);
+      
+      if (shouldReconnect) {
+        this.setConnectionState(ConnectionState.RECONNECTING);
+        this.updateConnectionQuality('poor');
+        this.scheduleReconnect();
+      } else {
+        this.setConnectionState(ConnectionState.DISCONNECTED);
+        this.updateConnectionQuality('critical');
+        Logger.info(LogCategory.NETWORK, 'Connection closed normally, not reconnecting');
       }
       
-      this.scheduleReconnect();
+      // MVP 7 Task 7: Enhanced disconnection event with lifecycle info
+      this.eventBus.emit('network.disconnected', {
+        code: event.code,
+        reason: event.reason,
+        timestamp: Date.now(),
+        willReconnect: shouldReconnect,
+        connectionDuration: this.connectionStartTime > 0 ? Date.now() - this.connectionStartTime : 0,
+        finalQuality: this.connectionMetrics.quality,
+        totalMessages: this.messageCount,
+        totalErrors: this.errorCount,
+        connectionState: this.connectionState
+      });
     };
 
     this.websocket.onerror = (error) => {
+      Logger.error(LogCategory.NETWORK, '❌ WebSocket error:', error);
+      
+      // MVP 7 Task 7: Enhanced error categorization
+      const errorType = this.categorizeWebSocketError(error);
+      
       const networkError: NetworkError = {
-        type: NetworkErrorType.WEBSOCKET_ERROR,
-        message: 'WebSocket error occurred',
+        type: errorType,
+        message: 'WebSocket connection error',
         timestamp: Date.now(),
         details: error,
-        recoverable: true
+        recoverable: errorType !== NetworkErrorType.AUTHENTICATION_FAILED
       };
       
       this.recordError(networkError);
-      Logger.error(LogCategory.NETWORK, '⚠️ WebSocket error', error);
+      this.updateConnectionQuality('poor');
+      
+      // MVP 7 Task 7: Set appropriate connection state on error
+      if (this.connectionState === ConnectionState.CONNECTING || this.connectionState === ConnectionState.AUTHENTICATING) {
+        this.setConnectionState(ConnectionState.FAILED);
+      }
+      
+      // MVP 7 Task 7: Emit error event for UI updates
+      this.eventBus.emit('network.error', {
+        type: errorType,
+        message: 'WebSocket connection error',
+        timestamp: Date.now(),
+        details: error,
+        connectionState: this.connectionState
+      });
     };
+  }
+
+  // MVP 7 Task 7: Determine if reconnection should be attempted
+  private shouldAttemptReconnection(code: number, reason: string): boolean {
+    // Don't reconnect on normal close codes
+    if (code === 1000 || code === 1001) {
+      return false;
+    }
+    
+    // Don't reconnect on authentication failures
+    if (code === 1008 || reason.includes('auth') || reason.includes('token')) {
+      return false;
+    }
+    
+    // Don't reconnect on policy violations
+    if (code === 1008 || reason.includes('policy')) {
+      return false;
+    }
+    
+    // Attempt reconnection for all other cases
+    return true;
+  }
+
+  // MVP 7 Task 7: Categorize WebSocket errors for better handling
+  private categorizeWebSocketError(error: any): NetworkErrorType {
+    const errorString = error.toString().toLowerCase();
+    
+    if (errorString.includes('auth') || errorString.includes('token') || errorString.includes('401')) {
+      return NetworkErrorType.AUTHENTICATION_FAILED;
+    }
+    
+    if (errorString.includes('timeout') || errorString.includes('408')) {
+      return NetworkErrorType.HEARTBEAT_TIMEOUT;
+    }
+    
+    if (errorString.includes('server') || errorString.includes('500')) {
+      return NetworkErrorType.SERVER_ERROR;
+    }
+    
+    return NetworkErrorType.WEBSOCKET_ERROR;
   }
 
   private handleNetworkMessage(message: NetworkMessage): void {
@@ -610,6 +789,7 @@ export class NetworkSystem extends System {
     this.pendingHeartbeats.clear();
   }
 
+  // MVP 7 Task 7: Enhanced reconnection logic with intelligent backoff and health monitoring
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       const networkError: NetworkError = {
@@ -623,24 +803,65 @@ export class NetworkSystem extends System {
       this.recordError(networkError);
       Logger.error(LogCategory.NETWORK, '💥 Max reconnection attempts reached');
       this.updateConnectionQuality('critical');
+      
+      // MVP 7 Task 7: Emit final reconnection failure event
+      this.eventBus.emit('network.reconnection_failed', {
+        attempts: this.reconnectAttempts,
+        totalTime: Date.now() - this.connectionStartTime,
+        lastError: networkError
+      });
       return;
     }
 
     this.reconnectAttempts++;
     this.connectionMetrics.reconnectAttempts = this.reconnectAttempts;
     
-    // Enhanced exponential backoff with jitter
-    const baseDelay = 1000;
-    const maxDelay = 30000;
-    const exponentialDelay = Math.min(baseDelay * Math.pow(2, this.reconnectAttempts - 1), maxDelay);
-    const jitter = Math.random() * 1000; // Add up to 1 second of jitter
-    const delay = exponentialDelay + jitter;
+    // MVP 7 Task 7: Intelligent backoff based on connection history
+    const delay = this.calculateReconnectDelay();
     
     Logger.info(LogCategory.NETWORK, `🔄 Reconnecting in ${delay.toFixed(0)}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    
+    // MVP 7 Task 7: Emit reconnection attempt event
+    this.eventBus.emit('network.reconnection_attempt', {
+      attempt: this.reconnectAttempts,
+      delay: delay,
+      totalAttempts: this.reconnectAttempts
+    });
     
     setTimeout(() => {
       this.connect();
     }, delay);
+  }
+
+  // MVP 7 Task 7: Intelligent reconnect delay calculation
+  private calculateReconnectDelay(): number {
+    const baseDelay = 1000;
+    const maxDelay = 30000;
+    
+    // MVP 7 Task 7: Adaptive backoff based on connection quality history
+    let exponentialDelay: number;
+    
+    if (this.connectionMetrics.quality === 'excellent' || this.connectionMetrics.quality === 'good') {
+      // Good connection history - use gentler backoff
+      exponentialDelay = Math.min(baseDelay * Math.pow(1.5, this.reconnectAttempts - 1), maxDelay);
+    } else if (this.connectionMetrics.quality === 'fair') {
+      // Fair connection history - use standard backoff
+      exponentialDelay = Math.min(baseDelay * Math.pow(2, this.reconnectAttempts - 1), maxDelay);
+    } else {
+      // Poor connection history - use aggressive backoff
+      exponentialDelay = Math.min(baseDelay * Math.pow(2.5, this.reconnectAttempts - 1), maxDelay);
+    }
+    
+    // MVP 7 Task 7: Add jitter to prevent thundering herd
+    const jitter = Math.random() * 1000; // Add up to 1 second of jitter
+    
+    // MVP 7 Task 7: Consider recent error rate
+    const errorRate = this.errorCount / Math.max(this.messageCount, 1);
+    if (errorRate > 0.1) { // More than 10% errors
+      exponentialDelay *= 1.5; // Increase delay for high error rates
+    }
+    
+    return exponentialDelay + jitter;
   }
 
   private startConnectionQualityMonitoring(): void {
@@ -701,6 +922,8 @@ export class NetworkSystem extends System {
   }
 
   disconnect(): void {
+    Logger.info(LogCategory.NETWORK, `🔌 Initiating graceful disconnect from state: ${this.connectionState}`);
+    
     this.stopHeartbeat();
     if (this.connectionQualityCheckInterval) {
       clearInterval(this.connectionQualityCheckInterval);
@@ -719,20 +942,84 @@ export class NetworkSystem extends System {
       this.batchTimeout = null;
     }
     
+    // MVP 7 Task 7: Enhanced graceful disconnect with proper close codes
     if (this.websocket) {
-      this.websocket.close(1000, 'Client disconnect');
+      const finalStats = {
+        duration: this.connectionStartTime > 0 ? Date.now() - this.connectionStartTime : 0,
+        messageCount: this.messageCount,
+        errorCount: this.errorCount,
+        quality: this.connectionMetrics.quality
+      };
+      
+      try {
+        // Send final goodbye message if connection is open
+        if (this.websocket.readyState === WebSocket.OPEN) {
+          const goodbyeMessage = {
+            type: 'goodbye',
+            squirrelId: this.localSquirrelId,
+            timestamp: Date.now(),
+            stats: finalStats
+          };
+          this.websocket.send(JSON.stringify(goodbyeMessage));
+          
+          // Give a brief moment for message to send before closing
+          setTimeout(() => {
+            if (this.websocket) {
+              this.websocket.close(1000, 'Client initiated disconnect');
+            }
+          }, 100);
+        } else {
+          this.websocket.close(1000, 'Client initiated disconnect');
+        }
+      } catch (error) {
+        Logger.warn(LogCategory.NETWORK, '⚠️ Error during graceful disconnect:', error);
+        // Force close if graceful close fails
+        this.websocket.close();
+      }
+      
       this.websocket = null;
     }
     
+    this.setConnectionState(ConnectionState.DISCONNECTED);
     this.updateConnectionQuality('poor');
+    
+    // MVP 7 Task 7: Emit comprehensive disconnect event
+    this.eventBus.emit('network.graceful_disconnect', {
+      timestamp: Date.now(),
+      finalStats: {
+        duration: this.connectionStartTime > 0 ? Date.now() - this.connectionStartTime : 0,
+        messageCount: this.messageCount,
+        errorCount: this.errorCount,
+        reconnectAttempts: this.reconnectAttempts,
+        quality: this.connectionMetrics.quality
+      }
+    });
+    
+    Logger.info(LogCategory.NETWORK, '👋 Graceful disconnect completed');
   }
 
   isConnected(): boolean {
-    return this.websocket?.readyState === WebSocket.OPEN;
+    return this.websocket?.readyState === WebSocket.OPEN && this.connectionState === ConnectionState.CONNECTED;
   }
 
-  // TASK URGENTA.6: Enhanced monitoring and analytics
+  // MVP 7 Task 7: Enhanced connection state API
+  getConnectionState(): ConnectionState {
+    return this.connectionState;
+  }
+
+  isConnecting(): boolean {
+    return this.connectionState === ConnectionState.CONNECTING || this.connectionState === ConnectionState.AUTHENTICATING;
+  }
+
+  isReconnecting(): boolean {
+    return this.connectionState === ConnectionState.RECONNECTING;
+  }
+
   getConnectionMetrics(): ConnectionMetrics {
+    // Update uptime before returning
+    if (this.connectionStartTime > 0) {
+      this.connectionMetrics.connectionUptime = Date.now() - this.connectionStartTime;
+    }
     return { ...this.connectionMetrics };
   }
 

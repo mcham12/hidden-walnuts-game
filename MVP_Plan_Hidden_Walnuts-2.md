@@ -101,7 +101,7 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
      - Ensure consistent player scaling and positioning
      - Implement proper terrain height synchronization
      - Fix player sinking/floating issues
-  5. **API Architecture Consolidation** 🔄 **IN TESTING**
+  5. **API Architecture Consolidation** 🔄 **COMPLETED**
      - Remove unused `api/` directory (Hono-based API)
      - Consolidate all API logic in `workers/api.ts` (raw Workers)
      - Eliminate code duplication and confusion
@@ -183,6 +183,7 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
   - Ensure visual consistency across devices and browsers.
   - **Window Resize Handling**: Fix camera aspect ratio and renderer sizing when browser window is resized; ensure responsive canvas behavior and proper projection matrix updates.
   - **Debug UI Polish**: Fix server metrics debug panel data persistence issues (totalConnections, uptime, latency calculations) and add production toggle for debug panels.
+  - **Player Height Synchronization**: Fix player height inconsistencies between local and remote players; ensure consistent terrain height calculations and proper player positioning relative to terrain surface.
 - **Estimated Time**: 4-6 weeks
 
 ---
