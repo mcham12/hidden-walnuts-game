@@ -1569,6 +1569,26 @@ export default class ForestManager {
       };
     }
     
+    // TASK URGENTA.3 FIX: Load saved position from storage
+    try {
+      const savedPlayerData = await this.storage.get<{
+        position: { x: number; y: number; z: number };
+        rotationY: number;
+        lastUpdate: number;
+      }>(`player:${squirrelId}`);
+      
+      if (savedPlayerData && savedPlayerData.position) {
+        Logger.debug(LogCategory.SESSION, `📦 Loaded saved position for ${squirrelId}:`, savedPlayerData.position);
+        return {
+          position: savedPlayerData.position,
+          rotationY: savedPlayerData.rotationY || 0,
+          stats: { found: 0, hidden: 0 }
+        };
+      }
+    } catch (error) {
+      Logger.warn(LogCategory.SESSION, `Failed to load saved position for ${squirrelId}:`, error);
+    }
+    
     // FIXED: For new players or reconnects, generate a random spawn position
     // but make it more predictable based on squirrelId for testing
     const hash = squirrelId.split('').reduce((a, b) => {
