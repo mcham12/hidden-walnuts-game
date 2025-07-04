@@ -196,7 +196,8 @@ export class NetworkSystem extends System {
       let squirrelId = sessionStorage.getItem('squirrelId');
       if (!squirrelId) {
         // Only generate new ID if none exists (first time player)
-        squirrelId = 'squirrel_' + Math.random().toString(36).substr(2, 9);
+        // Use UUID format as the server expects this format
+        squirrelId = crypto.randomUUID();
         sessionStorage.setItem('squirrelId', squirrelId);
         Logger.debug(LogCategory.NETWORK, `🆕 Generated new persistent squirrel ID: ${squirrelId}`);
       } else {

@@ -1241,23 +1241,8 @@ export default class ForestManager {
       
       await this.batchStorageOperation(nonCriticalOp);
       
-      // Also update SquirrelSession for immediate consistency
-      const sessionRequest = new Request(`https://dummy.com/update-state`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: 'session-token', // This would come from the player's session
-          position: playerConnection.position,
-          rotationY: playerConnection.rotationY
-        })
-      });
-      
-      const squirrelSession = this.env.SQUIRREL.get(this.env.SQUIRREL.idFromName(playerConnection.squirrelId));
-      const response = await squirrelSession.fetch(sessionRequest);
-      
-      if (!response.ok) {
-        Logger.warn(LogCategory.SESSION, `Failed to update session for ${playerConnection.squirrelId}: ${response.status}`);
-      }
+      // POSITION PERSISTENCE FIX: Removed problematic dummy URL request
+      // The storage.put() above is sufficient for position persistence
     } catch (error) {
       Logger.error(LogCategory.SESSION, `Error updating session for ${playerConnection.squirrelId}:`, error);
     }
@@ -1362,28 +1347,9 @@ export default class ForestManager {
     disconnectTime: number
   ): Promise<void> {
     try {
-      const sessionRequest = new Request(`https://dummy.com/update`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          squirrelId: playerConnection.squirrelId,
-          position: playerConnection.position,
-          rotationY: playerConnection.rotationY,
-          disconnectInfo: {
-            timestamp: disconnectTime,
-            reason: reason,
-            connectionDuration: disconnectTime - playerConnection.connectionStartTime,
-            finalQuality: playerConnection.connectionQuality,
-            messageCount: playerConnection.messageCount,
-            errorCount: playerConnection.errorCount,
-            violationCount: playerConnection.violationCount
-          }
-        })
-      });
-      
-      const squirrelSession = this.env.SQUIRREL.get(this.env.SQUIRREL.idFromName(playerConnection.squirrelId));
-      await squirrelSession.fetch(sessionRequest);
-      
+      // POSITION PERSISTENCE FIX: Removed problematic dummy URL request
+      // The position is already saved in savePlayerPositionImmediately() called from handlePlayerDisconnect
+      Logger.debug(LogCategory.SESSION, `Player ${playerConnection.squirrelId} disconnected: ${reason}`);
     } catch (error) {
       Logger.error(LogCategory.SESSION, `Failed to update session on disconnect for ${playerConnection.squirrelId}:`, error);
     }

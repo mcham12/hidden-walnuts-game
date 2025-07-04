@@ -594,7 +594,8 @@ export class GameManager {
     let playerId = sessionStorage.getItem('squirrelId');
     if (!playerId) {
       // This should not happen if NetworkSystem ran first, but provide fallback
-      playerId = 'squirrel_' + Math.random().toString(36).substr(2, 9);
+      // Use UUID format to match NetworkSystem
+      playerId = crypto.randomUUID();
       sessionStorage.setItem('squirrelId', playerId);
       Logger.warn(LogCategory.PLAYER, `⚠️ No squirrelId found in sessionStorage, generated fallback: ${playerId}`);
     } else {
