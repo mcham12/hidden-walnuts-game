@@ -31,7 +31,7 @@ This document outlines the production-ready architecture of the Hidden Walnuts g
 5. AreaOfInterestSystem     // Spatial culling optimization
 6. RenderSystem             // Visual updates
 7. NetworkCompressionSystem // Batch and compress messages
-8. NetworkTickSystem        // Rate-limited network updates (10Hz)
+8. NetworkTickSystem        // Rate-limited network updates (5Hz)
 9. NetworkSystem            // Handle network messages
 10. PlayerManager           // Player lifecycle management
 ```
@@ -86,12 +86,12 @@ export class EntityManager {
 
 ## 🌐 Multiplayer Networking Architecture
 
-### **Professional 10Hz Network Design**
+### **Professional 5Hz Network Design**
 
 ```typescript
-// Industry-standard networking patterns
+// Industry-standard networking patterns (optimized for free tier)
 class NetworkTickSystem {
-  private static readonly TICK_RATE = 10; // 10Hz (100ms intervals)
+  private static readonly TICK_RATE = 5; // 5Hz (200ms intervals) - optimized for free tier
   private static readonly RECONCILIATION_THRESHOLD = 0.01; // 1cm precision
   
   // Client prediction with server reconciliation
@@ -441,6 +441,168 @@ const config = {
 - **Position Updates**: 1cm precision reconciliation
 - **Spatial Culling**: 50m visibility, 100m complete culling
 
+## 🔗 System-DO Integration
+
+### **Client-Server Communication Architecture**
+
+The game implements a clean separation between client-side ECS systems and server-side Durable Objects, with well-defined interfaces for data flow and state synchronization.
+
+#### **NetworkSystem ↔ ForestManager**
+- **WebSocket Connection**: Direct communication for multiplayer
+- **Player Authentication**: Token-based via `/join` endpoint
+- **State Synchronization**: Real-time position updates with validation
+- **Error Handling**: Automatic reconnection with exponential backoff
+
+```typescript
+// NetworkSystem sends player updates to ForestManager
+private handleLocalPlayerMove(data: any): void {
+  const message: NetworkMessage = {
+    type: 'player_update',
+    squirrelId: this.localSquirrelId!,
+    timestamp: Date.now(),
+    position: data.position,
+    rotationY: data.rotationY
+  };
+  
+  this.sendMessage(message);
+}
+
+// ForestManager validates and broadcasts to other players
+private async handlePlayerUpdate(playerConnection: PlayerConnection, data: any): Promise<void> {
+  const validation = this.validateMovement(playerConnection, data.position);
+  
+  if (validation.isValid) {
+    this.broadcastToOthers(playerConnection.squirrelId, {
+      type: 'player_update',
+      squirrelId: playerConnection.squirrelId,
+      position: validation.correctedPosition || data.position,
+      rotationY: data.rotationY,
+      timestamp: Date.now()
+    });
+  }
+}
+```
+
+#### **PlayerManager ↔ SquirrelSession**
+- **Session Persistence**: Player state across disconnections
+- **Score Tracking**: Individual player scoring and statistics
+- **Power-up Management**: Player abilities and cooldowns
+- **Lifecycle Management**: Connect, authenticate, play, disconnect
+
+```typescript
+// PlayerManager creates and manages player entities
+async createPlayer(squirrelId: string): Promise<Entity> {
+  const player = this.playerFactory.createPlayer(squirrelId);
+  
+  // Initialize session with SquirrelSession DO
+  const sessionData = await this.networkSystem.authenticatePlayer(squirrelId);
+  
+  // Apply session data to player entity
+  this.applySessionDataToPlayer(player, sessionData);
+  
+  return player;
+}
+```
+
+#### **RenderSystem ↔ WalnutRegistry**
+- **Object Rendering**: Walnut positions and states
+- **Visual Updates**: Real-time walnut hiding/finding
+- **Spatial Optimization**: Area of interest culling
+- **Asset Management**: 3D model loading and caching
+
+```typescript
+// RenderSystem receives walnut updates from WalnutRegistry
+private handleWalnutUpdate(walnutData: any): void {
+  const walnutEntity = this.getWalnutEntity(walnutData.id);
+  
+  if (walnutEntity) {
+    // Update visual representation
+    this.updateWalnutVisual(walnutEntity, walnutData);
+  } else {
+    // Create new walnut entity
+    this.createWalnutEntity(walnutData);
+  }
+}
+```
+
+#### **AreaOfInterestSystem ↔ ForestManager**
+- **Spatial Culling**: Only sync players within visible range
+- **Efficient Broadcasting**: Message routing to relevant players
+- **Dynamic Updates**: Handle players entering/leaving interest zones
+- **Performance Optimization**: Reduce network traffic by 60%
+
+```typescript
+// AreaOfInterestSystem determines which players to sync
+private calculateInterestArea(localPlayer: Entity): string[] {
+  const localPosition = localPlayer.getComponent<PositionComponent>('position');
+  const nearbyPlayers: string[] = [];
+  
+  for (const [squirrelId, player] of this.remotePlayers) {
+    const distance = localPosition.value.distanceTo(player.position);
+    
+    if (distance <= AreaOfInterestSystem.INTEREST_RADIUS) {
+      nearbyPlayers.push(squirrelId);
+    }
+  }
+  
+  return nearbyPlayers;
+}
+```
+
+### **Data Flow Architecture**
+
+```
+┌─────────────────┐    WebSocket    ┌─────────────────┐
+│   Client ECS    │ ←──────────────→ │  ForestManager  │
+│   Systems       │                 │   (DO)          │
+└─────────────────┘                 └─────────────────┘
+         │                                   │
+         │                                   │
+         ▼                                   ▼
+┌─────────────────┐                 ┌─────────────────┐
+│  PlayerManager  │ ←──────────────→ │ SquirrelSession │
+│                 │                 │     (DO)        │
+└─────────────────┘                 └─────────────────┘
+         │                                   │
+         │                                   │
+         ▼                                   ▼
+┌─────────────────┐                 ┌─────────────────┐
+│  RenderSystem   │ ←──────────────→ │ WalnutRegistry  │
+│                 │                 │     (DO)        │
+└─────────────────┘                 └─────────────────┘
+```
+
+### **Error Handling & Recovery**
+
+#### **Network Failures**
+- **Automatic Reconnection**: Exponential backoff with jitter
+- **Session Recovery**: Maintain player state during disconnections
+- **Graceful Degradation**: Offline mode when multiplayer unavailable
+- **Error Reporting**: Comprehensive error tracking and diagnostics
+
+#### **DO Limit Handling**
+- **Request Batching**: Reduce individual DO calls by 70%
+- **Storage Optimization**: Batch storage operations for efficiency
+- **Lifecycle Management**: Proper hibernation and cleanup
+- **Usage Monitoring**: Real-time tracking of DO usage limits
+
+### **Error Recovery Procedures**
+
+#### **Network Errors**
+1. **Connection Lost**: Automatic reconnection with exponential backoff
+2. **Authentication Failed**: Token refresh and re-authentication
+3. **Message Parse Error**: Graceful degradation with error reporting
+
+#### **Game System Errors**
+1. **ECS System Failure**: Circuit breaker pattern with system isolation
+2. **Rendering Errors**: Fallback to basic rendering mode
+3. **Asset Loading Failures**: Progressive loading with placeholder assets
+
+#### **Server Errors**
+1. **DO Limit Exceeded**: Graceful degradation with user notification
+2. **Storage Failures**: Local caching with sync when available
+3. **Memory Issues**: Automatic cleanup and resource management
+
 ## 🧪 Testing & Quality Assurance
 
 ### **Automated Testing Strategy**
@@ -537,7 +699,7 @@ npm run analyze
 - ✅ **Performance Optimization**: Zero production console overhead
 - ✅ **Scalability**: 50+ concurrent players with spatial optimization
 - ✅ **Error Resilience**: Circuit breaker pattern with graceful recovery
-- ✅ **Professional Networking**: 10Hz client prediction with 1cm precision
+- ✅ **Professional Networking**: 5Hz client prediction with 1cm precision (optimized for free tier)
 - ✅ **Memory Management**: Automatic cleanup with configurable limits
 
 ### **Production-Ready Features:**

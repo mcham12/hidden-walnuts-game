@@ -74,4 +74,66 @@ cd workers && npx wrangler dev --port 8787
 
 **⚠️ IMPORTANT**: Always run wrangler commands from the `workers/` directory, not from the project root. The worker configuration expects to be run from within the workers directory.
 
-This ensures AI contributions are targeted, efficient, and aligned with the project’s goals.
+### **🚨 CRITICAL: Git Commit Summary Required**
+**After completing ANY batch of changes, AI MUST provide:**
+
+**Git Commit Summary Format (NO LINE BREAKS):**
+```
+MVP-7: [Task Number] - [Brief Description] - [Key Changes Made] - [Files Modified]
+```
+
+**Examples:**
+- `MVP-7: Task 8 - Core Multiplayer Events - Implement player_join/leave events - NetworkSystem.ts, PlayerManager.ts, api.ts`
+- `MVP-7: Task 9 - Client Prediction - Add position reconciliation logic - ClientPredictionSystem.ts, MovementSystem.ts`
+- `MVP-7: Documentation - Reorganize docs structure - Move files to docs/ directory - docs/DOCUMENTATION.md, README.md`
+
+**Requirements:**
+- **NO LINE BREAKS** - Single line for easy copy/paste
+- **Include MVP number** - MVP-7, MVP-8, etc.
+- **Include task number** - Task 8, Task 9, etc.
+- **Brief description** - What was accomplished
+- **Key changes** - Main technical changes made
+- **Files modified** - Primary files that were changed
+
+**Workflow:**
+1. **Complete changes** - Make all necessary code/documentation changes
+2. **Build validation** - Run local builds to ensure no errors
+3. **Provide commit summary** - Give user the single-line commit message
+4. **Wait for approval** - Let user copy/paste and commit
+
+This ensures AI contributions are targeted, efficient, and aligned with the project's goals.
+
+## 🚨 CRITICAL: AI Documentation Procedures
+
+**ALL AI CONVERSATIONS MUST FOLLOW THESE DOCUMENTATION PROCEDURES:**
+
+### **📁 Documentation Organization**
+1. **MVP-Based Structure**: All documentation goes in `docs/mvp-<number>/` directories
+2. **Task Documentation**: Each task gets 4 files: `README.md`, `testing.md`, `implementation.md`, `completion.md`
+3. **Navigation Updates**: Always update `docs/DOCUMENTATION.md` with new links
+4. **No Root Documentation**: Never create documentation files in project root
+
+### **📝 File Naming Conventions**
+- **Task directories**: `01-authentication/`, `02-error-handling/`, etc.
+- **Task files**: `README.md`, `testing.md`, `implementation.md`, `completion.md`
+- **MVP directories**: `mvp-7/`, `mvp-8/`, etc.
+- **Navigation**: `DOCUMENTATION.md` (not README.md in docs)
+
+### **🔄 Documentation Workflow**
+1. **Reference** `docs/DOCUMENTATION.md` for complete structure
+2. **Create** task documentation in appropriate `docs/mvp-<number>/tasks/` directory
+3. **Use** consistent file naming for all task documentation
+4. **Update** navigation in `docs/DOCUMENTATION.md`
+5. **Cross-reference** related documents appropriately
+
+### **❌ NEVER DO THIS:**
+- Create standalone documentation files in project root
+- Use inconsistent file naming
+- Skip navigation updates
+- Create documentation outside the established structure
+
+### **✅ ALWAYS DO THIS:**
+- Follow the MVP-based organization in `docs/`
+- Use the established file naming conventions
+- Update navigation files when adding documentation
+- Reference the documentation structure in `docs/DOCUMENTATION.md` 

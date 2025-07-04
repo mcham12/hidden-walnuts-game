@@ -138,6 +138,27 @@ cd workers && npm run build
 
 This prevents Cloudflare Pages deployment failures and catches compilation errors early.
 
+### **🚨 MANDATORY: Git Commit Summary**
+**After completing ANY batch of changes, provide:**
+
+**Git Commit Summary Format (NO LINE BREAKS):**
+```
+MVP-7: [Task Number] - [Brief Description] - [Key Changes Made] - [Files Modified]
+```
+
+**Examples:**
+- `MVP-7: Task 8 - Core Multiplayer Events - Implement player_join/leave events - NetworkSystem.ts, PlayerManager.ts, api.ts`
+- `MVP-7: Task 9 - Client Prediction - Add position reconciliation logic - ClientPredictionSystem.ts, MovementSystem.ts`
+- `MVP-7: Documentation - Reorganize docs structure - Move files to docs/ directory - docs/DOCUMENTATION.md, README.md`
+
+**Requirements:**
+- **NO LINE BREAKS** - Single line for easy copy/paste
+- **Include MVP number** - MVP-7, MVP-8, etc.
+- **Include task number** - Task 8, Task 9, etc.
+- **Brief description** - What was accomplished
+- **Key changes** - Main technical changes made
+- **Files modified** - Primary files that were changed
+
 ## Example File Structure
 ```
 hidden-walnuts/
@@ -157,9 +178,40 @@ hidden-walnuts/
 ├── workers/
 │   ├── api.ts
 │   ├── registry.ts
-├── README.md
-├── README_AI.md
-├── conventions.md
+├── docs/
+│   ├── DOCUMENTATION.md          # Main documentation index
+│   ├── PROJECT_STRUCTURE.md      # Architecture guide
+│   ├── GameVision.md             # Game design & features
+│   ├── MVP_Plan_Hidden_Walnuts-2.md # Development roadmap
+│   ├── conventions.md            # This file - coding standards
+│   ├── README_AI.md              # AI usage guidelines
+│   ├── repo_structure.txt        # File tree
+│   └── mvp-7/                    # MVP-specific documentation
+│       ├── README.md             # MVP overview
+│       ├── COMPLETION_SUMMARY.md # Overall completion
+│       └── tasks/                # Individual task docs
+│           ├── 01-authentication/
+│           │   ├── README.md
+│           │   ├── testing.md
+│           │   ├── implementation.md
+│           │   └── completion.md
+│           └── ... (other tasks)
 ```
 
-These conventions guide development for MVP 6 and beyond, ensuring a consistent and scalable codebase.
+## 🚨 CRITICAL: Documentation Organization
+
+**ALL NEW DOCUMENTATION MUST FOLLOW THIS STRUCTURE:**
+
+1. **📁 MVP-Based Organization**: Place all task documentation in `docs/mvp-<number>/tasks/`
+2. **📝 Consistent File Naming**: Each task gets 4 files: `README.md`, `testing.md`, `implementation.md`, `completion.md`
+3. **🔄 Update Navigation**: Always update `docs/DOCUMENTATION.md` with new links
+4. **📋 Never Create Root Files**: All documentation goes in `docs/` directory, never in project root
+5. **🔗 Cross-Reference**: Link between related documents and maintain navigation structure
+
+**AI CONVERSATIONS MUST:**
+- Reference `docs/DOCUMENTATION.md` for the complete documentation structure
+- Follow the established MVP-based organization
+- Use consistent file naming conventions
+- Update navigation files when adding new documentation
+
+These conventions guide development for MVP 6 and beyond, ensuring a consistent and scalable codebase. 

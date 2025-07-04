@@ -4,10 +4,14 @@
   "private": true,
   "description": "Online multiplayer 3D game where squirrels hide and seek walnuts",
   "scripts": {
-    "dev": "wrangler dev",
-    "build": "tsc",
-    "deploy": "wrangler deploy",
-    "build:worker": "tsc --project tsconfig.json"
+    "dev:worker": "cd workers && npx wrangler dev --port 8787",
+    "dev:client": "cd client && npm run dev",
+    "dev": "echo 'Run dev:worker and dev:client in separate terminals'",
+    "build": "npm run build:worker && npm run build:client",
+    "build:worker": "cd workers && npm run build",
+    "build:client": "cd client && npm run build:preview",
+    "deploy": "cd workers && npx wrangler deploy",
+    "install:all": "npm install && cd client && npm install && cd ../workers && npm install"
   },
   "dependencies": {
     "uuid": "^9.0.1"

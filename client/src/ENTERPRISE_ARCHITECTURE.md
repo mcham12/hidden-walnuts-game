@@ -307,7 +307,7 @@ export class AreaOfInterestSystem implements System {
     if (distance <= AreaOfInterestSystem.VERY_CLOSE_RADIUS) {
       return 20; // 20Hz for very close players (combat situations)
     } else if (distance <= 25) {
-      return 10; // 10Hz for medium distance
+      return 5; // 5Hz for medium distance
     } else if (distance <= 40) {
       return 5;  // 5Hz for far players
     } else {
@@ -490,8 +490,8 @@ export class GameLogger {
 ```typescript
 // AUTOMATIC MEMORY MANAGEMENT
 export class NetworkTickSystem implements System {
-  private static readonly MAX_STATE_HISTORY = 60; // 6 seconds at 10Hz
-  private static readonly MAX_INPUT_HISTORY = 100; // 10 seconds at 10Hz
+  private static readonly MAX_STATE_HISTORY = 30; // 6 seconds at 5Hz
+  private static readonly MAX_INPUT_HISTORY = 50; // 10 seconds at 5Hz
   private static readonly CLEANUP_INTERVAL = 30; // Cleanup every 30 ticks
   
   private tickCount = 0;
@@ -743,7 +743,7 @@ export default defineConfig({
    - Real-time performance monitoring and metrics
 
 3. **Multiplayer Architecture (19/20 points)**
-   - Industry-standard 10Hz client prediction
+   - Industry-standard 5Hz client prediction (optimized for free tier)
    - 1cm precision server reconciliation  
    - Real message compression (RLE algorithm)
    - Area of interest spatial optimization

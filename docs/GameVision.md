@@ -20,12 +20,12 @@
   - Walnuts tagged with Squirrel ID for scoring if undiscovered.
 - **Seeking Mechanic**:
   - Search for game- and player-hidden walnuts.
-  - Steal and rehide others’ walnuts, triggering notifications and quick-time events for owners to reclaim.
+  - Steal and rehide others' walnuts, triggering notifications and quick-time events for owners to reclaim.
 - **Predators**:
   - Hawks and wolves threaten players.
   - Defenses: "Chatter" (sound blast), "Insane Squirrel Chatter" (stronger blast), walnut throwing, or other projectiles.
 - **Power-Ups**:
-  - **Scent Sniff**: Highlights nearby walnuts (1-minute cooldown, 30 seconds for late joiners’ first 3 minutes).
+  - **Scent Sniff**: Highlights nearby walnuts (1-minute cooldown, 30 seconds for late joiners' first 3 minutes).
   - **Fast Dig**: Speeds up burying/finding.
   - **Decoy Nut**: Distracts predators/players.
   - Late joiners get 1 free use of each power-up.
@@ -105,3 +105,30 @@
 - **Multiplayer Sync**: WebSocket ensures low-latency updates for walnut hiding and seeking, with `registry.ts` centralizing DO access.
 - **Daily Reset**: `ForestManager` handles map resets and walnut spawning via a scheduled task.
 - **Scalability**: Cloudflare Workers and Durable Objects support concurrent players, with potential for R2 storage for assets.
+
+## Technical Implementation
+
+### Current Implementation Status
+- ✅ **Multiplayer Foundation**: WebSocket connections, player synchronization
+- ✅ **Terrain System**: Procedural height generation with Three.js
+- ✅ **Player Movement**: WASD controls with third-person camera
+- ✅ **Asset Loading**: GLTF model loading and caching
+- ✅ **ECS Architecture**: 10-system Entity-Component-System implementation
+- ✅ **Durable Objects**: ForestManager, SquirrelSession, WalnutRegistry, Leaderboard
+- ✅ **Network Optimization**: 5Hz tick rate, client prediction, area of interest
+- 🔄 **Walnut Mechanics**: In development (MVP 8)
+- 📋 **Scoring System**: Planned (MVP 9)
+- 📋 **Daily Reset**: Planned (MVP 10)
+
+### Performance Targets
+- **Frame Rate**: 60 FPS target, 30 FPS minimum
+- **Network Latency**: <100ms for smooth multiplayer
+- **Memory Usage**: <100MB baseline
+- **Load Time**: <3 seconds initial load
+- **DO Usage**: Within Cloudflare free tier limits
+
+### Protocol Version
+- **Client Version**: `1.0.0`
+- **Protocol Version**: `hidden-walnuts-v1`
+- **API Version**: `v1`
+- **Compatibility**: Backward compatible within major version 

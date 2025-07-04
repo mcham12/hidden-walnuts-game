@@ -8,7 +8,7 @@ A production-ready multiplayer 3D game where squirrels search for hidden walnuts
 - **Frontend**: Vite + TypeScript + Three.js + WebGL
 - **Backend**: Cloudflare Workers + Durable Objects  
 - **Architecture**: Entity-Component-System (ECS) + Dependency Injection
-- **Networking**: Custom 10Hz multiplayer with client prediction
+- **Networking**: Custom 5Hz multiplayer with client prediction (optimized for free tier)
 - **Build System**: TypeScript + Rollup with production optimizations
 
 ### **System Architecture Diagram**
@@ -63,7 +63,7 @@ A production-ready multiplayer 3D game where squirrels search for hidden walnuts
 ## 🚀 Production-Grade Features
 
 ### **🎯 Multiplayer Networking**
-- **10Hz Network Tick Rate** - Industry standard for real-time games
+- **5Hz Network Tick Rate** - Optimized for free tier while maintaining responsiveness
 - **Client-Side Prediction** - Zero input lag experience
 - **Server Reconciliation** - 1cm precision position correction
 - **Lag Compensation** - Smooth gameplay up to 200ms latency
@@ -116,9 +116,9 @@ container.registerSingleton(ServiceTokens.ENTITY_MANAGER, () =>
 ## 📊 Technical Specifications
 
 ### **Network Performance**
-- **Tick Rate**: 10Hz (industry standard)
+- **Tick Rate**: 5Hz (optimized for free tier, maintains responsiveness)
 - **Input Latency**: 0ms (client prediction)
-- **Bandwidth Usage**: ~2KB/s per player (compressed)
+- **Bandwidth Usage**: ~1KB/s per player (compressed)
 - **Reconciliation Threshold**: 1cm position accuracy
 - **Max Players**: 50+ (with area of interest optimization)
 
@@ -149,10 +149,13 @@ TypeScript 5+
 npm install
 
 # Build backend workers
-npm run build
+cd workers && npm run build
+
+# Build client for preview
+cd client && npm run build:preview
 
 # Start development server
-npm run dev
+cd workers && npx wrangler dev --port 8787
 
 # Run client in development
 cd client && npm run dev
@@ -168,6 +171,22 @@ NODE_ENV=development
 VITE_API_URL=https://your-worker-domain.workers.dev
 NODE_ENV=production
 ```
+
+## 📚 Documentation
+
+- **[📖 Documentation Index](docs/DOCUMENTATION.md)** - Complete documentation guide and navigation
+- **[🏗️ Project Structure](docs/PROJECT_STRUCTURE.md)** - Detailed architecture guide
+- **[🎮 Game Vision](docs/GameVision.md)** - Game design and feature specifications  
+- **[📋 MVP Plan](docs/MVP_Plan_Hidden_Walnuts-2.md)** - Development roadmap and milestones
+- **[⚙️ Coding Conventions](docs/conventions.md)** - Standards and best practices
+- **[🤖 AI Usage Guidelines](docs/README_AI.md)** - AI workflow and contribution guidelines
+
+### **🚨 CRITICAL: Documentation Organization**
+**ALL NEW DOCUMENTATION MUST FOLLOW THE STRUCTURE IN `docs/DOCUMENTATION.md`**
+- **MVP-based organization**: Use `docs/mvp-<number>/tasks/` directories
+- **Consistent file naming**: `README.md`, `testing.md`, `implementation.md`, `completion.md`
+- **Navigation updates**: Always update `docs/DOCUMENTATION.md`
+- **No root documentation**: All docs go in `docs/` directory only
 
 ## 🏛️ Architecture Principles
 
@@ -337,4 +356,3 @@ MIT License - see LICENSE file for details.
 - ✅ **Scalability**: Support for 50+ concurrent players
 - ✅ **Maintainability**: Clean dependency injection and modular design
 
-*Built with architectural excellence by the Chen & Zero development team* 🎯

@@ -6,9 +6,10 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
 
 ## Current Status
 - **Current MVP**: MVP 7 (Multiplayer Foundation, in progress)
-- **Current Task**: Task "UrgentA" - Durable Objects Optimization & Free Tier Compliance
+- **Current Task**: MVP 7 Task 8 - Core Multiplayer Events (next up)
+- **Recently Completed**: Task "UrgentA" - Durable Objects Optimization & Free Tier Compliance ✅
 - **Deployment**: Hosted on Cloudflare (Workers for backend, Pages for frontend)
-- **Focus**: Resolving critical Durable Objects free tier limits and optimizing multiplayer infrastructure
+- **Focus**: Continuing MVP 7 with core multiplayer event implementation
 
 ---
 
@@ -43,7 +44,7 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
      - Real-time connection metrics and error categorization
      - Enhanced UI for connection quality and error display
      - Server-side error tracking and diagnostics
-  3. **Durable Objects Optimization & Free Tier Compliance** 🔄 **COMPLETED**
+  3. **Durable Objects Optimization & Free Tier Compliance** ✅ **COMPLETED**
      - **Task UrgentA.1: Request Batching & Throttling**
        - Client-side batching of multiple game updates into single requests
        - Debounce position updates to reduce request frequency
@@ -94,27 +95,27 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
        - Increase session timeout from 30min to 60-90min
        - Reduce session validation frequency during gameplay
        - Batch session storage operations
-  4. **Multiplayer Visual Synchronization** 📋 **COMPLETED**
+  4. **Multiplayer Visual Synchronization** ✅ **COMPLETED**
      - Fix squirrel player position issues relative to terrain
      - Resolve duplicate player creation and rendering
      - Fix camera perspective issues when remote players join
      - Ensure consistent player scaling and positioning
      - Implement proper terrain height synchronization
      - Fix player sinking/floating issues
-  5. **API Architecture Consolidation** 🔄 **COMPLETED**
+  5. **API Architecture Consolidation** ✅ **COMPLETED**
      - Remove unused `api/` directory (Hono-based API)
      - Consolidate all API logic in `workers/api.ts` (raw Workers)
      - Eliminate code duplication and confusion
      - Clean up project structure and reduce technical debt
-  6. **Authoritative Server Architecture**
+  6. **Authoritative Server Architecture** ✅ **COMPLETED**
      - Server owns all game state (player positions, session data)
      - Implement server-side position validation and anti-cheat (speed limits, bounds)
      - Client sends inputs, server validates and broadcasts authoritative results
-  7. **WebSocket Connection Lifecycle**
+  7. **WebSocket Connection Lifecycle** ✅ **COMPLETED**
      - Secure WebSocket connections with proper upgrade handling
      - Connection heartbeats and automatic reconnection logic
      - Graceful disconnect handling with session cleanup
-  8. **Core Multiplayer Events**
+  8. **Core Multiplayer Events** 📋 **NEXT UP**
      - `player_join`: When player connects and is ready
      - `player_update`: Position/state changes (with validation)
      - `player_leave`: Clean disconnection
@@ -126,15 +127,15 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
      - Design authentication-ready interfaces for future user accounts
      - Configure cleanup rules: 10 minutes for anonymous, 30 minutes for authenticated users
      - Add data migration hooks for when authentication is implemented
-  9. **Client-Side Prediction & Reconciliation**
+  9. **Client-Side Prediction & Reconciliation** 📋 **PENDING**
      - Client predicts movement locally for responsiveness
      - Server sends authoritative position corrections
      - Client reconciles differences smoothly
-  10. **Interest Management**
+  10. **Interest Management** 📋 **PENDING**
      - Only sync players within visible range (Area of Interest)
      - Efficient message broadcasting to relevant players only
      - Handle player entering/leaving interest zones
-  11. **Testing & Validation**
+  11. **Testing & Validation** 📋 **PENDING**
      - Multi-browser real-time synchronization tests
      - Network failure recovery testing
      - Position validation and anti-cheat verification
@@ -199,64 +200,59 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
 
 ---
 
-## MVP 13: Predators
-- **Objective**: Add challenge with predator NPCs.
+## MVP 13: Predator Mechanics
+- **Objective**: Add dynamic predator AI to increase gameplay tension and strategy.
 - **Tasks**:
-  - Create hawk and wolf predator models.
-  - Implement predator AI for patrolling and chasing players.
-  - Add evasion mechanics (e.g., hiding in bushes).
+  - Implement hawk and wolf AI with patrol and chase behaviors.
+  - Add predator detection and avoidance mechanics for players.
+  - Create defensive abilities (e.g., chatter, walnut throwing).
+  - Balance predator difficulty and spawn rates.
+- **Estimated Time**: 4-5 weeks
+
+---
+
+## MVP 14: Power-Ups and Advanced Features
+- **Objective**: Introduce power-ups and advanced gameplay mechanics.
+- **Tasks**:
+  - Implement scent sniff, fast dig, and decoy nut power-ups.
+  - Add participation multiplier system for extended play sessions.
+  - Create mini-events (e.g., Nut Rush) for increased engagement.
+  - Implement catch-up mechanics for late joiners.
 - **Estimated Time**: 3-4 weeks
 
 ---
 
-## MVP 14: Power-Ups
-- **Objective**: Enhance gameplay with power-ups.
+## MVP 15: Social Features and Polish
+- **Objective**: Add social features and final polish for a complete game experience.
 - **Tasks**:
-  - Implement **Scent Sniff** power-up to reveal nearby walnuts.
-  - Implement **Fast Dig** power-up for quicker hiding or finding.
-  - Add power-up spawning and usage mechanics.
+  - Implement squirrel messages and notifications.
+  - Add cosmetic rewards and progression systems.
+  - Create hot zone indicators for recent activity.
+  - Finalize UI/UX polish and accessibility features.
 - **Estimated Time**: 2-3 weeks
 
 ---
 
-## MVP 15: Dynamic Events
-- **Objective**: Increase engagement with dynamic events.
-- **Tasks**:
-  - Implement **Nut Rush** event with extra walnuts and bonus points.
-  - Schedule random event triggers (e.g., every few hours).
-  - Notify players of active events.
-  - Adjust lighting dynamically for events or time of day.
-- **Estimated Time**: 2-3 weeks
+## Development Guidelines
 
----
+### **Priority Order**
+1. **Multiplayer Foundation** (MVP 7) - Critical for core gameplay
+2. **Walnut Mechanics** (MVP 8-9) - Essential game loop
+3. **Daily Reset** (MVP 10) - Core game cycle
+4. **Visual Polish** (MVP 11) - User experience
+5. **Performance** (MVP 12) - Scalability
+6. **Advanced Features** (MVP 13-15) - Game depth
 
-## MVP 16: Social Interactions
-- **Objective**: Enable player social features.
-- **Tasks**:
-  - Add pre-set messages (e.g., "Nice hide!" or "Found you!").
-  - Implement notifications for walnut finds.
-  - Add a basic friend system or player tagging.
-- **Estimated Time**: 2-3 weeks
+### **Technical Considerations**
+- **Cloudflare Free Tier**: All optimizations must respect DO usage limits
+- **Performance**: Maintain 60 FPS target with 30 FPS minimum
+- **Scalability**: Support 50+ concurrent players
+- **Compatibility**: Chrome/Edge/Firefox/Safari support
 
----
+### **Quality Assurance**
+- **Testing**: Each MVP includes comprehensive testing phase
+- **Documentation**: Update technical docs with each major change
+- **Performance**: Monitor and optimize throughout development
+- **User Feedback**: Gather feedback after each MVP release
 
-## MVP 17: Enhanced Authentication
-- **Objective**: Implement robust authentication for improved security and user management.
-- **Tasks**:
-  - Integrate Cloudflare Access or OAuth for secure player authentication.
-  - Implement user account management (e.g., registration, login, session handling).
-  - Ensure secure handling of player data and prevent unauthorized access.
-  - Update backend architecture to support authenticated sessions.
-- **Estimated Time**: 3-4 weeks
-
----
-
-## Summary of Changes
-- **MVP 7 Task "UrgentA"** has been prioritized ahead of visual synchronization to address critical Durable Objects free tier limits.
-- **Task "UrgentA"** includes 11 sub-tasks categorized into best practices (Tasks 1-6) and cautious optimizations (Tasks 7-11).
-- **MVP 13: Predators** follows **MVP 12: Performance Optimizations** to prioritize performance before adding complex NPC mechanics.
-- **MVP 14: Power-Ups** is scheduled after Predators to enhance gameplay mechanics.
-- **MVP 15 to MVP 17** remain in sequence, culminating with **Enhanced Authentication** for a secure user experience.
-- **Current Focus**: Completing Task "UrgentA" of MVP 7, ensuring Durable Objects stay within free tier limits while maintaining multiplayer functionality.
-
-This plan ensures the game builds a solid foundation with optimized infrastructure, delivering a stable and cost-effective multiplayer experience before introducing advanced features like predators, power-ups, and social interactions.
+This roadmap ensures a solid foundation while building toward the complete *Hidden Walnuts* vision with proper prioritization and technical considerations. 
