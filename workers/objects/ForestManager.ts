@@ -1609,9 +1609,12 @@ export default class ForestManager {
     Logger.info(LogCategory.SESSION, `🎲 Generated new position for ${squirrelId}:`, position);
     
     // POSITION PERSISTENCE FIX: Save this generated position for future reconnects
-    this.saveGeneratedPosition(squirrelId, position).catch(error => {
+    try {
+      await this.saveGeneratedPosition(squirrelId, position);
+      Logger.info(LogCategory.SESSION, `✅ Generated position saved for ${squirrelId}:`, position);
+    } catch (error) {
       Logger.warn(LogCategory.SESSION, `Failed to save generated position for ${squirrelId}:`, error);
-    });
+    }
     
     return {
       position: position,

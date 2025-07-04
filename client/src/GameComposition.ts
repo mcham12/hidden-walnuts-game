@@ -93,11 +93,13 @@ export class SceneManager implements ISceneManager {
     this.initializeTerrainService();
   }
 
-  // TASK 4: Initialize terrain service for camera system
+  // TASK 4: Initialize terrain service for camera system (optimized)
   private async initializeTerrainService(): Promise<void> {
     try {
+      // Use static import for better performance
       const { TerrainService } = await import('./services/TerrainService');
       this.terrainService = new TerrainService();
+      Logger.debug(LogCategory.TERRAIN, '✅ Terrain service initialized for camera');
     } catch (error) {
       Logger.warn(LogCategory.TERRAIN, 'Failed to initialize terrain service for camera:', error);
     }
