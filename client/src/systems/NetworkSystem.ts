@@ -191,15 +191,19 @@ export class NetworkSystem extends System {
     try {
       Logger.debug(LogCategory.NETWORK, `🔄 Attempting connection (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
       
-      // TEMPORARY REVERT: Use session-based ID to test remote player visibility
-      // Generate a unique squirrel ID for each browser window/tab
-      const newSquirrelId = crypto.randomUUID();
-      this.localSquirrelId = newSquirrelId;
+      // POSITION PERSISTENCE FIX: Use persistent squirrelId from sessionStorage
+      // This ensures the same player is identified across browser refreshes
+      let squirrelId = sessionStorage.getItem('squirrelId');
+      if (!squirrelId) {
+        // Only generate new ID if none exists (first time player)
+        squirrelId = 'squirrel_' + Math.random().toString(36).substr(2, 9);
+        sessionStorage.setItem('squirrelId', squirrelId);
+        Logger.debug(LogCategory.NETWORK, `🆕 Generated new persistent squirrel ID: ${squirrelId}`);
+      } else {
+        Logger.debug(LogCategory.NETWORK, `🔄 Using existing persistent squirrel ID: ${squirrelId}`);
+      }
       
-      // Store the ID for this session only (not persistent across browser restarts)
-      sessionStorage.setItem('squirrelId', newSquirrelId);
-      
-      Logger.debug(LogCategory.NETWORK, `🆕 Generated unique squirrel ID for this session: ${newSquirrelId}`);
+      this.localSquirrelId = squirrelId;
       
       this.setConnectionState(ConnectionState.AUTHENTICATING);
       

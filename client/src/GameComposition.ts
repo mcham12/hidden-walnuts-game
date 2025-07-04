@@ -512,13 +512,14 @@ export class GameManager {
             }
           });
           
-          // Timeout after 1 second if no saved position received
+          // POSITION PERSISTENCE FIX: Increased timeout to 3 seconds to give server more time
           setTimeout(() => {
             if (!resolved) {
               resolved = true;
+              Logger.warn(LogCategory.PLAYER, '⚠️ Timeout waiting for saved position from server (3s), will use random spawn');
               resolve(null);
             }
-          }, 1000);
+          }, 3000); // Increased from 1000ms to 3000ms
         });
         
         await this.networkSystem.connect();
@@ -588,11 +589,16 @@ export class GameManager {
   private async createLocalPlayer(savedPlayerData: { position: any; rotationY: number } | null): Promise<void> {
     const playerFactory = container.resolve(ServiceTokens.PLAYER_FACTORY) as any;
     
-    // Generate a unique player ID
+    // POSITION PERSISTENCE FIX: Use the same persistent squirrelId from NetworkSystem
+    // This ensures consistency across the entire application
     let playerId = sessionStorage.getItem('squirrelId');
     if (!playerId) {
+      // This should not happen if NetworkSystem ran first, but provide fallback
       playerId = 'squirrel_' + Math.random().toString(36).substr(2, 9);
       sessionStorage.setItem('squirrelId', playerId);
+      Logger.warn(LogCategory.PLAYER, `⚠️ No squirrelId found in sessionStorage, generated fallback: ${playerId}`);
+    } else {
+      Logger.info(LogCategory.PLAYER, `🔄 Using persistent squirrelId for local player: ${playerId}`);
     }
 
     if (playerFactory && typeof playerFactory.createLocalPlayer === 'function') {

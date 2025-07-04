@@ -944,7 +944,9 @@ export default class ForestManager {
         playerConnection.rotationY = data.rotationY;
       }
 
-      // Update session state
+      // POSITION PERSISTENCE FIX: Save position more frequently during gameplay
+      // This ensures position is saved even if player disconnects abruptly
+      Logger.debug(LogCategory.SESSION, `💾 Saving position for ${playerConnection.squirrelId}:`, data.position);
       await this.updatePlayerSession(playerConnection);
 
       // Broadcast authoritative position to other players
@@ -1615,6 +1617,13 @@ export default class ForestManager {
         };
       } else {
         Logger.warn(LogCategory.SESSION, `⚠️ No saved position found for ${squirrelId} in storage`);
+        // POSITION PERSISTENCE DEBUG: List all storage keys to see what's available
+        try {
+          const allKeys = await this.storage.list();
+          Logger.info(LogCategory.SESSION, `🔍 Available storage keys:`, Array.from(allKeys.keys()));
+        } catch (error) {
+          Logger.warn(LogCategory.SESSION, `Failed to list storage keys:`, error);
+        }
       }
     } catch (error) {
       Logger.error(LogCategory.SESSION, `❌ Failed to load saved position for ${squirrelId}:`, error);
