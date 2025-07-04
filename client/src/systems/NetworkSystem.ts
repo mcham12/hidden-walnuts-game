@@ -337,6 +337,13 @@ export class NetworkSystem extends System {
         protocol: this.websocket!.protocol,
         squirrelId: this.localSquirrelId
       });
+      
+      // POSITION PERSISTENCE FIX: Emit connection status for debug UI
+      this.eventBus.emit('network.status_changed', {
+        state: 'connected',
+        quality: this.connectionMetrics.quality,
+        timestamp: Date.now()
+      });
     };
 
     this.websocket.onmessage = (event) => {
@@ -393,6 +400,13 @@ export class NetworkSystem extends System {
         totalMessages: this.messageCount,
         totalErrors: this.errorCount,
         connectionState: this.connectionState
+      });
+      
+      // POSITION PERSISTENCE FIX: Emit disconnection status for debug UI
+      this.eventBus.emit('network.status_changed', {
+        state: 'disconnected',
+        quality: this.connectionMetrics.quality,
+        timestamp: Date.now()
       });
     };
 

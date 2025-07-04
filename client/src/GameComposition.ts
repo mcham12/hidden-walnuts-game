@@ -482,14 +482,24 @@ export class GameManager {
     try {
       Logger.info(LogCategory.CORE, '🎯 Starting game initialization...');
 
-      // 1. Initialize terrain service early
+      // 1. Initialize terrain service early (optimized for speed)
+      Logger.info(LogCategory.CORE, '🌍 Initializing terrain service...');
       const terrainService = container.resolve(ServiceTokens.TERRAIN_SERVICE) as any;
       await terrainService.initialize();
+      Logger.info(LogCategory.CORE, '✅ Terrain service initialized');
 
-      // 2. Initialize scene
+      // 2. Initialize scene (optimized for speed)
+      Logger.info(LogCategory.CORE, '🎨 Initializing scene...');
       await this.sceneManager.initialize(canvas);
+      Logger.info(LogCategory.CORE, '✅ Scene initialized');
+      
+      Logger.info(LogCategory.CORE, '🌲 Loading terrain...');
       await this.sceneManager.loadTerrain();
+      Logger.info(LogCategory.CORE, '✅ Terrain loaded');
+      
+      Logger.info(LogCategory.CORE, '🌳 Loading forest...');
       await this.sceneManager.loadForest();
+      Logger.info(LogCategory.CORE, '✅ Forest loaded');
       
       // 3. Wait for scene readiness
       await this.waitForSceneReady();

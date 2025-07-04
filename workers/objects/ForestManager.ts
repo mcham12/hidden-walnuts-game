@@ -671,12 +671,16 @@ export default class ForestManager {
       Logger.info(LogCategory.PLAYER, `🔍 Session info for ${squirrelId}:`, sessionInfo);
       
       // POSITION PERSISTENCE FIX: Save the initial position immediately so it's available on reconnect
-      await this.storage.put(`player:${squirrelId}`, {
-        position: playerConnection.position,
-        rotationY: playerConnection.rotationY,
-        lastUpdate: Date.now()
-      });
-      Logger.info(LogCategory.PLAYER, `💾 Saved initial position for ${squirrelId}:`, playerConnection.position);
+      try {
+        await this.storage.put(`player:${squirrelId}`, {
+          position: playerConnection.position,
+          rotationY: playerConnection.rotationY,
+          lastUpdate: Date.now()
+        });
+        Logger.info(LogCategory.PLAYER, `💾 Saved initial position for ${squirrelId}:`, playerConnection.position);
+      } catch (error) {
+        Logger.error(LogCategory.PLAYER, `❌ Failed to save initial position for ${squirrelId}:`, error);
+      }
       
       this.sendMessage(socket, {
         type: 'init',
