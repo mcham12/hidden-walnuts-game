@@ -764,7 +764,7 @@ export class NetworkSystem extends System {
           Logger.error(LogCategory.NETWORK, '❌ Failed to send heartbeat', error);
         }
       }
-    }, 90000); // TASK URGENTA.2: Increased from 30 to 90 seconds
+    }, 30000); // POSITION PERSISTENCE FIX: Reduced from 90 to 30 seconds to prevent server disconnection
   }
 
   private handleHeartbeatTimeout(): void {

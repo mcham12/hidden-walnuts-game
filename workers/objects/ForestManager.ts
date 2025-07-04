@@ -666,8 +666,18 @@ export default class ForestManager {
       this.serverMetrics.activeConnections = this.activePlayers.size;
       await this.saveServerMetrics();
 
-      // POSITION PERSISTENCE FIX: Send player's saved position FIRST
+      // POSITION PERSISTENCE FIX: Save initial position immediately and send saved position
       Logger.info(LogCategory.PLAYER, `📤 Sending init message to ${squirrelId} with saved position:`, playerConnection.position);
+      Logger.info(LogCategory.PLAYER, `🔍 Session info for ${squirrelId}:`, sessionInfo);
+      
+      // POSITION PERSISTENCE FIX: Save the initial position immediately so it's available on reconnect
+      await this.storage.put(`player:${squirrelId}`, {
+        position: playerConnection.position,
+        rotationY: playerConnection.rotationY,
+        lastUpdate: Date.now()
+      });
+      Logger.info(LogCategory.PLAYER, `💾 Saved initial position for ${squirrelId}:`, playerConnection.position);
+      
       this.sendMessage(socket, {
         type: 'init',
         squirrelId: squirrelId,
@@ -1560,6 +1570,8 @@ export default class ForestManager {
     }
     
     Logger.info(LogCategory.SESSION, `📦 No existing connection for ${squirrelId}, checking storage...`);
+    Logger.info(LogCategory.SESSION, `🔍 Active players count: ${this.activePlayers.size}`);
+    Logger.info(LogCategory.SESSION, `🔍 Active players:`, Array.from(this.activePlayers.keys()));
     
     // SECOND: Try to load saved position from storage with enhanced error handling
     const savedPosition = await this.loadSavedPlayerPosition(squirrelId);
