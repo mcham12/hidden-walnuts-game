@@ -12,7 +12,7 @@ import { MovementSystem } from './systems/MovementSystem';
 import { ClientPredictionSystem } from './systems/ClientPredictionSystem';
 import { NetworkSystem } from './systems/NetworkSystem';
 import { PlayerManager } from './systems/PlayerManager';
-import { MovementConfig, WorldBounds } from './core/types';
+import { MovementConfig, WorldBounds, Vector3, Rotation } from './core/types';
 import { InterpolationSystem } from './systems/InterpolationSystem';
 import { RenderSystem } from './systems/RenderSystem';
 import { NetworkTickSystem } from './systems/NetworkTickSystem';
@@ -498,6 +498,12 @@ export class GameManager {
       await this.createLocalPlayer();
       Logger.info(LogCategory.PLAYER, `🎮 Local player created: ${this.localPlayer?.id.value}`);
       
+      // POSITION PERSISTENCE FIX: Listen for saved position from server
+      this.eventBus.subscribe('apply_saved_position', (data: { position: any; rotationY: number }) => {
+        Logger.info(LogCategory.PLAYER, '📍 Applying saved position to local player:', data.position);
+        this.applySavedPositionToLocalPlayer(data.position, data.rotationY);
+      });
+      
       // 5. Start input listening
       this.inputManager.startListening();
       Logger.info(LogCategory.INPUT, '🎮 Input listening started - WASD controls active!');
@@ -726,6 +732,35 @@ export class GameManager {
   public getPlayerManager(): PlayerManager { return this.playerManager; }
   public getNetworkSystem(): NetworkSystem { return this.networkSystem; }
   public getLocalPlayer(): Entity | undefined { return this.localPlayer; }
+
+  private applySavedPositionToLocalPlayer(position: { x: number; y: number; z: number }, rotationY: number): void {
+    if (!this.localPlayer) {
+      Logger.warn(LogCategory.PLAYER, '⚠️ Cannot apply saved position - no local player');
+      return;
+    }
+
+    // Update position component
+    this.localPlayer.addComponent<PositionComponent>({
+      type: 'position',
+      value: new Vector3(position.x, position.y, position.z)
+    });
+
+    // Update rotation component
+    this.localPlayer.addComponent<RotationComponent>({
+      type: 'rotation',
+      value: Rotation.fromRadians(rotationY)
+    });
+
+    // Update mesh position immediately for visual feedback
+    const renderComponent = this.localPlayer.getComponent<any>('render');
+    if (renderComponent?.mesh) {
+      renderComponent.mesh.position.set(position.x, position.y, position.z);
+      renderComponent.mesh.rotation.y = rotationY;
+      Logger.info(LogCategory.PLAYER, '✅ Updated local player mesh position immediately');
+    }
+
+    Logger.info(LogCategory.PLAYER, `✅ Applied saved position to local player: (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
+  }
 }
 
 // Configuration and setup

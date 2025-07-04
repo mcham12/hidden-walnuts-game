@@ -236,6 +236,8 @@ export default {
         }
       }
 
+
+
       // Handle not found case
       console.log("No matching route for:", pathname);
       return new Response(JSON.stringify({

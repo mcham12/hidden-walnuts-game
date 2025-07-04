@@ -77,6 +77,8 @@ interface ServerError {
   recoverable: boolean;
 }
 
+
+
 export default class ForestManager {
   state: DurableObjectState;
   storage: DurableObjectStorage;
@@ -160,6 +162,8 @@ export default class ForestManager {
     }
 
     // Legacy WebSocket upgrade removed - using /ws path only
+
+
 
     // RESTORED: Map reset endpoint
     if (path.endsWith("/reset")) {
@@ -662,6 +666,18 @@ export default class ForestManager {
       this.serverMetrics.activeConnections = this.activePlayers.size;
       await this.saveServerMetrics();
 
+      // POSITION PERSISTENCE FIX: Send player's saved position FIRST
+      this.sendMessage(socket, {
+        type: 'init',
+        squirrelId: squirrelId,
+        data: {
+          confirmedSquirrelId: squirrelId,
+          savedPosition: playerConnection.position,
+          savedRotationY: playerConnection.rotationY
+        },
+        timestamp: Date.now()
+      });
+
       await this.sendWorldState(socket);
       await this.sendExistingPlayers(socket, squirrelId);
       this.broadcastPlayerJoin(squirrelId, playerConnection);
@@ -670,7 +686,7 @@ export default class ForestManager {
       // TASK URGENTA.2: Start monitoring only when we have active connections
       this.startConnectionMonitoring();
 
-      Logger.info(LogCategory.PLAYER, `Player ${squirrelId} connected at position`, playerConnection.position);
+      Logger.info(LogCategory.PLAYER, `Player ${squirrelId} connected at saved position`, playerConnection.position);
     } catch (error) {
       const serverError: ServerError = {
         type: ServerErrorType.WEBSOCKET_ERROR,

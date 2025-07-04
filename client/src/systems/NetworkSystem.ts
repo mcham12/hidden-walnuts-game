@@ -1088,6 +1088,22 @@ export class NetworkSystem extends System {
   private handleInitMessage(message: NetworkMessage): void {
     Logger.debug(LogCategory.NETWORK, '🚀 Server initialization message received');
     
+    // Server confirms our squirrel ID
+    if (message.data?.confirmedSquirrelId) {
+      Logger.debug(LogCategory.NETWORK, '✅ Server confirmed squirrel ID:', message.data.confirmedSquirrelId);
+      this.localSquirrelId = message.data.confirmedSquirrelId;
+      sessionStorage.setItem('squirrelId', message.data.confirmedSquirrelId);
+    }
+    
+    // POSITION PERSISTENCE FIX: Apply saved position to local player
+    if (message.data?.savedPosition) {
+      Logger.info(LogCategory.NETWORK, '📍 Applying saved position from server:', message.data.savedPosition);
+      this.eventBus.emit('apply_saved_position', {
+        position: message.data.savedPosition,
+        rotationY: message.data.savedRotationY || 0
+      });
+    }
+    
     // The init message may contain session restoration data or world state
     if (message.data?.existingPlayers) {
       Logger.debug(LogCategory.NETWORK, '👥 Server sent existing players:', message.data.existingPlayers);
@@ -1102,13 +1118,6 @@ export class NetworkSystem extends System {
           } as NetworkMessage);
         }
       }
-    }
-    
-    // Server confirms our squirrel ID
-    if (message.data?.confirmedSquirrelId) {
-      Logger.debug(LogCategory.NETWORK, '✅ Server confirmed squirrel ID:', message.data.confirmedSquirrelId);
-      this.localSquirrelId = message.data.confirmedSquirrelId;
-      sessionStorage.setItem('squirrelId', message.data.confirmedSquirrelId);
     }
   }
 
