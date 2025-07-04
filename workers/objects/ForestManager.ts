@@ -110,7 +110,7 @@ export default class ForestManager {
   // TASK URGENTA.3: Storage Optimization - Batching
   private pendingStorageOps: any[] = [];
   private storageBatchTimeout: any = null;
-  private storageBatchInterval = 2000; // 2 second batching window
+  private storageBatchInterval = 500; // 500ms batching window (was 2000ms)
 
   // Add server start time tracking
   private serverStartTime: number = Date.now();
@@ -1158,6 +1158,14 @@ export default class ForestManager {
     }
   }
 
+  // TASK URGENTA.3 FIX: Force execute pending storage operations
+  private async forceExecuteStorage(): Promise<void> {
+    if (this.pendingStorageOps.length > 0) {
+      Logger.debug(LogCategory.SESSION, `💾 Force executing ${this.pendingStorageOps.length} pending storage operations`);
+      await this.executeBatchStorage();
+    }
+  }
+
   private async executeBatchStorage(): Promise<void> {
     if (this.pendingStorageOps.length > 0) {
       Logger.debug(LogCategory.SESSION, `💾 Executing batch of ${this.pendingStorageOps.length} storage operations`);
@@ -1196,14 +1204,23 @@ export default class ForestManager {
   // Enhanced session update with error handling and batching
   private async updatePlayerSession(playerConnection: PlayerConnection): Promise<void> {
     try {
-      // TASK URGENTA.3: Add to batch instead of immediate storage
-      const storageOp = {
-        squirrelId: playerConnection.squirrelId,
+      // TASK URGENTA.3 FIX: Immediate storage for player position (critical data)
+      // Don't batch player position - it never executes due to hibernation
+      await this.storage.put(`player:${playerConnection.squirrelId}`, {
         position: playerConnection.position,
-        rotationY: playerConnection.rotationY
+        rotationY: playerConnection.rotationY,
+        lastUpdate: Date.now()
+      });
+      
+      // TASK URGENTA.3: Only batch non-critical operations
+      const nonCriticalOp = {
+        type: 'activity_log',
+        squirrelId: playerConnection.squirrelId,
+        timestamp: Date.now(),
+        activity: 'position_update'
       };
       
-      await this.batchStorageOperation(storageOp);
+      await this.batchStorageOperation(nonCriticalOp);
       
       // Also update SquirrelSession for immediate consistency
       const sessionRequest = new Request(`https://dummy.com/update-state`, {
@@ -1284,6 +1301,11 @@ export default class ForestManager {
     // MVP 7 Task 7: Enhanced session update with disconnect information
     this.updatePlayerSessionOnDisconnect(playerConnection, reason, disconnectTime).catch(error => {
       Logger.error(LogCategory.SESSION, `Error updating session for ${squirrelId}:`, error);
+    });
+
+    // TASK URGENTA.3 FIX: Force execute any pending storage operations before disconnect
+    this.forceExecuteStorage().catch(error => {
+      Logger.error(LogCategory.SESSION, `Error forcing storage execution for ${squirrelId}:`, error);
     });
 
     // MVP 7 Task 7: Clean up connection attempts for this player
