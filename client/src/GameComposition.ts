@@ -499,17 +499,40 @@ export class GameManager {
       let savedPlayerData: { position: any; rotationY: number } | null = null;
       
       try {
-        // Listen for saved position from server BEFORE connecting
-        this.eventBus.subscribe('apply_saved_position', (data: { position: any; rotationY: number }) => {
-          Logger.info(LogCategory.PLAYER, '📍 Received saved position from server:', data.position);
-          savedPlayerData = data;
+        // Set up a promise to wait for saved position
+        const savedPositionPromise = new Promise<{ position: any; rotationY: number } | null>((resolve) => {
+          let resolved = false;
+          
+          // Listen for saved position from server
+          this.eventBus.subscribe('apply_saved_position', (data: { position: any; rotationY: number }) => {
+            Logger.info(LogCategory.PLAYER, '📍 Received saved position from server:', data.position);
+            if (!resolved) {
+              resolved = true;
+              resolve(data);
+            }
+          });
+          
+          // Timeout after 1 second if no saved position received
+          setTimeout(() => {
+            if (!resolved) {
+              resolved = true;
+              resolve(null);
+            }
+          }, 1000);
         });
         
         await this.networkSystem.connect();
         Logger.info(LogCategory.NETWORK, '✅ Multiplayer connection established');
         
-        // Wait a moment for saved position to arrive
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Wait for saved position with timeout
+        Logger.info(LogCategory.PLAYER, '⏳ Waiting for saved position from server...');
+        savedPlayerData = await savedPositionPromise;
+        
+        if (savedPlayerData) {
+          Logger.info(LogCategory.PLAYER, '✅ Saved position received successfully:', savedPlayerData.position);
+        } else {
+          Logger.warn(LogCategory.PLAYER, '⚠️ No saved position received from server, will use random spawn');
+        }
         
       } catch (networkError) {
         Logger.warn(LogCategory.NETWORK, '⚠️ Multiplayer connection failed, continuing in single-player mode', networkError);
