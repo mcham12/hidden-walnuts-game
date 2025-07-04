@@ -1617,13 +1617,7 @@ export default class ForestManager {
         };
       } else {
         Logger.warn(LogCategory.SESSION, `⚠️ No saved position found for ${squirrelId} in storage`);
-        // POSITION PERSISTENCE DEBUG: List all storage keys to see what's available
-        try {
-          const allKeys = await this.storage.list();
-          Logger.info(LogCategory.SESSION, `🔍 Available storage keys:`, Array.from(allKeys.keys()));
-        } catch (error) {
-          Logger.warn(LogCategory.SESSION, `Failed to list storage keys:`, error);
-        }
+        // POSITION PERSISTENCE DEBUG: Removed problematic storage.list() call
       }
     } catch (error) {
       Logger.error(LogCategory.SESSION, `❌ Failed to load saved position for ${squirrelId}:`, error);
