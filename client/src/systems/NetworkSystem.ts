@@ -191,14 +191,14 @@ export class NetworkSystem extends System {
     try {
       Logger.debug(LogCategory.NETWORK, `🔄 Attempting connection (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
       
-      // POSITION PERSISTENCE FIX: Use persistent squirrelId from sessionStorage
+      // POSITION PERSISTENCE FIX: Use persistent squirrelId from localStorage
       // This ensures the same player is identified across browser refreshes
-      let squirrelId = sessionStorage.getItem('squirrelId');
+      let squirrelId = this.getPersistentSquirrelId();
       if (!squirrelId) {
         // Only generate new ID if none exists (first time player)
         // Use UUID format as the server expects this format
         squirrelId = crypto.randomUUID();
-        sessionStorage.setItem('squirrelId', squirrelId);
+        this.setPersistentSquirrelId(squirrelId);
         Logger.debug(LogCategory.NETWORK, `🆕 Generated new persistent squirrel ID: ${squirrelId}`);
       } else {
         Logger.debug(LogCategory.NETWORK, `🔄 Using existing persistent squirrel ID: ${squirrelId}`);
@@ -1037,6 +1037,51 @@ export class NetworkSystem extends System {
     return this.connectionMetrics.quality;
   }
 
+  // POSITION PERSISTENCE FIX: Helper methods for persistent squirrelId storage
+  private getPersistentSquirrelId(): string | null {
+    try {
+      // Try localStorage first (persists across browser refreshes)
+      const storedId = localStorage.getItem('squirrelId');
+      if (storedId) {
+        Logger.debug(LogCategory.NETWORK, `📦 Retrieved squirrelId from localStorage: ${storedId}`);
+        return storedId;
+      }
+      
+      // Fallback to sessionStorage for compatibility
+      const sessionId = sessionStorage.getItem('squirrelId');
+      if (sessionId) {
+        Logger.debug(LogCategory.NETWORK, `📦 Retrieved squirrelId from sessionStorage: ${sessionId}`);
+        // Migrate to localStorage for future persistence
+        this.setPersistentSquirrelId(sessionId);
+        return sessionId;
+      }
+      
+      return null;
+    } catch (error) {
+      Logger.warn(LogCategory.NETWORK, '⚠️ Failed to retrieve persistent squirrelId:', error);
+      return null;
+    }
+  }
+
+  private setPersistentSquirrelId(squirrelId: string): void {
+    try {
+      // Store in localStorage for persistence across browser refreshes
+      localStorage.setItem('squirrelId', squirrelId);
+      Logger.debug(LogCategory.NETWORK, `💾 Stored squirrelId in localStorage: ${squirrelId}`);
+      
+      // Also store in sessionStorage for compatibility with existing code
+      sessionStorage.setItem('squirrelId', squirrelId);
+    } catch (error) {
+      Logger.warn(LogCategory.NETWORK, '⚠️ Failed to store persistent squirrelId:', error);
+      // Fallback to sessionStorage only
+      try {
+        sessionStorage.setItem('squirrelId', squirrelId);
+      } catch (fallbackError) {
+        Logger.error(LogCategory.NETWORK, '❌ Failed to store squirrelId in both storage types:', fallbackError);
+      }
+    }
+  }
+
   // TASK URGENTA.6: Usage tracking for DO optimization
   getUsageStats(): {
     totalMessages: number;
@@ -1098,7 +1143,7 @@ export class NetworkSystem extends System {
     if (message.data?.confirmedSquirrelId) {
       Logger.debug(LogCategory.NETWORK, '✅ Server confirmed squirrel ID:', message.data.confirmedSquirrelId);
       this.localSquirrelId = message.data.confirmedSquirrelId;
-      sessionStorage.setItem('squirrelId', message.data.confirmedSquirrelId);
+      this.setPersistentSquirrelId(message.data.confirmedSquirrelId);
     }
     
     // SECOND: Apply saved position to local player
@@ -1108,6 +1153,16 @@ export class NetworkSystem extends System {
         position: message.data.savedPosition,
         rotationY: message.data.savedRotationY || 0
       });
+      
+      // POSITION PERSISTENCE FIX: Send confirmation to server that position was received
+      if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+        this.websocket.send(JSON.stringify({
+          type: 'position_confirmation',
+          squirrelId: this.localSquirrelId!,
+          confirmedPosition: message.data.savedPosition,
+          timestamp: Date.now()
+        }));
+      }
     }
     
     // THIRD: Process existing players AFTER local squirrel ID is set

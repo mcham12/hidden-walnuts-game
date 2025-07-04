@@ -1543,11 +1543,11 @@ export default class ForestManager {
     this.broadcastToOthers(squirrelId, joinMessage);
   }
 
-  // Get player session info - simplified for development
+  // Get player session info - enhanced for position persistence
   private async getPlayerSessionInfo(squirrelId: string): Promise<any> {
     Logger.info(LogCategory.SESSION, `🔍 Getting session info for: ${squirrelId}`);
     
-    // FIXED: For development, check if we have an existing active player connection
+    // FIRST: Check if we have an existing active player connection
     // This ensures position persistence across reconnects
     const existingConnection = this.activePlayers.get(squirrelId);
     if (existingConnection) {
@@ -1561,54 +1561,24 @@ export default class ForestManager {
     
     Logger.info(LogCategory.SESSION, `📦 No existing connection for ${squirrelId}, checking storage...`);
     
-    // TASK URGENTA.3 FIX: Load saved position from storage
-    try {
-      const storageKey = `player:${squirrelId}`;
-      Logger.info(LogCategory.SESSION, `🔍 Looking for saved data with key: ${storageKey}`);
-      
-      const savedPlayerData = await this.storage.get<{
-        position: { x: number; y: number; z: number };
-        rotationY: number;
-        lastUpdate: number;
-      }>(storageKey);
-      
-      Logger.info(LogCategory.SESSION, `📦 Storage lookup result for ${squirrelId}:`, savedPlayerData);
-      
-      if (savedPlayerData && savedPlayerData.position) {
-        Logger.info(LogCategory.SESSION, `✅ Loaded saved position for ${squirrelId}:`, savedPlayerData.position);
-        return {
-          position: savedPlayerData.position,
-          rotationY: savedPlayerData.rotationY || 0,
-          stats: { found: 0, hidden: 0 }
-        };
-      } else {
-        Logger.warn(LogCategory.SESSION, `⚠️ No saved position found for ${squirrelId} in storage`);
-        // POSITION PERSISTENCE DEBUG: Removed problematic storage.list() call
-      }
-    } catch (error) {
-      Logger.error(LogCategory.SESSION, `❌ Failed to load saved position for ${squirrelId}:`, error);
+    // SECOND: Try to load saved position from storage with enhanced error handling
+    const savedPosition = await this.loadSavedPlayerPosition(squirrelId);
+    if (savedPosition) {
+      Logger.info(LogCategory.SESSION, `✅ Successfully loaded saved position for ${squirrelId}:`, savedPosition.position);
+      return savedPosition;
     }
     
-    // POSITION PERSISTENCE FIX: Check for saved generated position as fallback
-    try {
-      const savedGeneratedPosition = await this.storage.get<{
-        x: number; y: number; z: number; timestamp: number;
-      }>(`generatedPosition:${squirrelId}`);
-      
-      if (savedGeneratedPosition) {
-        Logger.info(LogCategory.SESSION, `🎲 Found saved generated position for ${squirrelId}:`, savedGeneratedPosition);
-        return {
-          position: { x: savedGeneratedPosition.x, y: savedGeneratedPosition.y, z: savedGeneratedPosition.z },
-          rotationY: 0,
-          stats: { found: 0, hidden: 0 }
-        };
-      }
-    } catch (error) {
-      Logger.warn(LogCategory.SESSION, `Failed to load generated position for ${squirrelId}:`, error);
+    // THIRD: Try to load generated position as fallback
+    const generatedPosition = await this.loadGeneratedPlayerPosition(squirrelId);
+    if (generatedPosition) {
+      Logger.info(LogCategory.SESSION, `🎲 Using saved generated position for ${squirrelId}:`, generatedPosition.position);
+      return generatedPosition;
     }
     
-    // FIXED: For new players or reconnects, generate a random spawn position
-    // but make it more predictable based on squirrelId for testing
+    // FOURTH: Generate new position for completely new players
+    Logger.info(LogCategory.SESSION, `🎲 No saved position found for ${squirrelId}, generating new position`);
+    
+    // Generate a predictable position based on squirrelId hash for testing
     const hash = squirrelId.split('').reduce((a, b) => {
       a = ((a << 5) - a) + b.charCodeAt(0);
       return a & a;
@@ -1898,20 +1868,84 @@ export default class ForestManager {
     }
   }
 
-  // POSITION PERSISTENCE FIX: Save generated position for future reconnects
-  private async saveGeneratedPosition(squirrelId: string, position: { x: number; y: number; z: number }): Promise<void> {
-    try {
-      Logger.info(LogCategory.SESSION, `💾 Saving generated position for ${squirrelId}:`, position);
-      await this.storage.put(`generatedPosition:${squirrelId}`, {
-        x: position.x,
-        y: position.y,
-        z: position.z,
-        timestamp: Date.now()
-      });
-      Logger.info(LogCategory.SESSION, `✅ Generated position saved successfully for ${squirrelId}`);
-    } catch (error) {
-      Logger.error(LogCategory.SESSION, `❌ Error saving generated position for ${squirrelId}:`, error);
-      throw error;
+      // POSITION PERSISTENCE FIX: Save generated position for future reconnects
+    private async saveGeneratedPosition(squirrelId: string, position: { x: number; y: number; z: number }): Promise<void> {
+      try {
+        Logger.info(LogCategory.SESSION, `💾 Saving generated position for ${squirrelId}:`, position);
+        await this.storage.put(`generatedPosition:${squirrelId}`, {
+          x: position.x,
+          y: position.y,
+          z: position.z,
+          timestamp: Date.now()
+        });
+        Logger.info(LogCategory.SESSION, `✅ Generated position saved successfully for ${squirrelId}`);
+      } catch (error) {
+        Logger.error(LogCategory.SESSION, `❌ Error saving generated position for ${squirrelId}:`, error);
+        throw error;
+      }
     }
+
+    // POSITION PERSISTENCE FIX: Enhanced saved position loading with validation
+    private async loadSavedPlayerPosition(squirrelId: string): Promise<any> {
+      try {
+        const storageKey = `player:${squirrelId}`;
+        Logger.info(LogCategory.SESSION, `🔍 Looking for saved data with key: ${storageKey}`);
+        
+        const savedPlayerData = await this.storage.get<{
+          position: { x: number; y: number; z: number };
+          rotationY: number;
+          lastUpdate: number;
+        }>(storageKey);
+        
+        Logger.info(LogCategory.SESSION, `📦 Storage lookup result for ${squirrelId}:`, savedPlayerData);
+        
+        if (savedPlayerData && savedPlayerData.position) {
+          // Validate position data
+          if (this.isValidPosition(savedPlayerData.position)) {
+            Logger.info(LogCategory.SESSION, `✅ Loaded valid saved position for ${squirrelId}:`, savedPlayerData.position);
+            return {
+              position: savedPlayerData.position,
+              rotationY: savedPlayerData.rotationY || 0,
+              stats: { found: 0, hidden: 0 }
+            };
+          } else {
+            Logger.warn(LogCategory.SESSION, `⚠️ Invalid saved position for ${squirrelId}:`, savedPlayerData.position);
+          }
+        } else {
+          Logger.warn(LogCategory.SESSION, `⚠️ No saved position found for ${squirrelId} in storage`);
+        }
+      } catch (error) {
+        Logger.error(LogCategory.SESSION, `❌ Failed to load saved position for ${squirrelId}:`, error);
+      }
+      
+      return null;
+    }
+
+    // POSITION PERSISTENCE FIX: Enhanced generated position loading with validation
+    private async loadGeneratedPlayerPosition(squirrelId: string): Promise<any> {
+      try {
+        const savedGeneratedPosition = await this.storage.get<{
+          x: number; y: number; z: number; timestamp: number;
+        }>(`generatedPosition:${squirrelId}`);
+        
+        if (savedGeneratedPosition) {
+          // Validate position data
+          if (this.isValidPosition(savedGeneratedPosition)) {
+            Logger.info(LogCategory.SESSION, `🎲 Found valid saved generated position for ${squirrelId}:`, savedGeneratedPosition);
+            return {
+              position: { x: savedGeneratedPosition.x, y: savedGeneratedPosition.y, z: savedGeneratedPosition.z },
+              rotationY: 0,
+              stats: { found: 0, hidden: 0 }
+            };
+          } else {
+            Logger.warn(LogCategory.SESSION, `⚠️ Invalid generated position for ${squirrelId}:`, savedGeneratedPosition);
+          }
+        }
+      } catch (error) {
+        Logger.warn(LogCategory.SESSION, `Failed to load generated position for ${squirrelId}:`, error);
+      }
+      
+      return null;
+    }
+
   }
-}

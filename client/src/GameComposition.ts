@@ -512,14 +512,14 @@ export class GameManager {
             }
           });
           
-          // POSITION PERSISTENCE FIX: Increased timeout to 3 seconds to give server more time
-          setTimeout(() => {
-            if (!resolved) {
-              resolved = true;
-              Logger.warn(LogCategory.PLAYER, '⚠️ Timeout waiting for saved position from server (3s), will use random spawn');
-              resolve(null);
-            }
-          }, 3000); // Increased from 1000ms to 3000ms
+                  // POSITION PERSISTENCE FIX: Increased timeout to 5 seconds to give server more time
+        setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            Logger.warn(LogCategory.PLAYER, '⚠️ Timeout waiting for saved position from server (5s), will use random spawn');
+            resolve(null);
+          }
+        }, 5000); // Increased from 3000ms to 5000ms
         });
         
         await this.networkSystem.connect();
@@ -591,13 +591,13 @@ export class GameManager {
     
     // POSITION PERSISTENCE FIX: Use the same persistent squirrelId from NetworkSystem
     // This ensures consistency across the entire application
-    let playerId = sessionStorage.getItem('squirrelId');
+    let playerId = this.getPersistentSquirrelId();
     if (!playerId) {
       // This should not happen if NetworkSystem ran first, but provide fallback
       // Use UUID format to match NetworkSystem
       playerId = crypto.randomUUID();
-      sessionStorage.setItem('squirrelId', playerId);
-      Logger.warn(LogCategory.PLAYER, `⚠️ No squirrelId found in sessionStorage, generated fallback: ${playerId}`);
+      this.setPersistentSquirrelId(playerId);
+      Logger.warn(LogCategory.PLAYER, `⚠️ No squirrelId found in storage, generated fallback: ${playerId}`);
     } else {
       Logger.info(LogCategory.PLAYER, `🔄 Using persistent squirrelId for local player: ${playerId}`);
     }
@@ -781,6 +781,51 @@ export class GameManager {
   public getPlayerManager(): PlayerManager { return this.playerManager; }
   public getNetworkSystem(): NetworkSystem { return this.networkSystem; }
   public getLocalPlayer(): Entity | undefined { return this.localPlayer; }
+
+  // POSITION PERSISTENCE FIX: Helper methods for persistent squirrelId storage
+  private getPersistentSquirrelId(): string | null {
+    try {
+      // Try localStorage first (persists across browser refreshes)
+      const storedId = localStorage.getItem('squirrelId');
+      if (storedId) {
+        Logger.debug(LogCategory.PLAYER, `📦 Retrieved squirrelId from localStorage: ${storedId}`);
+        return storedId;
+      }
+      
+      // Fallback to sessionStorage for compatibility
+      const sessionId = sessionStorage.getItem('squirrelId');
+      if (sessionId) {
+        Logger.debug(LogCategory.PLAYER, `📦 Retrieved squirrelId from sessionStorage: ${sessionId}`);
+        // Migrate to localStorage for future persistence
+        this.setPersistentSquirrelId(sessionId);
+        return sessionId;
+      }
+      
+      return null;
+    } catch (error) {
+      Logger.warn(LogCategory.PLAYER, '⚠️ Failed to retrieve persistent squirrelId:', error);
+      return null;
+    }
+  }
+
+  private setPersistentSquirrelId(squirrelId: string): void {
+    try {
+      // Store in localStorage for persistence across browser refreshes
+      localStorage.setItem('squirrelId', squirrelId);
+      Logger.debug(LogCategory.PLAYER, `💾 Stored squirrelId in localStorage: ${squirrelId}`);
+      
+      // Also store in sessionStorage for compatibility with existing code
+      sessionStorage.setItem('squirrelId', squirrelId);
+    } catch (error) {
+      Logger.warn(LogCategory.PLAYER, '⚠️ Failed to store persistent squirrelId:', error);
+      // Fallback to sessionStorage only
+      try {
+        sessionStorage.setItem('squirrelId', squirrelId);
+      } catch (fallbackError) {
+        Logger.error(LogCategory.PLAYER, '❌ Failed to store squirrelId in both storage types:', fallbackError);
+      }
+    }
+  }
 }
 
 // Configuration and setup
