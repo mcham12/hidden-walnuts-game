@@ -211,14 +211,15 @@ export class NetworkSystem extends System {
       const authResponse = await this.authenticatePlayer(this.localSquirrelId!);
       const authData = authResponse;
       
-      // Update local squirrel ID with what the server returned (in case of session restoration)
-      this.localSquirrelId = authData.squirrelId;
-      sessionStorage.setItem('squirrelId', authData.squirrelId);
+      // POSITION PERSISTENCE FIX: Don't overwrite squirrelId - keep the one used for authentication
+      // The server expects the same squirrelId that was used in the auth request
       
       const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8787';
       // MVP 7 Task 7: Include client version and protocol in WebSocket URL
       const wsUrl = `${apiBase.replace('http', 'ws')}/ws?squirrelId=${authData.squirrelId}&token=${authData.token}&version=${CLIENT_VERSION}&protocol=${PROTOCOL_VERSION}`;
       
+      Logger.debug(LogCategory.NETWORK, `🌐 API Base URL: ${apiBase}`);
+      Logger.debug(LogCategory.NETWORK, `🌐 WebSocket URL: ${wsUrl}`);
       Logger.debug(LogCategory.NETWORK, `🌐 Connecting to: ${wsUrl} (ID: ${this.localSquirrelId})`);
       
       // MVP 7 Task 7: Enhanced WebSocket creation with protocol specification
