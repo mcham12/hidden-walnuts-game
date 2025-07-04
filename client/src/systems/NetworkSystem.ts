@@ -1088,14 +1088,14 @@ export class NetworkSystem extends System {
   private handleInitMessage(message: NetworkMessage): void {
     Logger.debug(LogCategory.NETWORK, '🚀 Server initialization message received');
     
-    // Server confirms our squirrel ID
+    // FIRST: Server confirms our squirrel ID
     if (message.data?.confirmedSquirrelId) {
       Logger.debug(LogCategory.NETWORK, '✅ Server confirmed squirrel ID:', message.data.confirmedSquirrelId);
       this.localSquirrelId = message.data.confirmedSquirrelId;
       sessionStorage.setItem('squirrelId', message.data.confirmedSquirrelId);
     }
     
-    // POSITION PERSISTENCE FIX: Apply saved position to local player
+    // SECOND: Apply saved position to local player
     if (message.data?.savedPosition) {
       Logger.info(LogCategory.NETWORK, '📍 Applying saved position from server:', message.data.savedPosition);
       this.eventBus.emit('apply_saved_position', {
@@ -1104,11 +1104,13 @@ export class NetworkSystem extends System {
       });
     }
     
-    // The init message may contain session restoration data or world state
+    // THIRD: Process existing players AFTER local squirrel ID is set
     if (message.data?.existingPlayers) {
-      Logger.debug(LogCategory.NETWORK, '👥 Server sent existing players:', message.data.existingPlayers);
+      Logger.info(LogCategory.NETWORK, `👥 Server sent ${message.data.existingPlayers.length} existing players in init message`);
       for (const playerData of message.data.existingPlayers) {
+        // IMPORTANT: Now localSquirrelId is guaranteed to be set
         if (playerData.squirrelId !== this.localSquirrelId) {
+          Logger.info(LogCategory.NETWORK, `🎯 Processing existing player from init: ${playerData.squirrelId}`);
           this.handlePlayerJoined({
             type: 'player_joined',
             squirrelId: playerData.squirrelId,
@@ -1116,6 +1118,8 @@ export class NetworkSystem extends System {
             rotationY: playerData.rotationY,
             timestamp: performance.now()
           } as NetworkMessage);
+        } else {
+          Logger.debug(LogCategory.NETWORK, `🔄 Skipping own player in existing players: ${playerData.squirrelId}`);
         }
       }
     }
@@ -1123,12 +1127,18 @@ export class NetworkSystem extends System {
 
   private handleExistingPlayers(message: NetworkMessage): void {
     if (message.players && Array.isArray(message.players)) {
-      Logger.info(LogCategory.NETWORK, `👥 Received ${message.players.length} existing players`);
+      Logger.info(LogCategory.NETWORK, `👥 Received ${message.players.length} existing players in separate message`);
       
       // TASK 4 FIX: Process existing players immediately to prevent delays
       for (const player of message.players) {
         if (player.squirrelId && player.position) {
-          Logger.debug(LogCategory.NETWORK, `🎯 Processing existing player: ${player.squirrelId}`);
+          // Skip if this is the local player
+          if (player.squirrelId === this.localSquirrelId) {
+            Logger.debug(LogCategory.NETWORK, `🔄 Skipping own player in existing_players: ${player.squirrelId}`);
+            continue;
+          }
+          
+          Logger.info(LogCategory.NETWORK, `🎯 Processing existing player from separate message: ${player.squirrelId}`);
           
           // Emit immediately - do NOT batch critical player visibility events
           this.eventBus.emit('remote_player_state', {
@@ -1137,8 +1147,19 @@ export class NetworkSystem extends System {
             rotationY: player.rotationY || 0,
             timestamp: message.timestamp || performance.now()
           });
+          
+          // Also emit the join event for other systems
+          this.eventBus.emit('remote_player_joined', {
+            squirrelId: player.squirrelId,
+            position: player.position,
+            rotationY: player.rotationY || 0
+          });
+        } else {
+          Logger.warn(LogCategory.NETWORK, `⚠️ Invalid existing player data:`, player);
         }
       }
+    } else {
+      Logger.warn(LogCategory.NETWORK, `⚠️ Invalid existing_players message format:`, message);
     }
   }
 

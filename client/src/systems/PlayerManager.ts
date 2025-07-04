@@ -228,6 +228,8 @@ export class PlayerManager extends System {
       // TASK 3.2: Duplicate Player Prevention - Check if already tracked
       if (this.trackedSquirrelIds.has(data.squirrelId)) {
         Logger.warn(LogCategory.PLAYER, `⚠️ Duplicate remote player state for ${data.squirrelId}, skipping creation`);
+        Logger.info(LogCategory.PLAYER, `🔍 Currently tracked players: ${Array.from(this.trackedSquirrelIds).join(', ')}`);
+        Logger.info(LogCategory.PLAYER, `🔍 Currently rendered players: ${Array.from(this.remotePlayers.keys()).join(', ')}`);
         return;
       }
       
@@ -240,6 +242,7 @@ export class PlayerManager extends System {
       // TASK 3 FIX: Double-check we don't already have this player
       if (this.remotePlayers.has(data.squirrelId)) {
         Logger.warn(LogCategory.PLAYER, `⚠️ Attempted to create duplicate player ${data.squirrelId}, skipping`);
+        Logger.info(LogCategory.PLAYER, `🔍 Already rendered: ${Array.from(this.remotePlayers.keys()).join(', ')}`);
         return;
       }
       
@@ -247,10 +250,11 @@ export class PlayerManager extends System {
       this.trackedSquirrelIds.add(data.squirrelId);
       
       // TASK 3 FIX: Log all existing players for debugging
-      Logger.debugExpensive(LogCategory.PLAYER, () => `🔍 Current players before creating ${data.squirrelId}: ${Array.from(this.remotePlayers.keys()).join(', ')}`);
+      Logger.info(LogCategory.PLAYER, `🔍 Creating player ${data.squirrelId} - Current players: ${Array.from(this.remotePlayers.keys()).join(', ')}`);
       
           // Create new remote player with error handling
     try {
+      Logger.info(LogCategory.PLAYER, `🚀 Starting creation of remote player: ${data.squirrelId}`);
       await this.createRemotePlayer({
         squirrelId: data.squirrelId,
         position: data.position,
@@ -261,6 +265,7 @@ export class PlayerManager extends System {
           w: 1
         }
       });
+      Logger.info(LogCategory.PLAYER, `✅ Successfully created remote player: ${data.squirrelId}`);
     } catch (error) {
       Logger.error(LogCategory.PLAYER, `❌ Failed to create remote player ${data.squirrelId}:`, error);
       // Clean up tracking on failure

@@ -12,7 +12,7 @@ import { MovementSystem } from './systems/MovementSystem';
 import { ClientPredictionSystem } from './systems/ClientPredictionSystem';
 import { NetworkSystem } from './systems/NetworkSystem';
 import { PlayerManager } from './systems/PlayerManager';
-import { MovementConfig, WorldBounds, Vector3, Rotation } from './core/types';
+import { MovementConfig, WorldBounds } from './core/types';
 import { InterpolationSystem } from './systems/InterpolationSystem';
 import { RenderSystem } from './systems/RenderSystem';
 import { NetworkTickSystem } from './systems/NetworkTickSystem';
@@ -494,29 +494,35 @@ export class GameManager {
       // 3. Wait for scene readiness
       await this.waitForSceneReady();
       
-      // 4. Create local player
-      await this.createLocalPlayer();
-      Logger.info(LogCategory.PLAYER, `🎮 Local player created: ${this.localPlayer?.id.value}`);
-      
-      // POSITION PERSISTENCE FIX: Listen for saved position from server
-      this.eventBus.subscribe('apply_saved_position', (data: { position: any; rotationY: number }) => {
-        Logger.info(LogCategory.PLAYER, '📍 Applying saved position to local player:', data.position);
-        this.applySavedPositionToLocalPlayer(data.position, data.rotationY);
-      });
-      
-      // 5. Start input listening
-      this.inputManager.startListening();
-      Logger.info(LogCategory.INPUT, '🎮 Input listening started - WASD controls active!');
-      
-      // 6. Connect to multiplayer after scene is ready
+      // 4. Connect to multiplayer BEFORE creating player to get saved position
       Logger.info(LogCategory.NETWORK, '🌐 Attempting multiplayer connection...');
+      let savedPlayerData: { position: any; rotationY: number } | null = null;
+      
       try {
+        // Listen for saved position from server BEFORE connecting
+        this.eventBus.subscribe('apply_saved_position', (data: { position: any; rotationY: number }) => {
+          Logger.info(LogCategory.PLAYER, '📍 Received saved position from server:', data.position);
+          savedPlayerData = data;
+        });
+        
         await this.networkSystem.connect();
         Logger.info(LogCategory.NETWORK, '✅ Multiplayer connection established');
+        
+        // Wait a moment for saved position to arrive
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
       } catch (networkError) {
         Logger.warn(LogCategory.NETWORK, '⚠️ Multiplayer connection failed, continuing in single-player mode', networkError);
       }
-
+      
+      // 5. Create local player (will use saved position if available)
+      await this.createLocalPlayer(savedPlayerData);
+      Logger.info(LogCategory.PLAYER, `🎮 Local player created: ${this.localPlayer?.id.value}`);
+      
+      // 6. Start input listening
+      this.inputManager.startListening();
+      Logger.info(LogCategory.INPUT, '🎮 Input listening started - WASD controls active!');
+      
       // Emit initialization complete
       this.eventBus.emit('game.initialized');
       Logger.info(LogCategory.CORE, '🚀 Game initialization complete!');
@@ -556,16 +562,29 @@ export class GameManager {
     this.inputManager.stopListening();
   }
 
-  private async createLocalPlayer(): Promise<void> {
+  private async createLocalPlayer(savedPlayerData: { position: any; rotationY: number } | null): Promise<void> {
     const playerFactory = container.resolve(ServiceTokens.PLAYER_FACTORY) as any;
     
     // Generate a unique player ID
-    const playerId = `player-${crypto.randomUUID()}`;
-    this.localPlayer = await playerFactory.createLocalPlayer(playerId);
-    
-    if (this.localPlayer) {
-      Logger.info(LogCategory.PLAYER, '🐿️ Local player created with ID:', this.localPlayer.id.value);
-      this.entityManager.addEntity(this.localPlayer);
+    let playerId = sessionStorage.getItem('squirrelId');
+    if (!playerId) {
+      playerId = 'squirrel_' + Math.random().toString(36).substr(2, 9);
+      sessionStorage.setItem('squirrelId', playerId);
+    }
+
+    if (playerFactory && typeof playerFactory.createLocalPlayer === 'function') {
+      if (savedPlayerData) {
+        // Create player with saved position
+        this.localPlayer = await playerFactory.createLocalPlayerWithPosition(playerId, savedPlayerData.position, savedPlayerData.rotationY);
+      } else {
+        // Create player at random position
+        this.localPlayer = await playerFactory.createLocalPlayer(playerId);
+      }
+      
+      if (this.localPlayer) {
+        Logger.info(LogCategory.PLAYER, '🐿️ Local player created with ID:', this.localPlayer.id.value);
+        this.entityManager.addEntity(this.localPlayer);
+      }
     }
   }
 
@@ -732,35 +751,6 @@ export class GameManager {
   public getPlayerManager(): PlayerManager { return this.playerManager; }
   public getNetworkSystem(): NetworkSystem { return this.networkSystem; }
   public getLocalPlayer(): Entity | undefined { return this.localPlayer; }
-
-  private applySavedPositionToLocalPlayer(position: { x: number; y: number; z: number }, rotationY: number): void {
-    if (!this.localPlayer) {
-      Logger.warn(LogCategory.PLAYER, '⚠️ Cannot apply saved position - no local player');
-      return;
-    }
-
-    // Update position component
-    this.localPlayer.addComponent<PositionComponent>({
-      type: 'position',
-      value: new Vector3(position.x, position.y, position.z)
-    });
-
-    // Update rotation component
-    this.localPlayer.addComponent<RotationComponent>({
-      type: 'rotation',
-      value: Rotation.fromRadians(rotationY)
-    });
-
-    // Update mesh position immediately for visual feedback
-    const renderComponent = this.localPlayer.getComponent<any>('render');
-    if (renderComponent?.mesh) {
-      renderComponent.mesh.position.set(position.x, position.y, position.z);
-      renderComponent.mesh.rotation.y = rotationY;
-      Logger.info(LogCategory.PLAYER, '✅ Updated local player mesh position immediately');
-    }
-
-    Logger.info(LogCategory.PLAYER, `✅ Applied saved position to local player: (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
-  }
 }
 
 // Configuration and setup

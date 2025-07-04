@@ -150,5 +150,71 @@ export class PlayerFactory {
     return entity;
   }
 
-
+  async createLocalPlayerWithPosition(playerId: string, savedPosition: { x: number; y: number; z: number }, savedRotationY: number): Promise<Entity> {
+    Logger.info(LogCategory.PLAYER, `🐿️ Creating local player with saved position: ${playerId}`);
+    Logger.info(LogCategory.PLAYER, `📍 Using saved position: (${savedPosition.x.toFixed(1)}, ${savedPosition.y.toFixed(1)}, ${savedPosition.z.toFixed(1)})`);
+    
+    // Use saved position instead of random spawn
+    const spawnX = savedPosition.x;
+    const spawnY = savedPosition.y;
+    const spawnZ = savedPosition.z;
+    const spawnRotationY = savedRotationY;
+    
+    // Create entity first
+    const entity = this.entityManager.createEntity();
+    
+    // Load squirrel model
+    const gltf = await this.assetManager.loadModel('/assets/models/squirrel.glb');
+    if (!gltf || !gltf.scene) {
+      Logger.error(LogCategory.PLAYER, '❌ Failed to load squirrel model');
+      throw new Error('Failed to load squirrel model');
+    }
+    
+    Logger.info(LogCategory.PLAYER, '✅ Squirrel model loaded successfully');
+    
+    // Get the actual model from the GLTF scene
+    const model = gltf.scene.clone();
+    
+    // Scale the model to appropriate size
+    model.scale.setScalar(0.3);
+    model.position.set(spawnX, spawnY, spawnZ);
+    model.rotation.y = spawnRotationY;
+    
+    // Add to scene
+    this.sceneManager.getScene().add(model);
+    Logger.info(LogCategory.PLAYER, `✅ Local player added to scene at SAVED position (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
+    
+    // Add all required components using the Entity class methods
+    entity
+      .addComponent<PositionComponent>({
+        type: 'position',
+        value: new Vector3(spawnX, spawnY, spawnZ)
+      })
+      .addComponent<RotationComponent>({
+        type: 'rotation',
+        value: Rotation.fromRadians(spawnRotationY)
+      })
+      .addComponent<RenderComponent>({
+        type: 'render',
+        mesh: model,
+        visible: true
+      })
+      .addComponent<NetworkComponent>({
+        type: 'network',
+        isLocalPlayer: true,
+        squirrelId: playerId,
+        lastUpdate: performance.now()
+      })
+      .addComponent<InputComponent>({
+        type: 'input',
+        forward: false,
+        backward: false,
+        turnLeft: false,
+        turnRight: false
+      });
+    
+    Logger.info(LogCategory.PLAYER, `✅ Local player entity created with SAVED position and ${entity.getComponents().length} components`);
+    Logger.info(LogCategory.PLAYER, `🎮 WASD controls should now work for local player!`);
+    return entity;
+  }
 } 
