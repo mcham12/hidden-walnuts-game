@@ -667,6 +667,7 @@ export default class ForestManager {
       await this.saveServerMetrics();
 
       // POSITION PERSISTENCE FIX: Send player's saved position FIRST
+      Logger.info(LogCategory.PLAYER, `📤 Sending init message to ${squirrelId} with saved position:`, playerConnection.position);
       this.sendMessage(socket, {
         type: 'init',
         squirrelId: squirrelId,
@@ -1319,6 +1320,11 @@ export default class ForestManager {
       Logger.error(LogCategory.SESSION, `Error updating session for ${squirrelId}:`, error);
     });
 
+    // POSITION PERSISTENCE FIX: Save position immediately to storage on disconnect
+    this.savePlayerPositionImmediately(playerConnection).catch(error => {
+      Logger.error(LogCategory.SESSION, `Error saving position for ${squirrelId}:`, error);
+    });
+
     // TASK URGENTA.3 FIX: Force execute any pending storage operations before disconnect
     this.forceExecuteStorage().catch(error => {
       Logger.error(LogCategory.SESSION, `Error forcing storage execution for ${squirrelId}:`, error);
@@ -1571,13 +1577,13 @@ export default class ForestManager {
 
   // Get player session info - simplified for development
   private async getPlayerSessionInfo(squirrelId: string): Promise<any> {
-    Logger.debug(LogCategory.SESSION, `Getting session info for: ${squirrelId}`);
+    Logger.info(LogCategory.SESSION, `🔍 Getting session info for: ${squirrelId}`);
     
     // FIXED: For development, check if we have an existing active player connection
     // This ensures position persistence across reconnects
     const existingConnection = this.activePlayers.get(squirrelId);
     if (existingConnection) {
-      Logger.debug(LogCategory.SESSION, `Found existing connection for ${squirrelId}, returning current position`);
+      Logger.info(LogCategory.SESSION, `✅ Found existing connection for ${squirrelId}, returning current position:`, existingConnection.position);
       return {
         position: existingConnection.position,
         rotationY: existingConnection.rotationY,
@@ -1585,24 +1591,51 @@ export default class ForestManager {
       };
     }
     
+    Logger.info(LogCategory.SESSION, `📦 No existing connection for ${squirrelId}, checking storage...`);
+    
     // TASK URGENTA.3 FIX: Load saved position from storage
     try {
+      const storageKey = `player:${squirrelId}`;
+      Logger.info(LogCategory.SESSION, `🔍 Looking for saved data with key: ${storageKey}`);
+      
       const savedPlayerData = await this.storage.get<{
         position: { x: number; y: number; z: number };
         rotationY: number;
         lastUpdate: number;
-      }>(`player:${squirrelId}`);
+      }>(storageKey);
+      
+      Logger.info(LogCategory.SESSION, `📦 Storage lookup result for ${squirrelId}:`, savedPlayerData);
       
       if (savedPlayerData && savedPlayerData.position) {
-        Logger.debug(LogCategory.SESSION, `📦 Loaded saved position for ${squirrelId}:`, savedPlayerData.position);
+        Logger.info(LogCategory.SESSION, `✅ Loaded saved position for ${squirrelId}:`, savedPlayerData.position);
         return {
           position: savedPlayerData.position,
           rotationY: savedPlayerData.rotationY || 0,
           stats: { found: 0, hidden: 0 }
         };
+      } else {
+        Logger.warn(LogCategory.SESSION, `⚠️ No saved position found for ${squirrelId} in storage`);
       }
     } catch (error) {
-      Logger.warn(LogCategory.SESSION, `Failed to load saved position for ${squirrelId}:`, error);
+      Logger.error(LogCategory.SESSION, `❌ Failed to load saved position for ${squirrelId}:`, error);
+    }
+    
+    // POSITION PERSISTENCE FIX: Check for saved generated position as fallback
+    try {
+      const savedGeneratedPosition = await this.storage.get<{
+        x: number; y: number; z: number; timestamp: number;
+      }>(`generatedPosition:${squirrelId}`);
+      
+      if (savedGeneratedPosition) {
+        Logger.info(LogCategory.SESSION, `🎲 Found saved generated position for ${squirrelId}:`, savedGeneratedPosition);
+        return {
+          position: { x: savedGeneratedPosition.x, y: savedGeneratedPosition.y, z: savedGeneratedPosition.z },
+          rotationY: 0,
+          stats: { found: 0, hidden: 0 }
+        };
+      }
+    } catch (error) {
+      Logger.warn(LogCategory.SESSION, `Failed to load generated position for ${squirrelId}:`, error);
     }
     
     // FIXED: For new players or reconnects, generate a random spawn position
@@ -1618,7 +1651,12 @@ export default class ForestManager {
       z: ((hash * 7) % 100) - 50 
     };
     
-    Logger.debug(LogCategory.SESSION, `Generated new position for ${squirrelId}:`, position);
+    Logger.info(LogCategory.SESSION, `🎲 Generated new position for ${squirrelId}:`, position);
+    
+    // POSITION PERSISTENCE FIX: Save this generated position for future reconnects
+    this.saveGeneratedPosition(squirrelId, position).catch(error => {
+      Logger.warn(LogCategory.SESSION, `Failed to save generated position for ${squirrelId}:`, error);
+    });
     
     return {
       position: position,
@@ -1872,6 +1910,39 @@ export default class ForestManager {
       await this.storage.put('serverStartTime', this.serverStartTime);
     } catch (error) {
       Logger.warn(LogCategory.WEBSOCKET, 'Failed to save server metrics:', error);
+    }
+  }
+
+  // POSITION PERSISTENCE FIX: Save position immediately to storage on disconnect
+  private async savePlayerPositionImmediately(playerConnection: PlayerConnection): Promise<void> {
+    try {
+      Logger.info(LogCategory.SESSION, `💾 Saving position immediately for ${playerConnection.squirrelId}:`, playerConnection.position);
+      await this.storage.put(`player:${playerConnection.squirrelId}`, {
+        position: playerConnection.position,
+        rotationY: playerConnection.rotationY,
+        lastUpdate: Date.now()
+      });
+      Logger.info(LogCategory.SESSION, `✅ Position saved successfully for ${playerConnection.squirrelId}`);
+    } catch (error) {
+      Logger.error(LogCategory.SESSION, `❌ Error saving position for ${playerConnection.squirrelId}:`, error);
+      throw error;
+    }
+  }
+
+  // POSITION PERSISTENCE FIX: Save generated position for future reconnects
+  private async saveGeneratedPosition(squirrelId: string, position: { x: number; y: number; z: number }): Promise<void> {
+    try {
+      Logger.info(LogCategory.SESSION, `💾 Saving generated position for ${squirrelId}:`, position);
+      await this.storage.put(`generatedPosition:${squirrelId}`, {
+        x: position.x,
+        y: position.y,
+        z: position.z,
+        timestamp: Date.now()
+      });
+      Logger.info(LogCategory.SESSION, `✅ Generated position saved successfully for ${squirrelId}`);
+    } catch (error) {
+      Logger.error(LogCategory.SESSION, `❌ Error saving generated position for ${squirrelId}:`, error);
+      throw error;
     }
   }
 }
