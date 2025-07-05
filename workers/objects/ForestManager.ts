@@ -1078,8 +1078,8 @@ export default class ForestManager {
   // TASK 3 FIX: Enhanced position correction to prevent floating
   private correctPlayerPosition(position: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
     const terrainHeight = this.getTerrainHeight(position.x, position.z);
-    const minValidHeight = terrainHeight + 0.5; // Squirrel height above terrain
-    const maxValidHeight = terrainHeight + 3; // Reduced max height to prevent floating
+    const minValidHeight = terrainHeight + 0.3; // Reduced from 0.5 to 0.3 for more lenient validation
+    const maxValidHeight = terrainHeight + 5; // Keep max height reasonable
     
     return {
       x: position.x,
@@ -1951,42 +1951,40 @@ export default class ForestManager {
         Logger.info(LogCategory.SESSION, `📦 Storage lookup result for ${squirrelId}:`, savedPlayerData);
         
         if (savedPlayerData && savedPlayerData.position) {
-          // Validate position data
-          if (this.isValidPosition(savedPlayerData.position)) {
-            // POSITION PERSISTENCE FIX: Validate position against terrain height
-            const terrainHeight = this.getTerrainHeight(savedPlayerData.position.x, savedPlayerData.position.z);
-            const correctedPosition = this.correctPlayerPosition(savedPlayerData.position);
+          // POSITION PERSISTENCE FIX: Always accept saved positions, then correct if needed
+          Logger.info(LogCategory.SESSION, `✅ Found saved position for ${squirrelId}:`, savedPlayerData.position);
+          
+          // Always correct the position to ensure it's valid for terrain
+          const terrainHeight = this.getTerrainHeight(savedPlayerData.position.x, savedPlayerData.position.z);
+          const correctedPosition = this.correctPlayerPosition(savedPlayerData.position);
+          
+          // Check if position needed correction
+          if (Math.abs(correctedPosition.y - savedPlayerData.position.y) > 0.1) {
+            Logger.info(LogCategory.SESSION, `🌍 Terrain correction for ${squirrelId}:`, {
+              original: savedPlayerData.position,
+              corrected: correctedPosition,
+              terrainHeight: terrainHeight
+            });
             
-            // Check if position needs terrain correction
-            if (Math.abs(correctedPosition.y - savedPlayerData.position.y) > 0.5) {
-              Logger.info(LogCategory.SESSION, `🌍 Terrain correction for ${squirrelId}:`, {
-                original: savedPlayerData.position,
-                corrected: correctedPosition,
-                terrainHeight: terrainHeight
-              });
-              
-              // Save the corrected position for future use
-              await this.storage.put(storageKey, {
-                position: correctedPosition,
-                rotationY: savedPlayerData.rotationY || 0,
-                lastUpdate: Date.now()
-              });
-              
-              return {
-                position: correctedPosition,
-                rotationY: savedPlayerData.rotationY || 0,
-                stats: { found: 0, hidden: 0 }
-              };
-            } else {
-              Logger.info(LogCategory.SESSION, `✅ Loaded valid saved position for ${squirrelId}:`, savedPlayerData.position);
-              return {
-                position: savedPlayerData.position,
-                rotationY: savedPlayerData.rotationY || 0,
-                stats: { found: 0, hidden: 0 }
-              };
-            }
+            // Save the corrected position for future use
+            await this.storage.put(storageKey, {
+              position: correctedPosition,
+              rotationY: savedPlayerData.rotationY || 0,
+              lastUpdate: Date.now()
+            });
+            
+            return {
+              position: correctedPosition,
+              rotationY: savedPlayerData.rotationY || 0,
+              stats: { found: 0, hidden: 0 }
+            };
           } else {
-            Logger.warn(LogCategory.SESSION, `⚠️ Invalid saved position for ${squirrelId}:`, savedPlayerData.position);
+            Logger.info(LogCategory.SESSION, `✅ Loaded valid saved position for ${squirrelId}:`, savedPlayerData.position);
+            return {
+              position: savedPlayerData.position,
+              rotationY: savedPlayerData.rotationY || 0,
+              stats: { found: 0, hidden: 0 }
+            };
           }
         } else {
           Logger.warn(LogCategory.SESSION, `⚠️ No saved position found for ${squirrelId} in storage`);
