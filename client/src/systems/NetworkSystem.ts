@@ -487,8 +487,8 @@ export class NetworkSystem extends System {
     Logger.debug(LogCategory.NETWORK, '📨 RAW WEBSOCKET MESSAGE RECEIVED:', message);
     Logger.info(LogCategory.NETWORK, `⏰ Message received at ${Date.now()}, type: ${message.type}`);
     
-    // Skip our own messages, but NOT init messages (which contain saved position)
-    if (message.squirrelId && message.squirrelId === this.localSquirrelId && message.type !== 'init') {
+    // Skip our own messages, but only if we have a valid squirrelId
+    if (message.squirrelId && message.squirrelId === this.localSquirrelId) {
       Logger.debug(LogCategory.NETWORK, '🔄 Skipping own message from:', message.squirrelId);
       return;
     }
