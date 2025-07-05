@@ -817,6 +817,25 @@ export default class ForestManager {
           Logger.debug(LogCategory.WEBSOCKET, `Ping received from ${playerConnection.squirrelId}`);
           this.sendMessage(playerConnection.socket, { type: 'pong', timestamp: data.timestamp });
           break;
+        case "position_confirmation":
+          // POSITION PERSISTENCE FIX: Handle position confirmation from client
+          Logger.info(LogCategory.SESSION, `✅ Position confirmation received from ${playerConnection.squirrelId}:`, data.confirmedPosition);
+          // Update player connection with confirmed position
+          if (data.confirmedPosition) {
+            playerConnection.position = data.confirmedPosition;
+            await this.updatePlayerSession(playerConnection);
+            Logger.info(LogCategory.SESSION, `💾 Updated player session with confirmed position for ${playerConnection.squirrelId}`);
+          }
+          break;
+        case "goodbye":
+          // POSITION PERSISTENCE FIX: Handle graceful disconnect from client
+          Logger.info(LogCategory.WEBSOCKET, `👋 Graceful disconnect initiated by ${playerConnection.squirrelId}`);
+          // Save final position before disconnect
+          if (data.stats) {
+            Logger.info(LogCategory.WEBSOCKET, `📊 Final stats for ${playerConnection.squirrelId}:`, data.stats);
+          }
+          // The actual disconnect will be handled by the WebSocket close event
+          break;
         default:
           Logger.debug(LogCategory.WEBSOCKET, `Received message from ${playerConnection.squirrelId}:`, data.type);
           // Broadcast to other players for compatibility
@@ -1935,12 +1954,38 @@ export default class ForestManager {
         if (savedPlayerData && savedPlayerData.position) {
           // Validate position data
           if (this.isValidPosition(savedPlayerData.position)) {
-            Logger.info(LogCategory.SESSION, `✅ Loaded valid saved position for ${squirrelId}:`, savedPlayerData.position);
-            return {
-              position: savedPlayerData.position,
-              rotationY: savedPlayerData.rotationY || 0,
-              stats: { found: 0, hidden: 0 }
-            };
+            // POSITION PERSISTENCE FIX: Validate position against terrain height
+            const terrainHeight = this.getTerrainHeight(savedPlayerData.position.x, savedPlayerData.position.z);
+            const correctedPosition = this.correctPlayerPosition(savedPlayerData.position);
+            
+            // Check if position needs terrain correction
+            if (Math.abs(correctedPosition.y - savedPlayerData.position.y) > 0.5) {
+              Logger.info(LogCategory.SESSION, `🌍 Terrain correction for ${squirrelId}:`, {
+                original: savedPlayerData.position,
+                corrected: correctedPosition,
+                terrainHeight: terrainHeight
+              });
+              
+              // Save the corrected position for future use
+              await this.storage.put(storageKey, {
+                position: correctedPosition,
+                rotationY: savedPlayerData.rotationY || 0,
+                lastUpdate: Date.now()
+              });
+              
+              return {
+                position: correctedPosition,
+                rotationY: savedPlayerData.rotationY || 0,
+                stats: { found: 0, hidden: 0 }
+              };
+            } else {
+              Logger.info(LogCategory.SESSION, `✅ Loaded valid saved position for ${squirrelId}:`, savedPlayerData.position);
+              return {
+                position: savedPlayerData.position,
+                rotationY: savedPlayerData.rotationY || 0,
+                stats: { found: 0, hidden: 0 }
+              };
+            }
           } else {
             Logger.warn(LogCategory.SESSION, `⚠️ Invalid saved position for ${squirrelId}:`, savedPlayerData.position);
           }

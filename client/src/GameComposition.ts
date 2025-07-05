@@ -562,6 +562,8 @@ export class GameManager {
           Logger.info(LogCategory.PLAYER, '✅ Saved position received successfully:', savedPlayerData.position);
         } else {
           Logger.warn(LogCategory.PLAYER, '⚠️ No saved position received from server, will use random spawn');
+          // POSITION PERSISTENCE FIX: Set savedPlayerData to null explicitly to ensure random spawn
+          savedPlayerData = null;
         }
         
       } catch (networkError) {

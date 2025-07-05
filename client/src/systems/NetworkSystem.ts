@@ -1165,20 +1165,31 @@ export class NetworkSystem extends System {
     // SECOND: Apply saved position to local player
     if (message.data?.savedPosition) {
       Logger.info(LogCategory.NETWORK, '📍 Applying saved position from server:', message.data.savedPosition);
-      this.eventBus.emit('apply_saved_position', {
-        position: message.data.savedPosition,
-        rotationY: message.data.savedRotationY || 0
-      });
       
-      // POSITION PERSISTENCE FIX: Send confirmation to server that position was received
-      if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-        this.websocket.send(JSON.stringify({
-          type: 'position_confirmation',
-          squirrelId: this.localSquirrelId!,
-          confirmedPosition: message.data.savedPosition,
-          timestamp: Date.now()
-        }));
+      // POSITION PERSISTENCE FIX: Validate saved position before applying
+      if (this.isValidPosition(message.data.savedPosition)) {
+        this.eventBus.emit('apply_saved_position', {
+          position: message.data.savedPosition,
+          rotationY: message.data.savedRotationY || 0
+        });
+        
+        // POSITION PERSISTENCE FIX: Send confirmation to server that position was received
+        if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+          this.websocket.send(JSON.stringify({
+            type: 'position_confirmation',
+            squirrelId: this.localSquirrelId!,
+            confirmedPosition: message.data.savedPosition,
+            timestamp: Date.now()
+          }));
+          Logger.info(LogCategory.NETWORK, '✅ Position confirmation sent to server');
+        } else {
+          Logger.warn(LogCategory.NETWORK, '⚠️ WebSocket not ready, cannot send position confirmation');
+        }
+      } else {
+        Logger.warn(LogCategory.NETWORK, '⚠️ Invalid saved position received from server:', message.data.savedPosition);
       }
+    } else {
+      Logger.info(LogCategory.NETWORK, 'ℹ️ No saved position in init message, will use random spawn');
     }
     
     // THIRD: Process existing players AFTER local squirrel ID is set
@@ -1200,6 +1211,20 @@ export class NetworkSystem extends System {
         }
       }
     }
+  }
+
+  // POSITION PERSISTENCE FIX: Helper method to validate position data
+  private isValidPosition(position: any): boolean {
+    return position && 
+           typeof position.x === 'number' && 
+           typeof position.y === 'number' && 
+           typeof position.z === 'number' &&
+           !isNaN(position.x) && 
+           !isNaN(position.y) && 
+           !isNaN(position.z) &&
+           Math.abs(position.x) < 1000 && 
+           Math.abs(position.y) < 1000 && 
+           Math.abs(position.z) < 1000;
   }
 
   private handleExistingPlayers(message: NetworkMessage): void {
