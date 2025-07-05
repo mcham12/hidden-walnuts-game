@@ -809,6 +809,19 @@ export default class ForestManager {
         case "player_update":
           await this.handlePlayerUpdate(playerConnection, data);
           break;
+        case "batch_update":
+          // POSITION PERSISTENCE FIX: Handle batched updates from client
+          if (data.updates && Array.isArray(data.updates)) {
+            Logger.debug(LogCategory.PLAYER, `📦 Processing batch of ${data.updates.length} updates from ${playerConnection.squirrelId}`);
+            for (const update of data.updates) {
+              if (update.type === 'player_update') {
+                await this.handlePlayerUpdate(playerConnection, update);
+              }
+            }
+          } else {
+            Logger.warn(LogCategory.PLAYER, `⚠️ Invalid batch_update message from ${playerConnection.squirrelId}:`, data);
+          }
+          break;
         case "heartbeat":
           this.handleHeartbeat(playerConnection, data);
           break;
@@ -818,27 +831,17 @@ export default class ForestManager {
           break;
         case "position_confirmation":
           // POSITION PERSISTENCE FIX: Handle position confirmation from client
-          Logger.info(LogCategory.SESSION, `✅ Position confirmation received from ${playerConnection.squirrelId}:`, data.confirmedPosition);
-          // Update player connection with confirmed position
-          if (data.confirmedPosition) {
-            playerConnection.position = data.confirmedPosition;
-            await this.updatePlayerSession(playerConnection);
-            Logger.info(LogCategory.SESSION, `💾 Updated player session with confirmed position for ${playerConnection.squirrelId}`);
-          }
+          Logger.debug(LogCategory.SESSION, `✅ Position confirmation received from ${playerConnection.squirrelId}`);
           break;
         case "goodbye":
-          // POSITION PERSISTENCE FIX: Handle graceful disconnect from client
-          Logger.info(LogCategory.WEBSOCKET, `👋 Graceful disconnect initiated by ${playerConnection.squirrelId}`);
-          // Save final position before disconnect
-          if (data.stats) {
-            Logger.info(LogCategory.WEBSOCKET, `📊 Final stats for ${playerConnection.squirrelId}:`, data.stats);
-          }
-          // The actual disconnect will be handled by the WebSocket close event
+          // POSITION PERSISTENCE FIX: Handle graceful disconnect
+          Logger.info(LogCategory.SESSION, `👋 Graceful disconnect from ${playerConnection.squirrelId}:`, data);
+          this.handlePlayerDisconnect(playerConnection.squirrelId, 'Graceful disconnect');
           break;
         default:
-          Logger.debug(LogCategory.WEBSOCKET, `Received message from ${playerConnection.squirrelId}:`, data.type);
-          // Broadcast to other players for compatibility
-          this.broadcastExceptSender(playerConnection.squirrelId, JSON.stringify(data));
+          // Broadcast other messages to other players
+          this.broadcastToOthers(playerConnection.squirrelId, data);
+          break;
       }
     } catch (error) {
       const serverError: ServerError = {
@@ -846,12 +849,12 @@ export default class ForestManager {
         message: `Failed to handle message from ${playerConnection.squirrelId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
         timestamp: Date.now(),
         squirrelId: playerConnection.squirrelId,
-        details: { messageType: data.type, error },
+        details: { data, error },
         recoverable: true
       };
       this.recordError(serverError);
       
-      Logger.error(LogCategory.WEBSOCKET, `Error handling message from ${playerConnection.squirrelId}:`, error);
+      Logger.error(LogCategory.PLAYER, `Error handling message from ${playerConnection.squirrelId}:`, error);
     }
   }
 
