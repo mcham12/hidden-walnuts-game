@@ -5,11 +5,11 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
 ---
 
 ## Current Status
-- **Current MVP**: MVP 8 (Enhanced Gameplay Features, next up)
+- **Current MVP**: MVP 8 (Animated Squirrel Players & NPC Characters, next up)
 - **Recently Completed**: MVP 7 (Multiplayer Foundation) ✅ **COMPLETED**
 - **Deployment**: Hosted on Cloudflare Workers with Durable Objects
 - **Testing**: AI-driven automated testing infrastructure implemented ✅
-- **Focus**: Moving to MVP 8 - Enhanced Gameplay Features
+- **Focus**: Moving to MVP 8 - Animated Squirrel Players & NPC Characters
 
 ---
 
@@ -74,7 +74,38 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
 
 ---
 
-## MVP 8: Enhanced Gameplay Features 🎯 **CURRENT FOCUS**
+## MVP 8: Animated Squirrel Players & NPC Characters 🎯 **CURRENT FOCUS**
+
+**Objective**: Implement animated squirrel player avatars and NPC characters to create a vibrant, living forest environment.
+
+**Planned Features**:
+- **Animated Squirrel Avatars** - Rigged 3D squirrel models with smooth animations
+- **Player Animation System** - Running, walking, jumping, digging, and idle animations
+- **NPC Squirrel Characters** - AI-driven non-player characters with realistic behaviors
+- **Animation Blending** - Smooth transitions between different animation states
+- **Performance Optimization** - Efficient animation system for multiple characters
+- **Visual Polish** - High-quality textures and lighting for character models
+
+**Technical Requirements**:
+- Extend existing multiplayer infrastructure for animated characters
+- Implement animation state management and synchronization
+- Add NPC AI system with pathfinding and behavior trees
+- Create efficient animation rendering pipeline
+- Integrate with existing terrain and forest systems
+- Add character customization options
+
+**Animation System**:
+- **Player Animations**: Run, walk, jump, dig, idle, look around
+- **NPC Behaviors**: Patrol, forage, socialize, flee from predators
+- **Animation Sync**: Real-time synchronization across multiplayer
+- **Performance**: Support 20+ animated characters simultaneously
+
+**Estimated Time**: 3-4 weeks
+**Dependencies**: MVP 7 (Multiplayer Foundation) ✅ **COMPLETED**
+
+---
+
+## MVP 9: Enhanced Gameplay Features
 
 **Objective**: Add engaging gameplay mechanics and features to create a compelling multiplayer experience.
 
@@ -94,11 +125,11 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
 - Add client-side caching for performance
 
 **Estimated Time**: 4-5 weeks
-**Dependencies**: MVP 7 (Multiplayer Foundation) ✅ **COMPLETED**
+**Dependencies**: MVP 8 (Animated Squirrel Players & NPC Characters)
 
 ---
 
-## MVP 9: Walnut Seeking and Scoring
+## MVP 10: Walnut Seeking and Scoring
 - **Objective**: Allow players to find walnuts and track scores.
 - **Tasks**:
   - Enable finding and collecting hidden walnuts.
@@ -108,7 +139,7 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
 
 ---
 
-## MVP 10: Daily Map Reset
+## MVP 11: Daily Map Reset
 - **Objective**: Introduce a 24-hour map reset cycle.
 - **Tasks**:
   - Implement map reset logic in `ForestManager` to refresh the forest every 24 hours.
@@ -118,7 +149,7 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
 
 ---
 
-## MVP 11: Visual Improvements
+## MVP 12: Visual Improvements
 - **Objective**: Enhance the game's visual quality and immersion.
 - **Tasks**:
   - Upgrade textures for terrain, trees, shrubs, and avatars (e.g., higher resolution).
@@ -132,7 +163,7 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
 
 ---
 
-## MVP 12: Performance Optimizations
+## MVP 13: Performance Optimizations
 - **Objective**: Optimize game performance for smooth gameplay.
 - **Tasks**:
   - Implement Level of Detail (LOD) for objects and characters to reduce rendering load.
@@ -143,7 +174,7 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
 
 ---
 
-## MVP 13: Predator Mechanics
+## MVP 14: Predator Mechanics
 - **Objective**: Add dynamic predator AI to increase gameplay tension and strategy.
 - **Tasks**:
   - Implement hawk and wolf AI with patrol and chase behaviors.
@@ -154,7 +185,7 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
 
 ---
 
-## MVP 14: Power-Ups and Advanced Features
+## MVP 15: Power-Ups and Advanced Features
 - **Objective**: Introduce power-ups and advanced gameplay mechanics.
 - **Tasks**:
   - Implement scent sniff, fast dig, and decoy nut power-ups.
@@ -165,7 +196,7 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
 
 ---
 
-## MVP 15: Social Features and Polish
+## MVP 16: Social Features and Polish
 - **Objective**: Add social features and final polish for a complete game experience.
 - **Tasks**:
   - Implement squirrel messages and notifications.
