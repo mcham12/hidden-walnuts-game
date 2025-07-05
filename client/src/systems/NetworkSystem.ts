@@ -488,7 +488,8 @@ export class NetworkSystem extends System {
     Logger.info(LogCategory.NETWORK, `⏰ Message received at ${Date.now()}, type: ${message.type}`);
     
     // Skip our own messages, but only if we have a valid squirrelId
-    if (message.squirrelId && message.squirrelId === this.localSquirrelId) {
+    // POSITION PERSISTENCE FIX: Allow init messages to pass through even if they have local squirrelId
+    if (message.squirrelId && message.squirrelId === this.localSquirrelId && message.type !== 'init') {
       Logger.debug(LogCategory.NETWORK, '🔄 Skipping own message from:', message.squirrelId);
       return;
     }

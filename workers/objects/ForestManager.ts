@@ -684,7 +684,6 @@ export default class ForestManager {
       
       const initMessage = {
         type: 'init',
-        squirrelId: squirrelId,
         data: {
           confirmedSquirrelId: squirrelId,
           savedPosition: playerConnection.position,
