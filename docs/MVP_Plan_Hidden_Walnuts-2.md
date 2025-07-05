@@ -58,11 +58,11 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
 ## Automated Testing Infrastructure (MVP-7+)
 
 - **Framework:** Vitest (AI-optimized, fast, and Vite-native)
-- **Coverage:** 90%+ on all critical multiplayer sync and core systems
+- **Coverage:** 90%+ on all critical systems (multiplayer, animation, AI, core systems)
 - **Philosophy:**
   - All tests are designed for AI comprehension and maintenance
   - Automated, repeatable, and coverage-enforced
-  - Focus on multiplayer state sync, prediction, reconciliation, and network reliability
+  - Focus on multiplayer state sync, prediction, reconciliation, network reliability, animation systems, and AI behavior
 - **Workflow:**
   1. All new features and bugfixes must include or update automated tests
   2. Tests must pass locally (`npm run test:run`) before PR/merge
@@ -71,6 +71,8 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
 - **Future MVPs:**
   - All MVPs after MVP-7 must include automated test requirements for new features
   - Test coverage and requirements must be documented in each MVP's README
+  - Animation and AI systems require 90%+ coverage for critical paths
+  - Performance testing must be included for all new systems
 
 ---
 

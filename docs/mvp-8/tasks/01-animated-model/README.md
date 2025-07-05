@@ -112,23 +112,36 @@ class SquirrelAnimationController {
 
 ## 🧪 **Testing Strategy**
 
+### **Automated Testing Requirements**
+- **Framework**: Vitest with AI-optimized test utilities
+- **Coverage**: 95%+ coverage for model loading and animation systems
+- **Test Location**: `client/src/test/animation-model.test.ts`
+- **AI Responsibility**: Cursor AI designs and maintains all animation tests
+
 ### **Unit Testing**
-- **Model Loading**: Test model loading in isolation
-- **Animation Playback**: Test each animation individually
-- **Performance**: Measure animation update times
-- **Memory Usage**: Monitor memory consumption
+- **Model Loading**: Test model loading in isolation with performance metrics
+- **Animation Playback**: Test each animation individually with timing validation
+- **Performance**: Measure animation update times and memory usage
+- **Memory Usage**: Monitor memory consumption and cleanup
 
 ### **Integration Testing**
-- **Player Factory**: Test animated model in PlayerFactory
-- **Multiplayer**: Test model loading across multiple clients
-- **Asset System**: Test integration with existing asset loading
-- **Performance**: Test impact on overall game performance
+- **Player Factory**: Test animated model in PlayerFactory with multiplayer sync
+- **Multiplayer**: Test model loading across multiple clients with state validation
+- **Asset System**: Test integration with existing asset loading system
+- **Performance**: Test impact on overall game performance metrics
 
 ### **Browser Testing**
-- **Chrome/Edge**: Full animation support
-- **Firefox**: Animation compatibility
-- **Safari**: WebGL animation support
-- **Mobile**: Touch device compatibility
+- **Chrome/Edge**: Full animation support with WebGL validation
+- **Firefox**: Animation compatibility with fallback testing
+- **Safari**: WebGL animation support with performance monitoring
+- **Mobile**: Touch device compatibility and responsive testing
+
+### **Test Coverage Requirements**
+- **Model Loading**: 100% coverage (critical path)
+- **Animation Controller**: 95%+ coverage
+- **Performance Monitoring**: 90%+ coverage
+- **Memory Management**: 85%+ coverage
+- **Error Handling**: 100% coverage for all error paths
 
 ## 📁 **Related Files**
 

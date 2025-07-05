@@ -120,6 +120,35 @@ cd client && npm run test:run -- --grep "animation"
 cd client && npm run test:run -- --grep "performance"
 ```
 
+## 🧪 **Automated Testing Infrastructure**
+
+### **Test Framework Requirements**
+- **Framework**: Vitest (AI-optimized, fast, and Vite-native)
+- **Coverage**: 90%+ on all critical animation and AI systems
+- **Philosophy**: All tests designed for AI comprehension and maintenance
+- **Focus**: Animation state sync, AI behavior validation, and performance monitoring
+
+### **Test Workflow**
+1. **All new features and bugfixes** must include or update automated tests
+2. **Tests must pass locally** (`npm run test:run`) before PR/merge
+3. **Coverage reports** (`npm run test:coverage`) must meet thresholds
+4. **AI (Cursor) is responsible** for designing, maintaining, and running all tests
+
+### **Animation-Specific Test Requirements**
+- **Model Loading Tests**: Validate animated model loading and performance
+- **Animation State Tests**: Test animation transitions and blending
+- **Multiplayer Sync Tests**: Validate animation synchronization across clients
+- **Performance Tests**: Monitor animation system performance metrics
+- **AI Behavior Tests**: Validate NPC behavior patterns and decision-making
+- **Memory Tests**: Ensure no memory leaks in animation system
+
+### **Test Coverage Targets**
+- **Animation Controller**: 95%+ coverage
+- **NPC AI System**: 90%+ coverage
+- **Animation Synchronization**: 95%+ coverage
+- **Performance Monitoring**: 85%+ coverage
+- **Character Customization**: 80%+ coverage
+
 ## 📈 **Success Metrics**
 
 ### **Animation Quality**
