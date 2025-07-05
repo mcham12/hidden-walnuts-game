@@ -55,6 +55,8 @@ interface PlayerConnection {
   }>;
   isFlagged: boolean;
   flagReason?: string;
+  // TASK 9: Interest management tracking
+  nearbyPlayers?: number;
 }
 
 // Enhanced error types for server-side diagnostics
@@ -116,6 +118,12 @@ export default class ForestManager {
 
   // Add server start time tracking
   private serverStartTime: number = Date.now();
+
+  // TASK 9: Interest Management - Server-side spatial optimization
+  private static readonly INTEREST_RADIUS = 50; // 50 meters visibility range (matches client)
+  private static readonly CULLING_RADIUS = 100; // 100 meters complete culling (matches client)
+  private static readonly UPDATE_INTERVAL = 1000; // Check every 1 second on server
+  private lastInterestUpdate = 0;
 
   constructor(state: DurableObjectState, env: any) {
     this.state = state;
@@ -1705,20 +1713,104 @@ export default class ForestManager {
     };
   }
 
-  // Enhanced broadcast to others
+  // TASK 9: Enhanced broadcast with interest management
   private broadcastToOthers(excludeSquirrelId: string, message: any): void {
+    const now = Date.now();
+    
+    // Update interest areas periodically
+    if (now - this.lastInterestUpdate > ForestManager.UPDATE_INTERVAL) {
+      this.updateInterestAreas();
+      this.lastInterestUpdate = now;
+    }
+    
     const serializedMessage = JSON.stringify(message);
+    let sentCount = 0;
+    let totalPlayers = 0;
     
     for (const [squirrelId, playerConnection] of this.activePlayers) {
-      if (squirrelId !== excludeSquirrelId && playerConnection.socket.readyState === WebSocket.OPEN) {
+      if (squirrelId === excludeSquirrelId || playerConnection.socket.readyState !== WebSocket.OPEN) {
+        continue;
+      }
+      
+      totalPlayers++;
+      
+      // Check if recipient should receive this message based on interest area
+      if (this.shouldSendToPlayer(excludeSquirrelId, squirrelId, message)) {
         try {
           playerConnection.socket.send(serializedMessage);
+          sentCount++;
         } catch (error) {
           Logger.error(LogCategory.WEBSOCKET, `Failed to send message to ${squirrelId}:`, error);
         }
       }
     }
+    
+    // Log performance metrics for interest management
+    if (totalPlayers > 0) {
+      const efficiency = ((sentCount / totalPlayers) * 100).toFixed(1);
+      Logger.debug(LogCategory.WEBSOCKET, `Interest broadcast: ${sentCount}/${totalPlayers} players (${efficiency}% efficiency)`);
+    }
   }
+
+  // TASK 9: Interest area management
+  private updateInterestAreas(): void {
+    const players = Array.from(this.activePlayers.entries());
+    let totalConnections = 0;
+    let inRangeConnections = 0;
+    
+    for (const [squirrelId, playerConnection] of players) {
+      totalConnections++;
+      
+      // Calculate how many other players are in range
+      let nearbyPlayers = 0;
+      for (const [otherSquirrelId, otherPlayer] of players) {
+        if (squirrelId !== otherSquirrelId) {
+          const distance = this.calculateDistance(playerConnection.position, otherPlayer.position);
+          if (distance <= ForestManager.INTEREST_RADIUS) {
+            nearbyPlayers++;
+          }
+        }
+      }
+      
+      if (nearbyPlayers > 0) {
+        inRangeConnections++;
+      }
+      
+      // Store interest area info for efficient lookups
+      playerConnection.nearbyPlayers = nearbyPlayers;
+    }
+    
+    // Log interest area statistics
+    if (totalConnections > 0) {
+      const inRangePercentage = ((inRangeConnections / totalConnections) * 100).toFixed(1);
+      Logger.debug(LogCategory.WEBSOCKET, `Interest areas: ${inRangeConnections}/${totalConnections} players in range (${inRangePercentage}%)`);
+    }
+  }
+
+  // TASK 9: Determine if message should be sent to specific player
+  private shouldSendToPlayer(senderId: string, recipientId: string, message: any): boolean {
+    const sender = this.activePlayers.get(senderId);
+    const recipient = this.activePlayers.get(recipientId);
+    
+    if (!sender || !recipient) return false;
+    
+    // Always send system messages (joins, disconnects, etc.)
+    if (message.type === 'player_joined' || message.type === 'player_disconnected' || 
+        message.type === 'map_reset' || message.type === 'world_state') {
+      return true;
+    }
+    
+    // For player updates, check distance-based interest
+    if (message.type === 'player_update') {
+      const distance = this.calculateDistance(sender.position, recipient.position);
+      return distance <= ForestManager.INTEREST_RADIUS;
+    }
+    
+    // For other message types, use conservative approach (send to all)
+    return true;
+  }
+
+
 
   // Send message to specific socket
   private sendMessage(socket: WebSocket, message: any): void {
