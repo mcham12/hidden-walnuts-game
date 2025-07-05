@@ -485,6 +485,7 @@ export class NetworkSystem extends System {
 
   private handleNetworkMessage(message: NetworkMessage): void {
     Logger.debug(LogCategory.NETWORK, '📨 RAW WEBSOCKET MESSAGE RECEIVED:', message);
+    Logger.info(LogCategory.NETWORK, `⏰ Message received at ${Date.now()}, type: ${message.type}`);
     
     // Skip our own messages, but only if we have a valid squirrelId
     if (message.squirrelId && message.squirrelId === this.localSquirrelId) {
@@ -1151,11 +1152,12 @@ export class NetworkSystem extends System {
   }
 
   private handleInitMessage(message: NetworkMessage): void {
-    Logger.debug(LogCategory.NETWORK, '🚀 Server initialization message received');
+    Logger.info(LogCategory.NETWORK, '🚀 Server initialization message received at', Date.now());
+    Logger.info(LogCategory.NETWORK, '📦 Init message data:', message.data);
     
     // FIRST: Server confirms our squirrel ID
     if (message.data?.confirmedSquirrelId) {
-      Logger.debug(LogCategory.NETWORK, '✅ Server confirmed squirrel ID:', message.data.confirmedSquirrelId);
+      Logger.info(LogCategory.NETWORK, '✅ Server confirmed squirrel ID:', message.data.confirmedSquirrelId);
       this.localSquirrelId = message.data.confirmedSquirrelId;
       this.setPersistentSquirrelId(message.data.confirmedSquirrelId);
     }

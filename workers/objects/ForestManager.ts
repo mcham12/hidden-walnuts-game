@@ -682,7 +682,7 @@ export default class ForestManager {
         Logger.error(LogCategory.PLAYER, `❌ Failed to save initial position for ${squirrelId}:`, error);
       }
       
-      this.sendMessage(socket, {
+      const initMessage = {
         type: 'init',
         squirrelId: squirrelId,
         data: {
@@ -691,7 +691,10 @@ export default class ForestManager {
           savedRotationY: playerConnection.rotationY
         },
         timestamp: Date.now()
-      });
+      };
+      
+      Logger.info(LogCategory.PLAYER, `📤 Sending init message to ${squirrelId} at ${Date.now()}:`, initMessage);
+      this.sendMessage(socket, initMessage);
 
       await this.sendWorldState(socket);
       await this.sendExistingPlayers(socket, squirrelId);
