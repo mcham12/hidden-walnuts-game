@@ -86,6 +86,14 @@ Aggressive position clamping and validation broke terrain, forest, and player co
 - **Position Validation**: ❌ **REMOVED** (caused issues)
 - **Overall Task**: ⚠️ **PARTIALLY COMPLETE** (core features working, validation removed)
 
+## 🐞 Post-Implementation Bugfixes
+
+### Remote Player Mesh Scaling Bug (July 2025)
+- **Symptom:** After reloading a browser, other clients saw the reloaded player as huge and flattened.
+- **Root Cause:** The Three.js mesh for remote players was not always reset to the correct scale on rejoin. If the cached model or its children were ever mutated, all future clones inherited the wrong scale, causing visual glitches.
+- **Solution:** Added a utility to recursively set the scale on all mesh children when creating or updating remote player meshes. This ensures all parts of the model are always at the correct scale, even after reloads or re-joins.
+- **Files Modified:** `client/src/systems/PlayerManager.ts`
+
 ---
 
 **Task 8**: ⚠️ **PARTIALLY IMPLEMENTED - CLAMPING REMOVED**  

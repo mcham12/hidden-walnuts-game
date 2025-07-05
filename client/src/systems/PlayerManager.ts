@@ -19,6 +19,16 @@ interface RemotePlayer {
   isVisible: boolean;
 }
 
+// Utility: Recursively set scale on all mesh children
+function setMeshScaleRecursive(object: THREE.Object3D, scale: number) {
+  object.scale.set(scale, scale, scale);
+  object.traverse(child => {
+    if (child !== object) {
+      child.scale.set(scale, scale, scale);
+    }
+  });
+}
+
 export class PlayerManager extends System {
   private remotePlayers = new Map<string, RemotePlayer>();
   private scene: THREE.Scene | null = null;
@@ -180,11 +190,8 @@ export class PlayerManager extends System {
       // TASK 3 FIX: Additional validation for existing player
       if (existingPlayer.mesh) {
         // Check if mesh has correct scale
-        const currentScale = existingPlayer.mesh.scale;
-        if (Math.abs(currentScale.x - 0.3) > 0.01 || Math.abs(currentScale.y - 0.3) > 0.01 || Math.abs(currentScale.z - 0.3) > 0.01) {
-          Logger.warn(LogCategory.PLAYER, `⚠️ Correcting scale for existing player ${data.squirrelId}: current=${currentScale.x.toFixed(2)},${currentScale.y.toFixed(2)},${currentScale.z.toFixed(2)}, setting to 0.3`);
-          existingPlayer.mesh.scale.set(0.3, 0.3, 0.3);
-        }
+        const targetScale = 0.3;
+        setMeshScaleRecursive(existingPlayer.mesh, targetScale);
       }
       
       // Update existing player
@@ -343,7 +350,7 @@ export class PlayerManager extends System {
           mesh.quaternion.set(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w);
           // TASK 3.4: Player Scaling Consistency - Standardized scale values
           const targetScale = 0.3;
-          mesh.scale.set(targetScale, targetScale, targetScale);
+          setMeshScaleRecursive(mesh, targetScale);
           
           // TASK 3.4: Verify scale was set correctly with validation
           const actualScale = mesh.scale;
