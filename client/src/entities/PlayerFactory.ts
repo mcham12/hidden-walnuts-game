@@ -5,6 +5,7 @@ import { Vector3, Rotation } from '../core/types';
 import { ISceneManager, IAssetManager } from '../GameComposition';
 import { ITerrainService } from '../services/TerrainService';
 import { Logger, LogCategory } from '../core/Logger';
+import * as THREE from 'three';
 
 export class PlayerFactory {
   constructor(
@@ -48,8 +49,14 @@ export class PlayerFactory {
     // Get the actual model from the GLTF scene
     const model = gltf.scene.clone();
     
-    // Scale the model to appropriate size
-    model.scale.setScalar(0.3); // TASK 3 FIX: Match remote player scale for consistency
+    // Scale the model to appropriate size - use recursive scaling for consistency with remote players
+    const targetScale = 0.3;
+    model.scale.set(targetScale, targetScale, targetScale);
+    model.traverse((child: THREE.Object3D) => {
+      if (child !== model) {
+        child.scale.set(targetScale, targetScale, targetScale);
+      }
+    });
     model.position.set(spawnX, spawnY, spawnZ);
     
     // Add to scene
@@ -106,8 +113,14 @@ export class PlayerFactory {
     // Get the actual model from the GLTF scene
     const model = gltf.scene.clone();
     
-    // Scale and position the model
-    model.scale.setScalar(0.3); // TASK 3 FIX: Match local player scale for consistency
+    // Scale and position the model - use recursive scaling for consistency
+    const targetScale = 0.3;
+    model.scale.set(targetScale, targetScale, targetScale);
+    model.traverse((child: THREE.Object3D) => {
+      if (child !== model) {
+        child.scale.set(targetScale, targetScale, targetScale);
+      }
+    });
     model.position.set(position.x, position.y, position.z);
     model.rotation.y = rotation.y; // Use the y rotation value
     
@@ -175,8 +188,14 @@ export class PlayerFactory {
     // Get the actual model from the GLTF scene
     const model = gltf.scene.clone();
     
-    // Scale the model to appropriate size
-    model.scale.setScalar(0.3);
+    // Scale the model to appropriate size - use recursive scaling for consistency
+    const targetScale = 0.3;
+    model.scale.set(targetScale, targetScale, targetScale);
+    model.traverse((child: THREE.Object3D) => {
+      if (child !== model) {
+        child.scale.set(targetScale, targetScale, targetScale);
+      }
+    });
     model.position.set(spawnX, spawnY, spawnZ);
     model.rotation.y = spawnRotationY;
     
