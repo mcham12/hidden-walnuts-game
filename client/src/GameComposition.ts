@@ -511,7 +511,8 @@ export class GameManager {
       let savedPlayerData: { position: any; rotationY: number } | null = null;
       
       try {
-        // Set up a promise to wait for saved position
+        // POSITION PERSISTENCE FIX: Set up event listener BEFORE connecting to network
+        // This ensures the listener is ready when the server sends the init message immediately
         const savedPositionPromise = new Promise<{ position: any; rotationY: number } | null>((resolve) => {
           let resolved = false;
           
@@ -534,7 +535,7 @@ export class GameManager {
           }, 2000); // Reduced from 5000ms to 2000ms for faster response
         });
         
-        // POSITION PERSISTENCE FIX: Connect to network and wait for WebSocket to be ready
+        // POSITION PERSISTENCE FIX: Connect to network AFTER setting up event listener
         await this.networkSystem.connect();
         Logger.info(LogCategory.NETWORK, '✅ Multiplayer connection established');
         
