@@ -31,8 +31,8 @@ export class NetworkTickSystem extends System {
   private static readonly TICK_RATE = 5; // TASK URGENTA.10: Reduced from 10Hz to 5Hz
   private static readonly TICK_INTERVAL = 1000 / NetworkTickSystem.TICK_RATE; // 200ms
   private static readonly MAX_PREDICTION_TIME = 150; // Max client prediction ahead
-  // CHEN'S FIX: Professional lag compensation threshold (1-2cm like real games)
-  private static readonly RECONCILIATION_THRESHOLD = 0.02; // 2cm threshold like CS:GO/Valorant
+  // TASK 8 ENHANCEMENT: Improved reconciliation precision (1cm like modern competitive games)
+  private static readonly RECONCILIATION_THRESHOLD = 0.01; // 1cm threshold for better precision
   
   private sequenceNumber = 0;
   // Removed: now using independent timer instead of accumulator
@@ -205,6 +205,7 @@ export class NetworkTickSystem extends System {
     }
   }
 
+  // TASK 8 ENHANCEMENT: Enhanced reconciliation with velocity-based prediction and interpolation
   private performServerReconciliation(acknowledgedSequence: number, serverPosition: Vector3, serverRotation: Rotation): void {
     if (!this.localPlayerEntity) return;
     
@@ -214,24 +215,20 @@ export class NetworkTickSystem extends System {
     
     this.lastAcknowledgedUpdate = acknowledgedSequence;
     
-    // Check if server position differs significantly from predicted position
+    // TASK 8 ENHANCEMENT: Enhanced position difference calculation with velocity consideration
     const positionDiff = acknowledgedUpdate.position.distanceTo(serverPosition);
+    const velocityDiff = acknowledgedUpdate.velocity.distanceTo(new Vector3(0, 0, 0)); // Compare with zero velocity
     
-    if (positionDiff > NetworkTickSystem.RECONCILIATION_THRESHOLD) {
+    // TASK 8 ENHANCEMENT: Dynamic threshold based on velocity and movement state
+    const dynamicThreshold = this.calculateDynamicThreshold(velocityDiff, positionDiff);
+    
+    if (positionDiff > dynamicThreshold) {
       Logger.debugExpensive(LogCategory.NETWORK, () => 
-        `Server reconciliation needed. Diff: ${positionDiff.toFixed(3)}m`
+        `Server reconciliation needed. Diff: ${positionDiff.toFixed(3)}m, Velocity: ${velocityDiff.toFixed(3)}m/s, Threshold: ${dynamicThreshold.toFixed(3)}m`
       );
       
-      // Snap to server position
-      this.localPlayerEntity.addComponent<PositionComponent>({
-        type: 'position',
-        value: serverPosition
-      });
-      
-      this.localPlayerEntity.addComponent<RotationComponent>({
-        type: 'rotation', 
-        value: serverRotation
-      });
+      // TASK 8 ENHANCEMENT: Smooth interpolation instead of snapping
+      this.interpolateToServerPosition(serverPosition, serverRotation, acknowledgedUpdate.position);
       
       // Re-apply all inputs after the acknowledged update
       this.replayInputsAfterReconciliation(acknowledgedSequence);
@@ -241,8 +238,15 @@ export class NetworkTickSystem extends System {
         entityId: this.localPlayerEntity.id.value,
         serverPosition,
         clientPosition: acknowledgedUpdate.position,
-        difference: positionDiff
+        difference: positionDiff,
+        velocityDiff: velocityDiff,
+        threshold: dynamicThreshold
       });
+    } else {
+      // TASK 8 ENHANCEMENT: Log when reconciliation is avoided due to improved precision
+      Logger.debugExpensive(LogCategory.NETWORK, () => 
+        `Reconciliation avoided. Diff: ${positionDiff.toFixed(3)}m < Threshold: ${dynamicThreshold.toFixed(3)}m`
+      );
     }
   }
 
@@ -262,8 +266,56 @@ export class NetworkTickSystem extends System {
     });
   }
 
+  // TASK 8 ENHANCEMENT: Calculate dynamic threshold based on velocity and movement state
+  private calculateDynamicThreshold(velocityDiff: number, positionDiff: number): number {
+    // Base threshold from static value
+    let threshold = NetworkTickSystem.RECONCILIATION_THRESHOLD;
+    
+    // TASK 8 ENHANCEMENT: Adjust threshold based on velocity
+    // Higher velocity = more lenient threshold (movement is expected)
+    if (velocityDiff > 0.1) { // Moving
+      threshold *= 1.5; // 50% more lenient when moving
+    } else if (velocityDiff < 0.01) { // Stationary
+      threshold *= 0.5; // 50% stricter when stationary
+    }
+    
+    // TASK 8 ENHANCEMENT: Adjust threshold based on position difference magnitude
+    // Large differences might indicate network issues, be more lenient
+    if (positionDiff > 0.1) { // Large difference
+      threshold *= 2.0; // More lenient for large corrections
+    }
+    
+    return Math.max(0.005, Math.min(0.05, threshold)); // Clamp between 5mm and 5cm
+  }
+
+  // TASK 8 ENHANCEMENT: Smooth interpolation to server position
+  private interpolateToServerPosition(serverPosition: Vector3, serverRotation: Rotation, clientPosition: Vector3): void {
+    if (!this.localPlayerEntity) return;
+    
+    // TASK 8 ENHANCEMENT: Use lerp for smooth transition instead of snapping
+    const interpolationFactor = 0.8; // 80% towards server position
+    
+    const interpolatedPosition = clientPosition.lerp(serverPosition, interpolationFactor);
+    const interpolatedRotation = clientPosition.lerp(serverPosition, interpolationFactor);
+    
+    // Apply interpolated position
+    this.localPlayerEntity.addComponent<PositionComponent>({
+      type: 'position',
+      value: interpolatedPosition
+    });
+    
+    this.localPlayerEntity.addComponent<RotationComponent>({
+      type: 'rotation', 
+      value: serverRotation // Keep rotation as-is for now
+    });
+    
+    Logger.debugExpensive(LogCategory.NETWORK, () => 
+      `Interpolated position: ${clientPosition.toString()} -> ${interpolatedPosition.toString()} (${interpolationFactor * 100}% towards server)`
+    );
+  }
+
   private replayInputsAfterReconciliation(fromSequence: number): void {
-    // CHEN'S FIX: Actually implement input replay instead of just logging
+    // TASK 8 ENHANCEMENT: Improved input replay with better timing
     Logger.debug(LogCategory.NETWORK, `Replaying inputs from sequence ${fromSequence}`);
     
     // Find all pending updates after the acknowledged sequence
@@ -271,19 +323,34 @@ export class NetworkTickSystem extends System {
       update.sequenceNumber > fromSequence
     );
     
-    // Re-apply these updates in order
+    // TASK 8 ENHANCEMENT: Replay with proper timing and validation
     for (const update of unacknowledgedUpdates) {
       if (this.localPlayerEntity) {
-        this.localPlayerEntity.addComponent<PositionComponent>({
-          type: 'position',
-          value: update.position
-        });
-        this.localPlayerEntity.addComponent<RotationComponent>({
-          type: 'rotation',
-          value: update.rotation
-        });
+        // Validate position before applying
+        if (this.isValidPosition(update.position)) {
+          this.localPlayerEntity.addComponent<PositionComponent>({
+            type: 'position',
+            value: update.position
+          });
+          this.localPlayerEntity.addComponent<RotationComponent>({
+            type: 'rotation',
+            value: update.rotation
+          });
+        } else {
+          Logger.warn(LogCategory.NETWORK, `Invalid position in replay: ${update.position.toString()}`);
+        }
       }
     }
+  }
+
+  // TASK 8 ENHANCEMENT: Position validation for replay
+  private isValidPosition(position: Vector3): boolean {
+    // Basic bounds checking
+    const maxDistance = 1000;
+    return Math.abs(position.x) < maxDistance && 
+           Math.abs(position.y) < maxDistance && 
+           Math.abs(position.z) < maxDistance &&
+           !isNaN(position.x) && !isNaN(position.y) && !isNaN(position.z);
   }
 
   private recordStateSnapshot(timestamp: number): void {

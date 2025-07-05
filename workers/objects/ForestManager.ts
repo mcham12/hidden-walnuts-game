@@ -833,6 +833,17 @@ export default class ForestManager {
           // POSITION PERSISTENCE FIX: Handle position confirmation from client
           Logger.debug(LogCategory.SESSION, `✅ Position confirmation received from ${playerConnection.squirrelId}`);
           break;
+        case "player_state":
+          // TASK 8 ENHANCEMENT: Handle enhanced player state updates with sequence numbers
+          await this.handlePlayerUpdate(playerConnection, {
+            ...data,
+            type: 'player_update', // Convert to standard player_update format
+            position: data.position,
+            rotationY: data.rotation?.y || 0,
+            sequenceNumber: data.sequenceNumber || 0,
+            velocity: data.velocity || { x: 0, y: 0, z: 0 }
+          });
+          break;
         case "goodbye":
           // POSITION PERSISTENCE FIX: Handle graceful disconnect
           Logger.info(LogCategory.SESSION, `👋 Graceful disconnect from ${playerConnection.squirrelId}:`, data);
@@ -998,6 +1009,20 @@ export default class ForestManager {
       Logger.debug(LogCategory.SESSION, `💾 Saving position for ${playerConnection.squirrelId}:`, data.position);
       await this.updatePlayerSession(playerConnection);
 
+      // TASK 8 ENHANCEMENT: Enhanced server acknowledgment with sequence numbers
+      const sequenceNumber = data.sequenceNumber || 0;
+      
+      // Send acknowledgment to the client
+      this.sendMessage(playerConnection.socket, {
+        type: 'player_update_ack',
+        squirrelId: playerConnection.squirrelId,
+        acknowledgedSequence: sequenceNumber,
+        serverPosition: data.position,
+        serverRotation: { y: data.rotationY || 0 },
+        serverTimestamp: now,
+        confidence: validation.isValid ? 'high' : 'corrected'
+      });
+      
       // Broadcast authoritative position to other players
       this.broadcastToOthers(playerConnection.squirrelId, {
         type: 'player_update',
@@ -1005,6 +1030,7 @@ export default class ForestManager {
         position: data.position,
         rotationY: data.rotationY,
         timestamp: now,
+        sequenceNumber: sequenceNumber,
         authoritative: true // Mark as server-authoritative
       });
       

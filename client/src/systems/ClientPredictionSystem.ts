@@ -203,52 +203,102 @@ export class ClientPredictionSystem extends System {
     return moved;
   }
 
+  // TASK 8 ENHANCEMENT: Enhanced server reconciliation with better input replay
   private handleServerReconciliation(data: {
     entityId: string;
     serverPosition: Vector3;
     clientPosition: Vector3;
     difference: number;
+    velocityDiff?: number;
+    threshold?: number;
   }): void {
     if (!this.localPlayerEntity || this.localPlayerEntity.id.value !== data.entityId) {
       return;
     }
     
-    Logger.warn(LogCategory.NETWORK, `Server reconciliation - diff: ${data.difference.toFixed(3)}m`);
+    Logger.debug(LogCategory.NETWORK, `🔄 Server reconciliation: Client (${data.clientPosition.x.toFixed(2)}, ${data.clientPosition.z.toFixed(2)}) -> Server (${data.serverPosition.x.toFixed(2)}, ${data.serverPosition.z.toFixed(2)}) Diff: ${data.difference.toFixed(3)}m`);
     
-    // Find the point where we diverged from server
-    // In a full implementation, this would find the exact input sequence
-    // For now, we'll replay the last few inputs
+    // TASK 8 ENHANCEMENT: Use smooth interpolation instead of snapping
+    this.interpolateToServerPosition(data.serverPosition, data.clientPosition);
     
+    // TASK 8 ENHANCEMENT: Enhanced input replay with validation
     this.replayInputsFromPosition(data.serverPosition);
+    
+    // TASK 8 ENHANCEMENT: Emit detailed reconciliation event
+    this.eventBus.emit('prediction.reconciliation_performed', {
+      entityId: data.entityId,
+      serverPosition: data.serverPosition,
+      clientPosition: data.clientPosition,
+      difference: data.difference,
+      velocityDiff: data.velocityDiff || 0,
+      threshold: data.threshold || 0.01,
+      timestamp: performance.now()
+    });
   }
 
+  // TASK 8 ENHANCEMENT: Smooth interpolation to server position
+  private interpolateToServerPosition(serverPosition: Vector3, clientPosition: Vector3): void {
+    if (!this.localPlayerEntity) return;
+    
+    // TASK 8 ENHANCEMENT: Use lerp for smooth transition instead of snapping
+    const interpolationFactor = 0.7; // 70% towards server position for smoother transition
+    
+    const interpolatedPosition = clientPosition.lerp(serverPosition, interpolationFactor);
+    
+    // Apply interpolated position
+    this.localPlayerEntity.addComponent<PositionComponent>({
+      type: 'position',
+      value: interpolatedPosition
+    });
+    
+    Logger.debugExpensive(LogCategory.NETWORK, () => 
+      `Interpolated position: ${clientPosition.toString()} -> ${interpolatedPosition.toString()} (${interpolationFactor * 100}% towards server)`
+    );
+  }
+
+  // TASK 8 ENHANCEMENT: Enhanced input replay with better timing and validation
   private replayInputsFromPosition(serverPosition: Vector3): void {
     if (!this.localPlayerEntity) return;
     
-    // Set position to server authoritative state
-    this.localPlayerEntity.addComponent<PositionComponent>({
-      type: 'position',
-      value: serverPosition
-    });
+    // TASK 8 ENHANCEMENT: Use interpolated position instead of direct server position
+    this.interpolateToServerPosition(serverPosition, this.localPlayerEntity.getComponent<PositionComponent>('position')?.value || new Vector3(0, 0, 0));
     
-    // CHEN'S FIX: Replay inputs AFTER the acknowledged sequence, not last N inputs
+    // TASK 8 ENHANCEMENT: Replay inputs AFTER the acknowledged sequence with validation
     const inputsToReplay = this.inputHistory.filter(input => 
       input.sequenceNumber > this.lastProcessedSequence
     );
     
     Logger.debug(LogCategory.NETWORK, `Replaying ${inputsToReplay.length} inputs after sequence ${this.lastProcessedSequence}`);
     
+    // TASK 8 ENHANCEMENT: Replay with proper timing and validation
     for (const inputSnapshot of inputsToReplay) {
-      // Re-apply this input with exact timing
-      const inputComponent: InputComponent = {
-        type: 'input',
-        ...inputSnapshot.input
-      };
+      // Validate input before replaying
+      if (this.isValidInput(inputSnapshot.input)) {
+        const inputComponent: InputComponent = {
+          type: 'input',
+          ...inputSnapshot.input
+        };
         
-              this.applyMovement(this.localPlayerEntity, inputComponent, 1/60); // Use fixed timestep for replay
+        // TASK 8 ENHANCEMENT: Use exact timing from snapshot
+        const timeSinceSnapshot = (performance.now() - inputSnapshot.timestamp) / 1000;
+        const replayDeltaTime = Math.max(0.001, Math.min(0.1, timeSinceSnapshot)); // Clamp between 1ms and 100ms
+        
+        this.applyMovement(this.localPlayerEntity, inputComponent, replayDeltaTime);
+      } else {
+        Logger.warn(LogCategory.NETWORK, `Invalid input in replay: ${JSON.stringify(inputSnapshot.input)}`);
+      }
     }
     
     Logger.debug(LogCategory.NETWORK, `Replayed ${inputsToReplay.length} inputs after reconciliation`);
+  }
+
+  // TASK 8 ENHANCEMENT: Input validation for replay
+  private isValidInput(input: any): boolean {
+    return input && 
+           typeof input.forward === 'boolean' &&
+           typeof input.backward === 'boolean' &&
+           typeof input.turnLeft === 'boolean' &&
+           typeof input.turnRight === 'boolean';
   }
 
   private cleanupInputHistory(): void {
