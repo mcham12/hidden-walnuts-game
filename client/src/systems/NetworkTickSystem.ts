@@ -296,7 +296,6 @@ export class NetworkTickSystem extends System {
     const interpolationFactor = 0.8; // 80% towards server position
     
     const interpolatedPosition = clientPosition.lerp(serverPosition, interpolationFactor);
-    const interpolatedRotation = clientPosition.lerp(serverPosition, interpolationFactor);
     
     // Apply interpolated position
     this.localPlayerEntity.addComponent<PositionComponent>({
