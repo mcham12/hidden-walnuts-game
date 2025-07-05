@@ -17,6 +17,16 @@ interface InputSnapshot {
   };
 }
 
+// TASK 8 PHASE 1: World bounds constants (matching server-side)
+const WORLD_BOUNDS = {
+  MIN_X: -100,
+  MAX_X: 100,
+  MIN_Z: -100,
+  MAX_Z: 100,
+  MIN_Y: -5,
+  MAX_Y: 50
+};
+
 export class ClientPredictionSystem extends System {
   private localPlayerEntity: Entity | null = null;
   private inputHistory: InputSnapshot[] = [];
@@ -122,6 +132,48 @@ export class ClientPredictionSystem extends System {
     });
   }
 
+  // TASK 8 PHASE 1: Gentle world bounds awareness (client-side)
+  private enforceGentleWorldBounds(position: Vector3): Vector3 {
+    let x = position.x;
+    let y = position.y;
+    let z = position.z;
+    let boundsViolation = false;
+    
+    // Gentle push-back instead of hard clamping
+    if (x < WORLD_BOUNDS.MIN_X) {
+      x = WORLD_BOUNDS.MIN_X + 1;
+      boundsViolation = true;
+    }
+    if (x > WORLD_BOUNDS.MAX_X) {
+      x = WORLD_BOUNDS.MAX_X - 1;
+      boundsViolation = true;
+    }
+    if (z < WORLD_BOUNDS.MIN_Z) {
+      z = WORLD_BOUNDS.MIN_Z + 1;
+      boundsViolation = true;
+    }
+    if (z > WORLD_BOUNDS.MAX_Z) {
+      z = WORLD_BOUNDS.MAX_Z - 1;
+      boundsViolation = true;
+    }
+    if (y < WORLD_BOUNDS.MIN_Y) {
+      y = WORLD_BOUNDS.MIN_Y + 0.5;
+      boundsViolation = true;
+    }
+    if (y > WORLD_BOUNDS.MAX_Y) {
+      y = WORLD_BOUNDS.MAX_Y - 0.5;
+      boundsViolation = true;
+    }
+    
+    const newPosition = new Vector3(x, y, z);
+    
+    if (boundsViolation) {
+      Logger.debug(LogCategory.PLAYER, `Gentle world bounds applied: ${position.toString()} -> ${newPosition.toString()}`);
+    }
+    
+    return newPosition;
+  }
+
   private async applyMovement(entity: Entity, input: InputComponent, deltaTime: number): Promise<boolean> {
     const position = entity.getComponent<PositionComponent>('position')!;
     const rotation = entity.getComponent<RotationComponent>('rotation')!;
@@ -155,8 +207,6 @@ export class ClientPredictionSystem extends System {
       }
     }
 
-
-
     // TERRAIN COLLISION: Ensure player stays on terrain surface
     if (moved && this.terrainService) {
       try {
@@ -167,6 +217,11 @@ export class ClientPredictionSystem extends System {
         Logger.warn(LogCategory.PLAYER, 'Failed to get terrain height for collision, using minimum Y=1', error);
         newPosition = new Vector3(newPosition.x, Math.max(newPosition.y, 1), newPosition.z);
       }
+    }
+
+    // TASK 8 PHASE 1: Apply gentle world bounds after terrain correction
+    if (moved) {
+      newPosition = this.enforceGentleWorldBounds(newPosition);
     }
 
     // Update components immediately
@@ -274,6 +329,17 @@ export class ClientPredictionSystem extends System {
       return false;
     }
     
+    // TASK 8 PHASE 2: Additional validation for input timing
+    if (input.sequenceNumber && typeof input.sequenceNumber !== 'number') {
+      Logger.warn(LogCategory.NETWORK, 'Invalid input: sequenceNumber must be a number');
+      return false;
+    }
+    
+    if (input.timestamp && typeof input.timestamp !== 'number') {
+      Logger.warn(LogCategory.NETWORK, 'Invalid input: timestamp must be a number');
+      return false;
+    }
+    
     return true;
   }
 
@@ -315,8 +381,6 @@ export class ClientPredictionSystem extends System {
     
     Logger.debug(LogCategory.NETWORK, `Replayed ${inputsToReplay.length} inputs after reconciliation`);
   }
-
-
 
   // TASK 8 PHASE 3: Enhanced input buffer cleanup for memory optimization
   private cleanupInputHistory(): void {

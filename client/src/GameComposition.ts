@@ -219,9 +219,9 @@ export class SceneManager implements ISceneManager {
   updateCameraToFollowPlayer(playerPosition: { x: number; y: number; z: number }, playerRotation: { y: number }): void {
     if (!this.camera) return;
     
-    // Camera configuration constants - CLOSER CAMERA FOR BETTER GAMEPLAY
-    const baseDistance = 4; // Reduced from 8 to 4 for closer camera
-    const baseHeight = 3; // Reduced from 5 to 3 for lower camera angle
+    // Camera configuration constants - EVEN CLOSER CAMERA FOR BETTER GAMEPLAY
+    const baseDistance = 2.5; // Reduced from 4 to 2.5 for even closer camera
+    const baseHeight = 2; // Reduced from 3 to 2 for even lower camera angle
     const minHeight = 2; // Minimum camera height above terrain
     const maxHeight = 15; // Maximum camera height for steep terrain
     const lerpSpeed = 0.08; // Slightly slower for smoother movement

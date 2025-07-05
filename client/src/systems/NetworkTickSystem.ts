@@ -313,6 +313,48 @@ export class NetworkTickSystem extends System {
     );
   }
 
+  // TASK 8 ENHANCEMENT: Position validation for replay
+  private isValidPosition(position: Vector3): boolean {
+    // Basic bounds checking
+    const maxDistance = 1000;
+    return Math.abs(position.x) < maxDistance && 
+           Math.abs(position.y) < maxDistance && 
+           Math.abs(position.z) < maxDistance &&
+           !isNaN(position.x) && !isNaN(position.y) && !isNaN(position.z);
+  }
+
+  // TASK 8 PHASE 2: Enhanced input validation for replay
+  private isValidInputReplay(update: PendingUpdate): boolean {
+    // Validate sequence number
+    if (update.sequenceNumber <= this.lastAcknowledgedUpdate) {
+      Logger.warn(LogCategory.NETWORK, `Invalid replay: sequence ${update.sequenceNumber} already acknowledged`);
+      return false;
+    }
+    
+    // Validate timestamp
+    const now = performance.now();
+    const age = now - update.timestamp;
+    if (age > NetworkTickSystem.MAX_PREDICTION_TIME) {
+      Logger.warn(LogCategory.NETWORK, `Invalid replay: update too old (${age.toFixed(0)}ms)`);
+      return false;
+    }
+    
+    // Validate position
+    if (!this.isValidPosition(update.position)) {
+      Logger.warn(LogCategory.NETWORK, `Invalid replay: invalid position ${update.position.toString()}`);
+      return false;
+    }
+    
+    // TASK 8 PHASE 2: Validate velocity consistency
+    const velocityMagnitude = update.velocity.distanceTo(new Vector3(0, 0, 0));
+    if (velocityMagnitude > 20) { // Max reasonable velocity
+      Logger.warn(LogCategory.NETWORK, `Invalid replay: excessive velocity ${velocityMagnitude.toFixed(1)}`);
+      return false;
+    }
+    
+    return true;
+  }
+
   private replayInputsAfterReconciliation(fromSequence: number): void {
     // TASK 8 ENHANCEMENT: Improved input replay with better timing
     Logger.debug(LogCategory.NETWORK, `Replaying inputs from sequence ${fromSequence}`);
@@ -322,11 +364,11 @@ export class NetworkTickSystem extends System {
       update.sequenceNumber > fromSequence
     );
     
-    // TASK 8 ENHANCEMENT: Replay with proper timing and validation
+    // TASK 8 PHASE 2: Enhanced replay with validation
+    let validReplays = 0;
     for (const update of unacknowledgedUpdates) {
-      if (this.localPlayerEntity) {
-        // Validate position before applying
-        if (this.isValidPosition(update.position)) {
+      if (this.isValidInputReplay(update)) {
+        if (this.localPlayerEntity) {
           this.localPlayerEntity.addComponent<PositionComponent>({
             type: 'position',
             value: update.position
@@ -335,21 +377,14 @@ export class NetworkTickSystem extends System {
             type: 'rotation',
             value: update.rotation
           });
-        } else {
-          Logger.warn(LogCategory.NETWORK, `Invalid position in replay: ${update.position.toString()}`);
+          validReplays++;
         }
+      } else {
+        Logger.warn(LogCategory.NETWORK, `Skipping invalid replay: sequence ${update.sequenceNumber}`);
       }
     }
-  }
-
-  // TASK 8 ENHANCEMENT: Position validation for replay
-  private isValidPosition(position: Vector3): boolean {
-    // Basic bounds checking
-    const maxDistance = 1000;
-    return Math.abs(position.x) < maxDistance && 
-           Math.abs(position.y) < maxDistance && 
-           Math.abs(position.z) < maxDistance &&
-           !isNaN(position.x) && !isNaN(position.y) && !isNaN(position.z);
+    
+    Logger.debug(LogCategory.NETWORK, `Replayed ${validReplays}/${unacknowledgedUpdates.length} valid inputs after reconciliation`);
   }
 
   private recordStateSnapshot(timestamp: number): void {
