@@ -12,7 +12,7 @@ import { MovementSystem } from './systems/MovementSystem';
 import { ClientPredictionSystem } from './systems/ClientPredictionSystem';
 import { NetworkSystem } from './systems/NetworkSystem';
 import { PlayerManager } from './systems/PlayerManager';
-import { MovementConfig, WorldBounds } from './core/types';
+import { MovementConfig } from './core/types';
 import { InterpolationSystem } from './systems/InterpolationSystem';
 import { RenderSystem } from './systems/RenderSystem';
 import { NetworkTickSystem } from './systems/NetworkTickSystem';
@@ -885,7 +885,6 @@ export function configureServices(): void {
     return new MovementSystem(
       container.resolve<EventBus>(ServiceTokens.EVENT_BUS),
       MovementConfig.default(),
-      WorldBounds.default(),
       container.resolve(ServiceTokens.TERRAIN_SERVICE)
     );
   });
@@ -895,7 +894,6 @@ export function configureServices(): void {
       container.resolve<EventBus>(ServiceTokens.EVENT_BUS),
       container.resolve<InputManager>(ServiceTokens.INPUT_MANAGER),
       MovementConfig.default(),
-      WorldBounds.default(),
       container.resolve(ServiceTokens.TERRAIN_SERVICE)
     );
   });

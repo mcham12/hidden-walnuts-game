@@ -1983,9 +1983,11 @@ export default class ForestManager {
           // POSITION PERSISTENCE FIX: Always accept saved positions, then correct if needed
           Logger.info(LogCategory.SESSION, `✅ Found saved position for ${squirrelId}:`, savedPlayerData.position);
           
-          // Always correct the position to ensure it's valid for terrain
+          // POSITION PERSISTENCE FIX: Always correct the position to ensure it's valid for terrain and world bounds
           const terrainHeight = this.getTerrainHeight(savedPlayerData.position.x, savedPlayerData.position.z);
-          const correctedPosition = this.correctPlayerPosition(savedPlayerData.position);
+          let correctedPosition = this.correctPlayerPosition(savedPlayerData.position);
+          
+
           
           // Check if position needed correction
           if (Math.abs(correctedPosition.y - savedPlayerData.position.y) > 0.1) {

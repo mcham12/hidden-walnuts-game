@@ -2,7 +2,7 @@
 
 import { System, Entity, PositionComponent, RotationComponent, InputComponent, VelocityComponent, NetworkComponent } from '../ecs';
 import { EventBus, GameEvents } from '../core/EventBus';
-import { Vector3, MovementConfig, WorldBounds } from '../core/types';
+import { Vector3, MovementConfig } from '../core/types';
 import { Logger, LogCategory } from '../core/Logger';
 import { InputManager } from '../GameComposition';
 
@@ -26,7 +26,7 @@ export class ClientPredictionSystem extends System {
   private lastProcessedSequence = 0;
   private inputManager?: InputManager;
   private movementConfig!: MovementConfig;
-  private worldBounds!: WorldBounds;
+
   private terrainService: any; // TerrainService for height checks
   
   // Prediction and rollback state
@@ -35,13 +35,12 @@ export class ClientPredictionSystem extends System {
     eventBus: EventBus,
     inputManager: InputManager,
     movementConfig: MovementConfig,
-    worldBounds: WorldBounds,
     terrainService: any // Add terrain service
   ) {
     super(eventBus, ['position', 'rotation', 'input', 'network'], 'ClientPredictionSystem');
     this.inputManager = inputManager;
     this.movementConfig = movementConfig;
-    this.worldBounds = worldBounds;
+
     this.terrainService = terrainService; // Store terrain service
     
     // Listen for server reconciliation
@@ -158,8 +157,7 @@ export class ClientPredictionSystem extends System {
       }
     }
 
-    // Apply world bounds (client-side validation)
-    newPosition = this.worldBounds.clamp(newPosition);
+
 
     // TERRAIN COLLISION: Ensure player stays on terrain surface
     if (moved && this.terrainService) {
@@ -260,8 +258,11 @@ export class ClientPredictionSystem extends System {
   private replayInputsFromPosition(serverPosition: Vector3): void {
     if (!this.localPlayerEntity) return;
     
-    // TASK 8 ENHANCEMENT: Use interpolated position instead of direct server position
-    this.interpolateToServerPosition(serverPosition, this.localPlayerEntity.getComponent<PositionComponent>('position')?.value || new Vector3(0, 0, 0));
+    // TASK 8 ENHANCEMENT: Set position directly to server position for replay (no double interpolation)
+    this.localPlayerEntity.addComponent<PositionComponent>({
+      type: 'position',
+      value: serverPosition
+    });
     
     // TASK 8 ENHANCEMENT: Replay inputs AFTER the acknowledged sequence with validation
     const inputsToReplay = this.inputHistory.filter(input => 

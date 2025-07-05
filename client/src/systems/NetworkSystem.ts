@@ -1149,28 +1149,37 @@ export class NetworkSystem extends System {
     if (message.data?.savedPosition) {
       Logger.info(LogCategory.NETWORK, '📍 Applying saved position from server:', message.data.savedPosition);
       
-      // POSITION PERSISTENCE FIX: Validate saved position before applying
-      if (this.isValidPosition(message.data.savedPosition)) {
-        this.eventBus.emit('apply_saved_position', {
-          position: message.data.savedPosition,
-          rotationY: message.data.savedRotationY || 0
-        });
-        
-        // POSITION PERSISTENCE FIX: Send confirmation to server that position was received
-        if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-          this.websocket.send(JSON.stringify({
-            type: 'position_confirmation',
-            squirrelId: this.localSquirrelId!,
-            confirmedPosition: message.data.savedPosition,
-            timestamp: Date.now()
-          }));
-          Logger.info(LogCategory.NETWORK, '✅ Position confirmation sent to server');
-        } else {
-          Logger.warn(LogCategory.NETWORK, '⚠️ WebSocket not ready, cannot send position confirmation');
-        }
+          // POSITION PERSISTENCE FIX: Validate saved position before applying
+    if (this.isValidPosition(message.data.savedPosition)) {
+      this.eventBus.emit('apply_saved_position', {
+        position: message.data.savedPosition,
+        rotationY: message.data.savedRotationY || 0
+      });
+      
+      // POSITION PERSISTENCE FIX: Send confirmation to server that position was received
+      if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+        this.websocket.send(JSON.stringify({
+          type: 'position_confirmation',
+          squirrelId: this.localSquirrelId!,
+          confirmedPosition: message.data.savedPosition,
+          timestamp: Date.now()
+        }));
+        Logger.info(LogCategory.NETWORK, '✅ Position confirmation sent to server');
       } else {
-        Logger.warn(LogCategory.NETWORK, '⚠️ Invalid saved position received from server:', message.data.savedPosition);
+        Logger.warn(LogCategory.NETWORK, '⚠️ WebSocket not ready, cannot send position confirmation');
       }
+    } else {
+      Logger.warn(LogCategory.NETWORK, '⚠️ Invalid saved position received from server:', message.data.savedPosition);
+      
+      // POSITION PERSISTENCE FIX: Use fallback position if server sends invalid position
+      const fallbackPosition = { x: 0, y: 2, z: 0 };
+      Logger.info(LogCategory.NETWORK, '🔄 Using fallback position:', fallbackPosition);
+      
+      this.eventBus.emit('apply_saved_position', {
+        position: fallbackPosition,
+        rotationY: 0
+      });
+    }
     } else {
       Logger.info(LogCategory.NETWORK, 'ℹ️ No saved position in init message, will use random spawn');
     }
@@ -1205,9 +1214,9 @@ export class NetworkSystem extends System {
            !isNaN(position.x) && 
            !isNaN(position.y) && 
            !isNaN(position.z) &&
-           Math.abs(position.x) < 1000 && 
-           Math.abs(position.y) < 1000 && 
-           Math.abs(position.z) < 1000;
+           Math.abs(position.x) < 200 && // Tighter bounds to match world bounds
+           Math.abs(position.y) < 100 && 
+           Math.abs(position.z) < 200; // Tighter bounds to match world bounds
   }
 
   private handleExistingPlayers(message: NetworkMessage): void {

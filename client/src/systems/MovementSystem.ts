@@ -2,7 +2,7 @@
 
 import { System, Entity, PositionComponent, RotationComponent, InputComponent, RenderComponent } from '../ecs';
 import { EventBus } from '../core/EventBus';
-import { MovementConfig, WorldBounds, Vector3 } from '../core/types';
+import { MovementConfig, Vector3 } from '../core/types';
 import { Logger, LogCategory } from '../core/Logger';
 
 export class MovementSystem extends System {
@@ -11,7 +11,6 @@ export class MovementSystem extends System {
   constructor(
     eventBus: EventBus,
     private config: MovementConfig,
-    private worldBounds: WorldBounds,
     terrainService?: any // Add terrain service
   ) {
     super(eventBus, ['position', 'rotation', 'input'], 'MovementSystem');
@@ -64,8 +63,7 @@ export class MovementSystem extends System {
       }
     }
 
-    // Apply world bounds
-    newPosition = this.worldBounds.clamp(newPosition);
+
 
     // TERRAIN COLLISION: Ensure remote players stay on terrain surface
     if (moved && this.terrainService) {
