@@ -87,7 +87,7 @@ class GameLogger {
       case 'development':
         return LogLevel.DEBUG;
       case 'preview':
-        return LogLevel.INFO; // Reduce console spam in preview
+        return LogLevel.WARN; // TASK 8 FIX: Reduce console spam in preview - only show WARN and ERROR
       case 'production':
         return LogLevel.ERROR;
       default:
@@ -100,7 +100,7 @@ class GameLogger {
       case 'development':
         return new Set(Object.values(LogCategory)); // All categories
       case 'preview':
-        return new Set(Object.values(LogCategory)); // All categories for testing
+        return new Set([LogCategory.CORE, LogCategory.NETWORK, LogCategory.PLAYER]); // TASK 8 FIX: Reduce categories in preview
       case 'production':
         return new Set([LogCategory.CORE, LogCategory.NETWORK]); // Critical only
       default:

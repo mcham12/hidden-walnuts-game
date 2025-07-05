@@ -23,10 +23,10 @@ export async function createForest(): Promise<THREE.Object3D[]> {
   // Fetch forest object positions from backend
   try {
     const fetchUrl = `${API_BASE}/forest-objects`;
-    Logger.info(LogCategory.TERRAIN, `Fetching forest objects from: ${fetchUrl}`);
+    Logger.debug(LogCategory.TERRAIN, `Fetching forest objects from: ${fetchUrl}`);
     
     const response = await fetch(fetchUrl);
-    Logger.info(LogCategory.TERRAIN, `Forest response status: ${response.status}`);
+    Logger.debug(LogCategory.TERRAIN, `Forest response status: ${response.status}`);
     
     if (!response.ok) {
       const errorText = await response.text();
@@ -36,8 +36,8 @@ export async function createForest(): Promise<THREE.Object3D[]> {
     
     // Debug: Log raw response
     const responseText = await response.text();
-    Logger.info(LogCategory.TERRAIN, `Forest raw response length: ${responseText.length} chars`);
-    Logger.info(LogCategory.TERRAIN, `Forest raw response preview: ${responseText.substring(0, 200)}...`);
+    Logger.debug(LogCategory.TERRAIN, `Forest raw response length: ${responseText.length} chars`);
+    Logger.debug(LogCategory.TERRAIN, `Forest raw response preview: ${responseText.substring(0, 200)}...`);
     
     // Try to parse JSON
     let data;

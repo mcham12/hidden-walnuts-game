@@ -11,11 +11,7 @@ class Application {
   private lastQualityUpdate: number = 0; // TASK URGENTA.8: Track last quality update time
 
   async initialize(): Promise<void> {
-    // TEST: Verify Logger environment detection
-    console.log('🔍 DIAGNOSTIC: Logger environment:', Logger.getEnvironment());
-    console.log('🔍 DIAGNOSTIC: import.meta.env.DEV:', import.meta.env.DEV);
-    console.log('🔍 DIAGNOSTIC: window.location.hostname:', window.location.hostname);
-    
+    // TASK 8 FIX: Remove diagnostic console spam
     Logger.info(LogCategory.CORE, '🚀 Application.initialize() called');
     Logger.debug(LogCategory.CORE, '🔍 Testing debug level');
     Logger.warn(LogCategory.CORE, '⚠️ Testing warn level');

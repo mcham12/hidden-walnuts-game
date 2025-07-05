@@ -484,8 +484,9 @@ export class NetworkSystem extends System {
   }
 
   private handleNetworkMessage(message: NetworkMessage): void {
+    // TASK 8 FIX: Reduce verbose logging in preview mode
     Logger.debug(LogCategory.NETWORK, '📨 RAW WEBSOCKET MESSAGE RECEIVED:', message);
-    Logger.info(LogCategory.NETWORK, `⏰ Message received at ${Date.now()}, type: ${message.type}`);
+    Logger.debug(LogCategory.NETWORK, `⏰ Message received at ${Date.now()}, type: ${message.type}`);
     
     // Skip our own messages, but only if we have a valid squirrelId
     // POSITION PERSISTENCE FIX: Allow init messages to pass through even if they have local squirrelId
