@@ -273,4 +273,20 @@ cd workers && npm run build
 - **Workers**: Deployed to Cloudflare Workers via Wrangler
 - **Assets**: Served from Cloudflare CDN
 
+## Automated Testing
+
+- **Test Framework:** Vitest (AI-optimized)
+- **Test Location:** `client/src/test/`
+  - `setup.ts`: AI-friendly test utilities and environment
+  - `multiplayer-sync.test.ts`: Core multiplayer sync and integration tests
+- **Config:** `client/vitest.config.ts` (AI-optimized, coverage enforced)
+- **Scripts:**
+  - `npm run test` — run all tests
+  - `npm run test:coverage` — generate coverage report
+  - `npm run test:ui` — interactive test UI
+- **AI Workflow:**
+  - All tests are designed, maintained, and executed by Cursor AI
+  - Tests must be updated for all new features and bugfixes
+  - Coverage and results are reviewed before merge
+
 This structure provides a clean separation of concerns, with clear documentation, organized code, and standardized configuration management. 
