@@ -524,14 +524,14 @@ export class GameManager {
             }
           });
           
-                  // POSITION PERSISTENCE FIX: Increased timeout to 5 seconds to give server more time
+                  // POSITION PERSISTENCE FIX: Reduced timeout to 2 seconds for faster response
         setTimeout(() => {
           if (!resolved) {
             resolved = true;
-            Logger.warn(LogCategory.PLAYER, '⚠️ Timeout waiting for saved position from server (5s), will use random spawn');
+            Logger.warn(LogCategory.PLAYER, '⚠️ Timeout waiting for saved position from server (2s), will use random spawn');
             resolve(null);
           }
-        }, 5000); // Increased from 3000ms to 5000ms
+        }, 2000); // Reduced from 5000ms to 2000ms for faster response
         });
         
         await this.networkSystem.connect();
