@@ -694,7 +694,12 @@ export default class ForestManager {
       };
       
       Logger.info(LogCategory.PLAYER, `📤 Sending init message to ${squirrelId} at ${Date.now()}:`, initMessage);
-      this.sendMessage(socket, initMessage);
+      
+      // POSITION PERSISTENCE FIX: Add small delay to ensure WebSocket is ready
+      setTimeout(() => {
+        this.sendMessage(socket, initMessage);
+        Logger.info(LogCategory.PLAYER, `✅ Init message sent to ${squirrelId} after delay`);
+      }, 100); // 100ms delay to ensure WebSocket is ready
 
       await this.sendWorldState(socket);
       await this.sendExistingPlayers(socket, squirrelId);
