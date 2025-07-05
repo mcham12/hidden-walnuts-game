@@ -524,18 +524,34 @@ export class GameManager {
             }
           });
           
-                  // POSITION PERSISTENCE FIX: Reduced timeout to 2 seconds for faster response
-        setTimeout(() => {
-          if (!resolved) {
-            resolved = true;
-            Logger.warn(LogCategory.PLAYER, '⚠️ Timeout waiting for saved position from server (2s), will use random spawn');
-            resolve(null);
-          }
-        }, 2000); // Reduced from 5000ms to 2000ms for faster response
+          // POSITION PERSISTENCE FIX: Reduced timeout to 2 seconds for faster response
+          setTimeout(() => {
+            if (!resolved) {
+              resolved = true;
+              Logger.warn(LogCategory.PLAYER, '⚠️ Timeout waiting for saved position from server (2s), will use random spawn');
+              resolve(null);
+            }
+          }, 2000); // Reduced from 5000ms to 2000ms for faster response
         });
         
+        // POSITION PERSISTENCE FIX: Connect to network and wait for WebSocket to be ready
         await this.networkSystem.connect();
         Logger.info(LogCategory.NETWORK, '✅ Multiplayer connection established');
+        
+        // POSITION PERSISTENCE FIX: Wait for WebSocket to be ready before waiting for saved position
+        // This ensures the event listener is set up before the server sends the init message
+        await new Promise<void>((resolve) => {
+          const checkWebSocketReady = () => {
+            if (this.networkSystem.isConnected()) {
+              Logger.info(LogCategory.NETWORK, '✅ WebSocket is ready, waiting for saved position...');
+              resolve();
+            } else {
+              Logger.debug(LogCategory.NETWORK, '⏳ Waiting for WebSocket to be ready...');
+              setTimeout(checkWebSocketReady, 50);
+            }
+          };
+          checkWebSocketReady();
+        });
         
         // Wait for saved position with timeout
         Logger.info(LogCategory.PLAYER, '⏳ Waiting for saved position from server...');
