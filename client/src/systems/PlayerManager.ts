@@ -19,14 +19,27 @@ interface RemotePlayer {
   isVisible: boolean;
 }
 
-// Utility: Recursively set scale on all mesh children
+// Utility: Recursively set scale on all mesh children with validation
 function setMeshScaleRecursive(object: THREE.Object3D, scale: number) {
+  // Set scale on the main object
   object.scale.set(scale, scale, scale);
+  
+  // Recursively set scale on all children
   object.traverse(child => {
     if (child !== object) {
       child.scale.set(scale, scale, scale);
     }
   });
+  
+  // Validate scale was applied correctly
+  const actualScale = object.scale;
+  if (Math.abs(actualScale.x - scale) > 0.01 || 
+      Math.abs(actualScale.y - scale) > 0.01 || 
+      Math.abs(actualScale.z - scale) > 0.01) {
+    Logger.warn(LogCategory.PLAYER, `⚠️ Scale validation failed: expected=${scale}, actual=${actualScale.x.toFixed(2)},${actualScale.y.toFixed(2)},${actualScale.z.toFixed(2)}`);
+    // Force correct scale
+    object.scale.set(scale, scale, scale);
+  }
 }
 
 export class PlayerManager extends System {
@@ -150,6 +163,16 @@ export class PlayerManager extends System {
       if (player.isVisible && player.mesh) {
         // Smooth interpolation would go here
         this.updatePlayerMesh(player, _deltaTime);
+        
+        // TASK 8 FIX: Runtime scale validation to catch any scaling issues
+        const targetScale = 0.3;
+        const actualScale = player.mesh.scale;
+        if (Math.abs(actualScale.x - targetScale) > 0.01 || 
+            Math.abs(actualScale.y - targetScale) > 0.01 || 
+            Math.abs(actualScale.z - targetScale) > 0.01) {
+          Logger.warn(LogCategory.PLAYER, `⚠️ Runtime scale correction for ${_squirrelId}: expected=${targetScale}, actual=${actualScale.x.toFixed(2)},${actualScale.y.toFixed(2)},${actualScale.z.toFixed(2)}`);
+          setMeshScaleRecursive(player.mesh, targetScale);
+        }
       }
     }
     
