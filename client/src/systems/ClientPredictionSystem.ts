@@ -18,8 +18,6 @@ interface InputSnapshot {
 }
 
 export class ClientPredictionSystem extends System {
-  private static readonly INPUT_BUFFER_SIZE = 60; // 6 seconds at 10Hz
-  
   private localPlayerEntity: Entity | null = null;
   private inputHistory: InputSnapshot[] = [];
   private sequenceNumber = 0;
@@ -254,6 +252,31 @@ export class ClientPredictionSystem extends System {
     );
   }
 
+  // TASK 8 PHASE 2: Enhanced input validation for replay
+  private isValidInput(input: any): boolean {
+    // Basic type validation
+    if (!input || typeof input !== 'object') return false;
+    
+    // Required input properties
+    const requiredProps = ['forward', 'backward', 'turnLeft', 'turnRight'];
+    for (const prop of requiredProps) {
+      if (typeof input[prop] !== 'boolean') return false;
+    }
+    
+    // TASK 8 PHASE 2: Prevent conflicting inputs (forward+backward, turnLeft+turnRight)
+    if (input.forward && input.backward) {
+      Logger.warn(LogCategory.NETWORK, 'Invalid input: forward and backward simultaneously');
+      return false;
+    }
+    
+    if (input.turnLeft && input.turnRight) {
+      Logger.warn(LogCategory.NETWORK, 'Invalid input: turnLeft and turnRight simultaneously');
+      return false;
+    }
+    
+    return true;
+  }
+
   // TASK 8 ENHANCEMENT: Enhanced input replay with better timing and validation
   private replayInputsFromPosition(serverPosition: Vector3): void {
     if (!this.localPlayerEntity) return;
@@ -273,7 +296,7 @@ export class ClientPredictionSystem extends System {
     
     // TASK 8 ENHANCEMENT: Replay with proper timing and validation
     for (const inputSnapshot of inputsToReplay) {
-      // Validate input before replaying
+      // TASK 8 PHASE 2: Enhanced input validation before replaying
       if (this.isValidInput(inputSnapshot.input)) {
         const inputComponent: InputComponent = {
           type: 'input',
@@ -293,19 +316,29 @@ export class ClientPredictionSystem extends System {
     Logger.debug(LogCategory.NETWORK, `Replayed ${inputsToReplay.length} inputs after reconciliation`);
   }
 
-  // TASK 8 ENHANCEMENT: Input validation for replay
-  private isValidInput(input: any): boolean {
-    return input && 
-           typeof input.forward === 'boolean' &&
-           typeof input.backward === 'boolean' &&
-           typeof input.turnLeft === 'boolean' &&
-           typeof input.turnRight === 'boolean';
-  }
 
+
+  // TASK 8 PHASE 3: Enhanced input buffer cleanup for memory optimization
   private cleanupInputHistory(): void {
-    // Keep only recent inputs
-    if (this.inputHistory.length > ClientPredictionSystem.INPUT_BUFFER_SIZE) {
-      this.inputHistory = this.inputHistory.slice(-ClientPredictionSystem.INPUT_BUFFER_SIZE);
+    const maxAge = 6000; // 6 seconds max age
+    const now = performance.now();
+    const maxBufferSize = 30; // Keep only last 30 inputs for memory efficiency
+    
+    // Remove old inputs based on age
+    this.inputHistory = this.inputHistory.filter(input => 
+      now - input.timestamp < maxAge
+    );
+    
+    // Keep only recent inputs for memory efficiency
+    if (this.inputHistory.length > maxBufferSize) {
+      this.inputHistory = this.inputHistory.slice(-maxBufferSize);
+    }
+    
+    // TASK 8 PHASE 3: Performance monitoring
+    if (this.inputHistory.length > 20) {
+      Logger.debugExpensive(LogCategory.NETWORK, () => 
+        `Input buffer: ${this.inputHistory.length} inputs, oldest: ${(now - this.inputHistory[0]?.timestamp || 0).toFixed(0)}ms ago`
+      );
     }
   }
 

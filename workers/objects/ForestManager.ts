@@ -1104,17 +1104,40 @@ export default class ForestManager {
     return height;
   }
 
+  // TASK 8 PHASE 1: Gentle world bounds enforcement
+  private enforceSoftWorldBounds(position: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
+    const bounds = { 
+      x: [ANTI_CHEAT.WORLD_BOUNDS.MIN_X, ANTI_CHEAT.WORLD_BOUNDS.MAX_X], 
+      z: [ANTI_CHEAT.WORLD_BOUNDS.MIN_Z, ANTI_CHEAT.WORLD_BOUNDS.MAX_Z], 
+      y: [ANTI_CHEAT.MIN_Y_COORDINATE, ANTI_CHEAT.MAX_Y_COORDINATE] 
+    };
+    
+    // Gentle push-back instead of hard clamping to avoid breaking terrain/forest systems
+    if (position.x < bounds.x[0]) position.x = bounds.x[0] + 1;
+    if (position.x > bounds.x[1]) position.x = bounds.x[1] - 1;
+    if (position.z < bounds.z[0]) position.z = bounds.z[0] + 1;
+    if (position.z > bounds.z[1]) position.z = bounds.z[1] - 1;
+    if (position.y < bounds.y[0]) position.y = bounds.y[0] + 0.5;
+    if (position.y > bounds.y[1]) position.y = bounds.y[1] - 0.5;
+    
+    return position;
+  }
+
   // TASK 3 FIX: Enhanced position correction to prevent floating
   private correctPlayerPosition(position: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
     const terrainHeight = this.getTerrainHeight(position.x, position.z);
     const minValidHeight = terrainHeight + 0.3; // Reduced from 0.5 to 0.3 for more lenient validation
     const maxValidHeight = terrainHeight + 5; // Keep max height reasonable
     
-    return {
+    // TASK 8 PHASE 1: Apply gentle world bounds after terrain correction
+    let correctedPosition = {
       x: position.x,
       y: Math.max(minValidHeight, Math.min(position.y, maxValidHeight)), // Clamp to valid terrain range
       z: position.z
     };
+    
+    // Apply soft world bounds
+    return this.enforceSoftWorldBounds(correctedPosition);
   }
 
   // MVP 7 Task 6: Comprehensive Anti-Cheat Validation System
@@ -1185,12 +1208,9 @@ export default class ForestManager {
     // If invalid, provide corrected position
     let correctedPosition: { x: number; y: number; z: number } | undefined;
     if (!isValid) {
+      // TASK 8 PHASE 1: Use gentle world bounds instead of hard clamping
       correctedPosition = this.correctPlayerPosition(newPosition);
-      
-      // Also clamp to world bounds
-      correctedPosition.x = Math.max(ANTI_CHEAT.WORLD_BOUNDS.MIN_X, Math.min(ANTI_CHEAT.WORLD_BOUNDS.MAX_X, correctedPosition.x));
-      correctedPosition.z = Math.max(ANTI_CHEAT.WORLD_BOUNDS.MIN_Z, Math.min(ANTI_CHEAT.WORLD_BOUNDS.MAX_Z, correctedPosition.z));
-      correctedPosition.y = Math.max(ANTI_CHEAT.MIN_Y_COORDINATE, Math.min(ANTI_CHEAT.MAX_Y_COORDINATE, correctedPosition.y));
+      // Note: correctPlayerPosition now includes enforceSoftWorldBounds()
     }
     
     return { isValid, correctedPosition, violations };
