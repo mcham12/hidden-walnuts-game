@@ -17,9 +17,9 @@ export class PlayerFactory {
   async createLocalPlayer(playerId: string): Promise<Entity> {
     Logger.info(LogCategory.PLAYER, `🐿️ Creating local player: ${playerId}`);
     
-    // Get terrain height at spawn point  
-    const spawnX = Math.random() * 20 - 10; // Random spawn between -10 and 10
-    const spawnZ = Math.random() * 20 - 10;
+    // TASK 8 FIX: Spawn players very close to origin for easier multiplayer testing
+    const spawnX = Math.random() * 10 - 5; // Random spawn between -5 and 5 (closer to origin)
+    const spawnZ = Math.random() * 10 - 5; // Random spawn between -5 and 5 (closer to origin)
     
     let terrainHeight = 0;
     try {

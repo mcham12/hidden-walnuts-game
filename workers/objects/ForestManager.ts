@@ -1655,16 +1655,17 @@ export default class ForestManager {
     // FOURTH: Generate new position for completely new players
     Logger.info(LogCategory.SESSION, `🎲 No saved position found for ${squirrelId}, generating new position`);
     
-    // Generate a predictable position based on squirrelId hash for testing
+    // TASK 8 FIX: Spawn players near origin for easier multiplayer testing
+    // Generate a predictable position based on squirrelId hash, but keep it close to origin
     const hash = squirrelId.split('').reduce((a, b) => {
       a = ((a << 5) - a) + b.charCodeAt(0);
       return a & a;
     }, 0);
     
     const position = { 
-      x: (hash % 100) - 50, // Generate position based on squirrelId hash
+      x: (hash % 20) - 10, // Keep within 10 units of origin for testing
       y: 2, 
-      z: ((hash * 7) % 100) - 50 
+      z: ((hash * 7) % 20) - 10 // Keep within 10 units of origin for testing
     };
     
     Logger.info(LogCategory.SESSION, `🎲 Generated new position for ${squirrelId}:`, position);
