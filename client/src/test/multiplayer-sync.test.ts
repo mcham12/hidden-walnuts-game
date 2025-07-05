@@ -2,8 +2,8 @@
 // These tests cover the most critical multiplayer functionality
 // Each test is designed to be easily understood and modified by AI
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { describeMultiplayer, describeNetwork, TestUtils } from './setup';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { describeMultiplayer, describeNetwork } from './setup';
 import { ClientPredictionSystem } from '../systems/ClientPredictionSystem';
 import { NetworkSystem } from '../systems/NetworkSystem';
 import { NetworkTickSystem } from '../systems/NetworkTickSystem';
