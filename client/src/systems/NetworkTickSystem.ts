@@ -93,6 +93,9 @@ export class NetworkTickSystem extends System {
   private networkTick(): void {
     const now = performance.now();
     
+    // TASK 8 PHASE 3: Track tick performance
+    this.trackNetworkPerformance('tick');
+    
     // Find local player
     if (!this.localPlayerEntity) {
       this.findLocalPlayer();
@@ -156,6 +159,9 @@ export class NetworkTickSystem extends System {
       rotation: rotation.value,
       velocity: velocity?.value || new Vector3(0, 0, 0)
     });
+    
+    // TASK 8 PHASE 3: Track update performance
+    this.trackNetworkPerformance('update');
     
     // Use compression system instead of direct send
     this.eventBus.emit('network.queue_message', {
@@ -226,6 +232,9 @@ export class NetworkTickSystem extends System {
       Logger.debugExpensive(LogCategory.NETWORK, () => 
         `Server reconciliation needed. Diff: ${positionDiff.toFixed(3)}m, Velocity: ${velocityDiff.toFixed(3)}m/s, Threshold: ${dynamicThreshold.toFixed(3)}m`
       );
+      
+      // TASK 8 PHASE 3: Track reconciliation performance
+      this.trackNetworkPerformance('reconciliation');
       
       // TASK 8 ENHANCEMENT: Smooth interpolation instead of snapping
       this.interpolateToServerPosition(serverPosition, serverRotation, acknowledgedUpdate.position);
@@ -445,5 +454,47 @@ export class NetworkTickSystem extends System {
       historySize: this.stateHistory.length,
       lastAcknowledged: this.lastAcknowledgedUpdate
     };
+  }
+
+  // TASK 8 PHASE 3: Performance metrics tracking
+  private performanceMetrics = {
+    totalTicks: 0,
+    totalUpdates: 0,
+    totalReconciliations: 0,
+    averageTickTime: 0,
+    lastTickTime: 0,
+    memoryUsage: 0
+  };
+
+  // TASK 8 PHASE 3: Track network performance
+  private trackNetworkPerformance(operation: 'tick' | 'update' | 'reconciliation'): void {
+    const now = performance.now();
+    
+    switch (operation) {
+      case 'tick':
+        this.performanceMetrics.totalTicks++;
+        this.performanceMetrics.lastTickTime = now;
+        // Calculate average tick time
+        this.performanceMetrics.averageTickTime = 
+          (this.performanceMetrics.averageTickTime * (this.performanceMetrics.totalTicks - 1) + now) / 
+          this.performanceMetrics.totalTicks;
+        break;
+      case 'update':
+        this.performanceMetrics.totalUpdates++;
+        break;
+      case 'reconciliation':
+        this.performanceMetrics.totalReconciliations++;
+        break;
+    }
+    
+    // Log performance metrics periodically
+    if (this.performanceMetrics.totalTicks % 50 === 0) {
+      Logger.debug(LogCategory.NETWORK, `Network performance: ${JSON.stringify(this.performanceMetrics)}`);
+    }
+  }
+
+  // TASK 8 PHASE 3: Get network performance stats
+  getNetworkPerformanceStats(): typeof this.performanceMetrics {
+    return { ...this.performanceMetrics };
   }
 } 

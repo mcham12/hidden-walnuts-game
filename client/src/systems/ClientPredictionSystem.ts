@@ -109,6 +109,9 @@ export class ClientPredictionSystem extends System {
     
     this.inputHistory.push(inputSnapshot);
     
+    // TASK 8 PHASE 3: Track input performance
+    this.trackPerformanceMetrics('input');
+    
     // Apply movement immediately (client-side prediction)
     this.applyMovement(this.localPlayerEntity, input, deltaTime).then((moved) => {
       if (moved) {
@@ -269,6 +272,9 @@ export class ClientPredictionSystem extends System {
     
     Logger.debug(LogCategory.NETWORK, `🔄 Server reconciliation: Client (${data.clientPosition.x.toFixed(2)}, ${data.clientPosition.z.toFixed(2)}) -> Server (${data.serverPosition.x.toFixed(2)}, ${data.serverPosition.z.toFixed(2)}) Diff: ${data.difference.toFixed(3)}m`);
     
+    // TASK 8 PHASE 3: Track reconciliation performance
+    this.trackPerformanceMetrics('reconciliation');
+    
     // TASK 8 ENHANCEMENT: Use smooth interpolation instead of snapping
     this.interpolateToServerPosition(data.serverPosition, data.clientPosition);
     
@@ -404,6 +410,50 @@ export class ClientPredictionSystem extends System {
         `Input buffer: ${this.inputHistory.length} inputs, oldest: ${(now - this.inputHistory[0]?.timestamp || 0).toFixed(0)}ms ago`
       );
     }
+    
+    // TASK 8 PHASE 3: Track cleanup performance
+    this.trackPerformanceMetrics('cleanup');
+  }
+
+  // TASK 8 PHASE 3: Performance metrics tracking
+  private performanceMetrics = {
+    totalInputs: 0,
+    totalReconciliations: 0,
+    averageReconciliationTime: 0,
+    lastCleanupTime: 0,
+    memoryUsage: 0
+  };
+
+  // TASK 8 PHASE 3: Track performance metrics
+  private trackPerformanceMetrics(operation: 'input' | 'reconciliation' | 'cleanup'): void {
+    const now = performance.now();
+    
+    switch (operation) {
+      case 'input':
+        this.performanceMetrics.totalInputs++;
+        break;
+      case 'reconciliation':
+        this.performanceMetrics.totalReconciliations++;
+        // Calculate average reconciliation time
+        this.performanceMetrics.averageReconciliationTime = 
+          (this.performanceMetrics.averageReconciliationTime * (this.performanceMetrics.totalReconciliations - 1) + now) / 
+          this.performanceMetrics.totalReconciliations;
+        break;
+      case 'cleanup':
+        this.performanceMetrics.lastCleanupTime = now;
+        this.performanceMetrics.memoryUsage = this.inputHistory.length;
+        break;
+    }
+    
+    // Log performance metrics periodically
+    if (this.performanceMetrics.totalInputs % 100 === 0) {
+      Logger.debug(LogCategory.NETWORK, `Performance metrics: ${JSON.stringify(this.performanceMetrics)}`);
+    }
+  }
+
+  // TASK 8 PHASE 3: Get performance stats for monitoring
+  getPerformanceStats(): typeof this.performanceMetrics {
+    return { ...this.performanceMetrics };
   }
 
   // Public method for external systems
