@@ -191,17 +191,17 @@ export class NetworkSystem extends System {
     try {
       Logger.debug(LogCategory.NETWORK, `🔄 Attempting connection (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
       
-      // POSITION PERSISTENCE FIX: Use persistent squirrelId from localStorage
-      // This ensures the same player is identified across browser refreshes
+      // MULTIPLAYER FIX: Use sessionStorage for unique squirrelId per browser session
+      // This ensures each browser gets its own unique player ID
       let squirrelId = this.getPersistentSquirrelId();
       if (!squirrelId) {
-        // Only generate new ID if none exists (first time player)
+        // Generate new ID for this browser session
         // Use UUID format as the server expects this format
         squirrelId = crypto.randomUUID();
         this.setPersistentSquirrelId(squirrelId);
-        Logger.debug(LogCategory.NETWORK, `🆕 Generated new persistent squirrel ID: ${squirrelId}`);
+        Logger.debug(LogCategory.NETWORK, `🆕 Generated new squirrel ID for this session: ${squirrelId}`);
       } else {
-        Logger.debug(LogCategory.NETWORK, `🔄 Using existing persistent squirrel ID: ${squirrelId}`);
+        Logger.debug(LogCategory.NETWORK, `🔄 Using existing squirrel ID for this session: ${squirrelId}`);
       }
       
       this.localSquirrelId = squirrelId;
@@ -1053,22 +1053,13 @@ export class NetworkSystem extends System {
     return this.connectionMetrics.quality;
   }
 
-  // POSITION PERSISTENCE FIX: Helper methods for persistent squirrelId storage
+  // MULTIPLAYER FIX: Use sessionStorage for unique squirrelId per browser session
   private getPersistentSquirrelId(): string | null {
     try {
-      // Try localStorage first (persists across browser refreshes)
-      const storedId = localStorage.getItem('squirrelId');
-      if (storedId) {
-        Logger.debug(LogCategory.NETWORK, `📦 Retrieved squirrelId from localStorage: ${storedId}`);
-        return storedId;
-      }
-      
-      // Fallback to sessionStorage for compatibility
+      // Use sessionStorage for unique ID per browser session (prevents multiplayer conflicts)
       const sessionId = sessionStorage.getItem('squirrelId');
       if (sessionId) {
         Logger.debug(LogCategory.NETWORK, `📦 Retrieved squirrelId from sessionStorage: ${sessionId}`);
-        // Migrate to localStorage for future persistence
-        this.setPersistentSquirrelId(sessionId);
         return sessionId;
       }
       
@@ -1081,20 +1072,11 @@ export class NetworkSystem extends System {
 
   private setPersistentSquirrelId(squirrelId: string): void {
     try {
-      // Store in localStorage for persistence across browser refreshes
-      localStorage.setItem('squirrelId', squirrelId);
-      Logger.debug(LogCategory.NETWORK, `💾 Stored squirrelId in localStorage: ${squirrelId}`);
-      
-      // Also store in sessionStorage for compatibility with existing code
+      // Store in sessionStorage for unique ID per browser session
       sessionStorage.setItem('squirrelId', squirrelId);
+      Logger.debug(LogCategory.NETWORK, `💾 Stored squirrelId in sessionStorage: ${squirrelId}`);
     } catch (error) {
-      Logger.warn(LogCategory.NETWORK, '⚠️ Failed to store persistent squirrelId:', error);
-      // Fallback to sessionStorage only
-      try {
-        sessionStorage.setItem('squirrelId', squirrelId);
-      } catch (fallbackError) {
-        Logger.error(LogCategory.NETWORK, '❌ Failed to store squirrelId in both storage types:', fallbackError);
-      }
+      Logger.error(LogCategory.NETWORK, '❌ Failed to store squirrelId in sessionStorage:', error);
     }
   }
 

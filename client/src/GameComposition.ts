@@ -813,22 +813,13 @@ export class GameManager {
   public getNetworkSystem(): NetworkSystem { return this.networkSystem; }
   public getLocalPlayer(): Entity | undefined { return this.localPlayer; }
 
-  // POSITION PERSISTENCE FIX: Helper methods for persistent squirrelId storage
+  // MULTIPLAYER FIX: Use sessionStorage for unique squirrelId per browser session
   private getPersistentSquirrelId(): string | null {
     try {
-      // Try localStorage first (persists across browser refreshes)
-      const storedId = localStorage.getItem('squirrelId');
-      if (storedId) {
-        Logger.debug(LogCategory.PLAYER, `📦 Retrieved squirrelId from localStorage: ${storedId}`);
-        return storedId;
-      }
-      
-      // Fallback to sessionStorage for compatibility
+      // Use sessionStorage for unique ID per browser session (prevents multiplayer conflicts)
       const sessionId = sessionStorage.getItem('squirrelId');
       if (sessionId) {
         Logger.debug(LogCategory.PLAYER, `📦 Retrieved squirrelId from sessionStorage: ${sessionId}`);
-        // Migrate to localStorage for future persistence
-        this.setPersistentSquirrelId(sessionId);
         return sessionId;
       }
       
@@ -841,20 +832,11 @@ export class GameManager {
 
   private setPersistentSquirrelId(squirrelId: string): void {
     try {
-      // Store in localStorage for persistence across browser refreshes
-      localStorage.setItem('squirrelId', squirrelId);
-      Logger.debug(LogCategory.PLAYER, `💾 Stored squirrelId in localStorage: ${squirrelId}`);
-      
-      // Also store in sessionStorage for compatibility with existing code
+      // Store in sessionStorage for unique ID per browser session
       sessionStorage.setItem('squirrelId', squirrelId);
+      Logger.debug(LogCategory.PLAYER, `💾 Stored squirrelId in sessionStorage: ${squirrelId}`);
     } catch (error) {
-      Logger.warn(LogCategory.PLAYER, '⚠️ Failed to store persistent squirrelId:', error);
-      // Fallback to sessionStorage only
-      try {
-        sessionStorage.setItem('squirrelId', squirrelId);
-      } catch (fallbackError) {
-        Logger.error(LogCategory.PLAYER, '❌ Failed to store squirrelId in both storage types:', fallbackError);
-      }
+      Logger.error(LogCategory.PLAYER, '❌ Failed to store squirrelId in sessionStorage:', error);
     }
   }
 }
