@@ -44,6 +44,7 @@ export interface NetworkComponent extends Component {
   isLocalPlayer: boolean;
   squirrelId: string;
   lastUpdate: number;
+  characterType?: string; // Optional character type for MVP 8 multi-animal support
 }
 
 export interface InterpolationComponent extends Component {
