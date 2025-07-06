@@ -21,6 +21,8 @@ import { NetworkCompressionSystem } from './systems/NetworkCompressionSystem';
 import { InputAnimationSystem } from './systems/InputAnimationSystem';
 import { AnimationSystem } from './systems/AnimationSystem';
 import { ThreeJSRenderAdapter } from './rendering/IRenderAdapter';
+import { NetworkAnimationSystem } from './systems/NetworkAnimationSystem';
+import { NPCSystem } from './systems/NPCSystem';
 
 // Refactored InputManager with dependency injection
 export interface IInputManager {
@@ -443,6 +445,8 @@ export class GameManager {
   private isRunning = false;
   private errorCount = 0;
   private maxErrors = 10;
+  private networkAnimationSystem: NetworkAnimationSystem;
+  private npcSystem!: NPCSystem;
 
   constructor() {
     // Get dependencies from container
@@ -470,6 +474,8 @@ export class GameManager {
     this.networkCompressionSystem = new NetworkCompressionSystem(this.eventBus);
     this.inputAnimationSystem = new InputAnimationSystem(this.eventBus);
     this.animationSystem = new AnimationSystem(this.eventBus);
+    this.networkAnimationSystem = new NetworkAnimationSystem(this.eventBus);
+    this.npcSystem = container.resolve(ServiceTokens.NPC_SYSTEM);
 
     // Register all systems with EntityManager in correct execution order
     this.entityManager.addSystem(this.inputSystem);
@@ -484,8 +490,28 @@ export class GameManager {
     this.entityManager.addSystem(this.networkTickSystem);
     this.entityManager.addSystem(this.networkSystem);
     this.entityManager.addSystem(this.playerManager);
+    this.entityManager.addSystem(this.networkAnimationSystem);
+    this.entityManager.addSystem(this.npcSystem);
 
-    Logger.info(LogCategory.CORE, '🎮 GameManager initialized with 12 systems');
+    // Set system execution order for optimal performance
+    this.entityManager.setSystemExecutionOrder([
+      'InputSystem',
+      'ClientPredictionSystem', 
+      'MovementSystem',
+      'InterpolationSystem',
+      'AreaOfInterestSystem',
+      'RenderSystem',
+      'NetworkCompressionSystem',
+      'InputAnimationSystem',
+      'AnimationSystem',
+      'NetworkTickSystem',
+      'NetworkSystem',
+      'PlayerManager',
+      'NetworkAnimationSystem',
+      'NPCSystem'
+    ]);
+
+    Logger.info(LogCategory.CORE, '🎮 GameManager initialized with 14 systems');
   }
 
   async initialize(canvas: HTMLCanvasElement): Promise<void> {
@@ -926,6 +952,13 @@ export function configureServices(): void {
   container.registerSingleton(ServiceTokens.ANIMATION_SYSTEM, () => {
     return new AnimationSystem(
       container.resolve<EventBus>(ServiceTokens.EVENT_BUS)
+    );
+  });
+
+  container.registerSingleton(ServiceTokens.NPC_SYSTEM, () => {
+    return new NPCSystem(
+      container.resolve<EventBus>(ServiceTokens.EVENT_BUS),
+      container.resolve(ServiceTokens.TERRAIN_SERVICE)
     );
   });
 

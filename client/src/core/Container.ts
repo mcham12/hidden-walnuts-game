@@ -118,8 +118,27 @@ export const ServiceTokens = {
   PLAYER_FACTORY: 'PlayerFactory',
   CAMERA_SYSTEM: 'CameraSystem',
   INPUT_ANIMATION_SYSTEM: 'InputAnimationSystem',
-  ANIMATION_SYSTEM: 'AnimationSystem'
+  ANIMATION_SYSTEM: 'AnimationSystem',
+  NETWORK_ANIMATION_SYSTEM: 'NetworkAnimationSystem',
+  NPC_SYSTEM: 'NPCSystem',
+  NPC_PATHFINDER: 'NPCPathfinder'
 } as const;
 
 // Global container instance
-export const container = new Container(); 
+export const container = new Container();
+
+container.registerSingleton(ServiceTokens.NETWORK_ANIMATION_SYSTEM, () => {
+  const eventBus = container.resolve(ServiceTokens.EVENT_BUS);
+  return new (require('../systems/NetworkAnimationSystem').NetworkAnimationSystem)(eventBus);
+});
+
+container.registerSingleton(ServiceTokens.NPC_PATHFINDER, () => {
+  const terrainService = container.resolve(ServiceTokens.TERRAIN_SERVICE);
+  return new (require('../services/NPCPathfinder').NPCPathfinder)(terrainService);
+});
+
+container.registerSingleton(ServiceTokens.NPC_SYSTEM, () => {
+  const eventBus = container.resolve(ServiceTokens.EVENT_BUS);
+  const terrainService = container.resolve(ServiceTokens.TERRAIN_SERVICE);
+  return new (require('../systems/NPCSystem').NPCSystem)(eventBus, terrainService);
+}); 

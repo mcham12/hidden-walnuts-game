@@ -220,3 +220,10 @@ client/src/
 - **Task 2**: Animated Model Integration - Provides animation controllers
 - **Task 3**: Character Selection System - Determines which character to animate
 - **Task 5**: Animation Synchronization - Synchronizes animation states across network 
+
+## 📝 As Implemented
+
+- The system uses `PlayerAnimationTypes.ts` for all player animation enums and interfaces, ensuring type safety and extensibility.
+- `InputAnimationSystem` and `AnimationSystem` are both registered in the ECS and dependency injection container, and are included in the ECS execution order.
+- Each player entity can have its own `PlayerAnimationController` instance, supporting per-entity animation state and transitions.
+- The file structure, class names, and method signatures match this documentation. 
