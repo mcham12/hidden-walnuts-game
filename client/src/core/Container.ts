@@ -116,7 +116,9 @@ export const ServiceTokens = {
   TERRAIN_SERVICE: 'TerrainService',
   RENDER_ADAPTER: 'RenderAdapter',
   PLAYER_FACTORY: 'PlayerFactory',
-  CAMERA_SYSTEM: 'CameraSystem'
+  CAMERA_SYSTEM: 'CameraSystem',
+  INPUT_ANIMATION_SYSTEM: 'InputAnimationSystem',
+  ANIMATION_SYSTEM: 'AnimationSystem'
 } as const;
 
 // Global container instance

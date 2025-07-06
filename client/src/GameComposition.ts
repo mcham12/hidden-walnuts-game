@@ -18,6 +18,8 @@ import { RenderSystem } from './systems/RenderSystem';
 import { NetworkTickSystem } from './systems/NetworkTickSystem';
 import { AreaOfInterestSystem } from './systems/AreaOfInterestSystem';
 import { NetworkCompressionSystem } from './systems/NetworkCompressionSystem';
+import { InputAnimationSystem } from './systems/InputAnimationSystem';
+import { AnimationSystem } from './systems/AnimationSystem';
 import { ThreeJSRenderAdapter } from './rendering/IRenderAdapter';
 
 // Refactored InputManager with dependency injection
@@ -434,6 +436,8 @@ export class GameManager {
   private areaOfInterestSystem: AreaOfInterestSystem;
   private networkCompressionSystem: NetworkCompressionSystem;
   private playerManager: PlayerManager;
+  private inputAnimationSystem: InputAnimationSystem;
+  private animationSystem: AnimationSystem;
   private inputSystem: any; // CHEN'S FIX: Will be properly resolved
   private localPlayer?: Entity;
   private isRunning = false;
@@ -464,6 +468,8 @@ export class GameManager {
     this.networkTickSystem = new NetworkTickSystem(this.eventBus);
     this.areaOfInterestSystem = new AreaOfInterestSystem(this.eventBus);
     this.networkCompressionSystem = new NetworkCompressionSystem(this.eventBus);
+    this.inputAnimationSystem = new InputAnimationSystem(this.eventBus);
+    this.animationSystem = new AnimationSystem(this.eventBus);
 
     // Register all systems with EntityManager in correct execution order
     this.entityManager.addSystem(this.inputSystem);
@@ -473,11 +479,13 @@ export class GameManager {
     this.entityManager.addSystem(this.areaOfInterestSystem);
     this.entityManager.addSystem(this.renderSystem);
     this.entityManager.addSystem(this.networkCompressionSystem);
+    this.entityManager.addSystem(this.inputAnimationSystem);
+    this.entityManager.addSystem(this.animationSystem);
     this.entityManager.addSystem(this.networkTickSystem);
     this.entityManager.addSystem(this.networkSystem);
     this.entityManager.addSystem(this.playerManager);
 
-    Logger.info(LogCategory.CORE, '🎮 GameManager initialized with 10 systems');
+    Logger.info(LogCategory.CORE, '🎮 GameManager initialized with 12 systems');
   }
 
   async initialize(canvas: HTMLCanvasElement): Promise<void> {
@@ -906,6 +914,18 @@ export function configureServices(): void {
     return new PlayerManager(
       container.resolve<EventBus>(ServiceTokens.EVENT_BUS),
       container.resolve(ServiceTokens.TERRAIN_SERVICE)
+    );
+  });
+
+  container.registerSingleton(ServiceTokens.INPUT_ANIMATION_SYSTEM, () => {
+    return new InputAnimationSystem(
+      container.resolve<EventBus>(ServiceTokens.EVENT_BUS)
+    );
+  });
+
+  container.registerSingleton(ServiceTokens.ANIMATION_SYSTEM, () => {
+    return new AnimationSystem(
+      container.resolve<EventBus>(ServiceTokens.EVENT_BUS)
     );
   });
 
