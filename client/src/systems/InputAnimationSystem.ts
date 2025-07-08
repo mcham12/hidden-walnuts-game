@@ -44,6 +44,10 @@ export class InputAnimationSystem extends System {
     this.eventBus.subscribe('player.animation_controller_added', this.handleControllerAdded.bind(this));
     this.eventBus.subscribe('player.animation_controller_removed', this.handleControllerRemoved.bind(this));
     
+    // FIXED: Add character selection event listeners
+    this.eventBus.subscribe('player:character_changed', this.handleCharacterChanged.bind(this));
+    this.eventBus.subscribe('player:animation_ready', this.handleAnimationReady.bind(this));
+    
     Logger.info(LogCategory.CORE, '[InputAnimationSystem] Initialized');
   }
 
@@ -214,6 +218,28 @@ export class InputAnimationSystem extends System {
    */
   private handleControllerRemoved(data: { entityId: string }): void {
     this.removePlayerAnimationController(data.entityId);
+  }
+
+  /**
+   * Handle character changed event
+   */
+  private handleCharacterChanged(data: { entityId: string }): void {
+    const controller = this.playerAnimationControllers.get(data.entityId);
+    if (controller) {
+      controller.onCharacterChanged();
+      Logger.debug(LogCategory.CORE, `[InputAnimationSystem] Character changed for entity: ${data.entityId}`);
+    }
+  }
+
+  /**
+   * Handle animation ready event
+   */
+  private handleAnimationReady(data: { entityId: string }): void {
+    const controller = this.playerAnimationControllers.get(data.entityId);
+    if (controller) {
+      controller.onAnimationReady();
+      Logger.debug(LogCategory.CORE, `[InputAnimationSystem] Animation ready for entity: ${data.entityId}`);
+    }
   }
 
   /**

@@ -70,6 +70,10 @@ export interface IPlayerAnimationController {
   getCharacterConfig(): CharacterConfig;
   getAnimationController(): AnimationController;
   
+  // FIXED: Add character change and animation ready methods
+  onCharacterChanged(): void;
+  onAnimationReady(): void;
+  
   // Cleanup
   dispose(): void;
 }

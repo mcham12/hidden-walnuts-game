@@ -202,7 +202,46 @@ export class PlayerAnimationController implements IPlayerAnimationController {
   }
 
   /**
-   * Cleanup resources
+   * FIXED: Handle character change event
+   */
+  onCharacterChanged(): void {
+    Logger.debug(LogCategory.CORE, `[PlayerAnimationController] Character changed for player: ${this.playerId}`);
+    
+    // Reset animation state for new character
+    this.currentState = PlayerAnimationState.IDLE_A;
+    this.previousState = PlayerAnimationState.IDLE_A;
+    this.idleVariationTimer = 0;
+    
+    // Reinitialize animation controller for new character
+    this.animationController.reinitializeAnimations();
+    
+    // Fire character change event
+    this.eventBus.emit('player:character_changed', {
+      playerId: this.playerId,
+      characterType: this.characterConfig.id,
+      timestamp: performance.now()
+    });
+  }
+
+  /**
+   * FIXED: Handle animation ready event
+   */
+  onAnimationReady(): void {
+    Logger.debug(LogCategory.CORE, `[PlayerAnimationController] Animation ready for player: ${this.playerId}`);
+    
+    // Start with idle animation
+    this.playAnimation(PlayerAnimationState.IDLE_A);
+    
+    // Fire animation ready event
+    this.eventBus.emit('player:animation_ready', {
+      playerId: this.playerId,
+      characterType: this.characterConfig.id,
+      timestamp: performance.now()
+    });
+  }
+
+  /**
+   * Dispose of resources
    */
   dispose(): void {
     this.animationController.dispose();
@@ -313,44 +352,30 @@ export class PlayerAnimationController implements IPlayerAnimationController {
 
   /**
    * Get animation name for state
+   * FIXED: Use correct animation names that match the actual GLB files
    */
   private getAnimationNameForState(state: PlayerAnimationState): string | null {
-    switch (state) {
-      case PlayerAnimationState.IDLE_A:
-        return 'idle_a';
-      case PlayerAnimationState.IDLE_B:
-        return 'idle_b';
-      case PlayerAnimationState.IDLE_C:
-        return 'idle_c';
-      case PlayerAnimationState.WALK:
-        return 'walk';
-      case PlayerAnimationState.RUN:
-        return 'run';
-      case PlayerAnimationState.JUMP:
-        return 'jump';
-      case PlayerAnimationState.SWIM:
-        return 'swim';
-      case PlayerAnimationState.FLY:
-        return 'fly';
-      case PlayerAnimationState.ROLL:
-        return 'roll';
-      case PlayerAnimationState.BOUNCE:
-        return 'bounce';
-      case PlayerAnimationState.SPIN:
-        return 'spin';
-      case PlayerAnimationState.EAT:
-        return 'eat';
-      case PlayerAnimationState.CLICKED:
-        return 'clicked';
-      case PlayerAnimationState.FEAR:
-        return 'fear';
-      case PlayerAnimationState.DEATH:
-        return 'death';
-      case PlayerAnimationState.SIT:
-        return 'sit';
-      default:
-        return null;
-    }
+    // FIXED: Map to actual animation names from GLB files
+    const animationNameMap: { [key in PlayerAnimationState]: string } = {
+      [PlayerAnimationState.IDLE_A]: 'Idle_A',
+      [PlayerAnimationState.IDLE_B]: 'Idle_B', 
+      [PlayerAnimationState.IDLE_C]: 'Idle_C',
+      [PlayerAnimationState.WALK]: 'Walk',
+      [PlayerAnimationState.RUN]: 'Run',
+      [PlayerAnimationState.JUMP]: 'Jump',
+      [PlayerAnimationState.SWIM]: 'Swim',
+      [PlayerAnimationState.FLY]: 'Fly',
+      [PlayerAnimationState.ROLL]: 'Roll',
+      [PlayerAnimationState.BOUNCE]: 'Bounce',
+      [PlayerAnimationState.SPIN]: 'Spin',
+      [PlayerAnimationState.EAT]: 'Eat',
+      [PlayerAnimationState.CLICKED]: 'Clicked',
+      [PlayerAnimationState.FEAR]: 'Fear',
+      [PlayerAnimationState.DEATH]: 'Death',
+      [PlayerAnimationState.SIT]: 'Sit'
+    };
+
+    return animationNameMap[state] || null;
   }
 
   /**

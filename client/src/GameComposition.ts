@@ -644,10 +644,32 @@ export class GameManager {
       // Listen for character selection changes to update camera
       this.eventBus.subscribe('character:selection_changed', (event: any) => {
         Logger.info(LogCategory.CORE, `🎭 Character changed to: ${event.selectedCharacter}`);
+        
+        // FIXED: Notify animation system of character change
+        this.eventBus.emit('player:character_changed', {
+          playerId: this.localPlayer?.id.value,
+          characterType: event.selectedCharacter,
+          characterConfig: event.characterConfig,
+          timestamp: Date.now()
+        });
+        
         // Update camera to follow the new character
         if (this.localPlayer) {
           this.updateCameraToFollowLocalPlayer();
         }
+      });
+      
+      // FIXED: Listen for game character ready event
+      this.eventBus.subscribe('game:character_ready', (event: any) => {
+        Logger.info(LogCategory.CORE, `🎭 Game character ready: ${event.characterType}`);
+        
+        // Notify animation system that character is ready
+        this.eventBus.emit('player:animation_ready', {
+          playerId: this.localPlayer?.id.value,
+          characterType: event.characterType,
+          characterConfig: event.characterConfig,
+          timestamp: Date.now()
+        });
       });
       
       // Emit initialization complete
