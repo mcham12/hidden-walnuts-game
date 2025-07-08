@@ -78,30 +78,39 @@ export class PlayerAnimationController implements IPlayerAnimationController {
   }
 
   /**
-   * Play specific animation state
+   * Play specific animation state with error handling
    */
   playAnimation(state: PlayerAnimationState): boolean {
-    const animationName = this.getAnimationNameForState(state);
-    if (!animationName) {
-      Logger.warn(LogCategory.CORE, `[PlayerAnimationController] No animation found for state: ${state}`);
+    try {
+      const animationName = this.getAnimationNameForState(state);
+      if (!animationName) {
+        Logger.warn(LogCategory.CORE, `[PlayerAnimationController] No animation found for state: ${state}`);
+        return false;
+      }
+
+      const success = this.animationController.playAnimation(animationName, {
+        blendTime: this.blendTime,
+        timeScale: this.timeScale
+      });
+
+      if (success) {
+        this.previousState = this.currentState;
+        this.currentState = state;
+        this.stateMachine.transitionTo(state);
+        
+        // Fire event
+        this.fireAnimationEvent(this.previousState, state);
+        
+        Logger.debug(LogCategory.CORE, `[PlayerAnimationController] Successfully played animation: ${animationName} for state: ${state}`);
+      } else {
+        Logger.warn(LogCategory.CORE, `[PlayerAnimationController] Failed to play animation: ${animationName} for state: ${state}`);
+      }
+
+      return success;
+    } catch (error) {
+      Logger.error(LogCategory.CORE, `[PlayerAnimationController] Error playing animation for state ${state}:`, error);
       return false;
     }
-
-    const success = this.animationController.playAnimation(animationName, {
-      blendTime: this.blendTime,
-      timeScale: this.timeScale
-    });
-
-    if (success) {
-      this.previousState = this.currentState;
-      this.currentState = state;
-      this.stateMachine.transitionTo(state);
-      
-      // Fire event
-      this.fireAnimationEvent(this.previousState, state);
-    }
-
-    return success;
   }
 
   /**

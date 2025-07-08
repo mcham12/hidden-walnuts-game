@@ -73,6 +73,9 @@ export interface InputAnimationComponent extends Component {
   priority: number;
 }
 
+// Component types are defined above as interfaces
+// Systems can register for specific component types
+
 // Entity class
 export class Entity {
   private components = new Map<string, Component>();

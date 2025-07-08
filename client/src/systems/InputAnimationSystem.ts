@@ -125,7 +125,7 @@ export class InputAnimationSystem extends System {
   }
 
   /**
-   * Main update loop
+   * Main update loop with performance monitoring
    */
   update(deltaTime: number): void {
     if (this.inputAnimationComponents.size === 0) return;
@@ -136,33 +136,45 @@ export class InputAnimationSystem extends System {
     // Update frame rate tracking
     this.updateFrameRate();
     
-    // Update player animations
+    // Update player animations with error handling
     let updatedCount = 0;
     let activeAnimations = 0;
     let stateTransitions = 0;
+    let errorCount = 0;
     
     this.inputAnimationComponents.forEach((component, entityId) => {
       if (!component.isActive) return;
       
       // Check if it's time to update this component
       if (currentTime - component.lastUpdateTime >= component.updateInterval) {
-        const entity = this.entities.get(entityId);
-        if (entity) {
-          const input = entity.getComponent<InputComponent>('input');
-          if (input) {
-            // Update player animation controller
-            component.controller.update(deltaTime, input);
-            component.lastUpdateTime = currentTime;
-            updatedCount++;
-            
-            if (component.controller.isPlaying()) {
-              activeAnimations++;
+        try {
+          const entity = this.entities.get(entityId);
+          if (entity) {
+            const input = entity.getComponent<InputComponent>('input');
+            if (input) {
+              // Update player animation controller
+              component.controller.update(deltaTime, input);
+              component.lastUpdateTime = currentTime;
+              updatedCount++;
+              
+              if (component.controller.isPlaying()) {
+                activeAnimations++;
+              }
+              
+              // Track state transitions
+              if (component.controller.getCurrentState() !== component.controller.getPreviousState()) {
+                stateTransitions++;
+              }
             }
-            
-            // Track state transitions
-            if (component.controller.getCurrentState() !== component.controller.getPreviousState()) {
-              stateTransitions++;
-            }
+          }
+        } catch (error) {
+          errorCount++;
+          Logger.error(LogCategory.CORE, `[InputAnimationSystem] Error updating entity ${entityId}:`, error);
+          
+          // Disable problematic components to prevent cascading failures
+          if (errorCount > 3) {
+            component.isActive = false;
+            Logger.warn(LogCategory.CORE, `[InputAnimationSystem] Disabled animation component for entity ${entityId} due to repeated errors`);
           }
         }
       }
@@ -180,11 +192,9 @@ export class InputAnimationSystem extends System {
       this.handlePerformanceIssue(updateTime);
     }
     
-    // Log performance if needed
-    if (this.shouldLogPerformance()) {
-      Logger.debug(LogCategory.CORE, 
-        `[InputAnimationSystem] Updated ${updatedCount}/${this.inputAnimationComponents.size} controllers in ${updateTime.toFixed(2)}ms`
-      );
+    // Log performance warnings
+    if (errorCount > 0) {
+      Logger.warn(LogCategory.CORE, `[InputAnimationSystem] Performance warning: ${errorCount} errors in update cycle`);
     }
   }
 
@@ -279,14 +289,6 @@ export class InputAnimationSystem extends System {
         component.updateInterval = Math.min(component.updateInterval * 1.5, 100);
       }
     });
-  }
-
-  /**
-   * Check if should log performance
-   */
-  private shouldLogPerformance(): boolean {
-    return this.performanceMetrics.activeAnimations > 5 || 
-           this.performanceMetrics.averageUpdateTime > 10;
   }
 
   /**

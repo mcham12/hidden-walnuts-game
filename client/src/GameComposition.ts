@@ -737,11 +737,11 @@ export class GameManager {
         if (savedPlayerData) {
           // Create player with saved position
           Logger.info(LogCategory.PLAYER, `📍 Creating player with saved position: (${savedPlayerData.position.x}, ${savedPlayerData.position.y}, ${savedPlayerData.position.z})`);
-          this.localPlayer = await playerFactory.createLocalPlayerWithPosition(playerId, savedPlayerData.position, savedPlayerData.rotationY, selectedCharacterType);
+          this.localPlayer = await playerFactory.createLocalPlayerWithPosition(playerId, savedPlayerData.position, savedPlayerData.rotationY);
         } else {
           // Create player at random position
           Logger.info(LogCategory.PLAYER, `🎲 Creating player at random position`);
-          this.localPlayer = await playerFactory.createLocalPlayer(playerId, selectedCharacterType);
+          this.localPlayer = await playerFactory.createLocalPlayer(playerId);
         }
         
         if (this.localPlayer) {
