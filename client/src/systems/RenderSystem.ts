@@ -3,7 +3,6 @@
 import { System, Entity, PositionComponent, RotationComponent, RenderComponent } from '../ecs';
 import { EventBus } from '../core/EventBus';
 import { IRenderAdapter } from '../rendering/IRenderAdapter';
-import { Vector3 } from '../core/types';
 import { Logger, LogCategory } from '../core/Logger';
 import { NetworkComponent } from '../ecs';
 
@@ -66,44 +65,6 @@ export class RenderSystem extends System {
     }
     
     Logger.debug(LogCategory.RENDER, `✅ RenderSystem update complete - processed ${this.entities.size} entities`);
-  }
-
-  private updateEntityVisuals(entity: Entity): void {
-    const position = entity.getComponent<PositionComponent>('position')!;
-    const rotation = entity.getComponent<RotationComponent>('rotation')!;
-    const render = entity.getComponent<RenderComponent>('render')!;
-
-    Logger.debug(LogCategory.RENDER, `[RenderSystem] Updating entity ${entity.id.value}: position=(${position.value.x.toFixed(1)}, ${position.value.y.toFixed(1)}, ${position.value.z.toFixed(1)}), visible=${render.visible}`);
-
-    if (!render.mesh || !render.visible) {
-      Logger.debug(LogCategory.RENDER, `[RenderSystem] Skipping entity ${entity.id.value}: no mesh or not visible`);
-      return;
-    }
-
-    Logger.debug(LogCategory.RENDER, `[RenderSystem] Entity ${entity.id.value} mesh: type=${render.mesh.type}, name=${render.mesh.name}, visible=${render.mesh.visible}, position=(${render.mesh.position.x.toFixed(1)}, ${render.mesh.position.y.toFixed(1)}, ${render.mesh.position.z.toFixed(1)})`);
-
-    // Handle position with validation but don't skip other updates
-    let validPosition = position.value;
-    
-    if (isNaN(position.value.x) || isNaN(position.value.y) || isNaN(position.value.z)) {
-      Logger.error(LogCategory.RENDER, 'Invalid position detected', position.value);
-      
-      // Reset to safe position
-      validPosition = new Vector3(50, 2, 50);
-      
-      // Fix the component
-      entity.addComponent<PositionComponent>({
-        type: 'position',
-        value: validPosition
-      });
-    }
-
-    // Always sync ALL visual properties through abstraction
-    this.renderAdapter.updatePosition(render.mesh, validPosition);
-    this.renderAdapter.updateRotation(render.mesh, rotation.value);
-    this.renderAdapter.setVisibility(render.mesh, render.visible);
-    
-    Logger.debug(LogCategory.RENDER, `[RenderSystem] Updated entity ${entity.id.value} mesh position to (${validPosition.x.toFixed(1)}, ${validPosition.y.toFixed(1)}, ${validPosition.z.toFixed(1)})`);
   }
 
   // Handle visual effects through abstraction
