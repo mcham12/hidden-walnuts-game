@@ -16,7 +16,7 @@ export class RenderSystem extends System {
   }
 
   update(_deltaTime: number): void {
-    Logger.debug(LogCategory.RENDER, `[RenderSystem] Processing ${this.entities.size} entities`);
+    Logger.debug(LogCategory.RENDER, `[RenderSystem] Processing ${this.entities.size} entities: ${Array.from(this.entities.values()).map(e => e.id.value + ':' + e.getComponents().map(c => c.type).join('|')).join(', ')}`);
     
     for (const entity of this.entities.values()) {
       this.updateEntityVisuals(entity);
@@ -34,6 +34,8 @@ export class RenderSystem extends System {
       Logger.debug(LogCategory.RENDER, `[RenderSystem] Skipping entity ${entity.id.value}: no mesh or not visible`);
       return;
     }
+
+    Logger.debug(LogCategory.RENDER, `[RenderSystem] Entity ${entity.id.value} mesh: type=${render.mesh.type}, name=${render.mesh.name}, visible=${render.mesh.visible}, position=(${render.mesh.position.x.toFixed(1)}, ${render.mesh.position.y.toFixed(1)}, ${render.mesh.position.z.toFixed(1)})`);
 
     // Handle position with validation but don't skip other updates
     let validPosition = position.value;

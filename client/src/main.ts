@@ -1,3 +1,4 @@
+console.log('main.ts loaded');
 // Clean Entry Point - A++ Architecture
 
 import { configureServices, GameManager } from './GameComposition';
