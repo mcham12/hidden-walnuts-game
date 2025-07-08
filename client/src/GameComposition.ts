@@ -726,12 +726,24 @@ export class GameManager {
           Logger.info(LogCategory.PLAYER, '🐿️ Local player created with ID:', this.localPlayer.id.value);
           this.entityManager.addEntity(this.localPlayer);
           Logger.info(LogCategory.PLAYER, '✅ Local player added to entity manager');
+          
+          // Verify the player has the required components
+          const positionComponent = this.localPlayer.getComponent('position');
+          const renderComponent = this.localPlayer.getComponent('render') as any;
+          Logger.info(LogCategory.PLAYER, `🔍 Local player components - Position: ${positionComponent ? 'found' : 'missing'}, Render: ${renderComponent ? 'found' : 'missing'}`);
+          
+          if (renderComponent && renderComponent.mesh) {
+            Logger.info(LogCategory.PLAYER, `🎨 Local player mesh added to scene at position: (${renderComponent.mesh.position.x.toFixed(1)}, ${renderComponent.mesh.position.y.toFixed(1)}, ${renderComponent.mesh.position.z.toFixed(1)})`);
+          } else {
+            Logger.error(LogCategory.PLAYER, '❌ Local player missing render component or mesh');
+          }
         } else {
           Logger.error(LogCategory.PLAYER, '❌ Local player creation returned null/undefined');
         }
       } catch (error) {
         Logger.error(LogCategory.PLAYER, '❌ Failed to create local player:', error);
-        throw error;
+        // Don't throw error to prevent game from crashing, but log it
+        Logger.error(LogCategory.PLAYER, '🚨 Game will continue without local player');
       }
     } else {
       Logger.error(LogCategory.PLAYER, '❌ PlayerFactory not available or missing createLocalPlayer method');

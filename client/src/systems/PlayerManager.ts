@@ -299,6 +299,13 @@ export class PlayerManager extends System {
       Logger.info(LogCategory.PLAYER, `✅ Successfully created remote player: ${data.squirrelId} as ${data.characterType || 'colobus'}`);
     } catch (error) {
       Logger.error(LogCategory.PLAYER, `❌ Failed to create remote player ${data.squirrelId}:`, error);
+      Logger.error(LogCategory.PLAYER, `🔍 Error details:`, {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        squirrelId: data.squirrelId,
+        characterType: data.characterType || 'colobus',
+        position: data.position
+      });
       // Clean up tracking on failure
       this.trackedSquirrelIds.delete(data.squirrelId);
       // Don't re-throw to prevent critical errors

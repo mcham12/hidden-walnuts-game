@@ -110,23 +110,29 @@ export class CharacterFactory {
   async createRemotePlayer(squirrelId: string, position: Vector3, rotation: Rotation, characterType: string = 'colobus'): Promise<Entity> {
     Logger.info(LogCategory.PLAYER, `🌐 Creating remote player: ${squirrelId} as ${characterType}`);
     
-    const config = this.characterRegistry.getCharacter(characterType);
-    if (!config) {
-      Logger.error(LogCategory.PLAYER, `❌ Unknown character type: ${characterType}`);
-      throw new Error(`Unknown character type: ${characterType}`);
-    }
-    
-    // Create entity first
-    const entity = this.entityManager.createEntity();
-    
-    // Load character model and setup
-    const characterInstance = await this.createCharacterInstance(
-      squirrelId,
-      characterType,
-      config,
-      position,
-      rotation
-    );
+    try {
+      const config = this.characterRegistry.getCharacter(characterType);
+      if (!config) {
+        Logger.error(LogCategory.PLAYER, `❌ Unknown character type: ${characterType}`);
+        throw new Error(`Unknown character type: ${characterType}`);
+      }
+      
+      Logger.info(LogCategory.PLAYER, `🎨 Character config found for ${characterType}, creating entity...`);
+      
+      // Create entity first
+      const entity = this.entityManager.createEntity();
+      Logger.info(LogCategory.PLAYER, `🏗️ Entity created with ID: ${entity.id.value}`);
+      
+      // Load character model and setup
+      Logger.info(LogCategory.PLAYER, `🎭 Creating character instance for ${squirrelId}...`);
+      const characterInstance = await this.createCharacterInstance(
+        squirrelId,
+        characterType,
+        config,
+        position,
+        rotation
+      );
+      Logger.info(LogCategory.PLAYER, `✅ Character instance created for ${squirrelId}`);
     
     // Add a subtle color difference to distinguish remote players
     characterInstance.model.traverse((child: any) => {
@@ -169,6 +175,10 @@ export class CharacterFactory {
     
     Logger.info(LogCategory.PLAYER, `✅ Remote player entity created`);
     return entity;
+    } catch (error) {
+      Logger.error(LogCategory.PLAYER, `❌ Failed to create remote player ${squirrelId}:`, error);
+      throw error;
+    }
   }
 
   /**
