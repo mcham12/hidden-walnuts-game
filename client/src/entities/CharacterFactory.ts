@@ -404,17 +404,24 @@ export class CharacterFactory {
     mixer: THREE.AnimationMixer | undefined,
     actions: Map<string, THREE.AnimationAction>
   ): Promise<void> {
-    Logger.info(LogCategory.PLAYER, `🔄 Loading animations for ${config.name}`);
+    Logger.info(LogCategory.PLAYER, `🔄 Loading animations for ${config.name} (${Object.keys(config.animations).length} animations)`);
     
     // Create mixer if not provided
     if (!mixer) {
       mixer = new THREE.AnimationMixer(model);
+      Logger.debug(LogCategory.PLAYER, `✅ Created animation mixer for ${config.name}`);
     }
     
     const animationPromises: Promise<void>[] = [];
+    const animationEntries = Object.entries(config.animations);
+    
+    Logger.info(LogCategory.PLAYER, `📋 Animation files to load for ${config.name}:`);
+    animationEntries.forEach(([name, path]) => {
+      Logger.debug(LogCategory.PLAYER, `  - ${name}: ${path}`);
+    });
     
     // Load each animation file
-    for (const [animationName, animationPath] of Object.entries(config.animations)) {
+    for (const [animationName, animationPath] of animationEntries) {
       const promise = this.loadSingleAnimation(model, animationName, animationPath, mixer, actions);
       animationPromises.push(promise);
     }
@@ -422,6 +429,7 @@ export class CharacterFactory {
     try {
       await Promise.all(animationPromises);
       Logger.info(LogCategory.PLAYER, `✅ Loaded ${animationPromises.length} animations for ${config.name}`);
+      Logger.info(LogCategory.PLAYER, `📊 Final animation count for ${config.name}: ${model.animations.length} animations, ${actions.size} actions`);
     } catch (error) {
       Logger.warn(LogCategory.PLAYER, `⚠️ Some animations failed to load for ${config.name}:`, error);
     }
@@ -438,14 +446,30 @@ export class CharacterFactory {
     actions: Map<string, THREE.AnimationAction>
   ): Promise<void> {
     try {
+      Logger.debug(LogCategory.PLAYER, `🔄 Loading animation ${animationName} from: ${animationPath}`);
       const gltf = await this.assetManager.loadModel(animationPath);
-      if (!gltf || !gltf.animations || gltf.animations.length === 0) {
-        Logger.warn(LogCategory.PLAYER, `⚠️ No animations found in: ${animationPath}`);
+      
+      if (!gltf) {
+        Logger.warn(LogCategory.PLAYER, `⚠️ Failed to load GLTF from: ${animationPath}`);
         return;
       }
       
+      if (!gltf.animations) {
+        Logger.warn(LogCategory.PLAYER, `⚠️ No animations array in GLTF from: ${animationPath}`);
+        return;
+      }
+      
+      if (gltf.animations.length === 0) {
+        Logger.warn(LogCategory.PLAYER, `⚠️ Empty animations array in GLTF from: ${animationPath}`);
+        return;
+      }
+      
+      Logger.info(LogCategory.PLAYER, `✅ Found ${gltf.animations.length} animations in: ${animationPath}`);
+      
       // Add animations to the model and create actions
-      gltf.animations.forEach((clip: THREE.AnimationClip) => {
+      gltf.animations.forEach((clip: THREE.AnimationClip, index: number) => {
+        Logger.debug(LogCategory.PLAYER, `🔄 Processing animation clip ${index}: ${clip.name} (duration: ${clip.duration}s)`);
+        
         // Rename the clip to match the expected name
         clip.name = animationName;
         model.animations.push(clip);
@@ -453,11 +477,13 @@ export class CharacterFactory {
         // Create action for the animation
         const action = mixer.clipAction(clip);
         actions.set(animationName, action);
+        
+        Logger.debug(LogCategory.PLAYER, `✅ Created action for animation: ${animationName}`);
       });
       
-      Logger.debug(LogCategory.PLAYER, `✅ Loaded animation: ${animationName}`);
+      Logger.info(LogCategory.PLAYER, `✅ Successfully loaded animation: ${animationName}`);
     } catch (error) {
-      Logger.warn(LogCategory.PLAYER, `⚠️ Failed to load animation ${animationName} from ${animationPath}:`, error);
+      Logger.error(LogCategory.PLAYER, `❌ Failed to load animation ${animationName} from ${animationPath}:`, error);
     }
   }
 

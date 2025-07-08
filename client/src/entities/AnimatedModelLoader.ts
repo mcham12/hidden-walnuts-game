@@ -233,12 +233,15 @@ export class AnimatedModelLoader {
     // Apply character scaling
     this.applyCharacterScale(model, characterConfig.scale);
 
-    // Extract animation data
+    // Extract animation data from main model
     const animations = this.extractAnimationData(model);
     const blendshapes = this.extractBlendshapeData(model);
 
     // Create animation mixer
     const mixer = this.createAnimationMixer(model);
+
+    // Load animations from separate files
+    await this.loadCharacterAnimations(model, characterConfig, animations);
 
     // Create animated model
     const animatedModel: AnimatedModel = {
@@ -266,6 +269,89 @@ export class AnimatedModelLoader {
     }
 
     return animations;
+  }
+
+  /**
+   * Load and attach animations to the character model
+   */
+  private async loadCharacterAnimations(
+    model: THREE.Object3D, 
+    characterConfig: CharacterConfig, 
+    animations: Map<string, THREE.AnimationClip>
+  ): Promise<void> {
+    Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading animations for ${characterConfig.name} (${Object.keys(characterConfig.animations).length} animations)`);
+    
+    const animationPromises: Promise<void>[] = [];
+    const animationEntries = Object.entries(characterConfig.animations);
+    
+    Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Animation files to load for ${characterConfig.name}:`);
+    animationEntries.forEach(([name, path]) => {
+      Logger.debug(LogCategory.CORE, `  - ${name}: ${path}`);
+    });
+    
+    // Load each animation file
+    for (const [animationName, animationPath] of animationEntries) {
+      const promise = this.loadSingleAnimation(model, animationName, animationPath, animations);
+      animationPromises.push(promise);
+    }
+    
+    try {
+      await Promise.all(animationPromises);
+      Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loaded ${animationPromises.length} animations for ${characterConfig.name}`);
+      Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Final animation count for ${characterConfig.name}: ${model.animations.length} animations, ${animations.size} actions`);
+    } catch (error) {
+      Logger.warn(LogCategory.CORE, `[AnimatedModelLoader] Some animations failed to load for ${characterConfig.name}:`, error);
+    }
+  }
+
+  /**
+   * Load a single animation and attach it to the model
+   */
+  private async loadSingleAnimation(
+    model: THREE.Object3D, 
+    animationName: string, 
+    animationPath: string,
+    animations: Map<string, THREE.AnimationClip>
+  ): Promise<void> {
+    try {
+      Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Loading animation ${animationName} from: ${animationPath}`);
+      const gltf = await this.loadGLTF(animationPath);
+      
+      if (!gltf) {
+        Logger.warn(LogCategory.CORE, `[AnimatedModelLoader] Failed to load GLTF from: ${animationPath}`);
+        return;
+      }
+      
+      if (!gltf.animations) {
+        Logger.warn(LogCategory.CORE, `[AnimatedModelLoader] No animations array in GLTF from: ${animationPath}`);
+        return;
+      }
+      
+      if (gltf.animations.length === 0) {
+        Logger.warn(LogCategory.CORE, `[AnimatedModelLoader] Empty animations array in GLTF from: ${animationPath}`);
+        return;
+      }
+      
+      Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Found ${gltf.animations.length} animations in: ${animationPath}`);
+      
+      // Add animations to the model and create actions
+      gltf.animations.forEach((clip: THREE.AnimationClip, index: number) => {
+        Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Processing animation clip ${index}: ${clip.name} (duration: ${clip.duration}s)`);
+        
+        // Rename the clip to match the expected name
+        clip.name = animationName;
+        model.animations.push(clip);
+        
+        // Add to animations map
+        animations.set(animationName, clip);
+        
+        Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Created action for animation: ${animationName}`);
+      });
+      
+      Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Successfully loaded animation: ${animationName}`);
+    } catch (error) {
+      Logger.error(LogCategory.CORE, `[AnimatedModelLoader] Failed to load animation ${animationName} from ${animationPath}:`, error);
+    }
   }
 
   private extractBlendshapeData(model: THREE.Object3D): Map<string, THREE.MorphTarget> {
