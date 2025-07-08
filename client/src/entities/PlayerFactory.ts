@@ -35,12 +35,13 @@ export class PlayerFactory {
     let terrainHeight = 0;
     try {
       terrainHeight = await this.terrainService.getTerrainHeight(spawnX, spawnZ);
+      Logger.info(LogCategory.PLAYER, `🌍 Terrain height at spawn: ${terrainHeight.toFixed(2)}`);
     } catch (error) {
       Logger.warn(LogCategory.PLAYER, '⚠️ Failed to get terrain height during spawn, using default height', error);
-      terrainHeight = 0;
+      terrainHeight = 0.5; // Use minimum terrain height
     }
     
-    const spawnY = terrainHeight + 0.1; // TASK 3 FIX: Match remote player height for consistency
+    const spawnY = terrainHeight + 0.5; // TASK 8 FIX: Ensure player is above terrain with proper offset
     
     Logger.info(LogCategory.PLAYER, `🎯 Player spawn position: (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
     
@@ -52,6 +53,7 @@ export class PlayerFactory {
     let characterScale = 0.3; // Default scale
     
     try {
+      Logger.info(LogCategory.PLAYER, `🔄 Loading character model for ${selectedCharacterType}...`);
       const animatedModel = await this.animatedModelLoader.loadCharacterModel(selectedCharacterType, {
         lodLevel: 0,
         enableCaching: true,
@@ -78,14 +80,33 @@ export class PlayerFactory {
       characterScale = 0.3; // Default scale for fallback
     }
     
-    // Apply proper scaling - use character config scale, not hardcoded value
+    // TASK 8 FIX: Apply proper scaling and ensure model is visible
     model.scale.set(characterScale, characterScale, characterScale);
-    // Don't apply recursive scaling to children - this causes double scaling
     model.position.set(spawnX, spawnY, spawnZ);
+    
+    // Ensure model is visible and has proper materials
+    model.traverse((child: any) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        // Ensure material is visible
+        if (child.material) {
+          child.material.transparent = false;
+          child.material.opacity = 1.0;
+          Logger.debug(LogCategory.PLAYER, `🎨 Material for ${child.name}: visible=${child.visible}, transparent=${child.material.transparent}, opacity=${child.material.opacity}`);
+        }
+        Logger.debug(LogCategory.PLAYER, `🎭 Mesh ${child.name}: visible=${child.visible}, position=(${child.position.x.toFixed(2)}, ${child.position.y.toFixed(2)}, ${child.position.z.toFixed(2)})`);
+      }
+    });
     
     // Add to scene
     this.sceneManager.getScene().add(model);
     Logger.info(LogCategory.PLAYER, `✅ Local player added to scene at position (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)}) with scale ${characterScale}`);
+    
+    // Debug: Check if model is actually in scene
+    const scene = this.sceneManager.getScene();
+    const modelInScene = scene.children.find(child => child === model);
+    Logger.info(LogCategory.PLAYER, `🔍 Model in scene: ${modelInScene ? 'YES' : 'NO'}, Scene children count: ${scene.children.length}`);
     
     // Add all required components using the Entity class methods
     entity
@@ -106,7 +127,8 @@ export class PlayerFactory {
         type: 'network',
         isLocalPlayer: true,
         squirrelId: playerId,
-        lastUpdate: performance.now()
+        lastUpdate: performance.now(),
+        characterType: selectedCharacterType // TASK 8 FIX: Add character type to network component
       })
       .addComponent<InputComponent>({
         type: 'input',
@@ -132,6 +154,7 @@ export class PlayerFactory {
     let characterScale = 0.3; // Default scale
     
     try {
+      Logger.info(LogCategory.PLAYER, `🔄 Loading character model for remote player ${squirrelId} as ${characterType}...`);
       // Try to load the specific character model
       const animatedModel = await this.animatedModelLoader.loadCharacterModel(characterType, {
         lodLevel: 0,
@@ -159,11 +182,25 @@ export class PlayerFactory {
       characterScale = 0.3; // Default scale for fallback
     }
     
-    // Apply proper scaling - use character config scale, not hardcoded value
+    // TASK 8 FIX: Apply proper scaling and ensure model is visible
     model.scale.set(characterScale, characterScale, characterScale);
-    // Don't apply recursive scaling to children - this causes double scaling
     model.position.set(position.x, position.y, position.z);
     model.rotation.y = rotation.y; // Use the y rotation value
+    
+    // Ensure model is visible and has proper materials
+    model.traverse((child: any) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        // Ensure material is visible
+        if (child.material) {
+          child.material.transparent = false;
+          child.material.opacity = 1.0;
+          Logger.debug(LogCategory.PLAYER, `🎨 Remote player material for ${child.name}: visible=${child.visible}, transparent=${child.material.transparent}, opacity=${child.material.opacity}`);
+        }
+        Logger.debug(LogCategory.PLAYER, `🎭 Remote player mesh ${child.name}: visible=${child.visible}, position=(${child.position.x.toFixed(2)}, ${child.position.y.toFixed(2)}, ${child.position.z.toFixed(2)})`);
+      }
+    });
     
     // Add a subtle color difference to distinguish remote players
     model.traverse((child: any) => {
@@ -177,6 +214,11 @@ export class PlayerFactory {
     // Add to scene
     this.sceneManager.getScene().add(model);
     Logger.info(LogCategory.PLAYER, `✅ Remote player added to scene at position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}) with scale ${characterScale}`);
+    
+    // Debug: Check if model is actually in scene
+    const scene = this.sceneManager.getScene();
+    const modelInScene = scene.children.find(child => child === model);
+    Logger.info(LogCategory.PLAYER, `🔍 Remote player model in scene: ${modelInScene ? 'YES' : 'NO'}, Scene children count: ${scene.children.length}`);
     
     // Add components using Entity class methods
     entity
@@ -198,10 +240,10 @@ export class PlayerFactory {
         isLocalPlayer: false,
         squirrelId: squirrelId,
         lastUpdate: performance.now(),
-        characterType: characterType // Store the character type
+        characterType: characterType // TASK 8 FIX: Add character type to network component
       });
     
-    Logger.info(LogCategory.PLAYER, `✅ Remote player entity created`);
+    Logger.info(LogCategory.PLAYER, `✅ Remote player entity created with character type: ${characterType}`);
     return entity;
   }
 
@@ -296,4 +338,4 @@ export class PlayerFactory {
     Logger.info(LogCategory.PLAYER, `🎮 WASD controls should now work for local player!`);
     return entity;
   }
-} 
+}
