@@ -2,38 +2,55 @@
 
 import { System, Entity, InputComponent } from '../ecs';
 import { EventBus } from '../core/EventBus';
-// Removed unused container import - using pure DI now
 import { IInputManager } from '../GameComposition';
+import { Logger, LogCategory } from '../core/Logger';
 
 export class InputSystem extends System {
+  private inputState: { forward: boolean; backward: boolean; turnLeft: boolean; turnRight: boolean } = {
+    forward: false,
+    backward: false,
+    turnLeft: false,
+    turnRight: false
+  };
+
   constructor(
     eventBus: EventBus,
     private inputManager: IInputManager
   ) {
     super(eventBus, ['input'], 'InputSystem');
+    Logger.info(LogCategory.INPUT, '[InputSystem] Initialized');
   }
 
   update(_deltaTime: number): void {
-    const inputState = this.inputManager.getInputState();
+    // Update input state
+    this.updateInputState();
     
-    // Update all entities with input components (typically just the local player)
+    // Update all entities with input components
     for (const entity of this.entities.values()) {
-      this.updateEntityInput(entity, inputState);
+      this.updateEntityInput(entity);
     }
   }
 
-  private updateEntityInput(
-    entity: Entity, 
-    inputState: { forward: boolean; backward: boolean; turnLeft: boolean; turnRight: boolean }
-  ): void {
-    const inputComponent: InputComponent = {
-      type: 'input',
-      forward: inputState.forward,
-      backward: inputState.backward,
-      turnLeft: inputState.turnLeft,
-      turnRight: inputState.turnRight
-    };
+  private updateInputState(): void {
+    const newInputState = this.inputManager.getInputState();
+    this.inputState = newInputState;
+  }
 
-    entity.addComponent(inputComponent);
+  private updateEntityInput(entity: Entity): void {
+    const network = entity.getComponent<import('../ecs').NetworkComponent>('network');
+    
+    // Only update local player input
+    if (network?.isLocalPlayer) {
+      Logger.debug(LogCategory.INPUT, `[InputSystem] Local player input: forward=${this.inputState.forward}, backward=${this.inputState.backward}, turnLeft=${this.inputState.turnLeft}, turnRight=${this.inputState.turnRight}`);
+      
+      // Update input component
+      entity.addComponent<InputComponent>({
+        type: 'input',
+        forward: this.inputState.forward,
+        backward: this.inputState.backward,
+        turnLeft: this.inputState.turnLeft,
+        turnRight: this.inputState.turnRight
+      });
+    }
   }
 } 

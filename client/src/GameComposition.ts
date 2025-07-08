@@ -748,6 +748,11 @@ export class GameManager {
       // Store the local player entity
       this.localPlayer = entity;
       
+      // FIXED: Add entity to ECS
+      Logger.info(LogCategory.PLAYER, `🔧 Adding local player entity to ECS...`);
+      this.entityManager.addEntity(entity);
+      Logger.info(LogCategory.PLAYER, `✅ Local player entity added to ECS. Entity ID: ${entity.id.value}`);
+      
       // FIXED: Emit character selection event for animation setup
       const eventBus = container.resolve(ServiceTokens.EVENT_BUS) as any;
       eventBus.emit('player:character_changed', {

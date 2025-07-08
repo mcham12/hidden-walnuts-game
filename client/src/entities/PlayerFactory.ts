@@ -33,8 +33,11 @@ export class PlayerFactory {
     const spawnY = 1.0; // Fixed height above ground
     const spawnRotationY = Math.random() * Math.PI * 2; // Random rotation
     
+    Logger.info(LogCategory.PLAYER, `📍 Spawn position: (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
+    
     // Create entity first
     const entity = this.entityManager.createEntity();
+    Logger.info(LogCategory.PLAYER, `✅ Entity created with ID: ${entity.id.value}`);
     
     // Load the selected character model using AnimatedModelLoader
     let model: THREE.Object3D;
@@ -73,14 +76,20 @@ export class PlayerFactory {
     model.position.set(spawnX, spawnY, spawnZ);
     model.rotation.y = spawnRotationY;
     
+    Logger.info(LogCategory.PLAYER, `🎨 Model prepared: scale=${characterScale}, position=(${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
+    
     // Add to scene
-    this.sceneManager.getScene().add(model);
+    const scene = this.sceneManager.getScene();
+    Logger.info(LogCategory.PLAYER, `🎭 Adding model to scene...`);
+    scene.add(model);
     Logger.info(LogCategory.PLAYER, `✅ Local player added to scene at position (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)}) with scale ${characterScale}`);
     
     // Debug: Check if model is actually in scene
-    const scene = this.sceneManager.getScene();
     const modelInScene = scene.children.find(child => child === model);
     Logger.info(LogCategory.PLAYER, `🔍 Model in scene: ${modelInScene ? 'YES' : 'NO'}, Scene children count: ${scene.children.length}`);
+    
+    // Log all scene children for debugging
+    Logger.info(LogCategory.PLAYER, `📊 Scene children: ${scene.children.map(child => `${child.type}:${child.name || 'unnamed'}`).join(', ')}`);
     
     // Create animation controllers
     const characterConfig = this.characterRegistry.getCharacter(selectedCharacterType);
@@ -124,6 +133,8 @@ export class PlayerFactory {
     }
     
     // Add all required components using the Entity class methods
+    Logger.info(LogCategory.PLAYER, `🔧 Adding components to entity...`);
+    
     entity
       .addComponent<PositionComponent>({
         type: 'position',
@@ -153,6 +164,8 @@ export class PlayerFactory {
         turnRight: false
       });
     
+    Logger.info(LogCategory.PLAYER, `✅ Basic components added to entity`);
+    
     // Add animation components if controllers were created successfully
     if (animationController) {
       entity.addComponent<AnimationComponent>({
@@ -163,6 +176,7 @@ export class PlayerFactory {
         updateInterval: 16,
         priority: 8
       });
+      Logger.info(LogCategory.PLAYER, `✅ Animation component added`);
     }
     
     if (playerAnimationController) {
@@ -174,6 +188,23 @@ export class PlayerFactory {
         updateInterval: 16,
         priority: 8
       });
+      Logger.info(LogCategory.PLAYER, `✅ Input animation component added`);
+    }
+    
+    // Verify entity has all required components
+    const components = entity.getComponents();
+    Logger.info(LogCategory.PLAYER, `📊 Entity components: ${components.map(c => c.type).join(', ')}`);
+    
+    // Verify render component
+    const renderComponent = entity.getComponent<RenderComponent>('render');
+    if (renderComponent) {
+      Logger.info(LogCategory.PLAYER, `🎨 Render component: mesh=${!!renderComponent.mesh}, visible=${renderComponent.visible}`);
+      if (renderComponent.mesh) {
+        Logger.info(LogCategory.PLAYER, `📍 Mesh position: (${renderComponent.mesh.position.x.toFixed(1)}, ${renderComponent.mesh.position.y.toFixed(1)}, ${renderComponent.mesh.position.z.toFixed(1)})`);
+        Logger.info(LogCategory.PLAYER, `🎭 Mesh visible: ${renderComponent.mesh.visible}`);
+      }
+    } else {
+      Logger.error(LogCategory.PLAYER, `❌ No render component found on entity!`);
     }
     
     Logger.info(LogCategory.PLAYER, `✅ Local player entity created with character type: ${selectedCharacterType}`);

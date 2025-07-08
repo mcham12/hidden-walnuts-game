@@ -12,9 +12,12 @@ export class RenderSystem extends System {
     private renderAdapter: IRenderAdapter
   ) {
     super(eventBus, ['position', 'rotation', 'render'], 'RenderSystem');
+    Logger.info(LogCategory.RENDER, '[RenderSystem] Initialized');
   }
 
   update(_deltaTime: number): void {
+    Logger.debug(LogCategory.RENDER, `[RenderSystem] Processing ${this.entities.size} entities`);
+    
     for (const entity of this.entities.values()) {
       this.updateEntityVisuals(entity);
     }
@@ -25,7 +28,12 @@ export class RenderSystem extends System {
     const rotation = entity.getComponent<RotationComponent>('rotation')!;
     const render = entity.getComponent<RenderComponent>('render')!;
 
-    if (!render.mesh || !render.visible) return;
+    Logger.debug(LogCategory.RENDER, `[RenderSystem] Updating entity ${entity.id.value}: position=(${position.value.x.toFixed(1)}, ${position.value.y.toFixed(1)}, ${position.value.z.toFixed(1)}), visible=${render.visible}`);
+
+    if (!render.mesh || !render.visible) {
+      Logger.debug(LogCategory.RENDER, `[RenderSystem] Skipping entity ${entity.id.value}: no mesh or not visible`);
+      return;
+    }
 
     // Handle position with validation but don't skip other updates
     let validPosition = position.value;
@@ -47,6 +55,8 @@ export class RenderSystem extends System {
     this.renderAdapter.updatePosition(render.mesh, validPosition);
     this.renderAdapter.updateRotation(render.mesh, rotation.value);
     this.renderAdapter.setVisibility(render.mesh, render.visible);
+    
+    Logger.debug(LogCategory.RENDER, `[RenderSystem] Updated entity ${entity.id.value} mesh position to (${validPosition.x.toFixed(1)}, ${validPosition.y.toFixed(1)}, ${validPosition.z.toFixed(1)})`);
   }
 
   // Handle visual effects through abstraction
@@ -62,6 +72,8 @@ export class RenderSystem extends System {
   }
 
   protected onEntityAdded(entity: Entity): void {
+    Logger.info(LogCategory.RENDER, `[RenderSystem] Entity ${entity.id.value} added with components: ${entity.getComponents().map(c => c.type).join(', ')}`);
+    
     // Subscribe to fade events for this entity
     this.eventBus.subscribe('render.fade', (data: { entityId: string, opacity: number }) => {
       if (data.entityId === entity.id.value) {
