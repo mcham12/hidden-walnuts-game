@@ -5,7 +5,7 @@ import { AnimatedModelLoader } from '../entities/AnimatedModelLoader';
 import { CharacterSelectionManager } from './CharacterSelectionManager';
 import { CharacterSelectionSystem } from '../systems/CharacterSelectionSystem';
 import { CharacterGallery } from '../ui/CharacterGallery';
-import { CharacterFactory } from '../entities/CharacterFactory';
+import { PlayerFactory } from '../entities/PlayerFactory';
 import { EventBus } from './EventBus';
 import { initializeCharacterRegistry } from '../config/characters';
 
@@ -181,12 +181,13 @@ container.registerSingleton(ServiceTokens.CHARACTER_GALLERY, () => {
 });
 
 container.registerSingleton(ServiceTokens.PLAYER_FACTORY, () => {
-  return new CharacterFactory(
+  return new PlayerFactory(
     container.resolve(ServiceTokens.SCENE_MANAGER),
     container.resolve(ServiceTokens.ASSET_MANAGER),
     container.resolve(ServiceTokens.ENTITY_MANAGER),
-    container.resolve(ServiceTokens.TERRAIN_SERVICE),
-    container.resolve(ServiceTokens.CHARACTER_REGISTRY)
+    container.resolve(ServiceTokens.CHARACTER_REGISTRY),
+    container.resolve(ServiceTokens.ANIMATED_MODEL_LOADER),
+    container.resolve(ServiceTokens.CHARACTER_SELECTION_MANAGER)
   );
 });
 

@@ -6,7 +6,7 @@ import { EventBus } from './core/EventBus';
 import { Logger, LogCategory } from './core/Logger';
 import { EntityManager, Entity, PositionComponent, RotationComponent } from './ecs';
 import { TerrainService } from './services/TerrainService';
-import { CharacterFactory } from './entities/CharacterFactory';
+
 import { InputSystem } from './systems/InputSystem';
 import { MovementSystem } from './systems/MovementSystem';
 import { ClientPredictionSystem } from './systems/ClientPredictionSystem';
@@ -1006,15 +1006,7 @@ export function configureServices(): void {
     return new TerrainService();
   });
 
-  container.registerSingleton(ServiceTokens.PLAYER_FACTORY, () => {
-    return new CharacterFactory(
-      container.resolve(ServiceTokens.SCENE_MANAGER),
-      container.resolve(ServiceTokens.ASSET_MANAGER),
-      container.resolve(ServiceTokens.ENTITY_MANAGER),
-      container.resolve(ServiceTokens.TERRAIN_SERVICE),
-      container.resolve(ServiceTokens.CHARACTER_REGISTRY)
-    );
-  });
+
 
   // Register systems with proper dependencies
   container.registerSingleton(ServiceTokens.INPUT_SYSTEM, () => {
