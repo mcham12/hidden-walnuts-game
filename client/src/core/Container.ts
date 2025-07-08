@@ -6,6 +6,7 @@ import { CharacterSelectionManager } from './CharacterSelectionManager';
 import { CharacterSelectionSystem } from '../systems/CharacterSelectionSystem';
 import { CharacterGallery } from '../ui/CharacterGallery';
 import { EventBus } from './EventBus';
+import { initializeCharacterRegistry } from '../config/characters';
 
 export type Constructor<T = {}> = new (...args: any[]) => T;
 export type Factory<T> = () => T;
@@ -143,9 +144,11 @@ export const container = new Container();
 // The character selection system will be initialized there instead
 
 // Character Selection System registrations (ES6 imports)
+container.registerSingleton(ServiceTokens.EVENT_BUS, () => new EventBus());
+
 container.registerSingleton(ServiceTokens.CHARACTER_REGISTRY, () => {
   const eventBus = container.resolve<EventBus>(ServiceTokens.EVENT_BUS);
-  return new CharacterRegistry(eventBus);
+  return initializeCharacterRegistry(eventBus);
 });
 
 container.registerSingleton(ServiceTokens.ANIMATED_MODEL_LOADER, () => {
