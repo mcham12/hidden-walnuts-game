@@ -225,6 +225,26 @@ export class AnimatedModelLoader {
     });
   }
 
+  private async loadGLTFWithAnimations(path: string): Promise<{ scene: THREE.Object3D; animations: THREE.AnimationClip[] }> {
+    return new Promise((resolve, reject) => {
+      this.gltfLoader.load(
+        path,
+        (gltf) => {
+          resolve({
+            scene: gltf.scene,
+            animations: gltf.animations || []
+          });
+        },
+        (progress) => {
+          Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Loading progress: ${path}`, progress);
+        },
+        (error) => {
+          reject(error);
+        }
+      );
+    });
+  }
+
   private async createAnimatedModel(
     model: THREE.Object3D, 
     characterConfig: CharacterConfig, 
@@ -315,27 +335,27 @@ export class AnimatedModelLoader {
   ): Promise<void> {
     try {
       Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Loading animation ${animationName} from: ${animationPath}`);
-      const gltf = await this.loadGLTF(animationPath);
+      const gltfData = await this.loadGLTFWithAnimations(animationPath);
       
-      if (!gltf) {
+      if (!gltfData) {
         Logger.warn(LogCategory.CORE, `[AnimatedModelLoader] Failed to load GLTF from: ${animationPath}`);
         return;
       }
       
-      if (!gltf.animations) {
+      if (!gltfData.animations) {
         Logger.warn(LogCategory.CORE, `[AnimatedModelLoader] No animations array in GLTF from: ${animationPath}`);
         return;
       }
       
-      if (gltf.animations.length === 0) {
+      if (gltfData.animations.length === 0) {
         Logger.warn(LogCategory.CORE, `[AnimatedModelLoader] Empty animations array in GLTF from: ${animationPath}`);
         return;
       }
       
-      Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Found ${gltf.animations.length} animations in: ${animationPath}`);
+      Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Found ${gltfData.animations.length} animations in: ${animationPath}`);
       
       // Add animations to the model and create actions
-      gltf.animations.forEach((clip: THREE.AnimationClip, index: number) => {
+      gltfData.animations.forEach((clip: THREE.AnimationClip, index: number) => {
         Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Processing animation clip ${index}: ${clip.name} (duration: ${clip.duration}s)`);
         
         // Rename the clip to match the expected name
