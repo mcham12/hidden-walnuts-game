@@ -54,6 +54,25 @@ export interface InterpolationComponent extends Component {
   speed: number;
 }
 
+// Animation Component for MVP 8
+export interface AnimationComponent extends Component {
+  type: 'animation';
+  controller: import('../core/AnimationController').AnimationController;
+  isActive: boolean;
+  lastUpdateTime: number;
+  updateInterval: number;
+  priority: number;
+}
+
+export interface InputAnimationComponent extends Component {
+  type: 'input_animation';
+  controller: import('../controllers/PlayerAnimationController').PlayerAnimationController;
+  isActive: boolean;
+  lastUpdateTime: number;
+  updateInterval: number;
+  priority: number;
+}
+
 // Entity class
 export class Entity {
   private components = new Map<string, Component>();

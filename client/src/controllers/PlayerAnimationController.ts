@@ -315,41 +315,39 @@ export class PlayerAnimationController implements IPlayerAnimationController {
    * Get animation name for state
    */
   private getAnimationNameForState(state: PlayerAnimationState): string | null {
-    const animationMap = this.characterConfig.animations;
-    
     switch (state) {
       case PlayerAnimationState.IDLE_A:
-        return animationMap.idle_a;
+        return 'idle_a';
       case PlayerAnimationState.IDLE_B:
-        return animationMap.idle_b;
+        return 'idle_b';
       case PlayerAnimationState.IDLE_C:
-        return animationMap.idle_c;
+        return 'idle_c';
       case PlayerAnimationState.WALK:
-        return animationMap.walk;
+        return 'walk';
       case PlayerAnimationState.RUN:
-        return animationMap.run;
+        return 'run';
       case PlayerAnimationState.JUMP:
-        return animationMap.jump;
+        return 'jump';
       case PlayerAnimationState.SWIM:
-        return animationMap.swim;
+        return 'swim';
       case PlayerAnimationState.FLY:
-        return animationMap.fly;
+        return 'fly';
       case PlayerAnimationState.ROLL:
-        return animationMap.roll;
+        return 'roll';
       case PlayerAnimationState.BOUNCE:
-        return animationMap.bounce;
+        return 'bounce';
       case PlayerAnimationState.SPIN:
-        return animationMap.spin;
+        return 'spin';
       case PlayerAnimationState.EAT:
-        return animationMap.eat;
+        return 'eat';
       case PlayerAnimationState.CLICKED:
-        return animationMap.clicked;
+        return 'clicked';
       case PlayerAnimationState.FEAR:
-        return animationMap.fear;
+        return 'fear';
       case PlayerAnimationState.DEATH:
-        return animationMap.death;
+        return 'death';
       case PlayerAnimationState.SIT:
-        return animationMap.sit;
+        return 'sit';
       default:
         return null;
     }

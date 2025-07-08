@@ -36,7 +36,7 @@ export class InputAnimationSystem extends System {
   private maxUpdateTime: number = 16; // 16ms = 60fps budget
 
   constructor(eventBus: EventBus) {
-    super(eventBus, ['input'], 'InputAnimationSystem');
+    super(eventBus, ['input', 'input_animation'], 'InputAnimationSystem');
     
     // Subscribe to events
     this.eventBus.subscribe('player.animation_changed', this.handleAnimationChanged.bind(this));

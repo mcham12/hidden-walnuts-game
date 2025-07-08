@@ -1,11 +1,14 @@
-import { Entity, PositionComponent, RotationComponent, RenderComponent, NetworkComponent, InputComponent } from '../ecs';
+import { Entity, PositionComponent, RotationComponent, RenderComponent, NetworkComponent, InputComponent, AnimationComponent, InputAnimationComponent } from '../ecs';
 import { Vector3, Rotation } from '../core/types';
 import { ISceneManager, IAssetManager } from '../GameComposition';
 import { ITerrainService } from '../services/TerrainService';
 import { Logger, LogCategory } from '../core/Logger';
 import { CharacterRegistry } from '../core/CharacterRegistry';
 import { CharacterConfig, CharacterInstance } from '../types/CharacterTypes';
+import { AnimationController } from '../core/AnimationController';
+import { container, ServiceTokens } from '../core/Container';
 import * as THREE from 'three';
+import { PlayerAnimationController } from '../controllers/PlayerAnimationController';
 
 /**
  * Universal Character Factory
@@ -26,82 +29,135 @@ export class CharacterFactory {
    * Create a local player character
    */
   async createLocalPlayer(playerId: string, characterType: string = 'colobus'): Promise<Entity> {
-    Logger.info(LogCategory.PLAYER, `🎭 Creating local player: ${playerId} as ${characterType}`);
+    Logger.info(LogCategory.PLAYER, `🎮 Creating local player: ${playerId} as ${characterType}`);
     
-    const config = this.characterRegistry.getCharacter(characterType);
-    if (!config) {
-      Logger.error(LogCategory.PLAYER, `❌ Unknown character type: ${characterType}`);
-      throw new Error(`Unknown character type: ${characterType}`);
-    }
-
-    // TASK 8 FIX: Spawn players very close to origin for easier multiplayer testing
-    const spawnX = Math.random() * 10 - 5; // Random spawn between -5 and 5 (closer to origin)
-    const spawnZ = Math.random() * 10 - 5; // Random spawn between -5 and 5 (closer to origin)
-    
-    let terrainHeight = 0;
     try {
-      terrainHeight = await this.terrainService.getTerrainHeight(spawnX, spawnZ);
+      const config = this.characterRegistry.getCharacter(characterType);
+      if (!config) {
+        Logger.error(LogCategory.PLAYER, `❌ Unknown character type: ${characterType}`);
+        throw new Error(`Unknown character type: ${characterType}`);
+      }
+      
+      Logger.info(LogCategory.PLAYER, `🎨 Character config found for ${characterType}, creating entity...`);
+      
+      // Create entity first
+      const entity = this.entityManager.createEntity();
+      Logger.info(LogCategory.PLAYER, `🏗️ Entity created with ID: ${entity.id.value}`);
+      
+      // Get spawn position from terrain service
+      const spawnX = Math.random() * 100;
+      const spawnZ = Math.random() * 100;
+      const spawnY = await this.terrainService.getTerrainHeight(spawnX, spawnZ) + 2; // Spawn 2 units above terrain
+      
+      Logger.info(LogCategory.PLAYER, `📍 Spawn position calculated: (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
+      
+      // Load character model and setup
+      Logger.info(LogCategory.PLAYER, `🎭 Creating character instance for ${playerId}...`);
+      const characterInstance = await this.createCharacterInstance(
+        playerId,
+        characterType,
+        config,
+        new Vector3(spawnX, spawnY, spawnZ),
+        Rotation.fromRadians(0)
+      );
+      Logger.info(LogCategory.PLAYER, `✅ Character instance created for ${playerId}`);
+      
+      // Add model to scene
+      this.sceneManager.getScene().add(characterInstance.model);
+      Logger.info(LogCategory.PLAYER, `✅ Character model added to scene`);
+      
+      // Create animation controller
+      const animationController = new AnimationController(
+        characterInstance.model,
+        config,
+        playerId
+      );
+      
+      // Re-initialize animations after they're loaded from separate files
+      animationController.reinitializeAnimations();
+      
+      // Create player animation controller for input-driven animations
+      const playerAnimationController = new PlayerAnimationController(
+        config,
+        characterInstance.model,
+        playerId,
+        container.resolve(ServiceTokens.EVENT_BUS)
+      );
+      
+      // Register with animation system
+      const animationSystem = container.resolve(ServiceTokens.ANIMATION_SYSTEM) as any;
+      if (animationSystem && typeof animationSystem.addAnimationComponent === 'function') {
+        animationSystem.addAnimationComponent(playerId, animationController, 8); // High priority for local player
+        Logger.info(LogCategory.PLAYER, `✅ Animation controller registered with system`);
+      } else {
+        Logger.warn(LogCategory.PLAYER, `⚠️ Animation system not available`);
+      }
+      
+      // Register with input animation system
+      const inputAnimationSystem = container.resolve(ServiceTokens.INPUT_ANIMATION_SYSTEM) as any;
+      if (inputAnimationSystem && typeof inputAnimationSystem.addPlayerAnimationController === 'function') {
+        inputAnimationSystem.addPlayerAnimationController(playerId, playerAnimationController, 8); // High priority for local player
+        Logger.info(LogCategory.PLAYER, `✅ Player animation controller registered with input system`);
+      } else {
+        Logger.warn(LogCategory.PLAYER, `⚠️ Input animation system not available`);
+      }
+    
+      // Add all required components using the Entity class methods
+      entity
+        .addComponent<PositionComponent>({
+          type: 'position',
+          value: new Vector3(spawnX, spawnY, spawnZ)
+        })
+        .addComponent<RotationComponent>({
+          type: 'rotation',
+          value: Rotation.fromRadians(0)
+        })
+        .addComponent<RenderComponent>({
+          type: 'render',
+          mesh: characterInstance.model,
+          visible: true
+        })
+        .addComponent<NetworkComponent>({
+          type: 'network',
+          isLocalPlayer: true,
+          squirrelId: playerId,
+          lastUpdate: performance.now(),
+          characterType: characterType // Add character type to network component
+        })
+        .addComponent<InputComponent>({
+          type: 'input',
+          forward: false,
+          backward: false,
+          turnLeft: false,
+          turnRight: false
+        })
+        .addComponent<AnimationComponent>({
+          type: 'animation',
+          controller: animationController,
+          isActive: true,
+          lastUpdateTime: 0,
+          updateInterval: 16,
+          priority: 8
+        })
+        .addComponent<InputAnimationComponent>({
+          type: 'input_animation',
+          controller: playerAnimationController,
+          isActive: true,
+          lastUpdateTime: 0,
+          updateInterval: 16,
+          priority: 8
+        });
+      
+      // Store character instance
+      this.characterInstances.set(playerId, characterInstance);
+      
+      Logger.info(LogCategory.PLAYER, `✅ Local player entity created with ${entity.getComponents().length} components`);
+      Logger.info(LogCategory.PLAYER, `🎮 WASD controls should now work for local ${characterType} player!`);
+      return entity;
     } catch (error) {
-      Logger.warn(LogCategory.PLAYER, '⚠️ Failed to get terrain height during spawn, using default height', error);
-      terrainHeight = 0;
+      Logger.error(LogCategory.PLAYER, `❌ Failed to create local player ${playerId}:`, error);
+      throw error;
     }
-    
-    const spawnY = terrainHeight + 0.1; // TASK 3 FIX: Match remote player height for consistency
-    
-    Logger.info(LogCategory.PLAYER, `🎯 Player spawn position: (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
-    
-    // Create entity first
-    const entity = this.entityManager.createEntity();
-    
-    // Load character model and setup
-    const characterInstance = await this.createCharacterInstance(
-      playerId,
-      characterType,
-      config,
-      new Vector3(spawnX, spawnY, spawnZ),
-      Rotation.fromRadians(0)
-    );
-    
-    // Add to scene
-    this.sceneManager.getScene().add(characterInstance.model);
-    Logger.info(LogCategory.PLAYER, `✅ Local player added to scene at position (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
-    
-    // Add all required components using the Entity class methods
-    entity
-      .addComponent<PositionComponent>({
-        type: 'position',
-        value: new Vector3(spawnX, spawnY, spawnZ)
-      })
-      .addComponent<RotationComponent>({
-        type: 'rotation',
-        value: Rotation.fromRadians(0)
-      })
-      .addComponent<RenderComponent>({
-        type: 'render',
-        mesh: characterInstance.model,
-        visible: true
-      })
-      .addComponent<NetworkComponent>({
-        type: 'network',
-        isLocalPlayer: true,
-        squirrelId: playerId,
-        lastUpdate: performance.now(),
-        characterType: characterType // Add character type to network component
-      })
-      .addComponent<InputComponent>({
-        type: 'input',
-        forward: false,
-        backward: false,
-        turnLeft: false,
-        turnRight: false
-      });
-    
-    // Store character instance
-    this.characterInstances.set(playerId, characterInstance);
-    
-    Logger.info(LogCategory.PLAYER, `✅ Local player entity created with ${entity.getComponents().length} components`);
-    Logger.info(LogCategory.PLAYER, `🎮 WASD controls should now work for local ${characterType} player!`);
-    return entity;
   }
 
   /**
@@ -134,47 +190,99 @@ export class CharacterFactory {
       );
       Logger.info(LogCategory.PLAYER, `✅ Character instance created for ${squirrelId}`);
     
-    // Add a subtle color difference to distinguish remote players
-    characterInstance.model.traverse((child: any) => {
-      if (child.isMesh && child.material) {
-        const material = child.material.clone();
-        material.color.multiplyScalar(0.8); // Slightly darker
-        child.material = material;
-      }
-    });
-    
-    // Add to scene
-    this.sceneManager.getScene().add(characterInstance.model);
-    Logger.info(LogCategory.PLAYER, `✅ Remote player added to scene at position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
-    
-    // Add components using Entity class methods
-    entity
-      .addComponent<PositionComponent>({
-        type: 'position',
-        value: position
-      })
-      .addComponent<RotationComponent>({
-        type: 'rotation',
-        value: rotation
-      })
-      .addComponent<RenderComponent>({
-        type: 'render',
-        mesh: characterInstance.model,
-        visible: true
-      })
-      .addComponent<NetworkComponent>({
-        type: 'network',
-        isLocalPlayer: false,
-        squirrelId: squirrelId,
-        lastUpdate: performance.now(),
-        characterType: characterType // Add character type to network component
+      // Add a subtle color difference to distinguish remote players
+      characterInstance.model.traverse((child: any) => {
+        if (child.isMesh && child.material) {
+          const material = child.material.clone();
+          material.color.multiplyScalar(0.8); // Slightly darker
+          child.material = material;
+        }
       });
-    
-    // Store character instance
-    this.characterInstances.set(squirrelId, characterInstance);
-    
-    Logger.info(LogCategory.PLAYER, `✅ Remote player entity created`);
-    return entity;
+      
+      // Add to scene
+      this.sceneManager.getScene().add(characterInstance.model);
+      Logger.info(LogCategory.PLAYER, `✅ Remote player added to scene at position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
+      
+      // Create animation controller
+      const animationController = new AnimationController(
+        characterInstance.model,
+        config,
+        squirrelId
+      );
+      
+      // Re-initialize animations after they're loaded from separate files
+      animationController.reinitializeAnimations();
+      
+      // Create player animation controller for input-driven animations
+      const playerAnimationController = new PlayerAnimationController(
+        config,
+        characterInstance.model,
+        squirrelId,
+        container.resolve(ServiceTokens.EVENT_BUS)
+      );
+      
+      // Register with animation system
+      const animationSystem = container.resolve(ServiceTokens.ANIMATION_SYSTEM) as any;
+      if (animationSystem && typeof animationSystem.addAnimationComponent === 'function') {
+        animationSystem.addAnimationComponent(squirrelId, animationController, 5); // Medium priority for remote players
+        Logger.info(LogCategory.PLAYER, `✅ Animation controller registered with system`);
+      } else {
+        Logger.warn(LogCategory.PLAYER, `⚠️ Animation system not available`);
+      }
+      
+      // Register with input animation system
+      const inputAnimationSystem = container.resolve(ServiceTokens.INPUT_ANIMATION_SYSTEM) as any;
+      if (inputAnimationSystem && typeof inputAnimationSystem.addPlayerAnimationController === 'function') {
+        inputAnimationSystem.addPlayerAnimationController(squirrelId, playerAnimationController, 5); // Medium priority for remote players
+        Logger.info(LogCategory.PLAYER, `✅ Player animation controller registered with input system`);
+      } else {
+        Logger.warn(LogCategory.PLAYER, `⚠️ Input animation system not available`);
+      }
+      
+      // Add components for remote player
+      entity
+        .addComponent<PositionComponent>({
+          type: 'position',
+          value: position
+        })
+        .addComponent<RotationComponent>({
+          type: 'rotation',
+          value: rotation
+        })
+        .addComponent<RenderComponent>({
+          type: 'render',
+          mesh: characterInstance.model,
+          visible: true
+        })
+        .addComponent<NetworkComponent>({
+          type: 'network',
+          isLocalPlayer: false,
+          squirrelId: squirrelId,
+          lastUpdate: performance.now(),
+          characterType: characterType
+        })
+        .addComponent<AnimationComponent>({
+          type: 'animation',
+          controller: animationController,
+          isActive: true,
+          lastUpdateTime: 0,
+          updateInterval: 16,
+          priority: 5
+        })
+        .addComponent<InputAnimationComponent>({
+          type: 'input_animation',
+          controller: playerAnimationController,
+          isActive: true,
+          lastUpdateTime: 0,
+          updateInterval: 16,
+          priority: 5
+        });
+      
+      // Store character instance
+      this.characterInstances.set(squirrelId, characterInstance);
+      
+      Logger.info(LogCategory.PLAYER, `✅ Remote player entity created`);
+      return entity;
     } catch (error) {
       Logger.error(LogCategory.PLAYER, `❌ Failed to create remote player ${squirrelId}:`, error);
       throw error;
@@ -193,69 +301,101 @@ export class CharacterFactory {
     Logger.info(LogCategory.PLAYER, `🎭 Creating local player with saved position: ${playerId} as ${characterType}`);
     Logger.info(LogCategory.PLAYER, `📍 Using saved position: (${savedPosition.x.toFixed(1)}, ${savedPosition.y.toFixed(1)}, ${savedPosition.z.toFixed(1)})`);
     
-    const config = this.characterRegistry.getCharacter(characterType);
-    if (!config) {
-      Logger.error(LogCategory.PLAYER, `❌ Unknown character type: ${characterType}`);
-      throw new Error(`Unknown character type: ${characterType}`);
+    try {
+      const config = this.characterRegistry.getCharacter(characterType);
+      if (!config) {
+        Logger.error(LogCategory.PLAYER, `❌ Unknown character type: ${characterType}`);
+        throw new Error(`Unknown character type: ${characterType}`);
+      }
+      
+      // Use saved position instead of random spawn
+      const spawnX = savedPosition.x;
+      const spawnY = savedPosition.y;
+      const spawnZ = savedPosition.z;
+      const spawnRotationY = savedRotationY;
+      
+      // Create entity first
+      const entity = this.entityManager.createEntity();
+      
+      // Load character model and setup
+      const characterInstance = await this.createCharacterInstance(
+        playerId,
+        characterType,
+        config,
+        new Vector3(spawnX, spawnY, spawnZ),
+        Rotation.fromRadians(spawnRotationY)
+      );
+      
+      // Add to scene
+      this.sceneManager.getScene().add(characterInstance.model);
+      Logger.info(LogCategory.PLAYER, `✅ Local player added to scene at SAVED position (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
+      
+      // Create animation controller
+      const animationController = new AnimationController(
+        characterInstance.model,
+        config,
+        playerId
+      );
+      
+      // Re-initialize animations after they're loaded from separate files
+      animationController.reinitializeAnimations();
+      
+      // Register with animation system
+      const animationSystem = container.resolve(ServiceTokens.ANIMATION_SYSTEM) as any;
+      if (animationSystem && typeof animationSystem.addAnimationComponent === 'function') {
+        animationSystem.addAnimationComponent(playerId, animationController, 8); // High priority for local player
+        Logger.info(LogCategory.PLAYER, `✅ Animation controller registered with system`);
+      } else {
+        Logger.warn(LogCategory.PLAYER, `⚠️ Animation system not available`);
+      }
+      
+      // Add all required components
+      entity
+        .addComponent<PositionComponent>({
+          type: 'position',
+          value: new Vector3(spawnX, spawnY, spawnZ)
+        })
+        .addComponent<RotationComponent>({
+          type: 'rotation',
+          value: Rotation.fromRadians(spawnRotationY)
+        })
+        .addComponent<RenderComponent>({
+          type: 'render',
+          mesh: characterInstance.model,
+          visible: true
+        })
+        .addComponent<NetworkComponent>({
+          type: 'network',
+          isLocalPlayer: true,
+          squirrelId: playerId,
+          lastUpdate: performance.now(),
+          characterType: characterType // Add character type to network component
+        })
+        .addComponent<InputComponent>({
+          type: 'input',
+          forward: false,
+          backward: false,
+          turnLeft: false,
+          turnRight: false
+        })
+        .addComponent<AnimationComponent>({
+          type: 'animation',
+          controller: animationController,
+          isActive: true,
+          lastUpdateTime: 0,
+          updateInterval: 16,
+          priority: 8
+        });
+      
+      // Store character instance
+      this.characterInstances.set(playerId, characterInstance);
+      
+      Logger.info(LogCategory.PLAYER, `✅ Local player entity created with saved position`);
+      return entity;
+    } catch (error) {
+      Logger.error(LogCategory.PLAYER, `❌ Failed to create local player with saved position ${playerId}:`, error);
+      throw error;
     }
-    
-    // Use saved position instead of random spawn
-    const spawnX = savedPosition.x;
-    const spawnY = savedPosition.y;
-    const spawnZ = savedPosition.z;
-    const spawnRotationY = savedRotationY;
-    
-    // Create entity first
-    const entity = this.entityManager.createEntity();
-    
-    // Load character model and setup
-    const characterInstance = await this.createCharacterInstance(
-      playerId,
-      characterType,
-      config,
-      new Vector3(spawnX, spawnY, spawnZ),
-      Rotation.fromRadians(spawnRotationY)
-    );
-    
-    // Add to scene
-    this.sceneManager.getScene().add(characterInstance.model);
-    Logger.info(LogCategory.PLAYER, `✅ Local player added to scene at SAVED position (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
-    
-    // Add all required components
-    entity
-      .addComponent<PositionComponent>({
-        type: 'position',
-        value: new Vector3(spawnX, spawnY, spawnZ)
-      })
-      .addComponent<RotationComponent>({
-        type: 'rotation',
-        value: Rotation.fromRadians(spawnRotationY)
-      })
-      .addComponent<RenderComponent>({
-        type: 'render',
-        mesh: characterInstance.model,
-        visible: true
-      })
-      .addComponent<NetworkComponent>({
-        type: 'network',
-        isLocalPlayer: true,
-        squirrelId: playerId,
-        lastUpdate: performance.now(),
-        characterType: characterType // Add character type to network component
-      })
-      .addComponent<InputComponent>({
-        type: 'input',
-        forward: false,
-        backward: false,
-        turnLeft: false,
-        turnRight: false
-      });
-    
-    // Store character instance
-    this.characterInstances.set(playerId, characterInstance);
-    
-    Logger.info(LogCategory.PLAYER, `✅ Local player entity created with saved position`);
-    return entity;
   }
 
   /**
@@ -264,49 +404,106 @@ export class CharacterFactory {
   async createNPC(npcId: string, characterType: string, position: Vector3): Promise<Entity> {
     Logger.info(LogCategory.PLAYER, `🤖 Creating NPC: ${npcId} as ${characterType}`);
     
-    const config = this.characterRegistry.getCharacter(characterType);
-    if (!config || !config.behaviors.isNPC) {
-      Logger.error(LogCategory.PLAYER, `❌ Character type ${characterType} cannot be used as NPC`);
-      throw new Error(`Character type ${characterType} cannot be used as NPC`);
+    try {
+      const config = this.characterRegistry.getCharacter(characterType);
+      if (!config || !config.behaviors.isNPC) {
+        Logger.error(LogCategory.PLAYER, `❌ Character type ${characterType} cannot be used as NPC`);
+        throw new Error(`Character type ${characterType} cannot be used as NPC`);
+      }
+      
+      // Create entity first
+      const entity = this.entityManager.createEntity();
+      
+      // Load character model and setup
+      const characterInstance = await this.createCharacterInstance(
+        npcId,
+        characterType,
+        config,
+        position,
+        Rotation.fromRadians(Math.random() * Math.PI * 2) // Random initial rotation
+      );
+      
+      // Add to scene
+      this.sceneManager.getScene().add(characterInstance.model);
+      Logger.info(LogCategory.PLAYER, `✅ NPC added to scene at position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
+      
+      // Create animation controller
+      const animationController = new AnimationController(
+        characterInstance.model,
+        config,
+        npcId
+      );
+      
+      // Re-initialize animations after they're loaded from separate files
+      animationController.reinitializeAnimations();
+      
+      // Create player animation controller for input-driven animations
+      const playerAnimationController = new PlayerAnimationController(
+        config,
+        characterInstance.model,
+        npcId,
+        container.resolve(ServiceTokens.EVENT_BUS)
+      );
+      
+      // Register with animation system
+      const animationSystem = container.resolve(ServiceTokens.ANIMATION_SYSTEM) as any;
+      if (animationSystem && typeof animationSystem.addAnimationComponent === 'function') {
+        animationSystem.addAnimationComponent(npcId, animationController, 3); // Low priority for NPCs
+        Logger.info(LogCategory.PLAYER, `✅ Animation controller registered with system`);
+      } else {
+        Logger.warn(LogCategory.PLAYER, `⚠️ Animation system not available`);
+      }
+      
+      // Register with input animation system
+      const inputAnimationSystem = container.resolve(ServiceTokens.INPUT_ANIMATION_SYSTEM) as any;
+      if (inputAnimationSystem && typeof inputAnimationSystem.addPlayerAnimationController === 'function') {
+        inputAnimationSystem.addPlayerAnimationController(npcId, playerAnimationController, 3); // Low priority for NPCs
+        Logger.info(LogCategory.PLAYER, `✅ Player animation controller registered with input system`);
+      } else {
+        Logger.warn(LogCategory.PLAYER, `⚠️ Input animation system not available`);
+      }
+      
+      // Add components for NPC
+      entity
+        .addComponent<PositionComponent>({
+          type: 'position',
+          value: position
+        })
+        .addComponent<RotationComponent>({
+          type: 'rotation',
+          value: Rotation.fromRadians(0)
+        })
+        .addComponent<RenderComponent>({
+          type: 'render',
+          mesh: characterInstance.model,
+          visible: true
+        })
+        .addComponent<AnimationComponent>({
+          type: 'animation',
+          controller: animationController,
+          isActive: true,
+          lastUpdateTime: 0,
+          updateInterval: 16,
+          priority: 3
+        })
+        .addComponent<InputAnimationComponent>({
+          type: 'input_animation',
+          controller: playerAnimationController,
+          isActive: true,
+          lastUpdateTime: 0,
+          updateInterval: 16,
+          priority: 3
+        });
+      
+      // Store character instance
+      this.characterInstances.set(npcId, characterInstance);
+      
+      Logger.info(LogCategory.PLAYER, `✅ NPC entity created`);
+      return entity;
+    } catch (error) {
+      Logger.error(LogCategory.PLAYER, `❌ Failed to create NPC ${npcId}:`, error);
+      throw error;
     }
-    
-    // Create entity first
-    const entity = this.entityManager.createEntity();
-    
-    // Load character model and setup
-    const characterInstance = await this.createCharacterInstance(
-      npcId,
-      characterType,
-      config,
-      position,
-      Rotation.fromRadians(Math.random() * Math.PI * 2) // Random initial rotation
-    );
-    
-    // Add to scene
-    this.sceneManager.getScene().add(characterInstance.model);
-    Logger.info(LogCategory.PLAYER, `✅ NPC added to scene at position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
-    
-    // Add components for NPC
-    entity
-      .addComponent<PositionComponent>({
-        type: 'position',
-        value: position
-      })
-      .addComponent<RotationComponent>({
-        type: 'rotation',
-        value: Rotation.fromRadians(0)
-      })
-      .addComponent<RenderComponent>({
-        type: 'render',
-        mesh: characterInstance.model,
-        visible: true
-      });
-    
-    // Store character instance
-    this.characterInstances.set(npcId, characterInstance);
-    
-    Logger.info(LogCategory.PLAYER, `✅ NPC entity created`);
-    return entity;
   }
 
   /**
@@ -571,4 +768,4 @@ export class CharacterFactory {
       Logger.info(LogCategory.PLAYER, `🗑️ Character instance ${instanceId} removed`);
     }
   }
-} 
+}

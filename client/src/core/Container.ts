@@ -188,4 +188,10 @@ container.registerSingleton(ServiceTokens.PLAYER_FACTORY, () => {
     container.resolve(ServiceTokens.TERRAIN_SERVICE),
     container.resolve(ServiceTokens.CHARACTER_REGISTRY)
   );
+});
+
+// Animation System registration
+container.registerSingleton(ServiceTokens.ANIMATION_SYSTEM, () => {
+  const eventBus = container.resolve<EventBus>(ServiceTokens.EVENT_BUS);
+  return new (require('../systems/AnimationSystem').AnimationSystem)(eventBus);
 }); 

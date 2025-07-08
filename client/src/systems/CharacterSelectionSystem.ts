@@ -260,6 +260,13 @@ export class CharacterSelectionSystem extends System {
       characterConfig: event.characterConfig,
       timestamp: Date.now()
     });
+    
+    // Emit animation setup event
+    this.eventBus.emit('character:animation_setup_required', {
+      characterType: event.selectedCharacter,
+      characterConfig: event.characterConfig,
+      timestamp: Date.now()
+    });
   }
 
   /**

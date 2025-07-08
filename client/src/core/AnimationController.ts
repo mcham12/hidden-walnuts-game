@@ -102,6 +102,27 @@ export class AnimationController implements IAnimationController {
   }
 
   /**
+   * Re-initialize animations when new animations are added to the model
+   * This is called after animations are loaded from separate files
+   */
+  public reinitializeAnimations(): void {
+    Logger.info(LogCategory.CORE, `[AnimationController] Re-initializing animations for character: ${this.characterId}`);
+    
+    // Clear existing animations and actions
+    this.animations.clear();
+    this.actions.clear();
+    
+    // Re-initialize with any new animations
+    this.initializeAnimations();
+    
+    // Start with idle animation if available
+    const idleAction = this.actions.get('idle_a') || this.actions.get('Idle_A') || this.actions.get('idle');
+    if (idleAction && !this.currentAnimation) {
+      this.playAnimation(idleAction.name);
+    }
+  }
+
+  /**
    * Initialize blendshapes from the model
    */
   private initializeBlendshapes(): void {
