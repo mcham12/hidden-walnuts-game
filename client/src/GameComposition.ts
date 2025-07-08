@@ -626,6 +626,15 @@ export class GameManager {
       // 7. Initialize character selection system
       Logger.info(LogCategory.CORE, '🎭 Character selection system initialized');
       
+      // Initialize character registry with all character configurations
+      const { initializeCharacterRegistry } = await import('./config/characters');
+      const initializedRegistry = initializeCharacterRegistry(this.eventBus);
+      
+      // Replace the container's registry with the initialized one
+      container.registerInstance(ServiceTokens.CHARACTER_REGISTRY, initializedRegistry);
+      
+      Logger.info(LogCategory.CORE, '🎭 Character registry initialized with all characters');
+      
       // Emit initialization complete
       this.eventBus.emit('game.initialized');
       Logger.info(LogCategory.CORE, '🚀 Game initialization complete!');
