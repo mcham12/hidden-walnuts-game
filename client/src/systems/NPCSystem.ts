@@ -1,7 +1,7 @@
 import { System, Entity, PositionComponent, RotationComponent, RenderComponent } from '../ecs';
 import { EventBus } from '../core/EventBus';
 import { Logger, LogCategory } from '../core/Logger';
-import { Vector3 } from '../core/types';
+import { Vector3, EntityId, Rotation } from '../core/types';
 import { 
   NPC, 
   WorldState, 
@@ -439,10 +439,12 @@ export class NPCSystem extends System {
 
   private handleNPCSpawning(currentTime: number): void {
     if (this.npcs.size >= this.config.maxNPCs) return;
+    if (this.config.spawnRate === 0) return; // Disable all spawning when global rate is 0
 
     for (const spawnPoint of this.spawnPoints) {
       const timeSinceLastSpawn = currentTime - spawnPoint.lastSpawn;
-      const spawnInterval = 60000 / spawnPoint.spawnRate; // Convert to milliseconds
+      const effectiveSpawnRate = this.config.spawnRate * spawnPoint.spawnRate; // Combine global and local rates
+      const spawnInterval = 60000 / effectiveSpawnRate; // Convert to milliseconds
 
       if (timeSinceLastSpawn > spawnInterval) {
         // Count NPCs near this spawn point
@@ -497,7 +499,7 @@ export class NPCSystem extends System {
 
   private createNPCEntity(npc: NPC, aiController: NPCAIController): void {
     // Create entity through ECS system
-    const entity = new (require('../ecs').Entity)(require('../ecs').EntityId.generate());
+    const entity = new Entity(EntityId.generate());
     
     // Add NPC component
     const npcComponent: NPCComponent = {
@@ -522,7 +524,7 @@ export class NPCSystem extends System {
     // Add rotation component
     const rotationComponent: RotationComponent = {
       type: 'rotation',
-      value: new (require('../core/types').Rotation)(npc.rotation.y)
+      value: new Rotation(npc.rotation.y)
     };
     entity.addComponent(rotationComponent);
     
@@ -543,7 +545,7 @@ export class NPCSystem extends System {
       // Update rotation component
       const rotationComponent: RotationComponent = {
         type: 'rotation',
-        value: new (require('../core/types').Rotation)(npc.rotation.y)
+        value: new Rotation(npc.rotation.y)
       };
       entity.addComponent(rotationComponent);
     }
