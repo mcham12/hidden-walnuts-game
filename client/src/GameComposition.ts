@@ -729,19 +729,20 @@ export class GameManager {
 
     if (playerFactory && typeof playerFactory.createLocalPlayer === 'function') {
       try {
-        // Get the selected character type
+        // Get the selected character type from character selection manager
         const characterSelectionManager = container.resolve(ServiceTokens.CHARACTER_SELECTION_MANAGER) as CharacterSelectionManager;
         const selectedCharacterType = characterSelectionManager.getSelectedCharacterOrDefault();
         Logger.info(LogCategory.PLAYER, `🎭 Creating local player with character type: ${selectedCharacterType}`);
         
+        // FIXED: Pass character type to player creation methods
         if (savedPlayerData) {
-          // Create player with saved position
+          // Create player with saved position and character type
           Logger.info(LogCategory.PLAYER, `📍 Creating player with saved position: (${savedPlayerData.position.x}, ${savedPlayerData.position.y}, ${savedPlayerData.position.z})`);
-          this.localPlayer = await playerFactory.createLocalPlayerWithPosition(playerId, savedPlayerData.position, savedPlayerData.rotationY);
+          this.localPlayer = await playerFactory.createLocalPlayerWithPosition(playerId, savedPlayerData.position, savedPlayerData.rotationY, selectedCharacterType);
         } else {
-          // Create player at random position
+          // Create player at random position with character type
           Logger.info(LogCategory.PLAYER, `🎲 Creating player at random position`);
-          this.localPlayer = await playerFactory.createLocalPlayer(playerId);
+          this.localPlayer = await playerFactory.createLocalPlayer(playerId, selectedCharacterType);
         }
         
         if (this.localPlayer) {
@@ -752,13 +753,21 @@ export class GameManager {
           // Verify the player has the required components
           const positionComponent = this.localPlayer.getComponent('position');
           const renderComponent = this.localPlayer.getComponent('render') as any;
-          Logger.info(LogCategory.PLAYER, `🔍 Local player components - Position: ${positionComponent ? 'found' : 'missing'}, Render: ${renderComponent ? 'found' : 'missing'}`);
+          const networkComponent = this.localPlayer.getComponent('network') as any;
+          Logger.info(LogCategory.PLAYER, `🔍 Local player components - Position: ${positionComponent ? 'found' : 'missing'}, Render: ${renderComponent ? 'found' : 'missing'}, Network: ${networkComponent ? 'found' : 'missing'}`);
           
           if (renderComponent && renderComponent.mesh) {
             Logger.info(LogCategory.PLAYER, `🎨 Local player mesh added to scene at position: (${renderComponent.mesh.position.x.toFixed(1)}, ${renderComponent.mesh.position.y.toFixed(1)}, ${renderComponent.mesh.position.z.toFixed(1)})`);
           } else {
             Logger.error(LogCategory.PLAYER, '❌ Local player missing render component or mesh');
           }
+          
+          // FIXED: Emit character ready event for animation system
+          this.eventBus.emit('player:animation_ready', {
+            playerId: this.localPlayer.id.value,
+            characterType: selectedCharacterType,
+            timestamp: Date.now()
+          });
         } else {
           Logger.error(LogCategory.PLAYER, '❌ Local player creation returned null/undefined');
         }

@@ -1,6 +1,6 @@
 // Player Entity Factory - Clean entity creation with all components
 
-import { Entity, PositionComponent, RotationComponent, RenderComponent, NetworkComponent, InputComponent } from '../ecs';
+import { Entity, PositionComponent, RotationComponent, RenderComponent, NetworkComponent, InputComponent, AnimationComponent, InputAnimationComponent } from '../ecs';
 import { Vector3, Rotation } from '../core/types';
 import { ISceneManager, IAssetManager } from '../GameComposition';
 import { ITerrainService } from '../services/TerrainService';
@@ -21,12 +21,12 @@ export class PlayerFactory {
     private characterRegistry: CharacterRegistry
   ) {}
 
-  async createLocalPlayer(playerId: string): Promise<Entity> {
+  async createLocalPlayer(playerId: string, characterType?: string): Promise<Entity> {
     Logger.info(LogCategory.PLAYER, `🐿️ Creating local player: ${playerId}`);
     
-    // Get the selected character type
-    const selectedCharacterType = this.characterSelectionManager.getSelectedCharacterOrDefault();
-    Logger.info(LogCategory.PLAYER, `🎭 Using selected character: ${selectedCharacterType}`);
+    // Get the selected character type (use provided characterType or fallback to selection manager)
+    const selectedCharacterType = characterType || this.characterSelectionManager.getSelectedCharacterOrDefault();
+    Logger.info(LogCategory.PLAYER, `🎭 Using character: ${selectedCharacterType}`);
     
     // TASK 8 FIX: Spawn players very close to origin for easier multiplayer testing
     const spawnX = Math.random() * 10 - 5; // Random spawn between -5 and 5 (closer to origin)
@@ -108,6 +108,29 @@ export class PlayerFactory {
     const modelInScene = scene.children.find(child => child === model);
     Logger.info(LogCategory.PLAYER, `🔍 Model in scene: ${modelInScene ? 'YES' : 'NO'}, Scene children count: ${scene.children.length}`);
     
+    // Create animation controllers
+    const characterConfig = this.characterRegistry.getCharacter(selectedCharacterType);
+    let animationController: any = null;
+    let playerAnimationController: any = null;
+    
+    if (characterConfig) {
+      try {
+        // Create animation controller
+        const { AnimationController } = await import('../core/AnimationController');
+        animationController = new AnimationController(model, characterConfig, playerId);
+        
+        // Create player animation controller
+        const { PlayerAnimationController } = await import('../controllers/PlayerAnimationController');
+        const { container, ServiceTokens } = await import('../core/Container');
+        const eventBus = container.resolve(ServiceTokens.EVENT_BUS) as any;
+        playerAnimationController = new PlayerAnimationController(characterConfig, model, playerId, eventBus);
+        
+        Logger.info(LogCategory.PLAYER, `✅ Animation controllers created for ${selectedCharacterType}`);
+      } catch (error) {
+        Logger.warn(LogCategory.PLAYER, `⚠️ Failed to create animation controllers:`, error);
+      }
+    }
+    
     // Add all required components using the Entity class methods
     entity
       .addComponent<PositionComponent>({
@@ -137,6 +160,29 @@ export class PlayerFactory {
         turnLeft: false,
         turnRight: false
       });
+    
+    // Add animation components only if controllers were created successfully
+    if (animationController) {
+      entity.addComponent<AnimationComponent>({
+        type: 'animation',
+        controller: animationController,
+        isActive: true,
+        lastUpdateTime: 0,
+        updateInterval: 16,
+        priority: 8
+      });
+    }
+    
+    if (playerAnimationController) {
+      entity.addComponent<InputAnimationComponent>({
+        type: 'input_animation',
+        controller: playerAnimationController,
+        isActive: true,
+        lastUpdateTime: 0,
+        updateInterval: 16,
+        priority: 8
+      });
+    }
     
     Logger.info(LogCategory.PLAYER, `✅ Local player entity created with ${entity.getComponents().length} components`);
     Logger.info(LogCategory.PLAYER, `🎮 WASD controls should now work for local player!`);
@@ -247,13 +293,13 @@ export class PlayerFactory {
     return entity;
   }
 
-  async createLocalPlayerWithPosition(playerId: string, savedPosition: { x: number; y: number; z: number }, savedRotationY: number): Promise<Entity> {
+  async createLocalPlayerWithPosition(playerId: string, savedPosition: { x: number; y: number; z: number }, savedRotationY: number, characterType?: string): Promise<Entity> {
     Logger.info(LogCategory.PLAYER, `🐿️ Creating local player with saved position: ${playerId}`);
     Logger.info(LogCategory.PLAYER, `📍 Using saved position: (${savedPosition.x.toFixed(1)}, ${savedPosition.y.toFixed(1)}, ${savedPosition.z.toFixed(1)})`);
     
-    // Get the selected character type
-    const selectedCharacterType = this.characterSelectionManager.getSelectedCharacterOrDefault();
-    Logger.info(LogCategory.PLAYER, `🎭 Using selected character: ${selectedCharacterType}`);
+    // Get the selected character type (use provided characterType or fallback to selection manager)
+    const selectedCharacterType = characterType || this.characterSelectionManager.getSelectedCharacterOrDefault();
+    Logger.info(LogCategory.PLAYER, `🎭 Using character: ${selectedCharacterType}`);
     
     // Use saved position instead of random spawn
     const spawnX = savedPosition.x;
@@ -305,6 +351,29 @@ export class PlayerFactory {
     this.sceneManager.getScene().add(model);
     Logger.info(LogCategory.PLAYER, `✅ Local player added to scene at SAVED position (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)}) with scale ${characterScale}`);
     
+    // Create animation controllers
+    const characterConfig = this.characterRegistry.getCharacter(selectedCharacterType);
+    let animationController: any = null;
+    let playerAnimationController: any = null;
+    
+    if (characterConfig) {
+      try {
+        // Create animation controller
+        const { AnimationController } = await import('../core/AnimationController');
+        animationController = new AnimationController(model, characterConfig, playerId);
+        
+        // Create player animation controller
+        const { PlayerAnimationController } = await import('../controllers/PlayerAnimationController');
+        const { container, ServiceTokens } = await import('../core/Container');
+        const eventBus = container.resolve(ServiceTokens.EVENT_BUS) as any;
+        playerAnimationController = new PlayerAnimationController(characterConfig, model, playerId, eventBus);
+        
+        Logger.info(LogCategory.PLAYER, `✅ Animation controllers created for ${selectedCharacterType}`);
+      } catch (error) {
+        Logger.warn(LogCategory.PLAYER, `⚠️ Failed to create animation controllers:`, error);
+      }
+    }
+    
     // Add all required components using the Entity class methods
     entity
       .addComponent<PositionComponent>({
@@ -324,7 +393,8 @@ export class PlayerFactory {
         type: 'network',
         isLocalPlayer: true,
         squirrelId: playerId,
-        lastUpdate: performance.now()
+        lastUpdate: performance.now(),
+        characterType: selectedCharacterType // FIXED: Add character type to network component
       })
       .addComponent<InputComponent>({
         type: 'input',
@@ -333,6 +403,29 @@ export class PlayerFactory {
         turnLeft: false,
         turnRight: false
       });
+    
+    // Add animation components only if controllers were created successfully
+    if (animationController) {
+      entity.addComponent<AnimationComponent>({
+        type: 'animation',
+        controller: animationController,
+        isActive: true,
+        lastUpdateTime: 0,
+        updateInterval: 16,
+        priority: 8
+      });
+    }
+    
+    if (playerAnimationController) {
+      entity.addComponent<InputAnimationComponent>({
+        type: 'input_animation',
+        controller: playerAnimationController,
+        isActive: true,
+        lastUpdateTime: 0,
+        updateInterval: 16,
+        priority: 8
+      });
+    }
     
     Logger.info(LogCategory.PLAYER, `✅ Local player entity created with SAVED position and ${entity.getComponents().length} components`);
     Logger.info(LogCategory.PLAYER, `🎮 WASD controls should now work for local player!`);
