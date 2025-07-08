@@ -348,16 +348,23 @@ export class CharacterFactory {
     let mixer: THREE.AnimationMixer | undefined;
     const actions = new Map<string, THREE.AnimationAction>();
     
+    // Load animations from separate files
+    await this.loadCharacterAnimations(model, config, mixer, actions);
+    
     if (gltf.animations && gltf.animations.length > 0) {
-      mixer = new THREE.AnimationMixer(model);
+      if (!mixer) {
+        mixer = new THREE.AnimationMixer(model);
+      }
       
-      // Setup default animation actions
+      // Setup default animation actions from main model
       gltf.animations.forEach((clip: THREE.AnimationClip) => {
         const action = mixer!.clipAction(clip);
         actions.set(clip.name, action);
       });
-      
-      // Start with idle animation
+    }
+    
+    // Start with idle animation if available
+    if (mixer) {
       const idleAction = actions.get('idle_a') || actions.get('Idle_A') || actions.get('idle');
       if (idleAction) {
         idleAction.play();
@@ -386,6 +393,72 @@ export class CharacterFactory {
     };
     
     return characterInstance;
+  }
+
+  /**
+   * Load and attach animations to the character model
+   */
+  private async loadCharacterAnimations(
+    model: THREE.Object3D, 
+    config: CharacterConfig, 
+    mixer: THREE.AnimationMixer | undefined,
+    actions: Map<string, THREE.AnimationAction>
+  ): Promise<void> {
+    Logger.info(LogCategory.PLAYER, `🔄 Loading animations for ${config.name}`);
+    
+    // Create mixer if not provided
+    if (!mixer) {
+      mixer = new THREE.AnimationMixer(model);
+    }
+    
+    const animationPromises: Promise<void>[] = [];
+    
+    // Load each animation file
+    for (const [animationName, animationPath] of Object.entries(config.animations)) {
+      const promise = this.loadSingleAnimation(model, animationName, animationPath, mixer, actions);
+      animationPromises.push(promise);
+    }
+    
+    try {
+      await Promise.all(animationPromises);
+      Logger.info(LogCategory.PLAYER, `✅ Loaded ${animationPromises.length} animations for ${config.name}`);
+    } catch (error) {
+      Logger.warn(LogCategory.PLAYER, `⚠️ Some animations failed to load for ${config.name}:`, error);
+    }
+  }
+
+  /**
+   * Load a single animation and attach it to the model
+   */
+  private async loadSingleAnimation(
+    model: THREE.Object3D, 
+    animationName: string, 
+    animationPath: string,
+    mixer: THREE.AnimationMixer,
+    actions: Map<string, THREE.AnimationAction>
+  ): Promise<void> {
+    try {
+      const gltf = await this.assetManager.loadModel(animationPath);
+      if (!gltf || !gltf.animations || gltf.animations.length === 0) {
+        Logger.warn(LogCategory.PLAYER, `⚠️ No animations found in: ${animationPath}`);
+        return;
+      }
+      
+      // Add animations to the model and create actions
+      gltf.animations.forEach((clip: THREE.AnimationClip) => {
+        // Rename the clip to match the expected name
+        clip.name = animationName;
+        model.animations.push(clip);
+        
+        // Create action for the animation
+        const action = mixer.clipAction(clip);
+        actions.set(animationName, action);
+      });
+      
+      Logger.debug(LogCategory.PLAYER, `✅ Loaded animation: ${animationName}`);
+    } catch (error) {
+      Logger.warn(LogCategory.PLAYER, `⚠️ Failed to load animation ${animationName} from ${animationPath}:`, error);
+    }
   }
 
   /**

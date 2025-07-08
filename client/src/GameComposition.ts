@@ -706,22 +706,35 @@ export class GameManager {
     }
 
     if (playerFactory && typeof playerFactory.createLocalPlayer === 'function') {
-      // Get the selected character type
-      const characterSelectionManager = container.resolve(ServiceTokens.CHARACTER_SELECTION_MANAGER) as CharacterSelectionManager;
-      const selectedCharacterType = characterSelectionManager.getSelectedCharacterOrDefault();
-      
-      if (savedPlayerData) {
-        // Create player with saved position
-        this.localPlayer = await playerFactory.createLocalPlayerWithPosition(playerId, savedPlayerData.position, savedPlayerData.rotationY, selectedCharacterType);
-      } else {
-        // Create player at random position
-        this.localPlayer = await playerFactory.createLocalPlayer(playerId, selectedCharacterType);
+      try {
+        // Get the selected character type
+        const characterSelectionManager = container.resolve(ServiceTokens.CHARACTER_SELECTION_MANAGER) as CharacterSelectionManager;
+        const selectedCharacterType = characterSelectionManager.getSelectedCharacterOrDefault();
+        Logger.info(LogCategory.PLAYER, `🎭 Creating local player with character type: ${selectedCharacterType}`);
+        
+        if (savedPlayerData) {
+          // Create player with saved position
+          Logger.info(LogCategory.PLAYER, `📍 Creating player with saved position: (${savedPlayerData.position.x}, ${savedPlayerData.position.y}, ${savedPlayerData.position.z})`);
+          this.localPlayer = await playerFactory.createLocalPlayerWithPosition(playerId, savedPlayerData.position, savedPlayerData.rotationY, selectedCharacterType);
+        } else {
+          // Create player at random position
+          Logger.info(LogCategory.PLAYER, `🎲 Creating player at random position`);
+          this.localPlayer = await playerFactory.createLocalPlayer(playerId, selectedCharacterType);
+        }
+        
+        if (this.localPlayer) {
+          Logger.info(LogCategory.PLAYER, '🐿️ Local player created with ID:', this.localPlayer.id.value);
+          this.entityManager.addEntity(this.localPlayer);
+          Logger.info(LogCategory.PLAYER, '✅ Local player added to entity manager');
+        } else {
+          Logger.error(LogCategory.PLAYER, '❌ Local player creation returned null/undefined');
+        }
+      } catch (error) {
+        Logger.error(LogCategory.PLAYER, '❌ Failed to create local player:', error);
+        throw error;
       }
-      
-      if (this.localPlayer) {
-        Logger.info(LogCategory.PLAYER, '🐿️ Local player created with ID:', this.localPlayer.id.value);
-        this.entityManager.addEntity(this.localPlayer);
-      }
+    } else {
+      Logger.error(LogCategory.PLAYER, '❌ PlayerFactory not available or missing createLocalPlayer method');
     }
   }
 
