@@ -1,5 +1,12 @@
 // Dependency Injection Container - No more 'new' everywhere!
 
+import { CharacterRegistry } from './CharacterRegistry';
+import { AnimatedModelLoader } from '../entities/AnimatedModelLoader';
+import { CharacterSelectionManager } from './CharacterSelectionManager';
+import { CharacterSelectionSystem } from '../systems/CharacterSelectionSystem';
+import { CharacterGallery } from '../ui/CharacterGallery';
+import { EventBus } from './EventBus';
+
 export type Constructor<T = {}> = new (...args: any[]) => T;
 export type Factory<T> = () => T;
 
@@ -133,4 +140,38 @@ export const ServiceTokens = {
 export const container = new Container();
 
 // Note: These registrations will be moved to GameComposition.ts to avoid require() issues in browser
-// The character selection system will be initialized there instead 
+// The character selection system will be initialized there instead
+
+// Character Selection System registrations (ES6 imports)
+container.registerSingleton(ServiceTokens.CHARACTER_REGISTRY, () => {
+  const eventBus = container.resolve<EventBus>(ServiceTokens.EVENT_BUS);
+  return new CharacterRegistry(eventBus);
+});
+
+container.registerSingleton(ServiceTokens.ANIMATED_MODEL_LOADER, () => {
+  const characterRegistry = container.resolve<CharacterRegistry>(ServiceTokens.CHARACTER_REGISTRY);
+  return new AnimatedModelLoader(characterRegistry);
+});
+
+container.registerSingleton(ServiceTokens.CHARACTER_SELECTION_MANAGER, () => {
+  const characterRegistry = container.resolve<CharacterRegistry>(ServiceTokens.CHARACTER_REGISTRY);
+  const eventBus = container.resolve<EventBus>(ServiceTokens.EVENT_BUS);
+  return new CharacterSelectionManager(characterRegistry, eventBus);
+});
+
+container.registerSingleton(ServiceTokens.CHARACTER_SELECTION_SYSTEM, () => {
+  const characterRegistry = container.resolve<CharacterRegistry>(ServiceTokens.CHARACTER_REGISTRY);
+  const selectionManager = container.resolve<CharacterSelectionManager>(ServiceTokens.CHARACTER_SELECTION_MANAGER);
+  const modelLoader = container.resolve<AnimatedModelLoader>(ServiceTokens.ANIMATED_MODEL_LOADER);
+  const eventBus = container.resolve<EventBus>(ServiceTokens.EVENT_BUS);
+  return new CharacterSelectionSystem(characterRegistry, selectionManager, modelLoader, eventBus);
+});
+
+container.registerSingleton(ServiceTokens.CHARACTER_GALLERY, () => {
+  const characterRegistry = container.resolve<CharacterRegistry>(ServiceTokens.CHARACTER_REGISTRY);
+  const selectionManager = container.resolve<CharacterSelectionManager>(ServiceTokens.CHARACTER_SELECTION_MANAGER);
+  const modelLoader = container.resolve<AnimatedModelLoader>(ServiceTokens.ANIMATED_MODEL_LOADER);
+  const eventBus = container.resolve<EventBus>(ServiceTokens.EVENT_BUS);
+  // For gallery, a containerElement will be provided at runtime
+  return new CharacterGallery({ containerElement: document.body, showPreviews: true, previewSize: { width: 200, height: 200 }, layoutMode: 'grid', charactersPerRow: 3, enableSearch: false, enableFilters: false, allowMultiSelect: false, theme: 'auto' }, characterRegistry, selectionManager, modelLoader, eventBus);
+}); 

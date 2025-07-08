@@ -45,8 +45,8 @@ class Application {
       this.hideLoadingScreen();
       this.gameManager.start();
       
-      // Character selection button temporarily disabled
-      // this.setupCharacterSelectionButton();
+      // Setup character selection button
+      this.setupCharacterSelectionButton();
       
       Logger.info(LogCategory.CORE, '🎮 Game started with A++ architecture!');
       
@@ -238,27 +238,26 @@ class Application {
     `;
   }
 
-  // Character selection button temporarily disabled
-  // private setupCharacterSelectionButton(): void {
-  //   const characterButton = document.getElementById('open-character-gallery');
-  //   if (characterButton && this.gameManager) {
-  //     characterButton.addEventListener('click', () => {
-  //       try {
-  //         // Initialize gallery if not already done
-  //         const containerElement = document.body;
-  //         const characterSystem = this.gameManager!.getCharacterSelectionSystem();
-  //         characterSystem.initializeGallery(containerElement);
-  //         characterSystem.showCharacterGallery();
-  //         Logger.info(LogCategory.CORE, '🎭 Character gallery opened');
-  //       } catch (error) {
-  //         Logger.error(LogCategory.CORE, 'Failed to open character gallery', error);
-  //       }
-  //     });
-  //     Logger.info(LogCategory.CORE, '🎭 Character selection button initialized');
-  //   } else {
-  //     Logger.warn(LogCategory.CORE, 'Character selection button not found or game manager not ready');
-  //   }
-  // }
+  private setupCharacterSelectionButton(): void {
+    const characterButton = document.getElementById('open-character-gallery');
+    if (characterButton && this.gameManager) {
+      characterButton.addEventListener('click', () => {
+        try {
+          // Initialize gallery if not already done
+          const containerElement = document.body;
+          const characterSystem = this.gameManager!.getCharacterSelectionSystem();
+          characterSystem.initializeGallery(containerElement);
+          characterSystem.showCharacterGallery();
+          Logger.info(LogCategory.CORE, '🎭 Character gallery opened');
+        } catch (error) {
+          Logger.error(LogCategory.CORE, 'Failed to open character gallery', error);
+        }
+      });
+      Logger.info(LogCategory.CORE, '🎭 Character selection button initialized');
+    } else {
+      Logger.warn(LogCategory.CORE, 'Character selection button not found or game manager not ready');
+    }
+  }
 
   destroy(): void {
     if (this.gameManager) {
