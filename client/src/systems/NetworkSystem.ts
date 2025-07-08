@@ -3,6 +3,9 @@
 import { System } from '../ecs';
 import { EventBus, GameEvents } from '../core/EventBus';
 import { Logger, LogCategory } from '../core/Logger';
+import { PositionComponent, RotationComponent } from '../ecs';
+import { Vector3, Rotation } from '../core/types';
+import { container, ServiceTokens } from '../core/Container';
 
 // MVP 7 Task 7: Client version for protocol compatibility
 const CLIENT_VERSION = '1.0.0';
@@ -98,6 +101,9 @@ export class NetworkSystem extends System {
   private batchInterval = 500; // 500ms batching window
   private lastPositionUpdate = 0;
   private positionUpdateThrottle = 100; // 100ms minimum between position updates
+  
+  // TASK URGENTA.4: Remote player management
+  private remotePlayers: Map<string, any> = new Map(); // squirrelId -> entity
   
   constructor(eventBus: EventBus) {
     super(eventBus, ['network'], 'NetworkSystem');
@@ -579,17 +585,69 @@ export class NetworkSystem extends System {
   }
 
   private handleRemotePlayerUpdate(message: NetworkMessage): void {
-    Logger.debugExpensive(LogCategory.NETWORK, () => `🎯 Remote player update: ${message.squirrelId} at (${message.position?.x.toFixed(1)}, ${message.position?.z.toFixed(1)}) as ${message.characterType || 'unknown'}`);
+    Logger.warn(LogCategory.NETWORK, `🌐 Remote player update received: ${message.squirrelId} at (${message.position?.x.toFixed(1)}, ${message.position?.z.toFixed(1)})`);
     
-    // TASK 4 FIX: Remote player updates are CRITICAL for player visibility
-    // Do NOT batch these - send immediately to prevent delays
-    this.eventBus.emit('remote_player_state', {
-      squirrelId: message.squirrelId,
-      position: message.position,
-      rotationY: message.rotationY,
-      characterType: message.characterType, // Pass character type to player manager
-      timestamp: message.timestamp
-    });
+    const { squirrelId, position, rotationY, characterType } = message;
+    
+    // Check if we already have this remote player
+    let remotePlayer = this.remotePlayers.get(squirrelId);
+    
+    if (!remotePlayer) {
+      Logger.warn(LogCategory.NETWORK, `🆕 Creating new remote player: ${squirrelId} with character: ${characterType}`);
+      
+      try {
+        // Create remote player entity
+        const playerFactory = container.resolve(ServiceTokens.PLAYER_FACTORY) as any;
+        const entity = playerFactory.createRemotePlayer(squirrelId, position, rotationY, characterType);
+        
+        // Add to entity manager
+        const entityManager = container.resolve(ServiceTokens.ENTITY_MANAGER) as any;
+        entityManager.addEntity(entity);
+        Logger.warn(LogCategory.NETWORK, `✅ Remote player entity added to ECS: ${entity.id.value}`);
+        
+        // Store reference
+        this.remotePlayers.set(squirrelId, entity);
+        Logger.warn(LogCategory.NETWORK, `📦 Remote player stored in map: ${squirrelId} -> ${entity.id.value}`);
+        
+        // Emit event for other systems
+        this.eventBus.emit('remote_player_created', {
+          squirrelId,
+          entityId: entity.id.value,
+          characterType,
+          position,
+          rotationY
+        });
+        
+        Logger.warn(LogCategory.NETWORK, `🎉 Remote player ${squirrelId} created successfully!`);
+        
+      } catch (error) {
+        Logger.error(LogCategory.NETWORK, `❌ Failed to create remote player ${squirrelId}`, error);
+      }
+    } else {
+      Logger.debug(LogCategory.NETWORK, `🔄 Updating existing remote player: ${squirrelId}`);
+      
+      // Update position and rotation
+      const positionComponent = remotePlayer.getComponent('position') as PositionComponent;
+      const rotationComponent = remotePlayer.getComponent('rotation') as RotationComponent;
+      
+      if (positionComponent && position) {
+        positionComponent.value = new Vector3(position.x, position.y, position.z);
+        Logger.debug(LogCategory.NETWORK, `📍 Updated remote player position: ${squirrelId} -> (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
+      }
+      
+      if (rotationComponent && rotationY) {
+        rotationComponent.value = Rotation.fromRadians(rotationY);
+        Logger.debug(LogCategory.NETWORK, `🔄 Updated remote player rotation: ${squirrelId} -> ${rotationY.toFixed(2)}`);
+      }
+      
+      // Emit update event
+      this.eventBus.emit('remote_player_updated', {
+        squirrelId,
+        entityId: remotePlayer.id.value,
+        position,
+        rotationY
+      });
+    }
   }
 
   private handlePlayerJoined(message: NetworkMessage): void {
