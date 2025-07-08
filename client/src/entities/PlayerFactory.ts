@@ -225,7 +225,6 @@ export class PlayerFactory {
 
   async createRemotePlayer(squirrelId: string, position: Vector3, rotation: Rotation, characterType: string = 'colobus'): Promise<Entity> {
     Logger.warn(LogCategory.PLAYER, `🌐 Creating remote player: ${squirrelId} with character: ${characterType}`);
-    Logger.warn(LogCategory.PLAYER, `📍 Remote player position: (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
     
     // Create entity first
     const entity = this.entityManager.createEntity();
@@ -268,20 +267,10 @@ export class PlayerFactory {
     model.position.set(position.x, position.y, position.z);
     model.rotation.y = rotation.y;
     
-    Logger.warn(LogCategory.PLAYER, `🎨 Remote model prepared: scale=${characterScale}, position=(${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
-    
     // Add to scene
     const scene = this.sceneManager.getScene();
-    Logger.warn(LogCategory.PLAYER, `🎭 Adding remote model to scene...`);
     scene.add(model);
     Logger.warn(LogCategory.PLAYER, `✅ Remote player added to scene at position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}) with scale ${characterScale}`);
-    
-    // Debug: Check if model is actually in scene
-    const modelInScene = scene.children.find(child => child === model);
-    Logger.warn(LogCategory.PLAYER, `🔍 Remote model in scene: ${modelInScene ? 'YES' : 'NO'}, Scene children count: ${scene.children.length}`);
-    
-    // Log all scene children for debugging
-    Logger.warn(LogCategory.PLAYER, `📊 Scene children: ${scene.children.map(child => `${child.type}:${child.name || 'unnamed'}`).join(', ')}`);
     
     // Create animation controllers for remote player
     const characterConfig = this.characterRegistry.getCharacter(characterType);

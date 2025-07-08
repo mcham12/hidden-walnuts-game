@@ -584,7 +584,7 @@ export class NetworkSystem extends System {
     this.pendingHeartbeats.delete(message.timestamp);
   }
 
-  private handleRemotePlayerUpdate(message: NetworkMessage): void {
+  private async handleRemotePlayerUpdate(message: NetworkMessage): Promise<void> {
     Logger.warn(LogCategory.NETWORK, `🌐 Remote player update received: ${message.squirrelId} at (${message.position?.x.toFixed(1)}, ${message.position?.z.toFixed(1)})`);
     
     const { squirrelId, position, rotationY, characterType } = message;
@@ -593,17 +593,29 @@ export class NetworkSystem extends System {
     let remotePlayer = this.remotePlayers.get(squirrelId);
     
     if (!remotePlayer) {
-      Logger.warn(LogCategory.NETWORK, `🆕 Creating new remote player: ${squirrelId} with character: ${characterType}`);
+      Logger.warn(LogCategory.NETWORK, `🆕 Creating new remote player: ${squirrelId} with character: ${characterType || 'colobus'}`);
       
       try {
         // Create remote player entity
         const playerFactory = container.resolve(ServiceTokens.PLAYER_FACTORY) as any;
-        const entity = playerFactory.createRemotePlayer(squirrelId, position, rotationY, characterType);
+        const entity = await playerFactory.createRemotePlayer(squirrelId, position, rotationY, characterType || 'colobus');
+        
+        // Verify entity was created successfully
+        if (!entity || !entity.id) {
+          Logger.error(LogCategory.NETWORK, `❌ Failed to create remote player entity - entity is null or missing ID`);
+          return;
+        }
+        
+        Logger.warn(LogCategory.NETWORK, `✅ Remote player entity created successfully: ${entity.id.value}`);
         
         // Add to entity manager
         const entityManager = container.resolve(ServiceTokens.ENTITY_MANAGER) as any;
-        entityManager.addEntity(entity);
-        Logger.warn(LogCategory.NETWORK, `✅ Remote player entity added to ECS: ${entity.id.value}`);
+        if (entityManager && typeof entityManager.addEntity === 'function') {
+          entityManager.addEntity(entity);
+          Logger.warn(LogCategory.NETWORK, `✅ Remote player entity added to ECS: ${entity.id.value}`);
+        } else {
+          Logger.warn(LogCategory.NETWORK, `⚠️ Entity manager not available or missing addEntity method`);
+        }
         
         // Store reference
         this.remotePlayers.set(squirrelId, entity);
@@ -613,7 +625,7 @@ export class NetworkSystem extends System {
         this.eventBus.emit('remote_player_created', {
           squirrelId,
           entityId: entity.id.value,
-          characterType,
+          characterType: characterType || 'colobus',
           position,
           rotationY
         });
@@ -624,7 +636,7 @@ export class NetworkSystem extends System {
         Logger.error(LogCategory.NETWORK, `❌ Failed to create remote player ${squirrelId}`, error);
       }
     } else {
-      Logger.debug(LogCategory.NETWORK, `🔄 Updating existing remote player: ${squirrelId}`);
+      Logger.warn(LogCategory.NETWORK, `🔄 Updating existing remote player: ${squirrelId}`);
       
       // Update position and rotation
       const positionComponent = remotePlayer.getComponent('position') as PositionComponent;
@@ -632,12 +644,12 @@ export class NetworkSystem extends System {
       
       if (positionComponent && position) {
         positionComponent.value = new Vector3(position.x, position.y, position.z);
-        Logger.debug(LogCategory.NETWORK, `📍 Updated remote player position: ${squirrelId} -> (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
+        Logger.warn(LogCategory.NETWORK, `📍 Updated remote player position: ${squirrelId} -> (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
       }
       
       if (rotationComponent && rotationY) {
         rotationComponent.value = Rotation.fromRadians(rotationY);
-        Logger.debug(LogCategory.NETWORK, `🔄 Updated remote player rotation: ${squirrelId} -> ${rotationY.toFixed(2)}`);
+        Logger.warn(LogCategory.NETWORK, `🔄 Updated remote player rotation: ${squirrelId} -> ${rotationY.toFixed(2)}`);
       }
       
       // Emit update event
