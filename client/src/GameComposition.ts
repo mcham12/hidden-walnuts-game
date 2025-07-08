@@ -408,7 +408,14 @@ export class AssetManager implements IAssetManager {
   // CHEN'S FIX: Add generic model loading method for other assets
   async loadModel(path: string): Promise<any> {
     if (this.cache.has(path)) {
-      return this.cache.get(path).clone();
+      const cached = this.cache.get(path);
+      // Check if the cached object has a scene property (GLTF result)
+      if (cached && cached.scene) {
+        return cached;
+      } else {
+        // If it's not a valid GLTF object, remove it from cache and reload
+        this.cache.delete(path);
+      }
     }
 
     const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
@@ -418,8 +425,15 @@ export class AssetManager implements IAssetManager {
       loader.load(
         path,
         (gltf) => {
-          this.cache.set(path, gltf);
-          resolve(gltf);
+          // Validate the loaded GLTF object
+          if (gltf && gltf.scene) {
+            this.cache.set(path, gltf);
+            resolve(gltf);
+          } else {
+            const error = new Error(`Invalid GLTF data loaded from ${path}`);
+            Logger.error(LogCategory.CORE, `Failed to load model from ${path} - invalid GLTF data`, error);
+            reject(error);
+          }
         },
         undefined,
         (error) => {

@@ -330,6 +330,7 @@ export class CharacterFactory {
     
     // Get the actual model from the GLTF scene
     const model = gltf.scene.clone();
+    Logger.info(LogCategory.PLAYER, `✅ Model cloned successfully for ${characterType}`);
     
     // Apply character-specific scaling
     model.scale.set(config.scale, config.scale, config.scale);
