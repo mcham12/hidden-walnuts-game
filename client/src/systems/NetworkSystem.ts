@@ -15,6 +15,7 @@ interface NetworkMessage {
   timestamp: number;
   position?: { x: number; y: number; z: number };
   rotationY?: number;
+  characterType?: string; // Character type for player updates
   players?: any[]; // For existing_players message
   originalPosition?: { x: number; y: number; z: number }; // For position_correction
   updates?: any[]; // For batch_update message
@@ -578,7 +579,7 @@ export class NetworkSystem extends System {
   }
 
   private handleRemotePlayerUpdate(message: NetworkMessage): void {
-    Logger.debugExpensive(LogCategory.NETWORK, () => `🎯 Remote player update: ${message.squirrelId} at (${message.position?.x.toFixed(1)}, ${message.position?.z.toFixed(1)})`);
+    Logger.debugExpensive(LogCategory.NETWORK, () => `🎯 Remote player update: ${message.squirrelId} at (${message.position?.x.toFixed(1)}, ${message.position?.z.toFixed(1)}) as ${message.characterType || 'unknown'}`);
     
     // TASK 4 FIX: Remote player updates are CRITICAL for player visibility
     // Do NOT batch these - send immediately to prevent delays
@@ -586,12 +587,13 @@ export class NetworkSystem extends System {
       squirrelId: message.squirrelId,
       position: message.position,
       rotationY: message.rotationY,
+      characterType: message.characterType, // Pass character type to player manager
       timestamp: message.timestamp
     });
   }
 
   private handlePlayerJoined(message: NetworkMessage): void {
-    Logger.info(LogCategory.NETWORK, `👋 Player joined: ${message.squirrelId}`);
+    Logger.info(LogCategory.NETWORK, `👋 Player joined: ${message.squirrelId} as ${message.characterType || 'unknown'}`);
     
     // TASK 4 FIX: Player join events are CRITICAL for multiplayer experience
     // Do NOT batch these - emit immediately
@@ -600,6 +602,7 @@ export class NetworkSystem extends System {
         squirrelId: message.squirrelId,
         position: message.position,
         rotationY: message.rotationY,
+        characterType: message.characterType, // Pass character type to player manager
         timestamp: message.timestamp
       });
     } else {
@@ -610,7 +613,8 @@ export class NetworkSystem extends System {
     this.eventBus.emit('remote_player_joined', {
       squirrelId: message.squirrelId,
       position: message.position,
-      rotationY: message.rotationY
+      rotationY: message.rotationY,
+      characterType: message.characterType // Pass character type to other systems
     });
   }
 
@@ -715,7 +719,7 @@ export class NetworkSystem extends System {
     this.batchTimeout = null;
   }
 
-  private handleLocalPlayerMove(data: any): void {
+  private async handleLocalPlayerMove(data: any): Promise<void> {
     Logger.debugExpensive(LogCategory.NETWORK, () => `🎯 RECEIVED PLAYER_MOVED EVENT! Data: ${JSON.stringify(data)}`);
     
     // TASK URGENTA.1: Position update throttling
@@ -727,11 +731,22 @@ export class NetworkSystem extends System {
     this.lastPositionUpdate = now;
     
     if (this.websocket?.readyState === WebSocket.OPEN) {
+      // Get character type from the local player's network component
+      let characterType = 'colobus'; // Default fallback
+      try {
+        const { container, ServiceTokens } = await import('../core/Container');
+        const characterSelectionManager = container.resolve(ServiceTokens.CHARACTER_SELECTION_MANAGER) as any;
+        characterType = characterSelectionManager.getSelectedCharacterOrDefault();
+      } catch (error) {
+        Logger.warn(LogCategory.NETWORK, 'Failed to get character type, using default', error);
+      }
+      
       const update = {
         type: 'player_update',
         squirrelId: this.localSquirrelId || 'unknown',
         position: { x: data.position.x, y: data.position.y, z: data.position.z },
         rotationY: data.rotation.y,
+        characterType: characterType, // Add character type to network updates
         timestamp: performance.now()
       };
       
@@ -739,7 +754,7 @@ export class NetworkSystem extends System {
       this.addToBatch(update);
       
       Logger.debugExpensive(LogCategory.NETWORK, () => 
-        `📦 Added position update to batch: (${data.position.x.toFixed(1)}, ${data.position.z.toFixed(1)})`
+        `📦 Added position update to batch: (${data.position.x.toFixed(1)}, ${data.position.z.toFixed(1)}) as ${characterType}`
       );
     } else {
       Logger.warn(LogCategory.NETWORK, '❌ CANNOT SEND - WebSocket not open. State:', this.websocket?.readyState);

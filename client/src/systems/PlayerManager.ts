@@ -284,7 +284,7 @@ export class PlayerManager extends System {
       
           // Create new remote player with error handling
     try {
-      Logger.info(LogCategory.PLAYER, `🚀 Starting creation of remote player: ${data.squirrelId}`);
+      Logger.info(LogCategory.PLAYER, `🚀 Starting creation of remote player: ${data.squirrelId} as ${data.characterType || 'colobus'}`);
       await this.createRemotePlayer({
         squirrelId: data.squirrelId,
         position: data.position,
@@ -294,9 +294,9 @@ export class PlayerManager extends System {
           z: 0,
           w: 1
         },
-        characterType: 'squirrel' // Default to squirrel for remote players until network supports character info
+        characterType: data.characterType || 'colobus' // Use character type from network or default to colobus
       });
-      Logger.info(LogCategory.PLAYER, `✅ Successfully created remote player: ${data.squirrelId}`);
+      Logger.info(LogCategory.PLAYER, `✅ Successfully created remote player: ${data.squirrelId} as ${data.characterType || 'colobus'}`);
     } catch (error) {
       Logger.error(LogCategory.PLAYER, `❌ Failed to create remote player ${data.squirrelId}:`, error);
       // Clean up tracking on failure

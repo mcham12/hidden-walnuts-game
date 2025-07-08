@@ -6,7 +6,7 @@ import { EventBus } from './core/EventBus';
 import { Logger, LogCategory } from './core/Logger';
 import { EntityManager, Entity, PositionComponent, RotationComponent } from './ecs';
 import { TerrainService } from './services/TerrainService';
-import { PlayerFactory } from './entities/PlayerFactory';
+import { CharacterFactory } from './entities/CharacterFactory';
 import { InputSystem } from './systems/InputSystem';
 import { MovementSystem } from './systems/MovementSystem';
 import { ClientPredictionSystem } from './systems/ClientPredictionSystem';
@@ -24,6 +24,7 @@ import { ThreeJSRenderAdapter } from './rendering/IRenderAdapter';
 import { NetworkAnimationSystem } from './systems/NetworkAnimationSystem';
 import { NPCSystem } from './systems/NPCSystem';
 import { CharacterSelectionSystem } from './systems/CharacterSelectionSystem';
+import { CharacterSelectionManager } from './core/CharacterSelectionManager';
 
 // Refactored InputManager with dependency injection
 export interface IInputManager {
@@ -691,12 +692,16 @@ export class GameManager {
     }
 
     if (playerFactory && typeof playerFactory.createLocalPlayer === 'function') {
+      // Get the selected character type
+      const characterSelectionManager = container.resolve(ServiceTokens.CHARACTER_SELECTION_MANAGER) as CharacterSelectionManager;
+      const selectedCharacterType = characterSelectionManager.getSelectedCharacterOrDefault();
+      
       if (savedPlayerData) {
         // Create player with saved position
-        this.localPlayer = await playerFactory.createLocalPlayerWithPosition(playerId, savedPlayerData.position, savedPlayerData.rotationY);
+        this.localPlayer = await playerFactory.createLocalPlayerWithPosition(playerId, savedPlayerData.position, savedPlayerData.rotationY, selectedCharacterType);
       } else {
         // Create player at random position
-        this.localPlayer = await playerFactory.createLocalPlayer(playerId);
+        this.localPlayer = await playerFactory.createLocalPlayer(playerId, selectedCharacterType);
       }
       
       if (this.localPlayer) {
@@ -943,13 +948,12 @@ export function configureServices(): void {
   });
 
   container.registerSingleton(ServiceTokens.PLAYER_FACTORY, () => {
-    return new PlayerFactory(
+    return new CharacterFactory(
       container.resolve(ServiceTokens.SCENE_MANAGER),
       container.resolve(ServiceTokens.ASSET_MANAGER),
       container.resolve(ServiceTokens.ENTITY_MANAGER),
       container.resolve(ServiceTokens.TERRAIN_SERVICE),
-      container.resolve(ServiceTokens.CHARACTER_SELECTION_MANAGER),
-      container.resolve(ServiceTokens.ANIMATED_MODEL_LOADER)
+      container.resolve(ServiceTokens.CHARACTER_REGISTRY)
     );
   });
 
