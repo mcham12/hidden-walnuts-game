@@ -132,51 +132,5 @@ export const ServiceTokens = {
 // Global container instance
 export const container = new Container();
 
-container.registerSingleton(ServiceTokens.NETWORK_ANIMATION_SYSTEM, () => {
-  const eventBus = container.resolve(ServiceTokens.EVENT_BUS);
-  return new (require('../systems/NetworkAnimationSystem').NetworkAnimationSystem)(eventBus);
-});
-
-container.registerSingleton(ServiceTokens.NPC_PATHFINDER, () => {
-  const terrainService = container.resolve(ServiceTokens.TERRAIN_SERVICE);
-  return new (require('../services/NPCPathfinder').NPCPathfinder)(terrainService);
-});
-
-container.registerSingleton(ServiceTokens.NPC_SYSTEM, () => {
-  const eventBus = container.resolve(ServiceTokens.EVENT_BUS);
-  const terrainService = container.resolve(ServiceTokens.TERRAIN_SERVICE);
-  return new (require('../systems/NPCSystem').NPCSystem)(eventBus, terrainService);
-});
-
-// Character Selection System registrations
-container.registerSingleton(ServiceTokens.CHARACTER_REGISTRY, () => {
-  const eventBus = container.resolve(ServiceTokens.EVENT_BUS);
-  return new (require('../core/CharacterRegistry').CharacterRegistry)(eventBus);
-});
-
-container.registerSingleton(ServiceTokens.ANIMATED_MODEL_LOADER, () => {
-  const characterRegistry = container.resolve(ServiceTokens.CHARACTER_REGISTRY);
-  return new (require('../entities/AnimatedModelLoader').AnimatedModelLoader)(characterRegistry);
-});
-
-container.registerSingleton(ServiceTokens.CHARACTER_SELECTION_MANAGER, () => {
-  const eventBus = container.resolve(ServiceTokens.EVENT_BUS);
-  const characterRegistry = container.resolve(ServiceTokens.CHARACTER_REGISTRY);
-  return new (require('../core/CharacterSelectionManager').CharacterSelectionManager)(characterRegistry, eventBus);
-});
-
-container.registerSingleton(ServiceTokens.CHARACTER_SELECTION_SYSTEM, () => {
-  const eventBus = container.resolve(ServiceTokens.EVENT_BUS);
-  const characterRegistry = container.resolve(ServiceTokens.CHARACTER_REGISTRY);
-  const selectionManager = container.resolve(ServiceTokens.CHARACTER_SELECTION_MANAGER);
-  const modelLoader = container.resolve(ServiceTokens.ANIMATED_MODEL_LOADER);
-  return new (require('../systems/CharacterSelectionSystem').CharacterSelectionSystem)(characterRegistry, selectionManager, modelLoader, eventBus);
-});
-
-container.registerSingleton(ServiceTokens.CHARACTER_GALLERY, () => {
-  const eventBus = container.resolve(ServiceTokens.EVENT_BUS);
-  const characterRegistry = container.resolve(ServiceTokens.CHARACTER_REGISTRY);
-  const selectionManager = container.resolve(ServiceTokens.CHARACTER_SELECTION_MANAGER);
-  const modelLoader = container.resolve(ServiceTokens.ANIMATED_MODEL_LOADER);
-  return new (require('../ui/CharacterGallery').CharacterGallery)(eventBus, characterRegistry, selectionManager, modelLoader);
-}); 
+// Note: These registrations will be moved to GameComposition.ts to avoid require() issues in browser
+// The character selection system will be initialized there instead 
