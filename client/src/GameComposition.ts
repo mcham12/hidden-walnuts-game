@@ -24,7 +24,6 @@ import { ThreeJSRenderAdapter } from './rendering/IRenderAdapter';
 import { NetworkAnimationSystem } from './systems/NetworkAnimationSystem';
 import { NPCSystem } from './systems/NPCSystem';
 import { CharacterSelectionSystem } from './systems/CharacterSelectionSystem';
-import { CharacterSelectionManager } from './core/CharacterSelectionManager';
 
 // Refactored InputManager with dependency injection
 export interface IInputManager {
@@ -723,61 +722,45 @@ export class GameManager {
       playerId = crypto.randomUUID();
       this.setPersistentSquirrelId(playerId);
       Logger.warn(LogCategory.PLAYER, `⚠️ No squirrelId found in storage, generated fallback: ${playerId}`);
-    } else {
-      Logger.info(LogCategory.PLAYER, `🔄 Using persistent squirrelId for local player: ${playerId}`);
     }
-
-    if (playerFactory && typeof playerFactory.createLocalPlayer === 'function') {
-      try {
-        // Get the selected character type from character selection manager
-        const characterSelectionManager = container.resolve(ServiceTokens.CHARACTER_SELECTION_MANAGER) as CharacterSelectionManager;
-        const selectedCharacterType = characterSelectionManager.getSelectedCharacterOrDefault();
-        Logger.info(LogCategory.PLAYER, `🎭 Creating local player with character type: ${selectedCharacterType}`);
-        
-        // FIXED: Pass character type to player creation methods
-        if (savedPlayerData) {
-          // Create player with saved position and character type
-          Logger.info(LogCategory.PLAYER, `📍 Creating player with saved position: (${savedPlayerData.position.x}, ${savedPlayerData.position.y}, ${savedPlayerData.position.z})`);
-          this.localPlayer = await playerFactory.createLocalPlayerWithPosition(playerId, savedPlayerData.position, savedPlayerData.rotationY, selectedCharacterType);
-        } else {
-          // Create player at random position with character type
-          Logger.info(LogCategory.PLAYER, `🎲 Creating player at random position`);
-          this.localPlayer = await playerFactory.createLocalPlayer(playerId, selectedCharacterType);
-        }
-        
-        if (this.localPlayer) {
-          Logger.info(LogCategory.PLAYER, '🐿️ Local player created with ID:', this.localPlayer.id.value);
-          this.entityManager.addEntity(this.localPlayer);
-          Logger.info(LogCategory.PLAYER, '✅ Local player added to entity manager');
-          
-          // Verify the player has the required components
-          const positionComponent = this.localPlayer.getComponent('position');
-          const renderComponent = this.localPlayer.getComponent('render') as any;
-          const networkComponent = this.localPlayer.getComponent('network') as any;
-          Logger.info(LogCategory.PLAYER, `🔍 Local player components - Position: ${positionComponent ? 'found' : 'missing'}, Render: ${renderComponent ? 'found' : 'missing'}, Network: ${networkComponent ? 'found' : 'missing'}`);
-          
-          if (renderComponent && renderComponent.mesh) {
-            Logger.info(LogCategory.PLAYER, `🎨 Local player mesh added to scene at position: (${renderComponent.mesh.position.x.toFixed(1)}, ${renderComponent.mesh.position.y.toFixed(1)}, ${renderComponent.mesh.position.z.toFixed(1)})`);
-          } else {
-            Logger.error(LogCategory.PLAYER, '❌ Local player missing render component or mesh');
-          }
-          
-          // FIXED: Emit character ready event for animation system
-          this.eventBus.emit('player:animation_ready', {
-            playerId: this.localPlayer.id.value,
-            characterType: selectedCharacterType,
-            timestamp: Date.now()
-          });
-        } else {
-          Logger.error(LogCategory.PLAYER, '❌ Local player creation returned null/undefined');
-        }
-      } catch (error) {
-        Logger.error(LogCategory.PLAYER, '❌ Failed to create local player:', error);
-        // Don't throw error to prevent game from crashing, but log it
-        Logger.error(LogCategory.PLAYER, '🚨 Game will continue without local player');
+    
+    // FIXED: Get the selected character type from the character selection manager
+    const characterSelectionManager = container.resolve(ServiceTokens.CHARACTER_SELECTION_MANAGER) as any;
+    const selectedCharacterType = characterSelectionManager.getSelectedCharacterForPlayer();
+    Logger.info(LogCategory.PLAYER, `🎭 Creating local player with selected character: ${selectedCharacterType}`);
+    
+    try {
+      let entity: Entity;
+      
+      if (savedPlayerData) {
+        Logger.info(LogCategory.PLAYER, `📍 Creating local player with saved position data`);
+        entity = await playerFactory.createLocalPlayerWithPosition(
+          playerId, 
+          savedPlayerData.position, 
+          savedPlayerData.rotationY,
+          selectedCharacterType
+        );
+      } else {
+        Logger.info(LogCategory.PLAYER, `📍 Creating local player with new position`);
+        entity = await playerFactory.createLocalPlayer(playerId, selectedCharacterType);
       }
-    } else {
-      Logger.error(LogCategory.PLAYER, '❌ PlayerFactory not available or missing createLocalPlayer method');
+      
+      // Store the local player entity
+      this.localPlayer = entity;
+      
+      // FIXED: Emit character selection event for animation setup
+      const eventBus = container.resolve(ServiceTokens.EVENT_BUS) as any;
+      eventBus.emit('player:character_changed', {
+        entityId: playerId,
+        characterType: selectedCharacterType,
+        timestamp: Date.now()
+      });
+      
+      Logger.info(LogCategory.PLAYER, `✅ Local player created successfully with character: ${selectedCharacterType}`);
+      
+    } catch (error) {
+      Logger.error(LogCategory.PLAYER, `❌ Failed to create local player`, error);
+      throw error;
     }
   }
 

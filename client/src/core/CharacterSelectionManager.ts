@@ -115,6 +115,21 @@ export class CharacterSelectionManager implements ICharacterSelectionStorage {
   }
 
   /**
+   * FIXED: Get selected character for player creation (with auto-selection if needed)
+   */
+  getSelectedCharacterForPlayer(): string {
+    const selected = this.getSelectedCharacter();
+    if (selected) {
+      return selected;
+    }
+
+    // Auto-select default character for player creation
+    Logger.info(LogCategory.CORE, `[CharacterSelectionManager] Auto-selecting default character for player creation: ${this.defaultCharacter}`);
+    this.setSelectedCharacter(this.defaultCharacter);
+    return this.defaultCharacter;
+  }
+
+  /**
    * FIXED: Check if character selection is complete
    */
   getCharacterSelectionComplete(): boolean {

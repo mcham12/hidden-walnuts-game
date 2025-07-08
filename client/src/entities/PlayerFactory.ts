@@ -3,52 +3,40 @@
 import { Entity, PositionComponent, RotationComponent, RenderComponent, NetworkComponent, InputComponent, AnimationComponent, InputAnimationComponent } from '../ecs';
 import { Vector3, Rotation } from '../core/types';
 import { ISceneManager, IAssetManager } from '../GameComposition';
-import { ITerrainService } from '../services/TerrainService';
 import { Logger, LogCategory } from '../core/Logger';
 import { CharacterSelectionManager } from '../core/CharacterSelectionManager';
 import { AnimatedModelLoader } from './AnimatedModelLoader';
 import * as THREE from 'three';
 import { CharacterRegistry } from '../core/CharacterRegistry';
+import { EventBus } from '../core/EventBus';
 
 export class PlayerFactory {
   constructor(
     private sceneManager: ISceneManager,
-    private assetManager: IAssetManager,  
+    private assetManager: IAssetManager,
     private entityManager: import('../ecs').EntityManager,
-    private terrainService: ITerrainService,
-    private characterSelectionManager: CharacterSelectionManager,
+    private characterRegistry: CharacterRegistry,
     private animatedModelLoader: AnimatedModelLoader,
-    private characterRegistry: CharacterRegistry
+    private characterSelectionManager: CharacterSelectionManager
   ) {}
 
   async createLocalPlayer(playerId: string, characterType?: string): Promise<Entity> {
     Logger.info(LogCategory.PLAYER, `🐿️ Creating local player: ${playerId}`);
     
     // Get the selected character type (use provided characterType or fallback to selection manager)
-    const selectedCharacterType = characterType || this.characterSelectionManager.getSelectedCharacterOrDefault();
+    const selectedCharacterType = characterType || this.characterSelectionManager.getSelectedCharacterForPlayer();
     Logger.info(LogCategory.PLAYER, `🎭 Using character: ${selectedCharacterType}`);
     
     // TASK 8 FIX: Spawn players very close to origin for easier multiplayer testing
     const spawnX = Math.random() * 10 - 5; // Random spawn between -5 and 5 (closer to origin)
     const spawnZ = Math.random() * 10 - 5; // Random spawn between -5 and 5 (closer to origin)
-    
-    let terrainHeight = 0;
-    try {
-      terrainHeight = await this.terrainService.getTerrainHeight(spawnX, spawnZ);
-      Logger.info(LogCategory.PLAYER, `🌍 Terrain height at spawn: ${terrainHeight.toFixed(2)}`);
-    } catch (error) {
-      Logger.warn(LogCategory.PLAYER, '⚠️ Failed to get terrain height during spawn, using default height', error);
-      terrainHeight = 0.5; // Use minimum terrain height
-    }
-    
-    const spawnY = terrainHeight + 0.5; // TASK 8 FIX: Ensure player is above terrain with proper offset
-    
-    Logger.info(LogCategory.PLAYER, `🎯 Player spawn position: (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
+    const spawnY = 1.0; // Fixed height above ground
+    const spawnRotationY = Math.random() * Math.PI * 2; // Random rotation
     
     // Create entity first
     const entity = this.entityManager.createEntity();
     
-    // Load the selected character model with proper error handling
+    // Load the selected character model using AnimatedModelLoader
     let model: THREE.Object3D;
     let characterScale = 0.3; // Default scale
     
@@ -83,21 +71,7 @@ export class PlayerFactory {
     // TASK 8 FIX: Apply proper scaling and ensure model is visible
     model.scale.set(characterScale, characterScale, characterScale);
     model.position.set(spawnX, spawnY, spawnZ);
-    
-    // Ensure model is visible and has proper materials
-    model.traverse((child: any) => {
-      if (child.isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-        // Ensure material is visible
-        if (child.material) {
-          child.material.transparent = false;
-          child.material.opacity = 1.0;
-          Logger.debug(LogCategory.PLAYER, `🎨 Material for ${child.name}: visible=${child.visible}, transparent=${child.material.transparent}, opacity=${child.material.opacity}`);
-        }
-        Logger.debug(LogCategory.PLAYER, `🎭 Mesh ${child.name}: visible=${child.visible}, position=(${child.position.x.toFixed(2)}, ${child.position.y.toFixed(2)}, ${child.position.z.toFixed(2)})`);
-      }
-    });
+    model.rotation.y = spawnRotationY;
     
     // Add to scene
     this.sceneManager.getScene().add(model);
@@ -122,12 +96,30 @@ export class PlayerFactory {
         // Create player animation controller
         const { PlayerAnimationController } = await import('../controllers/PlayerAnimationController');
         const { container, ServiceTokens } = await import('../core/Container');
-        const eventBus = container.resolve(ServiceTokens.EVENT_BUS) as any;
+        const eventBus = container.resolve(ServiceTokens.EVENT_BUS) as EventBus;
         playerAnimationController = new PlayerAnimationController(characterConfig, model, playerId, eventBus);
+        
+        // Register with animation system
+        const animationSystem = container.resolve(ServiceTokens.ANIMATION_SYSTEM) as any;
+        if (animationSystem && typeof animationSystem.addAnimationComponent === 'function') {
+          animationSystem.addAnimationComponent(playerId, animationController, 8); // High priority for local player
+          Logger.info(LogCategory.PLAYER, `✅ Animation controller registered with system`);
+        } else {
+          Logger.warn(LogCategory.PLAYER, `⚠️ Animation system not available`);
+        }
+        
+        // Register with input animation system
+        const inputAnimationSystem = container.resolve(ServiceTokens.INPUT_ANIMATION_SYSTEM) as any;
+        if (inputAnimationSystem && typeof inputAnimationSystem.addPlayerAnimationController === 'function') {
+          inputAnimationSystem.addPlayerAnimationController(playerId, playerAnimationController, 8); // High priority for local player
+          Logger.info(LogCategory.PLAYER, `✅ Player animation controller registered with input system`);
+        } else {
+          Logger.warn(LogCategory.PLAYER, `⚠️ Input animation system not available`);
+        }
         
         Logger.info(LogCategory.PLAYER, `✅ Animation controllers created for ${selectedCharacterType}`);
       } catch (error) {
-        Logger.warn(LogCategory.PLAYER, `⚠️ Failed to create animation controllers:`, error);
+        Logger.error(LogCategory.PLAYER, `❌ Failed to create animation controllers for ${selectedCharacterType}`, error);
       }
     }
     
@@ -139,7 +131,7 @@ export class PlayerFactory {
       })
       .addComponent<RotationComponent>({
         type: 'rotation',
-        value: Rotation.fromRadians(0)
+        value: Rotation.fromRadians(spawnRotationY)
       })
       .addComponent<RenderComponent>({
         type: 'render',
@@ -161,7 +153,7 @@ export class PlayerFactory {
         turnRight: false
       });
     
-    // Add animation components only if controllers were created successfully
+    // Add animation components if controllers were created successfully
     if (animationController) {
       entity.addComponent<AnimationComponent>({
         type: 'animation',
@@ -184,8 +176,7 @@ export class PlayerFactory {
       });
     }
     
-    Logger.info(LogCategory.PLAYER, `✅ Local player entity created with ${entity.getComponents().length} components`);
-    Logger.info(LogCategory.PLAYER, `🎮 WASD controls should now work for local player!`);
+    Logger.info(LogCategory.PLAYER, `✅ Local player entity created with character type: ${selectedCharacterType}`);
     return entity;
   }
 
@@ -298,7 +289,7 @@ export class PlayerFactory {
     Logger.info(LogCategory.PLAYER, `📍 Using saved position: (${savedPosition.x.toFixed(1)}, ${savedPosition.y.toFixed(1)}, ${savedPosition.z.toFixed(1)})`);
     
     // Get the selected character type (use provided characterType or fallback to selection manager)
-    const selectedCharacterType = characterType || this.characterSelectionManager.getSelectedCharacterOrDefault();
+    const selectedCharacterType = characterType || this.characterSelectionManager.getSelectedCharacterForPlayer();
     Logger.info(LogCategory.PLAYER, `🎭 Using character: ${selectedCharacterType}`);
     
     // Use saved position instead of random spawn
@@ -310,7 +301,7 @@ export class PlayerFactory {
     // Create entity first
     const entity = this.entityManager.createEntity();
     
-    // Load the selected character model
+    // Load the selected character model using AnimatedModelLoader
     let model: THREE.Object3D;
     let characterScale = 0.3; // Default scale
     
@@ -341,9 +332,8 @@ export class PlayerFactory {
       characterScale = 0.3; // Default scale for fallback
     }
     
-    // Apply proper scaling - use character config scale, not hardcoded value
+    // Apply proper scaling and positioning
     model.scale.set(characterScale, characterScale, characterScale);
-    // Don't apply recursive scaling to children - this causes double scaling
     model.position.set(spawnX, spawnY, spawnZ);
     model.rotation.y = spawnRotationY;
     
@@ -365,12 +355,30 @@ export class PlayerFactory {
         // Create player animation controller
         const { PlayerAnimationController } = await import('../controllers/PlayerAnimationController');
         const { container, ServiceTokens } = await import('../core/Container');
-        const eventBus = container.resolve(ServiceTokens.EVENT_BUS) as any;
+        const eventBus = container.resolve(ServiceTokens.EVENT_BUS) as EventBus;
         playerAnimationController = new PlayerAnimationController(characterConfig, model, playerId, eventBus);
+        
+        // Register with animation system
+        const animationSystem = container.resolve(ServiceTokens.ANIMATION_SYSTEM) as any;
+        if (animationSystem && typeof animationSystem.addAnimationComponent === 'function') {
+          animationSystem.addAnimationComponent(playerId, animationController, 8); // High priority for local player
+          Logger.info(LogCategory.PLAYER, `✅ Animation controller registered with system`);
+        } else {
+          Logger.warn(LogCategory.PLAYER, `⚠️ Animation system not available`);
+        }
+        
+        // Register with input animation system
+        const inputAnimationSystem = container.resolve(ServiceTokens.INPUT_ANIMATION_SYSTEM) as any;
+        if (inputAnimationSystem && typeof inputAnimationSystem.addPlayerAnimationController === 'function') {
+          inputAnimationSystem.addPlayerAnimationController(playerId, playerAnimationController, 8); // High priority for local player
+          Logger.info(LogCategory.PLAYER, `✅ Player animation controller registered with input system`);
+        } else {
+          Logger.warn(LogCategory.PLAYER, `⚠️ Input animation system not available`);
+        }
         
         Logger.info(LogCategory.PLAYER, `✅ Animation controllers created for ${selectedCharacterType}`);
       } catch (error) {
-        Logger.warn(LogCategory.PLAYER, `⚠️ Failed to create animation controllers:`, error);
+        Logger.error(LogCategory.PLAYER, `❌ Failed to create animation controllers for ${selectedCharacterType}`, error);
       }
     }
     
@@ -394,7 +402,7 @@ export class PlayerFactory {
         isLocalPlayer: true,
         squirrelId: playerId,
         lastUpdate: performance.now(),
-        characterType: selectedCharacterType // FIXED: Add character type to network component
+        characterType: selectedCharacterType // TASK 8 FIX: Add character type to network component
       })
       .addComponent<InputComponent>({
         type: 'input',
@@ -404,7 +412,7 @@ export class PlayerFactory {
         turnRight: false
       });
     
-    // Add animation components only if controllers were created successfully
+    // Add animation components if controllers were created successfully
     if (animationController) {
       entity.addComponent<AnimationComponent>({
         type: 'animation',
@@ -427,8 +435,7 @@ export class PlayerFactory {
       });
     }
     
-    Logger.info(LogCategory.PLAYER, `✅ Local player entity created with SAVED position and ${entity.getComponents().length} components`);
-    Logger.info(LogCategory.PLAYER, `🎮 WASD controls should now work for local player!`);
+    Logger.info(LogCategory.PLAYER, `✅ Local player entity created with character type: ${selectedCharacterType}`);
     return entity;
   }
 }
