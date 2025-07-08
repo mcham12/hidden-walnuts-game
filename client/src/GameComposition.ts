@@ -938,7 +938,9 @@ export function configureServices(): void {
       container.resolve(ServiceTokens.SCENE_MANAGER),
       container.resolve(ServiceTokens.ASSET_MANAGER),
       container.resolve(ServiceTokens.ENTITY_MANAGER),
-      container.resolve(ServiceTokens.TERRAIN_SERVICE)
+      container.resolve(ServiceTokens.TERRAIN_SERVICE),
+      container.resolve(ServiceTokens.CHARACTER_SELECTION_MANAGER),
+      container.resolve(ServiceTokens.ANIMATED_MODEL_LOADER)
     );
   });
 

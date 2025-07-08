@@ -5,6 +5,8 @@ import { Vector3, Rotation } from '../core/types';
 import { ISceneManager, IAssetManager } from '../GameComposition';
 import { ITerrainService } from '../services/TerrainService';
 import { Logger, LogCategory } from '../core/Logger';
+import { CharacterSelectionManager } from '../core/CharacterSelectionManager';
+import { AnimatedModelLoader } from './AnimatedModelLoader';
 import * as THREE from 'three';
 
 export class PlayerFactory {
@@ -12,11 +14,17 @@ export class PlayerFactory {
     private sceneManager: ISceneManager,
     private assetManager: IAssetManager,  
     private entityManager: import('../ecs').EntityManager,
-    private terrainService: ITerrainService
+    private terrainService: ITerrainService,
+    private characterSelectionManager: CharacterSelectionManager,
+    private animatedModelLoader: AnimatedModelLoader
   ) {}
 
   async createLocalPlayer(playerId: string): Promise<Entity> {
     Logger.info(LogCategory.PLAYER, `🐿️ Creating local player: ${playerId}`);
+    
+    // Get the selected character type
+    const selectedCharacterType = this.characterSelectionManager.getSelectedCharacterOrDefault();
+    Logger.info(LogCategory.PLAYER, `🎭 Using selected character: ${selectedCharacterType}`);
     
     // TASK 8 FIX: Spawn players very close to origin for easier multiplayer testing
     const spawnX = Math.random() * 10 - 5; // Random spawn between -5 and 5 (closer to origin)
@@ -37,17 +45,25 @@ export class PlayerFactory {
     // Create entity first
     const entity = this.entityManager.createEntity();
     
-    // Load squirrel model
-    const gltf = await this.assetManager.loadModel('/assets/models/squirrel.glb');
-    if (!gltf || !gltf.scene) {
-      Logger.error(LogCategory.PLAYER, '❌ Failed to load squirrel model');
-      throw new Error('Failed to load squirrel model');
+    // Load the selected character model
+    let model: THREE.Object3D;
+    try {
+      const animatedModel = await this.animatedModelLoader.loadCharacterModel(selectedCharacterType, {
+        lodLevel: 0,
+        enableCaching: true,
+        validateModel: true
+      });
+      model = animatedModel.model;
+      Logger.info(LogCategory.PLAYER, `✅ ${selectedCharacterType} model loaded successfully`);
+    } catch (error) {
+      Logger.error(LogCategory.PLAYER, `❌ Failed to load ${selectedCharacterType} model, falling back to squirrel`, error);
+      // Fallback to squirrel model
+      const gltf = await this.assetManager.loadModel('/assets/models/squirrel.glb');
+      if (!gltf || !gltf.scene) {
+        throw new Error('Failed to load fallback squirrel model');
+      }
+      model = gltf.scene.clone();
     }
-    
-    Logger.info(LogCategory.PLAYER, '✅ Squirrel model loaded successfully');
-    
-    // Get the actual model from the GLTF scene
-    const model = gltf.scene.clone();
     
     // Scale the model to appropriate size - use recursive scaling for consistency with remote players
     const targetScale = 0.3;
@@ -167,6 +183,10 @@ export class PlayerFactory {
     Logger.info(LogCategory.PLAYER, `🐿️ Creating local player with saved position: ${playerId}`);
     Logger.info(LogCategory.PLAYER, `📍 Using saved position: (${savedPosition.x.toFixed(1)}, ${savedPosition.y.toFixed(1)}, ${savedPosition.z.toFixed(1)})`);
     
+    // Get the selected character type
+    const selectedCharacterType = this.characterSelectionManager.getSelectedCharacterOrDefault();
+    Logger.info(LogCategory.PLAYER, `🎭 Using selected character: ${selectedCharacterType}`);
+    
     // Use saved position instead of random spawn
     const spawnX = savedPosition.x;
     const spawnY = savedPosition.y;
@@ -176,17 +196,25 @@ export class PlayerFactory {
     // Create entity first
     const entity = this.entityManager.createEntity();
     
-    // Load squirrel model
-    const gltf = await this.assetManager.loadModel('/assets/models/squirrel.glb');
-    if (!gltf || !gltf.scene) {
-      Logger.error(LogCategory.PLAYER, '❌ Failed to load squirrel model');
-      throw new Error('Failed to load squirrel model');
+    // Load the selected character model
+    let model: THREE.Object3D;
+    try {
+      const animatedModel = await this.animatedModelLoader.loadCharacterModel(selectedCharacterType, {
+        lodLevel: 0,
+        enableCaching: true,
+        validateModel: true
+      });
+      model = animatedModel.model;
+      Logger.info(LogCategory.PLAYER, `✅ ${selectedCharacterType} model loaded successfully`);
+    } catch (error) {
+      Logger.error(LogCategory.PLAYER, `❌ Failed to load ${selectedCharacterType} model, falling back to squirrel`, error);
+      // Fallback to squirrel model
+      const gltf = await this.assetManager.loadModel('/assets/models/squirrel.glb');
+      if (!gltf || !gltf.scene) {
+        throw new Error('Failed to load fallback squirrel model');
+      }
+      model = gltf.scene.clone();
     }
-    
-    Logger.info(LogCategory.PLAYER, '✅ Squirrel model loaded successfully');
-    
-    // Get the actual model from the GLTF scene
-    const model = gltf.scene.clone();
     
     // Scale the model to appropriate size - use recursive scaling for consistency
     const targetScale = 0.3;

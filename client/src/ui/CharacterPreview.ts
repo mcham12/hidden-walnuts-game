@@ -64,7 +64,7 @@ export class CharacterPreview {
       enableRotation: options.enableRotation !== false,
       backgroundType: options.backgroundType || 'transparent',
       backgroundColor: options.backgroundColor || '#f0f0f0',
-      cameraDistance: options.cameraDistance || 3,
+      cameraDistance: options.cameraDistance || 2.5,
       autoRotateSpeed: options.autoRotateSpeed || 0.005,
       enableInteraction: options.enableInteraction !== false,
       animationCycle: options.animationCycle || ['idle_a', 'idle_b', 'idle_c', 'walk'],
@@ -333,8 +333,20 @@ export class CharacterPreview {
     const center = box.getCenter(new THREE.Vector3());
     model.position.sub(center);
 
+    // Scale the model to fit nicely in the preview
+    const size = box.getSize(new THREE.Vector3());
+    const maxSize = Math.max(size.x, size.y, size.z);
+    const targetSize = 2.0; // Target size for preview
+    const scale = targetSize / maxSize;
+    model.scale.setScalar(scale);
+
+    // Recalculate box after scaling
+    const scaledBox = new THREE.Box3().setFromObject(model);
+    const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+    model.position.sub(scaledCenter);
+
     // Position slightly above ground
-    model.position.y = -box.min.y;
+    model.position.y = -scaledBox.min.y;
 
     // Enable shadow casting/receiving
     model.traverse((child) => {
