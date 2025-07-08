@@ -711,7 +711,10 @@ export class GameManager {
   }
 
   private async createLocalPlayer(savedPlayerData: { position: any; rotationY: number } | null): Promise<void> {
+    Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Starting local player creation...`);
+    
     const playerFactory = container.resolve(ServiceTokens.PLAYER_FACTORY) as any;
+    Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: PlayerFactory resolved successfully`);
     
     // POSITION PERSISTENCE FIX: Use the same persistent squirrelId from NetworkSystem
     // This ensures consistency across the entire application
@@ -723,17 +726,18 @@ export class GameManager {
       this.setPersistentSquirrelId(playerId);
       Logger.warn(LogCategory.PLAYER, `⚠️ No squirrelId found in storage, generated fallback: ${playerId}`);
     }
+    Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Using player ID: ${playerId}`);
     
     // FIXED: Get the selected character type from the character selection manager
     const characterSelectionManager = container.resolve(ServiceTokens.CHARACTER_SELECTION_MANAGER) as any;
     const selectedCharacterType = characterSelectionManager.getSelectedCharacterForPlayer();
-    Logger.info(LogCategory.PLAYER, `🎭 Creating local player with selected character: ${selectedCharacterType}`);
+    Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Selected character type: ${selectedCharacterType}`);
     
     try {
       let entity: Entity;
       
       if (savedPlayerData) {
-        Logger.info(LogCategory.PLAYER, `📍 Creating local player with saved position data`);
+        Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Creating local player with saved position data`);
         entity = await playerFactory.createLocalPlayerWithPosition(
           playerId, 
           savedPlayerData.position, 
@@ -741,18 +745,20 @@ export class GameManager {
           selectedCharacterType
         );
       } else {
-        Logger.info(LogCategory.PLAYER, `📍 Creating local player with new position`);
+        Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Creating local player with new position`);
         entity = await playerFactory.createLocalPlayer(playerId, selectedCharacterType);
       }
+      
+      Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Local player entity created: ${entity.id.value}`);
       
       // Store the local player entity
       this.localPlayer = entity;
       
       // FIXED: Add entity to ECS
-      Logger.info(LogCategory.PLAYER, `🔧 Adding local player entity to ECS...`);
+      Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Adding local player entity to ECS...`);
       this.entityManager.addEntity(entity);
-      Logger.info(LogCategory.PLAYER, `✅ Local player entity added to ECS. Entity ID: ${entity.id.value}`);
-      Logger.info(LogCategory.PLAYER, `📊 Local player entity components: ${entity.getComponents().map(c => c.type).join(', ')}`);
+      Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Local player entity added to ECS: ${entity.id.value}`);
+      Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Local player entity components: ${entity.getComponents().map(c => c.type).join(', ')}`);
       
       // FIXED: Emit character selection event for animation setup
       const eventBus = container.resolve(ServiceTokens.EVENT_BUS) as any;
@@ -762,10 +768,10 @@ export class GameManager {
         timestamp: Date.now()
       });
       
-      Logger.info(LogCategory.PLAYER, `✅ Local player created successfully with character: ${selectedCharacterType}`);
+      Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Local player creation complete!`);
       
     } catch (error) {
-      Logger.error(LogCategory.PLAYER, `❌ Failed to create local player`, error);
+      Logger.error(LogCategory.PLAYER, `❌ GameComposition: Failed to create local player`, error);
       throw error;
     }
   }

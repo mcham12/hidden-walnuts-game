@@ -88,9 +88,6 @@ export class PlayerFactory {
     const modelInScene = scene.children.find(child => child === model);
     Logger.warn(LogCategory.PLAYER, `🔍 Model in scene: ${modelInScene ? 'YES' : 'NO'}, Scene children count: ${scene.children.length}`);
     
-    // Log all scene children for debugging
-    Logger.warn(LogCategory.PLAYER, `📊 Scene children: ${scene.children.map(child => `${child.type}:${child.name || 'unnamed'}`).join(', ')}`);
-    
     // Create animation controllers
     const characterConfig = this.characterRegistry.getCharacter(selectedCharacterType);
     let animationController: any = null;
@@ -166,14 +163,7 @@ export class PlayerFactory {
         isLocalPlayer: true,
         squirrelId: playerId,
         lastUpdate: performance.now(),
-        characterType: selectedCharacterType // TASK 8 FIX: Add character type to network component
-      })
-      .addComponent<InputComponent>({
-        type: 'input',
-        forward: false,
-        backward: false,
-        turnLeft: false,
-        turnRight: false
+        characterType: selectedCharacterType
       });
     
     Logger.warn(LogCategory.PLAYER, `✅ Basic components added to entity`);
