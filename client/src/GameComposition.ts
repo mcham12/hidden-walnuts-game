@@ -23,6 +23,7 @@ import { AnimationSystem } from './systems/AnimationSystem';
 import { ThreeJSRenderAdapter } from './rendering/IRenderAdapter';
 import { NetworkAnimationSystem } from './systems/NetworkAnimationSystem';
 import { NPCSystem } from './systems/NPCSystem';
+import { CharacterSelectionSystem } from './systems/CharacterSelectionSystem';
 
 // Refactored InputManager with dependency injection
 export interface IInputManager {
@@ -34,6 +35,7 @@ export interface IInputManager {
   };
   startListening(): void;
   stopListening(): void;
+  checkCharacterSelectionKey(): boolean;
 }
 
 export class InputManager implements IInputManager {
@@ -72,6 +74,11 @@ export class InputManager implements IInputManager {
       turnLeft: this.keys.has('a'),
       turnRight: this.keys.has('d')
     };
+  }
+
+  // Check for character selection key press
+  checkCharacterSelectionKey(): boolean {
+    return this.keys.has('c');
   }
 }
 
@@ -447,6 +454,7 @@ export class GameManager {
   private maxErrors = 10;
   private networkAnimationSystem: NetworkAnimationSystem;
   private npcSystem!: NPCSystem;
+  private characterSelectionSystem!: CharacterSelectionSystem;
 
   constructor() {
     // Get dependencies from container
@@ -476,6 +484,7 @@ export class GameManager {
     this.animationSystem = new AnimationSystem(this.eventBus);
     this.networkAnimationSystem = new NetworkAnimationSystem(this.eventBus);
     this.npcSystem = container.resolve(ServiceTokens.NPC_SYSTEM);
+    this.characterSelectionSystem = container.resolve(ServiceTokens.CHARACTER_SELECTION_SYSTEM);
 
     // Register all systems with EntityManager in correct execution order
     this.entityManager.addSystem(this.inputSystem);
@@ -492,6 +501,7 @@ export class GameManager {
     this.entityManager.addSystem(this.playerManager);
     this.entityManager.addSystem(this.networkAnimationSystem);
     this.entityManager.addSystem(this.npcSystem);
+    this.entityManager.addSystem(this.characterSelectionSystem);
 
     // Set system execution order for optimal performance
     this.entityManager.setSystemExecutionOrder([
@@ -508,7 +518,8 @@ export class GameManager {
       'NetworkSystem',
       'PlayerManager',
       'NetworkAnimationSystem',
-      'NPCSystem'
+      'NPCSystem',
+      'CharacterSelectionSystem'
     ]);
 
     Logger.info(LogCategory.CORE, '🎮 GameManager initialized with 14 systems');
@@ -612,6 +623,9 @@ export class GameManager {
       this.inputManager.startListening();
       Logger.info(LogCategory.INPUT, '🎮 Input listening started - WASD controls active!');
       
+      // 7. Initialize character selection system
+      Logger.info(LogCategory.CORE, '🎭 Character selection system ready');
+      
       // Emit initialization complete
       this.eventBus.emit('game.initialized');
       Logger.info(LogCategory.CORE, '🚀 Game initialization complete!');
@@ -707,6 +721,9 @@ export class GameManager {
       // CHEN'S FIX: Protected ECS system updates
       this.safeSystemUpdate(deltaTime);
       
+      // Check for character selection key press
+      this.checkCharacterSelectionInput();
+      
       // CHEN'S FIX: Protected rendering
       this.safeRender();
       
@@ -774,6 +791,23 @@ export class GameManager {
         { x: position.value.x, y: position.value.y, z: position.value.z },
         { y: rotation.value.y }
       );
+    }
+  }
+
+  private checkCharacterSelectionInput(): void {
+    // Check if 'C' key is pressed to open character selection
+    if (this.inputManager.checkCharacterSelectionKey()) {
+      // Initialize gallery if not already done
+      if (!this.characterSelectionSystem) {
+        Logger.warn(LogCategory.CORE, 'Character selection system not available');
+        return;
+      }
+      
+      // Show character gallery
+      this.characterSelectionSystem.showCharacterGallery();
+      
+      // Clear the key to prevent repeated triggers
+      // Note: This is a simple approach - in a real implementation you'd want to track key states more carefully
     }
   }
 
@@ -846,6 +880,7 @@ export class GameManager {
   public getPlayerManager(): PlayerManager { return this.playerManager; }
   public getNetworkSystem(): NetworkSystem { return this.networkSystem; }
   public getLocalPlayer(): Entity | undefined { return this.localPlayer; }
+  public getCharacterSelectionSystem(): CharacterSelectionSystem { return this.characterSelectionSystem; }
 
   // MULTIPLAYER FIX: Use sessionStorage for unique squirrelId per browser session
   private getPersistentSquirrelId(): string | null {

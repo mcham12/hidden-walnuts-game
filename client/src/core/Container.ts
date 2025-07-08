@@ -121,7 +121,12 @@ export const ServiceTokens = {
   ANIMATION_SYSTEM: 'AnimationSystem',
   NETWORK_ANIMATION_SYSTEM: 'NetworkAnimationSystem',
   NPC_SYSTEM: 'NPCSystem',
-  NPC_PATHFINDER: 'NPCPathfinder'
+  NPC_PATHFINDER: 'NPCPathfinder',
+  CHARACTER_SELECTION_SYSTEM: 'CharacterSelectionSystem',
+  CHARACTER_SELECTION_MANAGER: 'CharacterSelectionManager',
+  CHARACTER_GALLERY: 'CharacterGallery',
+  CHARACTER_REGISTRY: 'CharacterRegistry',
+  ANIMATED_MODEL_LOADER: 'AnimatedModelLoader'
 } as const;
 
 // Global container instance
@@ -141,4 +146,37 @@ container.registerSingleton(ServiceTokens.NPC_SYSTEM, () => {
   const eventBus = container.resolve(ServiceTokens.EVENT_BUS);
   const terrainService = container.resolve(ServiceTokens.TERRAIN_SERVICE);
   return new (require('../systems/NPCSystem').NPCSystem)(eventBus, terrainService);
+});
+
+// Character Selection System registrations
+container.registerSingleton(ServiceTokens.CHARACTER_REGISTRY, () => {
+  const eventBus = container.resolve(ServiceTokens.EVENT_BUS);
+  return new (require('../core/CharacterRegistry').CharacterRegistry)(eventBus);
+});
+
+container.registerSingleton(ServiceTokens.ANIMATED_MODEL_LOADER, () => {
+  const characterRegistry = container.resolve(ServiceTokens.CHARACTER_REGISTRY);
+  return new (require('../entities/AnimatedModelLoader').AnimatedModelLoader)(characterRegistry);
+});
+
+container.registerSingleton(ServiceTokens.CHARACTER_SELECTION_MANAGER, () => {
+  const eventBus = container.resolve(ServiceTokens.EVENT_BUS);
+  const characterRegistry = container.resolve(ServiceTokens.CHARACTER_REGISTRY);
+  return new (require('../core/CharacterSelectionManager').CharacterSelectionManager)(characterRegistry, eventBus);
+});
+
+container.registerSingleton(ServiceTokens.CHARACTER_SELECTION_SYSTEM, () => {
+  const eventBus = container.resolve(ServiceTokens.EVENT_BUS);
+  const characterRegistry = container.resolve(ServiceTokens.CHARACTER_REGISTRY);
+  const selectionManager = container.resolve(ServiceTokens.CHARACTER_SELECTION_MANAGER);
+  const modelLoader = container.resolve(ServiceTokens.ANIMATED_MODEL_LOADER);
+  return new (require('../systems/CharacterSelectionSystem').CharacterSelectionSystem)(characterRegistry, selectionManager, modelLoader, eventBus);
+});
+
+container.registerSingleton(ServiceTokens.CHARACTER_GALLERY, () => {
+  const eventBus = container.resolve(ServiceTokens.EVENT_BUS);
+  const characterRegistry = container.resolve(ServiceTokens.CHARACTER_REGISTRY);
+  const selectionManager = container.resolve(ServiceTokens.CHARACTER_SELECTION_MANAGER);
+  const modelLoader = container.resolve(ServiceTokens.ANIMATED_MODEL_LOADER);
+  return new (require('../ui/CharacterGallery').CharacterGallery)(eventBus, characterRegistry, selectionManager, modelLoader);
 }); 
