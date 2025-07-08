@@ -96,40 +96,52 @@ export class PlayerFactory {
     let animationController: any = null;
     let playerAnimationController: any = null;
     
+    Logger.info(LogCategory.PLAYER, `🎭 Creating animation controllers for ${selectedCharacterType}...`);
+    
     if (characterConfig) {
       try {
         // Create animation controller
+        Logger.info(LogCategory.PLAYER, `🔄 Creating AnimationController...`);
         const { AnimationController } = await import('../core/AnimationController');
         animationController = new AnimationController(model, characterConfig, playerId);
+        Logger.info(LogCategory.PLAYER, `✅ AnimationController created successfully`);
         
         // Create player animation controller
+        Logger.info(LogCategory.PLAYER, `🔄 Creating PlayerAnimationController...`);
         const { PlayerAnimationController } = await import('../controllers/PlayerAnimationController');
         const { container, ServiceTokens } = await import('../core/Container');
         const eventBus = container.resolve(ServiceTokens.EVENT_BUS) as EventBus;
         playerAnimationController = new PlayerAnimationController(characterConfig, model, playerId, eventBus);
+        Logger.info(LogCategory.PLAYER, `✅ PlayerAnimationController created successfully`);
         
         // Register with animation system
+        Logger.info(LogCategory.PLAYER, `🔄 Registering with animation system...`);
         const animationSystem = container.resolve(ServiceTokens.ANIMATION_SYSTEM) as any;
         if (animationSystem && typeof animationSystem.addAnimationComponent === 'function') {
           animationSystem.addAnimationComponent(playerId, animationController, 8); // High priority for local player
           Logger.info(LogCategory.PLAYER, `✅ Animation controller registered with system`);
         } else {
-          Logger.warn(LogCategory.PLAYER, `⚠️ Animation system not available`);
+          Logger.warn(LogCategory.PLAYER, `⚠️ Animation system not available or missing addAnimationComponent method`);
+          Logger.warn(LogCategory.PLAYER, `⚠️ Animation system type: ${typeof animationSystem}, methods: ${animationSystem ? Object.getOwnPropertyNames(animationSystem) : 'null'}`);
         }
         
         // Register with input animation system
+        Logger.info(LogCategory.PLAYER, `🔄 Registering with input animation system...`);
         const inputAnimationSystem = container.resolve(ServiceTokens.INPUT_ANIMATION_SYSTEM) as any;
         if (inputAnimationSystem && typeof inputAnimationSystem.addPlayerAnimationController === 'function') {
           inputAnimationSystem.addPlayerAnimationController(playerId, playerAnimationController, 8); // High priority for local player
           Logger.info(LogCategory.PLAYER, `✅ Player animation controller registered with input system`);
         } else {
-          Logger.warn(LogCategory.PLAYER, `⚠️ Input animation system not available`);
+          Logger.warn(LogCategory.PLAYER, `⚠️ Input animation system not available or missing addPlayerAnimationController method`);
+          Logger.warn(LogCategory.PLAYER, `⚠️ Input animation system type: ${typeof inputAnimationSystem}, methods: ${inputAnimationSystem ? Object.getOwnPropertyNames(inputAnimationSystem) : 'null'}`);
         }
         
         Logger.info(LogCategory.PLAYER, `✅ Animation controllers created for ${selectedCharacterType}`);
       } catch (error) {
         Logger.error(LogCategory.PLAYER, `❌ Failed to create animation controllers for ${selectedCharacterType}`, error);
       }
+    } else {
+      Logger.warn(LogCategory.PLAYER, `⚠️ No character config found for ${selectedCharacterType}, skipping animation controllers`);
     }
     
     // Add all required components using the Entity class methods
