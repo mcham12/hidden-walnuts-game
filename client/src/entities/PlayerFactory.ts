@@ -8,6 +8,7 @@ import { Logger, LogCategory } from '../core/Logger';
 import { CharacterSelectionManager } from '../core/CharacterSelectionManager';
 import { AnimatedModelLoader } from './AnimatedModelLoader';
 import * as THREE from 'three';
+import { CharacterRegistry } from '../core/CharacterRegistry';
 
 export class PlayerFactory {
   constructor(
@@ -16,7 +17,8 @@ export class PlayerFactory {
     private entityManager: import('../ecs').EntityManager,
     private terrainService: ITerrainService,
     private characterSelectionManager: CharacterSelectionManager,
-    private animatedModelLoader: AnimatedModelLoader
+    private animatedModelLoader: AnimatedModelLoader,
+    private characterRegistry: CharacterRegistry
   ) {}
 
   async createLocalPlayer(playerId: string): Promise<Entity> {
@@ -45,8 +47,10 @@ export class PlayerFactory {
     // Create entity first
     const entity = this.entityManager.createEntity();
     
-    // Load the selected character model
+    // Load the selected character model with proper error handling
     let model: THREE.Object3D;
+    let characterScale = 0.3; // Default scale
+    
     try {
       const animatedModel = await this.animatedModelLoader.loadCharacterModel(selectedCharacterType, {
         lodLevel: 0,
@@ -54,7 +58,15 @@ export class PlayerFactory {
         validateModel: true
       });
       model = animatedModel.model;
-      Logger.info(LogCategory.PLAYER, `✅ ${selectedCharacterType} model loaded successfully`);
+      
+      // Get character config for proper scaling
+      const characterConfig = this.characterRegistry.getCharacter(selectedCharacterType);
+      if (characterConfig) {
+        characterScale = characterConfig.scale;
+        Logger.info(LogCategory.PLAYER, `✅ ${selectedCharacterType} model loaded successfully with scale ${characterScale}`);
+      } else {
+        Logger.warn(LogCategory.PLAYER, `⚠️ No character config found for ${selectedCharacterType}, using default scale`);
+      }
     } catch (error) {
       Logger.error(LogCategory.PLAYER, `❌ Failed to load ${selectedCharacterType} model, falling back to squirrel`, error);
       // Fallback to squirrel model
@@ -63,21 +75,17 @@ export class PlayerFactory {
         throw new Error('Failed to load fallback squirrel model');
       }
       model = gltf.scene.clone();
+      characterScale = 0.3; // Default scale for fallback
     }
     
-    // Scale the model to appropriate size - use recursive scaling for consistency with remote players
-    const targetScale = 0.3;
-    model.scale.set(targetScale, targetScale, targetScale);
-    model.traverse((child: THREE.Object3D) => {
-      if (child !== model) {
-        child.scale.set(targetScale, targetScale, targetScale);
-      }
-    });
+    // Apply proper scaling - use character config scale, not hardcoded value
+    model.scale.set(characterScale, characterScale, characterScale);
+    // Don't apply recursive scaling to children - this causes double scaling
     model.position.set(spawnX, spawnY, spawnZ);
     
     // Add to scene
     this.sceneManager.getScene().add(model);
-    Logger.info(LogCategory.PLAYER, `✅ Local player added to scene at position (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
+    Logger.info(LogCategory.PLAYER, `✅ Local player added to scene at position (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)}) with scale ${characterScale}`);
     
     // Add all required components using the Entity class methods
     entity
@@ -113,30 +121,47 @@ export class PlayerFactory {
     return entity;
   }
 
-  async createRemotePlayer(squirrelId: string, position: Vector3, rotation: Rotation): Promise<Entity> {
-    Logger.info(LogCategory.PLAYER, `🌐 Creating remote player: ${squirrelId}`);
+  async createRemotePlayer(squirrelId: string, position: Vector3, rotation: Rotation, characterType: string = 'colobus'): Promise<Entity> {
+    Logger.info(LogCategory.PLAYER, `🌐 Creating remote player: ${squirrelId} as ${characterType}`);
     
     // Create entity first
     const entity = this.entityManager.createEntity();
     
-    // Load squirrel model for remote player
-    const gltf = await this.assetManager.loadModel('/assets/models/squirrel.glb');
-    if (!gltf || !gltf.scene) {
-      Logger.error(LogCategory.PLAYER, '❌ Failed to load squirrel model for remote player');
-      throw new Error('Failed to load squirrel model for remote player');
+    // Load the correct character model for remote player
+    let model: THREE.Object3D;
+    let characterScale = 0.3; // Default scale
+    
+    try {
+      // Try to load the specific character model
+      const animatedModel = await this.animatedModelLoader.loadCharacterModel(characterType, {
+        lodLevel: 0,
+        enableCaching: true,
+        validateModel: true
+      });
+      model = animatedModel.model;
+      
+      // Get character config for proper scaling
+      const characterConfig = this.characterRegistry.getCharacter(characterType);
+      if (characterConfig) {
+        characterScale = characterConfig.scale;
+        Logger.info(LogCategory.PLAYER, `✅ ${characterType} model loaded successfully for remote player with scale ${characterScale}`);
+      } else {
+        Logger.warn(LogCategory.PLAYER, `⚠️ No character config found for ${characterType}, using default scale`);
+      }
+    } catch (error) {
+      Logger.error(LogCategory.PLAYER, `❌ Failed to load ${characterType} model for remote player, falling back to squirrel`, error);
+      // Fallback to squirrel model
+      const gltf = await this.assetManager.loadModel('/assets/models/squirrel.glb');
+      if (!gltf || !gltf.scene) {
+        throw new Error('Failed to load fallback squirrel model for remote player');
+      }
+      model = gltf.scene.clone();
+      characterScale = 0.3; // Default scale for fallback
     }
     
-    // Get the actual model from the GLTF scene
-    const model = gltf.scene.clone();
-    
-    // Scale and position the model - use recursive scaling for consistency
-    const targetScale = 0.3;
-    model.scale.set(targetScale, targetScale, targetScale);
-    model.traverse((child: THREE.Object3D) => {
-      if (child !== model) {
-        child.scale.set(targetScale, targetScale, targetScale);
-      }
-    });
+    // Apply proper scaling - use character config scale, not hardcoded value
+    model.scale.set(characterScale, characterScale, characterScale);
+    // Don't apply recursive scaling to children - this causes double scaling
     model.position.set(position.x, position.y, position.z);
     model.rotation.y = rotation.y; // Use the y rotation value
     
@@ -151,7 +176,7 @@ export class PlayerFactory {
     
     // Add to scene
     this.sceneManager.getScene().add(model);
-    Logger.info(LogCategory.PLAYER, `✅ Remote player added to scene at position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
+    Logger.info(LogCategory.PLAYER, `✅ Remote player added to scene at position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}) with scale ${characterScale}`);
     
     // Add components using Entity class methods
     entity
@@ -172,7 +197,8 @@ export class PlayerFactory {
         type: 'network',
         isLocalPlayer: false,
         squirrelId: squirrelId,
-        lastUpdate: performance.now()
+        lastUpdate: performance.now(),
+        characterType: characterType // Store the character type
       });
     
     Logger.info(LogCategory.PLAYER, `✅ Remote player entity created`);
@@ -198,6 +224,8 @@ export class PlayerFactory {
     
     // Load the selected character model
     let model: THREE.Object3D;
+    let characterScale = 0.3; // Default scale
+    
     try {
       const animatedModel = await this.animatedModelLoader.loadCharacterModel(selectedCharacterType, {
         lodLevel: 0,
@@ -205,7 +233,15 @@ export class PlayerFactory {
         validateModel: true
       });
       model = animatedModel.model;
-      Logger.info(LogCategory.PLAYER, `✅ ${selectedCharacterType} model loaded successfully`);
+      
+      // Get character config for proper scaling
+      const characterConfig = this.characterRegistry.getCharacter(selectedCharacterType);
+      if (characterConfig) {
+        characterScale = characterConfig.scale;
+        Logger.info(LogCategory.PLAYER, `✅ ${selectedCharacterType} model loaded successfully with scale ${characterScale}`);
+      } else {
+        Logger.warn(LogCategory.PLAYER, `⚠️ No character config found for ${selectedCharacterType}, using default scale`);
+      }
     } catch (error) {
       Logger.error(LogCategory.PLAYER, `❌ Failed to load ${selectedCharacterType} model, falling back to squirrel`, error);
       // Fallback to squirrel model
@@ -214,22 +250,18 @@ export class PlayerFactory {
         throw new Error('Failed to load fallback squirrel model');
       }
       model = gltf.scene.clone();
+      characterScale = 0.3; // Default scale for fallback
     }
     
-    // Scale the model to appropriate size - use recursive scaling for consistency
-    const targetScale = 0.3;
-    model.scale.set(targetScale, targetScale, targetScale);
-    model.traverse((child: THREE.Object3D) => {
-      if (child !== model) {
-        child.scale.set(targetScale, targetScale, targetScale);
-      }
-    });
+    // Apply proper scaling - use character config scale, not hardcoded value
+    model.scale.set(characterScale, characterScale, characterScale);
+    // Don't apply recursive scaling to children - this causes double scaling
     model.position.set(spawnX, spawnY, spawnZ);
     model.rotation.y = spawnRotationY;
     
     // Add to scene
     this.sceneManager.getScene().add(model);
-    Logger.info(LogCategory.PLAYER, `✅ Local player added to scene at SAVED position (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
+    Logger.info(LogCategory.PLAYER, `✅ Local player added to scene at SAVED position (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)}) with scale ${characterScale}`);
     
     // Add all required components using the Entity class methods
     entity

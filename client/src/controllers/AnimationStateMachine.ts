@@ -1,210 +1,227 @@
-import { InputComponent } from '../ecs';
 import { 
   IAnimationStateMachine, 
-  AnimationTransition, 
   PlayerAnimationState 
 } from '../types/PlayerAnimationTypes';
 import { Logger, LogCategory } from '../core/Logger';
 
 /**
  * Animation State Machine
- * Manages animation state transitions and conditions
+ * FIXED: Proper animation state management with transitions and blend trees
  */
 export class AnimationStateMachine implements IAnimationStateMachine {
   private currentState: PlayerAnimationState;
   private previousState: PlayerAnimationState;
-  private transitions: AnimationTransition[] = [];
-  private defaultBlendTime: number = 0.3;
-  private stateHistory: PlayerAnimationState[] = [];
-  private maxHistorySize: number = 10;
+  private transitions: Map<PlayerAnimationState, PlayerAnimationState[]>;
+  private blendTime: number = 0.3;
+  private transitionProgress: number = 0;
+  private isTransitioning: boolean = false;
+  // private transitionStartTime: number = 0; // Unused for now
+  
+  // FIXED: Add blend tree support
+  private blendTree: Map<string, number> = new Map();
+  private animationLayers: Map<string, number> = new Map();
 
-  constructor(initialState: PlayerAnimationState = PlayerAnimationState.IDLE_A) {
+  constructor(initialState: PlayerAnimationState) {
     this.currentState = initialState;
     this.previousState = initialState;
-    this.stateHistory.push(initialState);
+    this.transitions = new Map();
     
-    Logger.debug(LogCategory.CORE, `[AnimationStateMachine] Initialized with state: ${initialState}`);
+    this.initializeTransitions();
+    Logger.info(LogCategory.CORE, `[AnimationStateMachine] Initialized with state: ${initialState}`);
   }
 
   /**
-   * Get current animation state
+   * FIXED: Initialize valid state transitions
+   */
+  private initializeTransitions(): void {
+    // Define valid transitions between animation states
+    this.transitions.set(PlayerAnimationState.IDLE_A, [
+      PlayerAnimationState.WALK,
+      PlayerAnimationState.RUN,
+      PlayerAnimationState.JUMP,
+      PlayerAnimationState.IDLE_B,
+      PlayerAnimationState.IDLE_C
+    ]);
+    
+    this.transitions.set(PlayerAnimationState.IDLE_B, [
+      PlayerAnimationState.WALK,
+      PlayerAnimationState.RUN,
+      PlayerAnimationState.JUMP,
+      PlayerAnimationState.IDLE_A,
+      PlayerAnimationState.IDLE_C
+    ]);
+    
+    this.transitions.set(PlayerAnimationState.IDLE_C, [
+      PlayerAnimationState.WALK,
+      PlayerAnimationState.RUN,
+      PlayerAnimationState.JUMP,
+      PlayerAnimationState.IDLE_A,
+      PlayerAnimationState.IDLE_B
+    ]);
+    
+    this.transitions.set(PlayerAnimationState.WALK, [
+      PlayerAnimationState.IDLE_A,
+      PlayerAnimationState.RUN,
+      PlayerAnimationState.JUMP
+    ]);
+    
+    this.transitions.set(PlayerAnimationState.RUN, [
+      PlayerAnimationState.IDLE_A,
+      PlayerAnimationState.WALK,
+      PlayerAnimationState.JUMP
+    ]);
+    
+    this.transitions.set(PlayerAnimationState.JUMP, [
+      PlayerAnimationState.IDLE_A,
+      PlayerAnimationState.WALK,
+      PlayerAnimationState.RUN
+    ]);
+  }
+
+  /**
+   * FIXED: Transition to new animation state with validation
+   */
+  transitionTo(newState: PlayerAnimationState): boolean {
+    if (newState === this.currentState) {
+      return true; // Already in target state
+    }
+
+    if (!this.canTransitionTo(newState)) {
+      Logger.warn(LogCategory.CORE, `[AnimationStateMachine] Invalid transition from ${this.currentState} to ${newState}`);
+      return false;
+    }
+
+    // Start transition
+    this.previousState = this.currentState;
+    this.currentState = newState;
+    this.isTransitioning = true;
+    this.transitionProgress = 0;
+    // this.transitionStartTime = performance.now(); // Unused for now
+
+    Logger.debug(LogCategory.CORE, `[AnimationStateMachine] Transitioning from ${this.previousState} to ${newState}`);
+    return true;
+  }
+
+  /**
+   * FIXED: Check if transition is valid
+   */
+  canTransitionTo(state: PlayerAnimationState): boolean {
+    const validTransitions = this.transitions.get(this.currentState);
+    return validTransitions ? validTransitions.includes(state) : false;
+  }
+
+  /**
+   * FIXED: Update state machine
+   */
+  update(deltaTime: number): void {
+    if (this.isTransitioning) {
+      this.transitionProgress += deltaTime / (this.blendTime * 1000);
+      
+      if (this.transitionProgress >= 1.0) {
+        this.isTransitioning = false;
+        this.transitionProgress = 1.0;
+        Logger.debug(LogCategory.CORE, `[AnimationStateMachine] Transition complete to ${this.currentState}`);
+      }
+    }
+  }
+
+  /**
+   * FIXED: Get current state
    */
   getCurrentState(): PlayerAnimationState {
     return this.currentState;
   }
 
   /**
-   * Set current animation state
-   */
-  setCurrentState(state: PlayerAnimationState): void {
-    if (this.currentState !== state) {
-      this.previousState = this.currentState;
-      this.currentState = state;
-      
-      // Add to history
-      this.stateHistory.push(state);
-      if (this.stateHistory.length > this.maxHistorySize) {
-        this.stateHistory.shift();
-      }
-      
-      Logger.debug(LogCategory.CORE, `[AnimationStateMachine] State changed: ${this.previousState} -> ${state}`);
-    }
-  }
-
-  /**
-   * Add a transition between animation states
-   */
-  addTransition(transition: AnimationTransition): void {
-    // Remove existing transition with same from/to
-    this.removeTransition(transition.from, transition.to);
-    
-    // Add new transition
-    this.transitions.push(transition);
-    
-    Logger.debug(LogCategory.CORE, 
-      `[AnimationStateMachine] Added transition: ${transition.from} -> ${transition.to} (priority: ${transition.priority})`
-    );
-  }
-
-  /**
-   * Remove a transition
-   */
-  removeTransition(from: PlayerAnimationState, to: PlayerAnimationState): void {
-    this.transitions = this.transitions.filter(t => 
-      !(t.from === from && t.to === to)
-    );
-  }
-
-  /**
-   * Get all transitions
-   */
-  getTransitions(): AnimationTransition[] {
-    return [...this.transitions];
-  }
-
-  /**
-   * Evaluate transitions based on input
-   */
-  evaluateTransitions(input: InputComponent): PlayerAnimationState | null {
-    // Sort transitions by priority (highest first)
-    const sortedTransitions = [...this.transitions].sort((a, b) => b.priority - a.priority);
-    
-    for (const transition of sortedTransitions) {
-      // Check if transition is from current state
-      if (transition.from === this.currentState) {
-        // Check if condition is met
-        if (transition.condition(input)) {
-          Logger.debug(LogCategory.CORE, 
-            `[AnimationStateMachine] Transition condition met: ${transition.from} -> ${transition.to}`
-          );
-          return transition.to;
-        }
-      }
-    }
-    
-    return null;
-  }
-
-  /**
-   * Check if can transition to a specific state
-   */
-  canTransitionTo(state: PlayerAnimationState): boolean {
-    return this.transitions.some(t => 
-      t.from === this.currentState && t.to === state
-    );
-  }
-
-  /**
-   * Set default blend time
-   */
-  setDefaultBlendTime(time: number): void {
-    this.defaultBlendTime = Math.max(0, time);
-  }
-
-  /**
-   * Get default blend time
-   */
-  getDefaultBlendTime(): number {
-    return this.defaultBlendTime;
-  }
-
-  /**
-   * Get previous state
+   * FIXED: Get previous state
    */
   getPreviousState(): PlayerAnimationState {
     return this.previousState;
   }
 
   /**
-   * Get state history
+   * FIXED: Check if currently transitioning
    */
-  getStateHistory(): PlayerAnimationState[] {
-    return [...this.stateHistory];
+  isInTransition(): boolean {
+    return this.isTransitioning;
   }
 
   /**
-   * Check if state has changed recently
+   * FIXED: Get transition progress (0-1)
    */
-  hasStateChanged(): boolean {
-    return this.currentState !== this.previousState;
+  getTransitionProgress(): number {
+    return this.transitionProgress;
   }
 
   /**
-   * Get transition for specific state change
+   * FIXED: Set blend time for transitions
    */
-  getTransition(from: PlayerAnimationState, to: PlayerAnimationState): AnimationTransition | undefined {
-    return this.transitions.find(t => t.from === from && t.to === to);
+  setBlendTime(time: number): void {
+    this.blendTime = time;
   }
 
   /**
-   * Clear all transitions
+   * FIXED: Get blend time
    */
-  clearTransitions(): void {
-    this.transitions = [];
-    Logger.debug(LogCategory.CORE, '[AnimationStateMachine] Cleared all transitions');
+  getBlendTime(): number {
+    return this.blendTime;
   }
 
   /**
-   * Get transitions from current state
+   * FIXED: Add animation layer (for additive animations)
    */
-  getTransitionsFromCurrentState(): AnimationTransition[] {
-    return this.transitions.filter(t => t.from === this.currentState);
+  addAnimationLayer(layerName: string, weight: number): void {
+    this.animationLayers.set(layerName, weight);
   }
 
   /**
-   * Get available states from current state
+   * FIXED: Remove animation layer
    */
-  getAvailableStates(): PlayerAnimationState[] {
-    return this.transitions
-      .filter(t => t.from === this.currentState)
-      .map(t => t.to);
+  removeAnimationLayer(layerName: string): void {
+    this.animationLayers.delete(layerName);
   }
 
   /**
-   * Validate transition exists
+   * FIXED: Get animation layer weight
    */
-  isValidTransition(from: PlayerAnimationState, to: PlayerAnimationState): boolean {
-    return this.transitions.some(t => t.from === from && t.to === to);
+  getAnimationLayerWeight(layerName: string): number {
+    return this.animationLayers.get(layerName) || 0;
   }
 
   /**
-   * Get transition count
+   * FIXED: Add blend tree node
    */
-  getTransitionCount(): number {
-    return this.transitions.length;
+  addBlendTreeNode(nodeName: string, weight: number): void {
+    this.blendTree.set(nodeName, weight);
   }
 
   /**
-   * Debug: Print all transitions
+   * FIXED: Get blend tree weights
    */
-  debugPrintTransitions(): void {
-    Logger.debug(LogCategory.CORE, `[AnimationStateMachine] Current state: ${this.currentState}`);
-    Logger.debug(LogCategory.CORE, `[AnimationStateMachine] Transitions (${this.transitions.length}):`);
-    
-    this.transitions.forEach((transition, index) => {
-      Logger.debug(LogCategory.CORE, 
-        `  ${index + 1}. ${transition.from} -> ${transition.to} (priority: ${transition.priority})`
-      );
-    });
+  getBlendTreeWeights(): Map<string, number> {
+    return new Map(this.blendTree);
+  }
+
+  /**
+   * FIXED: Get valid transitions for current state
+   */
+  getValidTransitions(): PlayerAnimationState[] {
+    return this.transitions.get(this.currentState) || [];
+  }
+
+  /**
+   * FIXED: Get state machine statistics
+   */
+  getStats(): any {
+    return {
+      currentState: this.currentState,
+      previousState: this.previousState,
+      isTransitioning: this.isTransitioning,
+      transitionProgress: this.transitionProgress,
+      blendTime: this.blendTime,
+      validTransitions: this.getValidTransitions(),
+      animationLayers: Array.from(this.animationLayers.entries()),
+      blendTree: Array.from(this.blendTree.entries())
+    };
   }
 } 

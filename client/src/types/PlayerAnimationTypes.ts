@@ -76,25 +76,36 @@ export interface IPlayerAnimationController {
 
 /**
  * Animation State Machine
- * Manages animation state transitions and conditions
+ * FIXED: Manages animation state transitions with proper validation
  */
 export interface IAnimationStateMachine {
   // State management
   getCurrentState(): PlayerAnimationState;
-  setCurrentState(state: PlayerAnimationState): void;
+  getPreviousState(): PlayerAnimationState;
   
   // Transitions
-  addTransition(transition: AnimationTransition): void;
-  removeTransition(from: PlayerAnimationState, to: PlayerAnimationState): void;
-  getTransitions(): AnimationTransition[];
-  
-  // Evaluation
-  evaluateTransitions(input: InputComponent): PlayerAnimationState | null;
+  transitionTo(state: PlayerAnimationState): boolean;
   canTransitionTo(state: PlayerAnimationState): boolean;
+  getValidTransitions(): PlayerAnimationState[];
+  
+  // Transition state
+  isInTransition(): boolean;
+  getTransitionProgress(): number;
   
   // Configuration
-  setDefaultBlendTime(time: number): void;
-  getDefaultBlendTime(): number;
+  setBlendTime(time: number): void;
+  getBlendTime(): number;
+  
+  // Animation layers and blend trees
+  addAnimationLayer(layerName: string, weight: number): void;
+  removeAnimationLayer(layerName: string): void;
+  getAnimationLayerWeight(layerName: string): number;
+  addBlendTreeNode(nodeName: string, weight: number): void;
+  getBlendTreeWeights(): Map<string, number>;
+  
+  // Update and stats
+  update(deltaTime: number): void;
+  getStats(): any;
 }
 
 /**

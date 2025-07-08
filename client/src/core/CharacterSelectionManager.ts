@@ -12,17 +12,23 @@ import { CharacterConfig } from '../types/CharacterTypes';
 /**
  * CharacterSelectionManager
  * Manages character selection persistence, validation, and unlock state
+ * FIXED: Proper character selection flow with dedicated game states
  */
 export class CharacterSelectionManager implements ICharacterSelectionStorage {
   private storageKey = 'hiddenWalnuts_selectedCharacter';
   private historyKey = 'hiddenWalnuts_characterHistory';
   private unlockedKey = 'hiddenWalnuts_unlockedCharacters';
-  private defaultCharacter = 'colobus'; // Default to Colobus instead of squirrel
+  private defaultCharacter = 'colobus';
   private maxHistorySize = 10;
   
   private characterRegistry: CharacterRegistry;
   private eventBus: EventBus;
   private unlockCriteria: Map<string, CharacterUnlockCriteria> = new Map();
+  
+  // FIXED: Add proper game state management
+  private gameState: 'character_selection' | 'loading' | 'in_game' | 'paused' = 'character_selection';
+  private isCharacterSelectionComplete = false;
+  // private pendingCharacterSelection: string | null = null; // Unused for now
 
   constructor(characterRegistry: CharacterRegistry, eventBus: EventBus) {
     this.characterRegistry = characterRegistry;
@@ -33,7 +39,7 @@ export class CharacterSelectionManager implements ICharacterSelectionStorage {
   }
 
   /**
-   * Get the currently selected character
+   * FIXED: Get the currently selected character (no auto-selection)
    */
   getSelectedCharacter(): string | null {
     try {
@@ -49,7 +55,7 @@ export class CharacterSelectionManager implements ICharacterSelectionStorage {
   }
 
   /**
-   * Set the selected character with validation
+   * FIXED: Set the selected character with proper validation and game state management
    */
   setSelectedCharacter(characterType: string): void {
     const validation = this.validateCharacterSelection(characterType);
@@ -66,6 +72,10 @@ export class CharacterSelectionManager implements ICharacterSelectionStorage {
       localStorage.setItem(this.storageKey, characterType);
       this.addCharacterToHistory(characterType);
       
+      // FIXED: Update game state
+      this.isCharacterSelectionComplete = true;
+      this.gameState = 'loading';
+      
       // Fire selection event
       const selectionEvent: CharacterSelectionEvent = {
         previousCharacter,
@@ -77,11 +87,38 @@ export class CharacterSelectionManager implements ICharacterSelectionStorage {
       
       this.eventBus.emit('character:selection_changed', selectionEvent);
       
+      // FIXED: Emit game state change
+      this.eventBus.emit('game:state_changed', {
+        from: 'character_selection',
+        to: 'loading',
+        characterType
+      });
+      
       Logger.info(LogCategory.CORE, `[CharacterSelectionManager] Character selected: ${characterType}`);
     } catch (error) {
       Logger.error(LogCategory.CORE, '[CharacterSelectionManager] Error setting selected character', error);
       throw new Error('Failed to save character selection');
     }
+  }
+
+  /**
+   * FIXED: Get selected character with fallback (no auto-selection)
+   */
+  getSelectedCharacterOrDefault(): string {
+    const selected = this.getSelectedCharacter();
+    if (selected) {
+      return selected;
+    }
+
+    // FIXED: Don't auto-select - return default for UI display only
+    return this.defaultCharacter;
+  }
+
+  /**
+   * FIXED: Check if character selection is complete
+   */
+  getCharacterSelectionComplete(): boolean {
+    return this.isCharacterSelectionComplete;
   }
 
   /**
@@ -92,32 +129,37 @@ export class CharacterSelectionManager implements ICharacterSelectionStorage {
   }
 
   /**
-   * Get or set default character if none selected
+   * FIXED: Get current game state
    */
-  getSelectedCharacterOrDefault(): string {
-    const selected = this.getSelectedCharacter();
-    if (selected) {
-      return selected;
-    }
+  getGameState(): string {
+    return this.gameState;
+  }
 
-    // Set default character if none selected
-    if (this.isCharacterUnlocked(this.defaultCharacter)) {
-      this.setSelectedCharacterSilently(this.defaultCharacter);
-      return this.defaultCharacter;
-    }
+  /**
+   * FIXED: Set game state
+   */
+  setGameState(state: 'character_selection' | 'loading' | 'in_game' | 'paused'): void {
+    const previousState = this.gameState;
+    this.gameState = state;
+    
+    this.eventBus.emit('game:state_changed', {
+      from: previousState,
+      to: state
+    });
+  }
 
-    // Find first unlocked character as fallback
-    const unlockedCharacters = this.getUnlockedCharacters();
-    if (unlockedCharacters.length > 0) {
-      const fallback = unlockedCharacters[0];
-      this.setSelectedCharacterSilently(fallback);
-      return fallback;
-    }
-
-    // Emergency fallback - unlock and select default
-    this.setCharacterUnlocked(this.defaultCharacter, true);
-    this.setSelectedCharacterSilently(this.defaultCharacter);
-    return this.defaultCharacter;
+  /**
+   * FIXED: Reset character selection (for new game)
+   */
+  resetCharacterSelection(): void {
+    this.isCharacterSelectionComplete = false;
+    this.gameState = 'character_selection';
+    // this.pendingCharacterSelection = null; // Unused for now
+    
+    this.eventBus.emit('game:state_changed', {
+      from: this.gameState,
+      to: 'character_selection'
+    });
   }
 
   /**
@@ -370,26 +412,6 @@ export class CharacterSelectionManager implements ICharacterSelectionStorage {
    */
   private validateCharacterType(characterType: string): boolean {
     return this.characterRegistry.getCharacter(characterType) !== null;
-  }
-
-  private setSelectedCharacterSilently(characterType: string): void {
-    try {
-      localStorage.setItem(this.storageKey, characterType);
-      this.addCharacterToHistory(characterType);
-      
-      // Fire silent selection event
-      const selectionEvent: CharacterSelectionEvent = {
-        previousCharacter: null,
-        selectedCharacter: characterType,
-        characterConfig: this.characterRegistry.getCharacter(characterType)!,
-        timestamp: Date.now(),
-        source: 'system'
-      };
-      
-      this.eventBus.emit('character:selection_changed', selectionEvent);
-    } catch (error) {
-      Logger.error(LogCategory.CORE, '[CharacterSelectionManager] Error setting character silently', error);
-    }
   }
 
   private getDefaultUnlockedCharacters(): string[] {

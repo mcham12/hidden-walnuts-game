@@ -5,7 +5,6 @@ import { AnimationController } from '../core/AnimationController';
 import { 
   IPlayerAnimationController, 
   PlayerAnimationState, 
-  AnimationTransition,
   PlayerAnimationEvent 
 } from '../types/PlayerAnimationTypes';
 import { AnimationStateMachine } from './AnimationStateMachine';
@@ -96,7 +95,7 @@ export class PlayerAnimationController implements IPlayerAnimationController {
     if (success) {
       this.previousState = this.currentState;
       this.currentState = state;
-      this.stateMachine.setCurrentState(state);
+      this.stateMachine.transitionTo(state);
       
       // Fire event
       this.fireAnimationEvent(this.previousState, state);
@@ -111,7 +110,7 @@ export class PlayerAnimationController implements IPlayerAnimationController {
   stopAnimation(): void {
     this.animationController.stopAnimation();
     this.currentState = PlayerAnimationState.IDLE_A;
-    this.stateMachine.setCurrentState(PlayerAnimationState.IDLE_A);
+    this.stateMachine.transitionTo(PlayerAnimationState.IDLE_A);
   }
 
   /**
@@ -163,7 +162,7 @@ export class PlayerAnimationController implements IPlayerAnimationController {
    */
   setBlendTime(time: number): void {
     this.blendTime = Math.max(0, time);
-    this.stateMachine.setDefaultBlendTime(time);
+    this.stateMachine.setBlendTime(time);
   }
 
   /**
@@ -360,66 +359,7 @@ export class PlayerAnimationController implements IPlayerAnimationController {
    * Setup default transitions
    */
   private setupDefaultTransitions(): void {
-    const transitions: AnimationTransition[] = [
-      // Idle to movement
-      {
-        from: PlayerAnimationState.IDLE_A,
-        to: PlayerAnimationState.WALK,
-        condition: (input) => input.forward,
-        blendTime: 0.2,
-        priority: 5
-      },
-      {
-        from: PlayerAnimationState.IDLE_B,
-        to: PlayerAnimationState.WALK,
-        condition: (input) => input.forward,
-        blendTime: 0.2,
-        priority: 5
-      },
-      {
-        from: PlayerAnimationState.IDLE_C,
-        to: PlayerAnimationState.WALK,
-        condition: (input) => input.forward,
-        blendTime: 0.2,
-        priority: 5
-      },
-      
-      // Movement to idle
-      {
-        from: PlayerAnimationState.WALK,
-        to: PlayerAnimationState.IDLE_A,
-        condition: (input) => !input.forward && !input.backward && !input.turnLeft && !input.turnRight,
-        blendTime: 0.3,
-        priority: 5
-      },
-      
-      // Idle variations
-      {
-        from: PlayerAnimationState.IDLE_A,
-        to: PlayerAnimationState.IDLE_B,
-        condition: () => this.idleVariationTimer >= this.idleVariationInterval,
-        blendTime: 0.5,
-        priority: 1
-      },
-      {
-        from: PlayerAnimationState.IDLE_B,
-        to: PlayerAnimationState.IDLE_C,
-        condition: () => this.idleVariationTimer >= this.idleVariationInterval,
-        blendTime: 0.5,
-        priority: 1
-      },
-      {
-        from: PlayerAnimationState.IDLE_C,
-        to: PlayerAnimationState.IDLE_A,
-        condition: () => this.idleVariationTimer >= this.idleVariationInterval,
-        blendTime: 0.5,
-        priority: 1
-      }
-    ];
-
-    transitions.forEach(transition => {
-      this.stateMachine.addTransition(transition);
-    });
+    // transitions are now pre-defined in the AnimationStateMachine
   }
 
   /**

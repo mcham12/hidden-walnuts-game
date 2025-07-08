@@ -5,9 +5,11 @@ import { EventBus } from '../core/EventBus';
 import { Logger, LogCategory } from '../core/Logger';
 import { EntityId } from '../core/types';
 import * as THREE from 'three';
+import { Vector3, Rotation } from '../core/types';
 
 // Import TerrainService for height adjustment
 import { TerrainService } from '../services/TerrainService';
+import { CharacterRegistry } from '../core/CharacterRegistry';
 
 interface RemotePlayer {
   entity: Entity;
@@ -48,15 +50,13 @@ export class PlayerManager extends System {
   private assetManager: any = null;
   private terrainService: TerrainService | null = null; // Add terrain service
   private lastDebugTime: number | null = null;
+  private playerFactory: any = null; // Add player factory
+  private characterRegistry: CharacterRegistry | null = null; // Add character registry
   
   // TASK 3.2: Duplicate Player Prevention - Add tracking
   private trackedSquirrelIds = new Set<string>();
   private entityToSquirrelId = new Map<string, string>(); // entityId -> squirrelId mapping
   
-  // TASK 3 FIX: Model caching for faster remote player creation
-  private cachedSquirrelModel: THREE.Object3D | null = null;
-  private modelLoadingPromise: Promise<THREE.Object3D> | null = null;
-
   constructor(eventBus: EventBus, terrainService: TerrainService) {
     super(eventBus, ['player'], 'PlayerManager');
     
@@ -77,83 +77,20 @@ export class PlayerManager extends System {
   }
 
   private async initializeWithSceneAndAssets(): Promise<void> {
-    if (this.scene && this.assetManager) {
-      return; // Already initialized
-    }
-
+    if (this.scene && this.assetManager) return; // Already initialized
+    
     try {
       // Get scene and asset manager from container
       const { container, ServiceTokens } = await import('../core/Container');
-      const sceneManager = container.resolve(ServiceTokens.SCENE_MANAGER) as any;
       
-      // Wait for scene to be ready if it's not yet initialized
-      let attempts = 0;
-      while ((!this.scene || !this.assetManager) && attempts < 50) {
-        try {
-          this.scene = sceneManager.getScene();
-          this.assetManager = container.resolve(ServiceTokens.ASSET_MANAGER);
-          
-          if (this.scene && this.assetManager) {
-            break;
-          }
-        } catch (e) {
-          // Scene might not be ready yet
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-      }
+      this.scene = (container.resolve(ServiceTokens.SCENE_MANAGER) as any).getScene();
+      this.assetManager = container.resolve(ServiceTokens.ASSET_MANAGER);
+      this.playerFactory = container.resolve(ServiceTokens.PLAYER_FACTORY);
+      this.characterRegistry = container.resolve(ServiceTokens.CHARACTER_REGISTRY);
       
-      if (!this.scene || !this.assetManager) {
-        throw new Error(`Failed to initialize after ${attempts} attempts`);
-      }
-      
-      Logger.info(LogCategory.PLAYER, '✅ PlayerManager initialized with scene, assets, and terrain service');
-      
-      // TASK 3 FIX: Preload squirrel model for faster remote player creation
-      await this.preloadSquirrelModel();
+      Logger.info(LogCategory.PLAYER, '✅ PlayerManager initialized with scene and assets');
     } catch (error) {
       Logger.error(LogCategory.PLAYER, '❌ Failed to initialize PlayerManager with scene and assets', error);
-    }
-  }
-
-  // TASK 3 FIX: Model caching for faster remote player creation
-  private async preloadSquirrelModel(): Promise<void> {
-    if (this.cachedSquirrelModel || this.modelLoadingPromise) {
-      return; // Already loading or loaded
-    }
-
-    if (!this.assetManager) {
-      Logger.warn(LogCategory.PLAYER, '⚠️ AssetManager not ready for model preloading');
-      return;
-    }
-
-    this.modelLoadingPromise = this.loadSquirrelModel();
-    try {
-      this.cachedSquirrelModel = await this.modelLoadingPromise;
-      Logger.debug(LogCategory.PLAYER, '✅ Squirrel model preloaded for remote players');
-    } catch (error) {
-      Logger.error(LogCategory.PLAYER, '❌ Failed to preload squirrel model', error);
-    } finally {
-      this.modelLoadingPromise = null;
-    }
-  }
-
-  private async loadSquirrelModel(): Promise<THREE.Object3D> {
-    if (!this.assetManager) {
-      throw new Error('AssetManager not available');
-    }
-
-    try {
-      const squirrelModel = await this.assetManager.loadSquirrelModel();
-      if (!squirrelModel) {
-        throw new Error('Failed to load squirrel model - model is null');
-      }
-
-      return squirrelModel;
-    } catch (error) {
-      Logger.error(LogCategory.PLAYER, '❌ Failed to load squirrel model:', error);
-      throw new Error(`Squirrel model loading failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -260,6 +197,7 @@ export class PlayerManager extends System {
         Logger.warn(LogCategory.PLAYER, `⚠️ Duplicate remote player state for ${data.squirrelId}, skipping creation`);
         Logger.info(LogCategory.PLAYER, `🔍 Currently tracked players: ${Array.from(this.trackedSquirrelIds).join(', ')}`);
         Logger.info(LogCategory.PLAYER, `🔍 Currently rendered players: ${Array.from(this.remotePlayers.keys()).join(', ')}`);
+        Logger.info(LogCategory.PLAYER, `🔍 This is expected behavior - server may send duplicate events during connection setup`);
         return;
       }
       
@@ -322,7 +260,7 @@ export class PlayerManager extends System {
     rotation: { x: number; y: number; z: number; w: number };
     characterType?: string; // Optional character type from network
   }): Promise<void> {
-    Logger.debug(LogCategory.PLAYER, `🎯 Creating remote player: ${data.squirrelId}`);
+    Logger.debug(LogCategory.PLAYER, `🎯 Creating remote player: ${data.squirrelId} as ${data.characterType || 'unknown'}`);
     
     // TASK 3.1: Terrain Height Fixes - Enhanced height calculation with performance optimization
     let adjustedPosition = { ...data.position };
@@ -355,90 +293,86 @@ export class PlayerManager extends System {
       Logger.warn(LogCategory.PLAYER, `⚠️ Scene or AssetManager not ready for ${data.squirrelId}, initializing...`);
       await this.initializeWithSceneAndAssets();
     }
-
-    // Create mesh using PlayerFactory for proper character support
+    
+    // TASK 3.2: Duplicate Player Prevention - Check for existing player
+    if (this.remotePlayers.has(data.squirrelId)) {
+      Logger.warn(LogCategory.PLAYER, `⚠️ Remote player ${data.squirrelId} already exists, skipping creation`);
+      return;
+    }
+    
+    // TASK 3.2: Duplicate Player Prevention - Track squirrel ID
+    this.trackedSquirrelIds.add(data.squirrelId);
+    
     let mesh: THREE.Mesh | null = null;
-    if (this.scene) {
+    
+    // TASK 3 FIX: Use PlayerFactory for consistent remote player creation
+    if (this.playerFactory) {
       try {
-        Logger.debug(LogCategory.PLAYER, `🎨 Creating mesh for ${data.squirrelId} with character type: ${data.characterType || 'squirrel'}`);
+        // Use the character type from network data, or default to colobus
+        const characterType = data.characterType || 'colobus';
+        Logger.debug(LogCategory.PLAYER, `🎭 Creating remote player ${data.squirrelId} with character type: ${characterType}`);
         
-        // Use PlayerFactory to create remote player with proper character support
-        const { container, ServiceTokens } = await import('../core/Container');
-        const playerFactory = container.resolve(ServiceTokens.PLAYER_FACTORY) as any;
+        const remoteEntity = await this.playerFactory.createRemotePlayer(
+          data.squirrelId,
+          new Vector3(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z),
+          new Rotation(data.rotation.y), // Only use y component for Rotation
+          characterType // Pass the character type to PlayerFactory
+        );
         
-        if (playerFactory && typeof playerFactory.createRemotePlayer === 'function') {
-          try {
-            Logger.info(LogCategory.PLAYER, `🎯 Creating remote player entity for ${data.squirrelId} as ${data.characterType || 'colobus'}`);
-            
-            // Create remote player using PlayerFactory
-            const remoteEntity = await playerFactory.createRemotePlayer(
-              data.squirrelId, 
-              { x: adjustedPosition.x, y: adjustedPosition.y, z: adjustedPosition.z },
-              { x: data.rotation.x, y: data.rotation.y, z: data.rotation.z, w: data.rotation.w },
-              data.characterType || 'colobus' // Use provided character type or default to colobus
-            );
-            
-            Logger.info(LogCategory.PLAYER, `✅ Remote player entity created for ${data.squirrelId}`);
-            
-            // Get the mesh from the created entity
-            const renderComponent = remoteEntity.getComponent('render');
-            Logger.info(LogCategory.PLAYER, `🔍 Render component for ${data.squirrelId}:`, renderComponent ? 'found' : 'not found');
-            
-                        if (renderComponent && renderComponent.mesh) {
-              const playerMesh = renderComponent.mesh;
-              mesh = playerMesh;
-              
-              // Position the mesh
-              playerMesh.position.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
-              playerMesh.quaternion.set(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w);
-              
-              // TASK 3.4: Player Scaling Consistency - Standardized scale values
-              const targetScale = 0.3;
-              setMeshScaleRecursive(playerMesh, targetScale);
-              
-              // TASK 3.4: Verify scale was set correctly with validation
-              const actualScale = playerMesh.scale;
-              if (Math.abs(actualScale.x - targetScale) > 0.01 || Math.abs(actualScale.y - targetScale) > 0.01 || Math.abs(actualScale.z - targetScale) > 0.01) {
-                Logger.warn(LogCategory.PLAYER, `⚠️ Scale validation failed for ${data.squirrelId}: expected=${targetScale}, actual=${actualScale.x.toFixed(2)},${actualScale.y.toFixed(2)},${actualScale.z.toFixed(2)}`);
-                // Force correct scale
-                playerMesh.scale.set(targetScale, targetScale, targetScale);
-              } else {
-                Logger.debug(LogCategory.PLAYER, `✅ Scale validation passed for ${data.squirrelId}: ${actualScale.x.toFixed(2)}, ${actualScale.y.toFixed(2)}, ${actualScale.z.toFixed(2)}`);
+        // Get the render component from the created entity
+        const renderComponent = remoteEntity.getComponent('render') as any;
+        
+        if (renderComponent && renderComponent.mesh) {
+          const playerMesh = renderComponent.mesh;
+          mesh = playerMesh;
+          
+          // Position the mesh
+          playerMesh.position.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
+          playerMesh.quaternion.set(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w);
+          
+          // TASK 3.4: Player Scaling Consistency - Use character config scale instead of hardcoded
+          const characterConfig = this.characterRegistry?.getCharacter(characterType);
+          const targetScale = characterConfig?.scale || 0.3;
+          setMeshScaleRecursive(playerMesh, targetScale);
+          
+          // TASK 3.4: Verify scale was set correctly with validation
+          const actualScale = playerMesh.scale;
+          if (Math.abs(actualScale.x - targetScale) > 0.01 || Math.abs(actualScale.y - targetScale) > 0.01 || Math.abs(actualScale.z - targetScale) > 0.01) {
+            Logger.warn(LogCategory.PLAYER, `⚠️ Scale validation failed for ${data.squirrelId}: expected=${targetScale}, actual=${actualScale.x.toFixed(2)},${actualScale.y.toFixed(2)},${actualScale.z.toFixed(2)}`);
+            // Force correct scale
+            playerMesh.scale.set(targetScale, targetScale, targetScale);
+          } else {
+            Logger.debug(LogCategory.PLAYER, `✅ Scale validation passed for ${data.squirrelId}: ${actualScale.x.toFixed(2)}, ${actualScale.y.toFixed(2)}, ${actualScale.z.toFixed(2)}`);
+          }
+          
+          // Make it slightly different color to distinguish from local player
+          playerMesh.traverse((child: THREE.Object3D) => {
+            if (child instanceof THREE.Mesh && child.material) {
+              const material = child.material.clone();
+              if (material instanceof THREE.MeshStandardMaterial) {
+                // Slightly darker for remote players
+                material.color.multiplyScalar(0.8);
               }
-              
-              // Make it slightly different color to distinguish from local player
-              playerMesh.traverse((child: THREE.Object3D) => {
-                if (child instanceof THREE.Mesh && child.material) {
-                  const material = child.material.clone();
-                  if (material instanceof THREE.MeshStandardMaterial) {
-                    // Slightly darker for remote players
-                    material.color.multiplyScalar(0.8);
-                  }
-                  child.material = material;
-                }
-              });
-              
-              // TASK 3 FIX: Log scene operation
-              Logger.debug(LogCategory.PLAYER, `🎭 Adding mesh to scene for ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
-              this.scene.add(playerMesh);
-              Logger.debug(LogCategory.PLAYER, `✅ Added mesh for remote player ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
-            } else {
-              Logger.error(LogCategory.PLAYER, `❌ Failed to get mesh from PlayerFactory for ${data.squirrelId}`);
-              mesh = null; // Ensure mesh is null if we couldn't get it
+              child.material = material;
             }
-          } catch (error) {
-            Logger.error(LogCategory.PLAYER, `❌ Failed to create remote player ${data.squirrelId}:`, error);
-            mesh = null;
+          });
+          
+          // TASK 3 FIX: Log scene operation
+          Logger.debug(LogCategory.PLAYER, `🎭 Adding mesh to scene for ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
+          if (this.scene) {
+            this.scene.add(playerMesh);
+            Logger.debug(LogCategory.PLAYER, `✅ Added mesh for remote player ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
           }
         } else {
-          Logger.error(LogCategory.PLAYER, `❌ PlayerFactory not available for ${data.squirrelId}`);
+          Logger.error(LogCategory.PLAYER, `❌ Failed to get mesh from PlayerFactory for ${data.squirrelId}`);
+          mesh = null; // Ensure mesh is null if we couldn't get it
         }
-        
       } catch (error) {
-        Logger.error(LogCategory.PLAYER, `❌ Failed to create remote player for ${data.squirrelId}`, error);
+        Logger.error(LogCategory.PLAYER, `❌ Failed to create remote player ${data.squirrelId}:`, error);
+        mesh = null;
       }
     } else {
-      Logger.error(LogCategory.PLAYER, `❌ Scene not available for ${data.squirrelId}`);
+      Logger.error(LogCategory.PLAYER, `❌ PlayerFactory not available for ${data.squirrelId}`);
     }
     
     const remotePlayer: RemotePlayer = {

@@ -602,7 +602,7 @@ export class NetworkSystem extends System {
         squirrelId: message.squirrelId,
         position: message.position,
         rotationY: message.rotationY,
-        characterType: message.characterType, // Pass character type to player manager
+        characterType: message.characterType, // Pass character type to other systems
         timestamp: message.timestamp
       });
     } else {
@@ -1274,14 +1274,14 @@ export class NetworkSystem extends System {
   }
 
   private handleBatchUpdate(message: NetworkMessage): void {
-    Logger.debug(LogCategory.NETWORK, '🔄 HANDLING BATCH UPDATE');
-    
-    if (message.updates) {
+    if (message.updates && Array.isArray(message.updates)) {
+      Logger.debug(LogCategory.NETWORK, `📦 Processing batch update with ${message.updates.length} updates`);
+      
       for (const update of message.updates) {
-        this.handleRemotePlayerUpdate(update as NetworkMessage);
+        if (update.type === 'player_update') {
+          this.handleRemotePlayerUpdate(update);
+        }
       }
-    } else {
-      Logger.warn(LogCategory.NETWORK, '⚠️ No updates in batch_update message');
     }
   }
 } 

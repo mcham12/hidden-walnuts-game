@@ -1619,17 +1619,9 @@ export default class ForestManager {
         timestamp: Date.now()
       });
       
-      // FIXED: Also send individual player_joined messages for each existing player
-      // This ensures the client creates remote player entities properly
-      for (const player of existingPlayers) {
-        this.sendMessage(socket, {
-          type: "player_joined",
-          squirrelId: player.squirrelId,
-          position: player.position,
-          rotationY: player.rotationY,
-          timestamp: Date.now()
-        });
-      }
+      // REMOVED: Individual player_joined messages for existing players
+      // This was causing duplicate remote_player_state events
+      // The existing_players message is sufficient for client to create remote players
     }
   }
 
