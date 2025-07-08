@@ -309,11 +309,21 @@ export class CharacterFactory {
     position: Vector3,
     rotation: Rotation
   ): Promise<CharacterInstance> {
+    Logger.info(LogCategory.PLAYER, `🔄 Loading character model for ${characterType}: ${config.lodPaths.lod0}`);
+    
     // Load the appropriate LOD model (start with LOD0 for now)
-    const gltf = await this.assetManager.loadModel(config.lodPaths.lod0);
-    if (!gltf || !gltf.scene) {
-      Logger.error(LogCategory.PLAYER, `❌ Failed to load character model: ${config.lodPaths.lod0}`);
+    let gltf;
+    try {
+      gltf = await this.assetManager.loadModel(config.lodPaths.lod0);
+      Logger.info(LogCategory.PLAYER, `✅ Model loaded successfully for ${characterType}`);
+    } catch (error) {
+      Logger.error(LogCategory.PLAYER, `❌ Failed to load character model: ${config.lodPaths.lod0}`, error);
       throw new Error(`Failed to load character model: ${config.lodPaths.lod0}`);
+    }
+    
+    if (!gltf || !gltf.scene) {
+      Logger.error(LogCategory.PLAYER, `❌ Invalid GLTF data for character model: ${config.lodPaths.lod0}`);
+      throw new Error(`Invalid GLTF data for character model: ${config.lodPaths.lod0}`);
     }
     
     Logger.info(LogCategory.PLAYER, `✅ Character model loaded successfully: ${config.name}`);

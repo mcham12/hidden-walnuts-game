@@ -360,58 +360,69 @@ export class PlayerManager extends System {
         const playerFactory = container.resolve(ServiceTokens.PLAYER_FACTORY) as any;
         
         if (playerFactory && typeof playerFactory.createRemotePlayer === 'function') {
-          // Create remote player using PlayerFactory
-          const remoteEntity = await playerFactory.createRemotePlayer(
-            data.squirrelId, 
-            { x: adjustedPosition.x, y: adjustedPosition.y, z: adjustedPosition.z },
-            { x: data.rotation.x, y: data.rotation.y, z: data.rotation.z, w: data.rotation.w },
-            data.characterType || 'squirrel' // Use provided character type or default to squirrel
-          );
-          
-                     // Get the mesh from the created entity
-           const renderComponent = remoteEntity.getComponent('render');
-           if (renderComponent && renderComponent.value.mesh) {
-             const playerMesh = renderComponent.value.mesh;
-             mesh = playerMesh;
-             
-             // Position the mesh
-             playerMesh.position.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
-             playerMesh.quaternion.set(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w);
-             
-             // TASK 3.4: Player Scaling Consistency - Standardized scale values
-             const targetScale = 0.3;
-             setMeshScaleRecursive(playerMesh, targetScale);
-             
-             // TASK 3.4: Verify scale was set correctly with validation
-             const actualScale = playerMesh.scale;
-             if (Math.abs(actualScale.x - targetScale) > 0.01 || Math.abs(actualScale.y - targetScale) > 0.01 || Math.abs(actualScale.z - targetScale) > 0.01) {
-               Logger.warn(LogCategory.PLAYER, `⚠️ Scale validation failed for ${data.squirrelId}: expected=${targetScale}, actual=${actualScale.x.toFixed(2)},${actualScale.y.toFixed(2)},${actualScale.z.toFixed(2)}`);
-               // Force correct scale
-               playerMesh.scale.set(targetScale, targetScale, targetScale);
-             } else {
-               Logger.debug(LogCategory.PLAYER, `✅ Scale validation passed for ${data.squirrelId}: ${actualScale.x.toFixed(2)}, ${actualScale.y.toFixed(2)}, ${actualScale.z.toFixed(2)}`);
-             }
-             
-             // Make it slightly different color to distinguish from local player
-             playerMesh.traverse((child: THREE.Object3D) => {
-               if (child instanceof THREE.Mesh && child.material) {
-                 const material = child.material.clone();
-                 if (material instanceof THREE.MeshStandardMaterial) {
-                   // Slightly darker for remote players
-                   material.color.multiplyScalar(0.8);
-                 }
-                 child.material = material;
-               }
-             });
-             
-             // TASK 3 FIX: Log scene operation
-             Logger.debug(LogCategory.PLAYER, `🎭 Adding mesh to scene for ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
-             this.scene.add(playerMesh);
-             Logger.debug(LogCategory.PLAYER, `✅ Added mesh for remote player ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
-           } else {
-             Logger.error(LogCategory.PLAYER, `❌ Failed to get mesh from PlayerFactory for ${data.squirrelId}`);
-             mesh = null; // Ensure mesh is null if we couldn't get it
-           }
+          try {
+            Logger.info(LogCategory.PLAYER, `🎯 Creating remote player entity for ${data.squirrelId} as ${data.characterType || 'colobus'}`);
+            
+            // Create remote player using PlayerFactory
+            const remoteEntity = await playerFactory.createRemotePlayer(
+              data.squirrelId, 
+              { x: adjustedPosition.x, y: adjustedPosition.y, z: adjustedPosition.z },
+              { x: data.rotation.x, y: data.rotation.y, z: data.rotation.z, w: data.rotation.w },
+              data.characterType || 'colobus' // Use provided character type or default to colobus
+            );
+            
+            Logger.info(LogCategory.PLAYER, `✅ Remote player entity created for ${data.squirrelId}`);
+            
+            // Get the mesh from the created entity
+            const renderComponent = remoteEntity.getComponent('render');
+            Logger.info(LogCategory.PLAYER, `🔍 Render component for ${data.squirrelId}:`, renderComponent ? 'found' : 'not found');
+            
+                        if (renderComponent && renderComponent.mesh) {
+              const playerMesh = renderComponent.mesh;
+              mesh = playerMesh;
+              
+              // Position the mesh
+              playerMesh.position.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
+              playerMesh.quaternion.set(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w);
+              
+              // TASK 3.4: Player Scaling Consistency - Standardized scale values
+              const targetScale = 0.3;
+              setMeshScaleRecursive(playerMesh, targetScale);
+              
+              // TASK 3.4: Verify scale was set correctly with validation
+              const actualScale = playerMesh.scale;
+              if (Math.abs(actualScale.x - targetScale) > 0.01 || Math.abs(actualScale.y - targetScale) > 0.01 || Math.abs(actualScale.z - targetScale) > 0.01) {
+                Logger.warn(LogCategory.PLAYER, `⚠️ Scale validation failed for ${data.squirrelId}: expected=${targetScale}, actual=${actualScale.x.toFixed(2)},${actualScale.y.toFixed(2)},${actualScale.z.toFixed(2)}`);
+                // Force correct scale
+                playerMesh.scale.set(targetScale, targetScale, targetScale);
+              } else {
+                Logger.debug(LogCategory.PLAYER, `✅ Scale validation passed for ${data.squirrelId}: ${actualScale.x.toFixed(2)}, ${actualScale.y.toFixed(2)}, ${actualScale.z.toFixed(2)}`);
+              }
+              
+              // Make it slightly different color to distinguish from local player
+              playerMesh.traverse((child: THREE.Object3D) => {
+                if (child instanceof THREE.Mesh && child.material) {
+                  const material = child.material.clone();
+                  if (material instanceof THREE.MeshStandardMaterial) {
+                    // Slightly darker for remote players
+                    material.color.multiplyScalar(0.8);
+                  }
+                  child.material = material;
+                }
+              });
+              
+              // TASK 3 FIX: Log scene operation
+              Logger.debug(LogCategory.PLAYER, `🎭 Adding mesh to scene for ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
+              this.scene.add(playerMesh);
+              Logger.debug(LogCategory.PLAYER, `✅ Added mesh for remote player ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
+            } else {
+              Logger.error(LogCategory.PLAYER, `❌ Failed to get mesh from PlayerFactory for ${data.squirrelId}`);
+              mesh = null; // Ensure mesh is null if we couldn't get it
+            }
+          } catch (error) {
+            Logger.error(LogCategory.PLAYER, `❌ Failed to create remote player ${data.squirrelId}:`, error);
+            mesh = null;
+          }
         } else {
           Logger.error(LogCategory.PLAYER, `❌ PlayerFactory not available for ${data.squirrelId}`);
         }
