@@ -626,6 +626,15 @@ export class GameManager {
       // 7. Initialize character selection system
       Logger.info(LogCategory.CORE, '🎭 Character selection system initialized');
       
+      // Listen for character selection changes to update camera
+      this.eventBus.subscribe('character:selection_changed', (event: any) => {
+        Logger.info(LogCategory.CORE, `🎭 Character changed to: ${event.selectedCharacter}`);
+        // Update camera to follow the new character
+        if (this.localPlayer) {
+          this.updateCameraToFollowLocalPlayer();
+        }
+      });
+      
       // Emit initialization complete
       this.eventBus.emit('game.initialized');
       Logger.info(LogCategory.CORE, '🚀 Game initialization complete!');
