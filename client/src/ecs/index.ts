@@ -217,20 +217,21 @@ export class EntityManager {
   }
 
   update(deltaTime: number): void {
-    if (this.systemExecutionOrder.length > 0) {
-      // CHEN'S FIX: O(1) system lookup instead of O(n) find
-      for (const systemId of this.systemExecutionOrder) {
-        const system = this.systemLookup.get(systemId);
-        if (system) {
+    Logger.warn(LogCategory.ECS, `🔄 EntityManager update - ${this.systems.length} systems, ${this.entities.size} entities`);
+    
+    // Update systems in execution order
+    for (const systemId of this.systemExecutionOrder) {
+      const system = this.systemLookup.get(systemId);
+      if (system) {
+        try {
+          Logger.warn(LogCategory.ECS, `🎯 Updating system: ${systemId} with ${system.getEntities().length} entities`);
           system.update(deltaTime);
-        } else {
-          Logger.warn(LogCategory.ECS, `System ${systemId} not found for ordered execution`);
+        } catch (error) {
+          Logger.error(LogCategory.ECS, `🚨 System ${systemId} update failed:`, error);
+          throw error;
         }
-      }
-    } else {
-      // Fallback to registration order
-      for (const system of this.systems) {
-        system.update(deltaTime);
+      } else {
+        Logger.warn(LogCategory.ECS, `⚠️ System not found in lookup: ${systemId}`);
       }
     }
   }
