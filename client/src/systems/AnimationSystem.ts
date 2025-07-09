@@ -175,12 +175,12 @@ export class AnimationSystem extends System {
       this.handlePerformanceIssue(updateTime);
     }
     
-    // Log performance if needed
-    if (this.shouldLogPerformance()) {
-      Logger.debug(LogCategory.CORE, 
-        `[AnimationSystem] Updated ${updatedCount}/${this.animationComponents.size} components in ${updateTime.toFixed(2)}ms`
-      );
-    }
+    // Log performance if needed (disabled to reduce spam)
+    // if (this.shouldLogPerformance()) {
+    //   Logger.debug(LogCategory.CORE, 
+    //     `[AnimationSystem] Updated ${updatedCount}/${this.animationComponents.size} components in ${updateTime.toFixed(2)}ms`
+    //   );
+    // }
   }
 
   /**
@@ -276,12 +276,12 @@ export class AnimationSystem extends System {
   }
 
   /**
-   * Check if we should log performance metrics
+   * Check if we should log performance metrics (disabled to reduce spam)
    */
-  private shouldLogPerformance(): boolean {
-    // Log every 300 frames (approximately once per 5 seconds at 60fps) to reduce spam
-    return this.frameCount % 300 === 0;
-  }
+  // private shouldLogPerformance(): boolean {
+  //   // Log every 300 frames (approximately once per 5 seconds at 60fps) to reduce spam
+  //   return this.frameCount % 300 === 0;
+  // }
 
   /**
    * Get animation statistics for debugging
