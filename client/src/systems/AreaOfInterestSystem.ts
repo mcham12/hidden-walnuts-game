@@ -74,16 +74,16 @@ export class AreaOfInterestSystem extends System {
     
     // Handle entering/leaving interest area
     if (player.isInRange && !wasInRange) {
-      Logger.debug(LogCategory.SPATIAL, `Player ${data.squirrelId} entered interest range (${distance.toFixed(1)}m)`);
+      // Logger.debug(LogCategory.SPATIAL, `Player ${data.squirrelId} entered interest range (${distance.toFixed(1)}m)`);
       this.eventBus.emit('player_entered_interest', { squirrelId: data.squirrelId, distance });
     } else if (!player.isInRange && wasInRange) {
-      Logger.debug(LogCategory.SPATIAL, `Player ${data.squirrelId} left interest range (${distance.toFixed(1)}m)`);
+      // Logger.debug(LogCategory.SPATIAL, `Player ${data.squirrelId} left interest range (${distance.toFixed(1)}m)`);
       this.eventBus.emit('player_left_interest', { squirrelId: data.squirrelId, distance });
     }
 
     // Cull if beyond maximum range
     if (distance > AreaOfInterestSystem.CULLING_RADIUS) {
-      Logger.debugExpensive(LogCategory.SPATIAL, () => `Culling distant player ${data.squirrelId} (${distance.toFixed(1)}m)`);
+      // Logger.debugExpensive(LogCategory.SPATIAL, () => `Culling distant player ${data.squirrelId} (${distance.toFixed(1)}m)`);
       this.remotePlayers.delete(data.squirrelId);
       this.eventBus.emit('player_culled', { squirrelId: data.squirrelId, distance });
     }
@@ -97,7 +97,7 @@ export class AreaOfInterestSystem extends System {
 
   private handlePlayerDisconnected(data: { squirrelId: string }): void {
     if (this.remotePlayers.has(data.squirrelId)) {
-      Logger.debug(LogCategory.SPATIAL, `Removed disconnected player ${data.squirrelId} from area tracking`);
+      // Logger.debug(LogCategory.SPATIAL, `Removed disconnected player ${data.squirrelId} from area tracking`);
       this.remotePlayers.delete(data.squirrelId);
     }
   }

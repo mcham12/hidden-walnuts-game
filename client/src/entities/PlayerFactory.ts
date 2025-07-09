@@ -21,11 +21,11 @@ export class PlayerFactory {
   ) {}
 
   async createLocalPlayer(playerId: string, characterType?: string): Promise<Entity> {
-    Logger.warn(LogCategory.PLAYER, `🐿️ Creating local player: ${playerId}`);
+    Logger.info(LogCategory.PLAYER, `🐿️ Creating local player: ${playerId}`);
     
     // Get the selected character type (use provided characterType or fallback to selection manager)
     const selectedCharacterType = characterType || this.characterSelectionManager.getSelectedCharacterForPlayer();
-    Logger.warn(LogCategory.PLAYER, `🎭 Using character: ${selectedCharacterType}`);
+    Logger.info(LogCategory.PLAYER, `🎭 Using character: ${selectedCharacterType}`);
     
     // TASK 8 FIX: Spawn players very close to origin for easier multiplayer testing
     const spawnX = Math.random() * 10 - 5; // Random spawn between -5 and 5 (closer to origin)
@@ -91,83 +91,83 @@ export class PlayerFactory {
     if (Math.abs(actualScale.x - characterScale) > 0.01 || 
         Math.abs(actualScale.y - characterScale) > 0.01 || 
         Math.abs(actualScale.z - characterScale) > 0.01) {
-      Logger.warn(LogCategory.PLAYER, `⚠️ Model scale mismatch for ${selectedCharacterType}: expected=${characterScale}, actual=${actualScale.x.toFixed(2)},${actualScale.y.toFixed(2)},${actualScale.z.toFixed(2)}`);
+      // Logger.warn(LogCategory.PLAYER, `⚠️ Model scale mismatch for ${selectedCharacterType}: expected=${characterScale}, actual=${actualScale.x.toFixed(2)},${actualScale.y.toFixed(2)},${actualScale.z.toFixed(2)}`);
       // Force correct scale
       model.scale.set(characterScale, characterScale, characterScale);
     } else {
-      Logger.warn(LogCategory.PLAYER, `✅ Model scale validated for ${selectedCharacterType}: ${actualScale.x.toFixed(2)}, ${actualScale.y.toFixed(2)}, ${actualScale.z.toFixed(2)}`);
+      // Logger.warn(LogCategory.PLAYER, `✅ Model scale validated for ${selectedCharacterType}: ${actualScale.x.toFixed(2)}, ${actualScale.y.toFixed(2)}, ${actualScale.z.toFixed(2)}`);
     }
     
     model.position.set(spawnX, spawnY, spawnZ);
     model.rotation.y = spawnRotationY;
     
-    Logger.warn(LogCategory.PLAYER, `🎨 Model prepared: scale=${characterScale}, position=(${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
+    // Logger.warn(LogCategory.PLAYER, `🎨 Model prepared: scale=${characterScale}, position=(${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
     
     // Add to scene
     const scene = this.sceneManager.getScene();
-    Logger.warn(LogCategory.PLAYER, `🎭 Adding model to scene...`);
+    // Logger.warn(LogCategory.PLAYER, `🎭 Adding model to scene...`);
     scene.add(model);
-    Logger.warn(LogCategory.PLAYER, `✅ Local player added to scene at position (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)}) with scale ${characterScale}`);
+    // Logger.warn(LogCategory.PLAYER, `✅ Local player added to scene at position (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)}) with scale ${characterScale}`);
     
     // Debug: Check if model is actually in scene
-    const modelInScene = scene.children.find(child => child === model);
-    Logger.warn(LogCategory.PLAYER, `🔍 Model in scene: ${modelInScene ? 'YES' : 'NO'}, Scene children count: ${scene.children.length}`);
+    // const modelInScene = scene.children.find(child => child === model);
+    // Logger.warn(LogCategory.PLAYER, `🔍 Model in scene: ${modelInScene ? 'YES' : 'NO'}, Scene children count: ${scene.children.length}`);
     
     // Create animation controllers
     const characterConfig = this.characterRegistry.getCharacter(selectedCharacterType);
     let animationController: any = null;
     let playerAnimationController: any = null;
     
-    Logger.warn(LogCategory.PLAYER, `🎭 Creating animation controllers for ${selectedCharacterType}...`);
+    // Logger.warn(LogCategory.PLAYER, `🎭 Creating animation controllers for ${selectedCharacterType}...`);
     
     if (characterConfig) {
       try {
         // Create animation controller
-        Logger.warn(LogCategory.PLAYER, `🔄 Creating AnimationController...`);
+        // Logger.warn(LogCategory.PLAYER, `🔄 Creating AnimationController...`);
         const { AnimationController } = await import('../core/AnimationController');
         animationController = new AnimationController(model, characterConfig, playerId);
-        Logger.warn(LogCategory.PLAYER, `✅ AnimationController created successfully`);
+        // Logger.warn(LogCategory.PLAYER, `✅ AnimationController created successfully`);
         
         // Create player animation controller
-        Logger.warn(LogCategory.PLAYER, `🔄 Creating PlayerAnimationController...`);
+        // Logger.warn(LogCategory.PLAYER, `🔄 Creating PlayerAnimationController...`);
         const { PlayerAnimationController } = await import('../controllers/PlayerAnimationController');
         const { container, ServiceTokens } = await import('../core/Container');
         const eventBus = container.resolve(ServiceTokens.EVENT_BUS) as EventBus;
         playerAnimationController = new PlayerAnimationController(characterConfig, model, playerId, eventBus);
-        Logger.warn(LogCategory.PLAYER, `✅ PlayerAnimationController created successfully`);
+        // Logger.warn(LogCategory.PLAYER, `✅ PlayerAnimationController created successfully`);
         
         // Register with animation system
-        Logger.warn(LogCategory.PLAYER, `🔄 Registering with animation system...`);
+        // Logger.warn(LogCategory.PLAYER, `🔄 Registering with animation system...`);
         const animationSystem = container.resolve(ServiceTokens.ANIMATION_SYSTEM) as any;
         if (animationSystem && typeof animationSystem.addAnimationComponent === 'function') {
           animationSystem.addAnimationComponent(playerId, animationController, 8); // High priority for local player
-          Logger.warn(LogCategory.PLAYER, `✅ Animation controller registered with system`);
+          // Logger.warn(LogCategory.PLAYER, `✅ Animation controller registered with system`);
         } else {
-          Logger.warn(LogCategory.PLAYER, `⚠️ Animation system not available or missing addAnimationComponent method`);
-          Logger.warn(LogCategory.PLAYER, `⚠️ Animation system type: ${typeof animationSystem}, methods: ${animationSystem ? Object.getOwnPropertyNames(animationSystem) : 'null'}`);
+          // Logger.warn(LogCategory.PLAYER, `⚠️ Animation system not available or missing addAnimationComponent method`);
+          // Logger.warn(LogCategory.PLAYER, `⚠️ Animation system type: ${typeof animationSystem}, methods: ${animationSystem ? Object.getOwnPropertyNames(animationSystem) : 'null'}`);
         }
         
         // Register with input animation system
-        Logger.warn(LogCategory.PLAYER, `🔄 Registering with input animation system...`);
+        // Logger.warn(LogCategory.PLAYER, `🔄 Registering with input animation system...`);
         const inputAnimationSystem = container.resolve(ServiceTokens.INPUT_ANIMATION_SYSTEM) as any;
         if (inputAnimationSystem && typeof inputAnimationSystem.addPlayerAnimationController === 'function') {
           inputAnimationSystem.addPlayerAnimationController(playerId, playerAnimationController, 8); // High priority for local player
-          Logger.warn(LogCategory.PLAYER, `✅ Player animation controller registered with input system`);
+          // Logger.warn(LogCategory.PLAYER, `✅ Player animation controller registered with input system`);
         } else {
-          Logger.warn(LogCategory.PLAYER, `⚠️ Input animation system not available or missing addPlayerAnimationController method`);
-          Logger.warn(LogCategory.PLAYER, `⚠️ Input animation system type: ${typeof inputAnimationSystem}, methods: ${inputAnimationSystem ? Object.getOwnPropertyNames(inputAnimationSystem) : 'null'}`);
+          // Logger.warn(LogCategory.PLAYER, `⚠️ Input animation system not available or missing addPlayerAnimationController method`);
+          // Logger.warn(LogCategory.PLAYER, `⚠️ Input animation system type: ${typeof inputAnimationSystem}, methods: ${inputAnimationSystem ? Object.getOwnPropertyNames(inputAnimationSystem) : 'null'}`);
         }
         
-        Logger.warn(LogCategory.PLAYER, `✅ Animation controllers created for ${selectedCharacterType}`);
+        // Logger.warn(LogCategory.PLAYER, `✅ Animation controllers created for ${selectedCharacterType}`);
       } catch (error) {
         Logger.error(LogCategory.PLAYER, `❌ Failed to create animation controllers for ${selectedCharacterType}`, error);
       }
     } else {
-      Logger.warn(LogCategory.PLAYER, `⚠️ No character config found for ${selectedCharacterType}, skipping animation controllers`);
+      // Logger.warn(LogCategory.PLAYER, `⚠️ No character config found for ${selectedCharacterType}, skipping animation controllers`);
     }
     
     // Add all required components using the Entity class methods
-    Logger.warn(LogCategory.PLAYER, `🔧 Adding components to entity...`);
+    // Logger.warn(LogCategory.PLAYER, `🔧 Adding components to entity...`);
     
     entity
       .addComponent<PositionComponent>({
@@ -198,7 +198,7 @@ export class PlayerFactory {
         turnRight: false
       });
     
-    Logger.warn(LogCategory.PLAYER, `✅ Basic components added to entity`);
+    // Logger.warn(LogCategory.PLAYER, `✅ Basic components added to entity`);
     
     // Add animation components if controllers were created successfully
     if (animationController) {
@@ -210,7 +210,7 @@ export class PlayerFactory {
         updateInterval: 16,
         priority: 8
       });
-      Logger.warn(LogCategory.PLAYER, `✅ Animation component added`);
+      // Logger.warn(LogCategory.PLAYER, `✅ Animation component added`);
     }
     
     if (playerAnimationController) {
@@ -222,26 +222,26 @@ export class PlayerFactory {
         updateInterval: 16,
         priority: 8
       });
-      Logger.warn(LogCategory.PLAYER, `✅ Input animation component added`);
+      // Logger.warn(LogCategory.PLAYER, `✅ Input animation component added`);
     }
     
     // Verify entity has all required components
-    const components = entity.getComponents();
-    Logger.warn(LogCategory.PLAYER, `📊 Entity components: ${components.map(c => c.type).join(', ')}`);
+    // const components = entity.getComponents();
+    // Logger.warn(LogCategory.PLAYER, `📊 Entity components: ${components.map(c => c.type).join(', ')}`);
     
     // Verify render component
     const renderComponent = entity.getComponent<RenderComponent>('render');
     if (renderComponent) {
-      Logger.warn(LogCategory.PLAYER, `🎨 Render component: mesh=${!!renderComponent.mesh}, visible=${renderComponent.visible}`);
+      // Logger.warn(LogCategory.PLAYER, `🎨 Render component: mesh=${!!renderComponent.mesh}, visible=${renderComponent.visible}`);
       if (renderComponent.mesh) {
-        Logger.warn(LogCategory.PLAYER, `📍 Mesh position: (${renderComponent.mesh.position.x.toFixed(1)}, ${renderComponent.mesh.position.y.toFixed(1)}, ${renderComponent.mesh.position.z.toFixed(1)})`);
-        Logger.warn(LogCategory.PLAYER, `🎭 Mesh visible: ${renderComponent.mesh.visible}`);
+        // Logger.warn(LogCategory.PLAYER, `📍 Mesh position: (${renderComponent.mesh.position.x.toFixed(1)}, ${renderComponent.mesh.position.y.toFixed(1)}, ${renderComponent.mesh.position.z.toFixed(1)})`);
+        // Logger.warn(LogCategory.PLAYER, `🎭 Mesh visible: ${renderComponent.mesh.visible}`);
       }
     } else {
       Logger.error(LogCategory.PLAYER, `❌ No render component found on entity!`);
     }
     
-    Logger.warn(LogCategory.PLAYER, `✅ Local player entity created with character type: ${selectedCharacterType}`);
+    Logger.info(LogCategory.PLAYER, `✅ Local player entity created with character type: ${selectedCharacterType}`);
     return entity;
   }
 

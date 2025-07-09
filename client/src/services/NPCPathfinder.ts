@@ -74,7 +74,7 @@ export class NPCPathfinder {
       // Smooth the path
       const smoothedPath = this.smoothPath(worldPath);
       
-      Logger.debug(LogCategory.CORE, `[NPCPathfinder] Found path with ${smoothedPath.length} waypoints`);
+      // Logger.debug(LogCategory.CORE, `[NPCPathfinder] Found path with ${smoothedPath.length} waypoints`);
       return smoothedPath;
 
     } catch (error) {

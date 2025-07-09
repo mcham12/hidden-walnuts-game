@@ -616,16 +616,16 @@ export class CharacterFactory {
     // Create mixer if not provided
     if (!mixer) {
       mixer = new THREE.AnimationMixer(model);
-      Logger.debug(LogCategory.PLAYER, `✅ Created animation mixer for ${config.name}`);
+      // Logger.debug(LogCategory.PLAYER, `✅ Created animation mixer for ${config.name}`);
     }
     
     const animationPromises: Promise<void>[] = [];
     const animationEntries = Object.entries(config.animations);
     
-    Logger.info(LogCategory.PLAYER, `📋 Animation files to load for ${config.name}:`);
-    animationEntries.forEach(([name, path]) => {
-      Logger.debug(LogCategory.PLAYER, `  - ${name}: ${path}`);
-    });
+          // Logger.info(LogCategory.PLAYER, `📋 Animation files to load for ${config.name}:`);
+      // animationEntries.forEach(([name, path]) => {
+      //   Logger.debug(LogCategory.PLAYER, `  - ${name}: ${path}`);
+      // });
     
     // Load each animation file
     for (const [animationName, animationPath] of animationEntries) {
@@ -653,7 +653,7 @@ export class CharacterFactory {
     actions: Map<string, THREE.AnimationAction>
   ): Promise<void> {
     try {
-      Logger.debug(LogCategory.PLAYER, `🔄 Loading animation ${animationName} from: ${animationPath}`);
+      // Logger.debug(LogCategory.PLAYER, `🔄 Loading animation ${animationName} from: ${animationPath}`);
       const gltf = await this.assetManager.loadModel(animationPath);
       
       if (!gltf) {
@@ -674,8 +674,8 @@ export class CharacterFactory {
               // Logger.info(LogCategory.PLAYER, `✅ Found ${gltf.animations.length} animations in: ${animationPath}`);
       
       // Add animations to the model and create actions
-      gltf.animations.forEach((clip: THREE.AnimationClip, index: number) => {
-        Logger.debug(LogCategory.PLAYER, `🔄 Processing animation clip ${index}: ${clip.name} (duration: ${clip.duration}s)`);
+              gltf.animations.forEach((clip: THREE.AnimationClip) => {
+        // Logger.debug(LogCategory.PLAYER, `🔄 Processing animation clip ${index}: ${clip.name} (duration: ${clip.duration}s)`);
         
         // Rename the clip to match the expected name
         clip.name = animationName;
@@ -685,7 +685,7 @@ export class CharacterFactory {
         const action = mixer.clipAction(clip);
         actions.set(animationName, action);
         
-        Logger.debug(LogCategory.PLAYER, `✅ Created action for animation: ${animationName}`);
+        // Logger.debug(LogCategory.PLAYER, `✅ Created action for animation: ${animationName}`);
       });
       
               // Logger.info(LogCategory.PLAYER, `✅ Successfully loaded animation: ${animationName}`);

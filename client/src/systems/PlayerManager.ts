@@ -122,7 +122,7 @@ export class PlayerManager extends System {
   }
 
   private handleRemotePlayerState = async (data: any) => {
-    Logger.debugExpensive(LogCategory.PLAYER, () => `🎯 PLAYER MANAGER RECEIVED remote_player_state event for: ${data.squirrelId}`);
+    // Logger.debugExpensive(LogCategory.PLAYER, () => `🎯 PLAYER MANAGER RECEIVED remote_player_state event for: ${data.squirrelId}`);
     
     // TASK 3 FIX: Check if PlayerManager is ready
     if (!this.scene || !this.assetManager) {
@@ -139,13 +139,13 @@ export class PlayerManager extends System {
     // TASK 3.2: Check if this is the local player (should not create remote player for local player)
     const localSquirrelId = this.getLocalPlayerSquirrelId();
     if (localSquirrelId && data.squirrelId === localSquirrelId) {
-      Logger.debug(LogCategory.PLAYER, `🎯 Skipping remote player creation for local player: ${data.squirrelId}`);
+      // Logger.debug(LogCategory.PLAYER, `🎯 Skipping remote player creation for local player: ${data.squirrelId}`);
       return;
     }
     
     const existingPlayer = this.remotePlayers.get(data.squirrelId);
     if (existingPlayer) {
-      Logger.debug(LogCategory.PLAYER, '🔄 UPDATING existing remote player:', data.squirrelId);
+      // Logger.debug(LogCategory.PLAYER, '🔄 UPDATING existing remote player:', data.squirrelId);
       
       // TASK 3 FIX: Additional validation for existing player
       if (existingPlayer.mesh) {
@@ -164,9 +164,9 @@ export class PlayerManager extends System {
             // TASK 3.1: Use terrain height directly to prevent floating
             adjustedPosition.y = terrainHeight + 0.1; // Minimal offset for ground contact
             
-            Logger.debugExpensive(LogCategory.PLAYER, () => 
-              `📏 Adjusted remote player ${data.squirrelId} height to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)})`
-            );
+            // Logger.debugExpensive(LogCategory.PLAYER, () => 
+            //   `📏 Adjusted remote player ${data.squirrelId} height to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)})`
+            // );
           } catch (error) {
             Logger.warn(LogCategory.PLAYER, `Failed to get terrain height for remote player update ${data.squirrelId}, using fallback`, error);
             // TASK 3.1: Improved fallback height calculation
@@ -190,7 +190,7 @@ export class PlayerManager extends System {
       }
       existingPlayer.lastUpdate = performance.now();
     } else {
-      Logger.debug(LogCategory.PLAYER, '🆕 CREATING new remote player:', data.squirrelId);
+      // Logger.debug(LogCategory.PLAYER, '🆕 CREATING new remote player:', data.squirrelId);
       
       // TASK 3.2: Duplicate Player Prevention - Check if already tracked
       if (this.trackedSquirrelIds.has(data.squirrelId)) {
@@ -250,8 +250,8 @@ export class PlayerManager extends System {
     }
     }
     
-    Logger.debugExpensive(LogCategory.PLAYER, () => `👥 Current remote players count AFTER processing: ${this.remotePlayers.size}`);
-    Logger.debugExpensive(LogCategory.PLAYER, () => `🔍 All players after processing: ${Array.from(this.remotePlayers.keys()).join(', ')}`);
+    // Logger.debugExpensive(LogCategory.PLAYER, () => `👥 Current remote players count AFTER processing: ${this.remotePlayers.size}`);
+    // Logger.debugExpensive(LogCategory.PLAYER, () => `🔍 All players after processing: ${Array.from(this.remotePlayers.keys()).join(', ')}`);
   };
 
   private async createRemotePlayer(data: {
@@ -260,7 +260,7 @@ export class PlayerManager extends System {
     rotation: { x: number; y: number; z: number; w: number };
     characterType?: string; // Optional character type from network
   }): Promise<void> {
-    Logger.debug(LogCategory.PLAYER, `🎯 Creating remote player: ${data.squirrelId} as ${data.characterType || 'unknown'}`);
+    // Logger.debug(LogCategory.PLAYER, `🎯 Creating remote player: ${data.squirrelId} as ${data.characterType || 'unknown'}`);
     
     // TASK 3.1: Terrain Height Fixes - Enhanced height calculation with performance optimization
     let adjustedPosition = { ...data.position };
@@ -274,7 +274,7 @@ export class PlayerManager extends System {
         // TASK 3.1: Use terrain height directly to prevent floating
         adjustedPosition.y = terrainHeight + 0.1; // Minimal offset for ground contact
         
-        Logger.debug(LogCategory.PLAYER, `📏 Adjusted remote player ${data.squirrelId} height to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)})`);
+        // Logger.debug(LogCategory.PLAYER, `📏 Adjusted remote player ${data.squirrelId} height to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)})`);
       } catch (error) {
         Logger.warn(LogCategory.PLAYER, `Failed to get terrain height for remote player ${data.squirrelId}, using fallback`, error);
         // TASK 3.1: Improved fallback height calculation
@@ -310,7 +310,7 @@ export class PlayerManager extends System {
       try {
         // Use the character type from network data, or default to colobus
         const characterType = data.characterType || 'colobus';
-        Logger.debug(LogCategory.PLAYER, `🎭 Creating remote player ${data.squirrelId} with character type: ${characterType}`);
+        // Logger.debug(LogCategory.PLAYER, `🎭 Creating remote player ${data.squirrelId} with character type: ${characterType}`);
         
         const remoteEntity = await this.playerFactory.createRemotePlayer(
           data.squirrelId,
@@ -342,7 +342,7 @@ export class PlayerManager extends System {
             // Force correct scale
             playerMesh.scale.set(targetScale, targetScale, targetScale);
           } else {
-            Logger.debug(LogCategory.PLAYER, `✅ Scale validation passed for ${data.squirrelId}: ${actualScale.x.toFixed(2)}, ${actualScale.y.toFixed(2)}, ${actualScale.z.toFixed(2)}`);
+            // Logger.debug(LogCategory.PLAYER, `✅ Scale validation passed for ${data.squirrelId}: ${actualScale.x.toFixed(2)}, ${actualScale.y.toFixed(2)}, ${actualScale.z.toFixed(2)}`);
           }
           
           // Make it slightly different color to distinguish from local player

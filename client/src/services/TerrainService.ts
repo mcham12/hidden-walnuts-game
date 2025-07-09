@@ -20,7 +20,7 @@ export class TerrainService implements ITerrainService {
 
   async initialize(): Promise<void> {
     if (this.initialized) {
-      Logger.debug(LogCategory.TERRAIN, '⚠️ TerrainService already initialized');
+      // Logger.debug(LogCategory.TERRAIN, '⚠️ TerrainService already initialized');
       return;
     }
 
@@ -58,9 +58,9 @@ export class TerrainService implements ITerrainService {
         Logger.warn(LogCategory.TERRAIN, `⚠️ Terrain height at (${x}, ${z}) clamped from ${height.toFixed(2)} to ${clampedHeight.toFixed(2)}`);
       }
       
-      Logger.debugExpensive(LogCategory.TERRAIN, () => 
-        `📏 Terrain height at (${x.toFixed(1)}, ${z.toFixed(1)}): ${clampedHeight.toFixed(2)}`
-      );
+      // Logger.debugExpensive(LogCategory.TERRAIN, () => 
+      //   `📏 Terrain height at (${x.toFixed(1)}, ${z.toFixed(1)}): ${clampedHeight.toFixed(2)}`
+      // );
       return clampedHeight;
     } catch (error) {
       Logger.warn(LogCategory.TERRAIN, `⚠️ Failed to get terrain height at (${x}, ${z}), using fallback`, error);
