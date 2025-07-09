@@ -27,7 +27,7 @@ export class AnimationStateMachine implements IAnimationStateMachine {
     this.transitions = new Map();
     
     this.initializeTransitions();
-    Logger.info(LogCategory.CORE, `[AnimationStateMachine] Initialized with state: ${initialState}`);
+    // Logger.info(LogCategory.CORE, `[AnimationStateMachine] Initialized with state: ${initialState}`);
   }
 
   /**
@@ -98,7 +98,7 @@ export class AnimationStateMachine implements IAnimationStateMachine {
     this.transitionProgress = 0;
     // this.transitionStartTime = performance.now(); // Unused for now
 
-    Logger.debug(LogCategory.CORE, `[AnimationStateMachine] Transitioning from ${this.previousState} to ${newState}`);
+          // Logger.debug(LogCategory.CORE, `[AnimationStateMachine] Transitioning from ${this.previousState} to ${newState}`);
     return true;
   }
 
@@ -120,7 +120,7 @@ export class AnimationStateMachine implements IAnimationStateMachine {
       if (this.transitionProgress >= 1.0) {
         this.isTransitioning = false;
         this.transitionProgress = 1.0;
-        Logger.debug(LogCategory.CORE, `[AnimationStateMachine] Transition complete to ${this.currentState}`);
+        // Logger.debug(LogCategory.CORE, `[AnimationStateMachine] Transition complete to ${this.currentState}`);
       }
     }
   }

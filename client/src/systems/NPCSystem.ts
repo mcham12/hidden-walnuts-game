@@ -93,7 +93,7 @@ export class NPCSystem extends System {
     this.initializeSpawnPoints();
     this.setupEventListeners();
     
-    Logger.info(LogCategory.CORE, `[NPCSystem] Initialized with max ${this.config.maxNPCs} NPCs`);
+    // Logger.info(LogCategory.CORE, `[NPCSystem] Initialized with max ${this.config.maxNPCs} NPCs`);
   }
 
   /**
@@ -217,7 +217,7 @@ export class NPCSystem extends System {
     // Create ECS entity
     this.createNPCEntity(npc, aiController);
     
-    Logger.info(LogCategory.CORE, `[NPCSystem] Spawned NPC ${npcId} (${characterType}) at ${position}`);
+          // Logger.info(LogCategory.CORE, `[NPCSystem] Spawned NPC ${npcId} (${characterType}) at ${position}`);
     
     // Emit spawn event
     this.eventBus.emit('npc.spawned', {
@@ -251,7 +251,7 @@ export class NPCSystem extends System {
       this.removeEntity(entity.id);
     }
 
-    Logger.info(LogCategory.CORE, `[NPCSystem] Despawned NPC ${npcId}`);
+          // Logger.info(LogCategory.CORE, `[NPCSystem] Despawned NPC ${npcId}`);
     
     // Emit despawn event
     this.eventBus.emit('npc.despawned', {
@@ -293,7 +293,7 @@ export class NPCSystem extends System {
    */
   updateConfig(newConfig: Partial<NPCSystemConfig>): void {
     this.config = { ...this.config, ...newConfig };
-    Logger.info(LogCategory.CORE, `[NPCSystem] Configuration updated`);
+    // Logger.info(LogCategory.CORE, `[NPCSystem] Configuration updated`);
   }
 
   // Private Methods
@@ -348,7 +348,7 @@ export class NPCSystem extends System {
     ];
 
     this.spawnPoints = spawnPoints;
-    Logger.info(LogCategory.CORE, `[NPCSystem] Initialized ${spawnPoints.length} spawn points`);
+    // Logger.info(LogCategory.CORE, `[NPCSystem] Initialized ${spawnPoints.length} spawn points`);
   }
 
   private setupEventListeners(): void {
@@ -466,7 +466,7 @@ export class NPCSystem extends System {
           const npc = this.spawnNPC(characterType, spawnPosition);
           if (npc) {
             spawnPoint.lastSpawn = currentTime;
-            Logger.debug(LogCategory.CORE, `[NPCSystem] Spawned NPC at ${spawnPoint.position}`);
+            // Logger.debug(LogCategory.CORE, `[NPCSystem] Spawned NPC at ${spawnPoint.position}`);
           }
         }
       }

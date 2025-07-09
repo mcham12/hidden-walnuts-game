@@ -13,10 +13,10 @@ class Application {
 
   async initialize(): Promise<void> {
     // TASK 8 FIX: Remove diagnostic console spam
-    Logger.info(LogCategory.CORE, '🚀 Application.initialize() called');
-    Logger.debug(LogCategory.CORE, '🔍 Testing debug level');
-    Logger.warn(LogCategory.CORE, '⚠️ Testing warn level');
-    Logger.error(LogCategory.CORE, '🚨 Testing error level');
+    // Logger.info(LogCategory.CORE, '🚀 Application.initialize() called');
+    // Logger.debug(LogCategory.CORE, '🔍 Testing debug level');
+    // Logger.warn(LogCategory.CORE, '⚠️ Testing warn level');
+    // Logger.error(LogCategory.CORE, '🚨 Testing error level');
     
     try {
       this.showLoadingScreen();
@@ -49,7 +49,7 @@ class Application {
       // Setup character selection button
       this.setupCharacterSelectionButton();
       
-      Logger.info(LogCategory.CORE, '🎮 Game started with A++ architecture!');
+      // Logger.info(LogCategory.CORE, '🎮 Game started with A++ architecture!');
       
     } catch (error) {
       Logger.error(LogCategory.CORE, '❌ Error in initialize()', error);
@@ -100,29 +100,29 @@ class Application {
     });
 
     eventBus.subscribe('game.initialized', () => {
-      Logger.info(LogCategory.CORE, '✅ Game systems initialized');
+      // Logger.info(LogCategory.CORE, '✅ Game systems initialized');
     });
 
     eventBus.subscribe('scene.initialized', () => {
-      Logger.info(LogCategory.CORE, '🎭 Scene initialized');
+      // Logger.info(LogCategory.CORE, '🎭 Scene initialized');
     });
 
     eventBus.subscribe('terrain.loaded', () => {
-      Logger.info(LogCategory.CORE, '🌲 Terrain loaded');
+      // Logger.info(LogCategory.CORE, '🌲 Terrain loaded');
     });
 
     // Add multiplayer event logging for debugging using proper Logger system
     eventBus.subscribe(GameEvents.MULTIPLAYER_CONNECTED, () => {
-      Logger.info(LogCategory.NETWORK, '🌐 ✅ Multiplayer connected!');
+      // Logger.info(LogCategory.NETWORK, '🌐 ✅ Multiplayer connected!');
       this.updateMultiplayerStatus('Connected', 'status-connected');
     });
     
-    eventBus.subscribe('remote_player_state', (data: any) => {
-      Logger.debug(LogCategory.NETWORK, `🎮 Remote player update: ${data.squirrelId} at (${data.position.x.toFixed(1)}, ${data.position.z.toFixed(1)})`);
+    eventBus.subscribe('remote_player_state', (_data: any) => {
+      // Logger.debug(LogCategory.NETWORK, `🎮 Remote player update: ${data.squirrelId} at (${data.position.x.toFixed(1)}, ${data.position.z.toFixed(1)})`);
     });
     
-    eventBus.subscribe('player_disconnected', (data: any) => {
-      Logger.info(LogCategory.NETWORK, `👋 Player disconnected: ${data.squirrelId}`);
+    eventBus.subscribe('player_disconnected', (_data: any) => {
+      // Logger.info(LogCategory.NETWORK, `👋 Player disconnected: ${data.squirrelId}`);
     });
 
     // Enhanced connection quality monitoring with throttling
@@ -131,7 +131,7 @@ class Application {
       const now = Date.now();
       // Only update UI every 10 seconds to prevent spam
       if (now - lastQualityUpdate > 10000) {
-        Logger.debug(LogCategory.NETWORK, '🎨 Received connection quality event:', metrics);
+        // Logger.debug(LogCategory.NETWORK, '🎨 Received connection quality event:', metrics);
         this.updateConnectionQualityDisplay(metrics);
         lastQualityUpdate = now;
       }
@@ -249,14 +249,14 @@ class Application {
           const characterSystem = this.gameManager!.getCharacterSelectionSystem();
           characterSystem.initializeGallery(containerElement);
           characterSystem.showCharacterGallery();
-          Logger.info(LogCategory.CORE, '🎭 Character gallery opened');
+          // Logger.info(LogCategory.CORE, '🎭 Character gallery opened');
         } catch (error) {
           Logger.error(LogCategory.CORE, 'Failed to open character gallery', error);
         }
       });
-      Logger.info(LogCategory.CORE, '🎭 Character selection button initialized');
+      // Logger.info(LogCategory.CORE, '🎭 Character selection button initialized');
     } else {
-      Logger.warn(LogCategory.CORE, 'Character selection button not found or game manager not ready');
+      // Logger.warn(LogCategory.CORE, 'Character selection button not found or game manager not ready');
     }
   }
 
@@ -345,13 +345,13 @@ class Application {
             stats: pm?.getPlayerStats()
           };
         },
-        forceLogLevel: (category: string, level: string) => {
-          Logger.info(LogCategory.CORE, `🔧 Force log test: ${category} ${level}`);
-          Logger.debug(LogCategory.NETWORK, `🔧 Network debug test`);
-          Logger.debug(LogCategory.PLAYER, `🔧 Player debug test`);
+        forceLogLevel: (_category: string, _level: string) => {
+          // Logger.info(LogCategory.CORE, `🔧 Force log test: ${category} ${level}`);
+          // Logger.debug(LogCategory.NETWORK, `🔧 Network debug test`);
+          // Logger.debug(LogCategory.PLAYER, `🔧 Player debug test`);
         }
       };
-      Logger.info(LogCategory.CORE, '🎮 Debug commands available at window.gameDebug');
+      // Logger.info(LogCategory.CORE, '🎮 Debug commands available at window.gameDebug');
     }
   }
 
@@ -360,7 +360,7 @@ class Application {
     const now = performance.now();
     if (!this.lastQualityUpdate || now - this.lastQualityUpdate > 30000) { // Update every 30 seconds
       this.lastQualityUpdate = now;
-      Logger.debug(LogCategory.NETWORK, '🎨 Updating connection quality display:', metrics);
+      // Logger.debug(LogCategory.NETWORK, '🎨 Updating connection quality display:', metrics);
     } else {
       return; // Skip update if too frequent
     }
@@ -504,7 +504,7 @@ class Application {
           this.updateServerMetricsDisplay(metrics);
         }
       } catch (error) {
-        Logger.debug(LogCategory.NETWORK, 'Failed to fetch server metrics:', error);
+        // Logger.debug(LogCategory.NETWORK, 'Failed to fetch server metrics:', error);
       }
     }, 60000); // TASK URGENTA.4: Increased from 10 to 60 seconds
   }

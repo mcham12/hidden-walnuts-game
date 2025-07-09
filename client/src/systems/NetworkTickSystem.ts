@@ -73,14 +73,14 @@ export class NetworkTickSystem extends System {
     }, NetworkTickSystem.TICK_INTERVAL);
     
     // Timer started
-    Logger.debug(LogCategory.NETWORK, 'Started independent 5Hz network timer'); // TASK URGENTA.10: Updated to reflect new rate
+          // Logger.debug(LogCategory.NETWORK, 'Started independent 5Hz network timer'); // TASK URGENTA.10: Updated to reflect new rate
   }
 
   stopNetworkTimer(): void {
     if (this.networkTimer) {
       clearInterval(this.networkTimer);
       this.networkTimer = null;
-      Logger.debug(LogCategory.NETWORK, 'Stopped network timer');
+      // Logger.debug(LogCategory.NETWORK, 'Stopped network timer');
     }
   }
 
@@ -171,13 +171,13 @@ export class NetworkTickSystem extends System {
     });
     
     // CHEN'S FIX: Use conditional logging for frequent operations
-    Logger.debugExpensive(LogCategory.NETWORK, () => `Queued update ${this.sequenceNumber} for compression`);
+          // Logger.debugExpensive(LogCategory.NETWORK, () => `Queued update ${this.sequenceNumber} for compression`);
   }
 
   private queueLocalMovement(_data: any): void {
     // Movement is queued and will be sent on next network tick
     // This prevents spam and ensures fixed rate
-    Logger.debugExpensive(LogCategory.INPUT, () => `Movement queued for next tick`);
+          // Logger.debugExpensive(LogCategory.INPUT, () => `Movement queued for next tick`);
   }
 
   private handleServerUpdate(data: {
@@ -187,7 +187,7 @@ export class NetworkTickSystem extends System {
     rotation?: Rotation;
     otherPlayers?: any[];
   }): void {
-    Logger.debugExpensive(LogCategory.NETWORK, () => `Server update received with ack: ${data.acknowledgedSequence}`);
+          // Logger.debugExpensive(LogCategory.NETWORK, () => `Server update received with ack: ${data.acknowledgedSequence}`);
     
     // CHEN'S FIX: Properly acknowledge server input sequences
     if (data.acknowledgedSequence) {
@@ -229,9 +229,9 @@ export class NetworkTickSystem extends System {
     const dynamicThreshold = this.calculateDynamicThreshold(velocityDiff, positionDiff);
     
     if (positionDiff > dynamicThreshold) {
-      Logger.debugExpensive(LogCategory.NETWORK, () => 
-        `Server reconciliation needed. Diff: ${positionDiff.toFixed(3)}m, Velocity: ${velocityDiff.toFixed(3)}m/s, Threshold: ${dynamicThreshold.toFixed(3)}m`
-      );
+      // Logger.debugExpensive(LogCategory.NETWORK, () => 
+      //   `Server reconciliation needed. Diff: ${positionDiff.toFixed(3)}m, Velocity: ${velocityDiff.toFixed(3)}m/s, Threshold: ${dynamicThreshold.toFixed(3)}m`
+      // );
       
       // TASK 8 PHASE 3: Track reconciliation performance
       this.trackNetworkPerformance('reconciliation');
@@ -253,9 +253,9 @@ export class NetworkTickSystem extends System {
       });
     } else {
       // TASK 8 ENHANCEMENT: Log when reconciliation is avoided due to improved precision
-      Logger.debugExpensive(LogCategory.NETWORK, () => 
-        `Reconciliation avoided. Diff: ${positionDiff.toFixed(3)}m < Threshold: ${dynamicThreshold.toFixed(3)}m`
-      );
+      // Logger.debugExpensive(LogCategory.NETWORK, () => 
+      //   `Reconciliation avoided. Diff: ${positionDiff.toFixed(3)}m < Threshold: ${dynamicThreshold.toFixed(3)}m`
+      // );
     }
   }
 
@@ -317,9 +317,9 @@ export class NetworkTickSystem extends System {
       value: serverRotation // Keep rotation as-is for now
     });
     
-    Logger.debugExpensive(LogCategory.NETWORK, () => 
-      `Interpolated position: ${clientPosition.toString()} -> ${interpolatedPosition.toString()} (${interpolationFactor * 100}% towards server)`
-    );
+    // Logger.debugExpensive(LogCategory.NETWORK, () => 
+    //   `Interpolated position: ${clientPosition.toString()} -> ${interpolatedPosition.toString()} (${interpolationFactor * 100}% towards server)`
+    // );
   }
 
   // TASK 8 ENHANCEMENT: Position validation for replay
@@ -366,7 +366,7 @@ export class NetworkTickSystem extends System {
 
   private replayInputsAfterReconciliation(fromSequence: number): void {
     // TASK 8 ENHANCEMENT: Improved input replay with better timing
-    Logger.debug(LogCategory.NETWORK, `Replaying inputs from sequence ${fromSequence}`);
+    // Logger.debug(LogCategory.NETWORK, `Replaying inputs from sequence ${fromSequence}`);
     
     // Find all pending updates after the acknowledged sequence
     const unacknowledgedUpdates = this.pendingUpdates.filter(update => 
@@ -393,7 +393,7 @@ export class NetworkTickSystem extends System {
       }
     }
     
-    Logger.debug(LogCategory.NETWORK, `Replayed ${validReplays}/${unacknowledgedUpdates.length} valid inputs after reconciliation`);
+    // Logger.debug(LogCategory.NETWORK, `Replayed ${validReplays}/${unacknowledgedUpdates.length} valid inputs after reconciliation`);
   }
 
   private recordStateSnapshot(timestamp: number): void {
@@ -489,7 +489,7 @@ export class NetworkTickSystem extends System {
     
     // Log performance metrics periodically (reduced frequency to reduce spam)
     if (this.performanceMetrics.totalTicks % 250 === 0) {
-      Logger.debug(LogCategory.NETWORK, `Network performance: ${JSON.stringify(this.performanceMetrics)}`);
+      // Logger.debug(LogCategory.NETWORK, `Network performance: ${JSON.stringify(this.performanceMetrics)}`);
     }
   }
 

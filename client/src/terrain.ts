@@ -15,7 +15,7 @@ export async function initializeTerrain(apiBase: string): Promise<void> {
     if (response.ok) {
       const data = await response.json();
       terrainSeed = data.seed;
-      Logger.debug(LogCategory.TERRAIN, `Fetched terrain seed: ${terrainSeed}`);
+      // Logger.debug(LogCategory.TERRAIN, `Fetched terrain seed: ${terrainSeed}`);
     }
   } catch (error) {
     Logger.error(LogCategory.TERRAIN, 'Failed to fetch terrain seed', error);

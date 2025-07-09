@@ -167,7 +167,7 @@ export class NetworkSystem extends System {
       Logger.warn(LogCategory.NETWORK, '⚠️ SessionStorage not supported - sessions will not persist');
     }
     
-    Logger.debug(LogCategory.NETWORK, '✅ Browser compatibility check passed');
+    // Logger.debug(LogCategory.NETWORK, '✅ Browser compatibility check passed');
     return true;
   }
 
@@ -177,7 +177,7 @@ export class NetworkSystem extends System {
     this.connectionState = newState;
     
     if (oldState !== newState) {
-      Logger.debug(LogCategory.NETWORK, `🔄 Connection state: ${oldState} → ${newState}`);
+      // Logger.debug(LogCategory.NETWORK, `🔄 Connection state: ${oldState} → ${newState}`);
       this.eventBus.emit('network.state_changed', {
         from: oldState,
         to: newState,
@@ -188,7 +188,7 @@ export class NetworkSystem extends System {
 
   async connect(): Promise<void> {
     if (this.connectionState === ConnectionState.CONNECTING || this.websocket?.readyState === WebSocket.OPEN) {
-      Logger.debug(LogCategory.NETWORK, '🔄 Connection already in progress or established');
+      // Logger.debug(LogCategory.NETWORK, '🔄 Connection already in progress or established');
       return;
     }
 
@@ -196,7 +196,7 @@ export class NetworkSystem extends System {
     this.connectionMetrics.reconnectAttempts = this.reconnectAttempts;
     
     try {
-      Logger.debug(LogCategory.NETWORK, `🔄 Attempting connection (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
+      // Logger.debug(LogCategory.NETWORK, `🔄 Attempting connection (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
       
       // MULTIPLAYER FIX: Use sessionStorage for unique squirrelId per browser session
       // This ensures each browser gets its own unique player ID
@@ -206,9 +206,9 @@ export class NetworkSystem extends System {
         // Use UUID format as the server expects this format
         squirrelId = crypto.randomUUID();
         this.setPersistentSquirrelId(squirrelId);
-        Logger.debug(LogCategory.NETWORK, `🆕 Generated new squirrel ID for this session: ${squirrelId}`);
+        // Logger.debug(LogCategory.NETWORK, `🆕 Generated new squirrel ID for this session: ${squirrelId}`);
       } else {
-        Logger.debug(LogCategory.NETWORK, `🔄 Using existing squirrel ID for this session: ${squirrelId}`);
+                  // Logger.debug(LogCategory.NETWORK, `🔄 Using existing squirrel ID for this session: ${squirrelId}`);
       }
       
       this.localSquirrelId = squirrelId;
@@ -226,9 +226,9 @@ export class NetworkSystem extends System {
       // MVP 7 Task 7: Include client version and protocol in WebSocket URL
       const wsUrl = `${apiBase.replace('http', 'ws')}/ws?squirrelId=${authData.squirrelId}&token=${authData.token}&version=${CLIENT_VERSION}&protocol=${PROTOCOL_VERSION}`;
       
-      Logger.debug(LogCategory.NETWORK, `🌐 API Base URL: ${apiBase}`);
-      Logger.debug(LogCategory.NETWORK, `🌐 WebSocket URL: ${wsUrl}`);
-      Logger.debug(LogCategory.NETWORK, `🌐 Connecting to: ${wsUrl} (ID: ${this.localSquirrelId})`);
+      // Logger.debug(LogCategory.NETWORK, `🌐 API Base URL: ${apiBase}`);
+      // Logger.debug(LogCategory.NETWORK, `🌐 WebSocket URL: ${wsUrl}`);
+      // Logger.debug(LogCategory.NETWORK, `🌐 Connecting to: ${wsUrl} (ID: ${this.localSquirrelId})`);
       
       // MVP 7 Task 7: Enhanced WebSocket creation with protocol specification
       this.websocket = new WebSocket(wsUrl, [PROTOCOL_VERSION]);
@@ -256,10 +256,10 @@ export class NetworkSystem extends System {
 
   private async authenticatePlayer(squirrelId: string): Promise<any> {
     try {
-      Logger.debug(LogCategory.NETWORK, `🔐 Attempting authentication for squirrel: ${squirrelId}`);
+      // Logger.debug(LogCategory.NETWORK, `🔐 Attempting authentication for squirrel: ${squirrelId}`);
       
       const authUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:8787'}/join?squirrelId=${squirrelId}`;
-      Logger.debug(LogCategory.NETWORK, `🌐 Authentication URL: ${authUrl}`);
+              // Logger.debug(LogCategory.NETWORK, `🌐 Authentication URL: ${authUrl}`);
       
       const authResponse = await fetch(authUrl, {
         method: 'POST',
@@ -268,7 +268,7 @@ export class NetworkSystem extends System {
         }
       });
       
-      Logger.debug(LogCategory.NETWORK, `📡 Auth response status: ${authResponse.status} ${authResponse.statusText}`);
+              // Logger.debug(LogCategory.NETWORK, `📡 Auth response status: ${authResponse.status} ${authResponse.statusText}`);
       
       if (!authResponse.ok) {
         const errorText = await authResponse.text();
@@ -277,7 +277,7 @@ export class NetworkSystem extends System {
       }
       
       const authData = await authResponse.json();
-      Logger.debug(LogCategory.NETWORK, `✅ Authentication successful for ${squirrelId}`);
+              // Logger.debug(LogCategory.NETWORK, `✅ Authentication successful for ${squirrelId}`);
       return authData;
       
     } catch (error) {
@@ -357,7 +357,7 @@ export class NetworkSystem extends System {
       this.messageCount++;
       this.connectionMetrics.messageCount = this.messageCount;
       
-      Logger.debug(LogCategory.NETWORK, 'RAW WEBSOCKET MESSAGE DATA:', event.data);
+      // Logger.debug(LogCategory.NETWORK, 'RAW WEBSOCKET MESSAGE DATA:', event.data);
       try {
         const message: NetworkMessage = JSON.parse(event.data);
         this.handleNetworkMessage(message);
@@ -492,60 +492,60 @@ export class NetworkSystem extends System {
 
   private handleNetworkMessage(message: NetworkMessage): void {
     // TASK 8 FIX: Reduce verbose logging in preview mode
-    Logger.debug(LogCategory.NETWORK, '📨 RAW WEBSOCKET MESSAGE RECEIVED:', message);
-    Logger.debug(LogCategory.NETWORK, `⏰ Message received at ${Date.now()}, type: ${message.type}`);
+            // Logger.debug(LogCategory.NETWORK, '📨 RAW WEBSOCKET MESSAGE RECEIVED:', message);
+        // Logger.debug(LogCategory.NETWORK, `⏰ Message received at ${Date.now()}, type: ${message.type}`);
     
     // Skip our own messages, but only if we have a valid squirrelId
     // POSITION PERSISTENCE FIX: Allow init messages to pass through even if they have local squirrelId
     if (message.squirrelId && message.squirrelId === this.localSquirrelId && message.type !== 'init') {
-      Logger.debug(LogCategory.NETWORK, '🔄 Skipping own message from:', message.squirrelId);
+              // Logger.debug(LogCategory.NETWORK, '🔄 Skipping own message from:', message.squirrelId);
       return;
     }
 
-    Logger.debug(LogCategory.NETWORK, '🎯 PROCESSING REMOTE MESSAGE:', message.type, 'from:', message.squirrelId || 'server');
+          // Logger.debug(LogCategory.NETWORK, '🎯 PROCESSING REMOTE MESSAGE:', message.type, 'from:', message.squirrelId || 'server');
 
     switch (message.type) {
       case 'init':
-        Logger.debug(LogCategory.NETWORK, '🚀 Server initialization message received');
+        // Logger.debug(LogCategory.NETWORK, '🚀 Server initialization message received');
         this.handleInitMessage(message);
         break;
       case 'existing_players':
-        Logger.debug(LogCategory.NETWORK, '👥 HANDLING EXISTING PLAYERS');
+        // Logger.debug(LogCategory.NETWORK, '👥 HANDLING EXISTING PLAYERS');
         this.handleExistingPlayers(message);
         break;
       case 'position_update':
       case 'player_update':
-        Logger.debug(LogCategory.NETWORK, '📍 HANDLING POSITION UPDATE for:', message.squirrelId);
+        // Logger.debug(LogCategory.NETWORK, '📍 HANDLING POSITION UPDATE for:', message.squirrelId);
         this.handleRemotePlayerUpdate(message);
         break;
       case 'player_joined':
       case 'player_join':
-        Logger.debug(LogCategory.NETWORK, '🎯 HANDLING PLAYER JOINED for:', message.squirrelId);
+        // Logger.debug(LogCategory.NETWORK, '🎯 HANDLING PLAYER JOINED for:', message.squirrelId);
         this.handlePlayerJoined(message);
         break;
       case 'player_left':
       case 'player_leave':
-        Logger.debug(LogCategory.NETWORK, '👋 HANDLING PLAYER LEFT for:', message.squirrelId);
+        // Logger.debug(LogCategory.NETWORK, '👋 HANDLING PLAYER LEFT for:', message.squirrelId);
         this.handlePlayerLeft(message);
         break;
       case 'world_state':
-        Logger.debug(LogCategory.NETWORK, '🌍 HANDLING WORLD STATE');
+        // Logger.debug(LogCategory.NETWORK, '🌍 HANDLING WORLD STATE');
         this.handleWorldState(message);
         break;
       case 'position_correction':
-        Logger.debug(LogCategory.NETWORK, '🔧 HANDLING POSITION CORRECTION');
+        // Logger.debug(LogCategory.NETWORK, '🔧 HANDLING POSITION CORRECTION');
         this.handlePositionCorrection(message);
         break;
       case 'heartbeat':
-        Logger.debug(LogCategory.NETWORK, '💓 HEARTBEAT received');
+        // Logger.debug(LogCategory.NETWORK, '💓 HEARTBEAT received');
         this.handleHeartbeatResponse(message);
         break;
       case 'batch_update':
-        Logger.debug(LogCategory.NETWORK, '🔄 HANDLING BATCH UPDATE');
+        // Logger.debug(LogCategory.NETWORK, '🔄 HANDLING BATCH UPDATE');
         this.handleBatchUpdate(message);
         break;
       default:
-        Logger.debug(LogCategory.NETWORK, '❓ UNKNOWN MESSAGE TYPE:', message.type);
+        // Logger.debug(LogCategory.NETWORK, '❓ UNKNOWN MESSAGE TYPE:', message.type);
     }
   }
 
@@ -567,7 +567,7 @@ export class NetworkSystem extends System {
       const avgLatency = this.heartbeatResponses.reduce((a, b) => a + b, 0) / this.heartbeatResponses.length;
       this.connectionMetrics.latency = avgLatency;
       
-      Logger.debug(LogCategory.NETWORK, `💓 Heartbeat latency: ${latency}ms (avg: ${avgLatency.toFixed(1)}ms)`);
+      // Logger.debug(LogCategory.NETWORK, `💓 Heartbeat latency: ${latency}ms (avg: ${avgLatency.toFixed(1)}ms)`);
       
       // Update connection quality based on latency
       if (avgLatency < 50) {
@@ -690,12 +690,12 @@ export class NetworkSystem extends System {
 
   private handlePlayerLeft(message: NetworkMessage): void {
     const { squirrelId } = message;
-    Logger.debug(LogCategory.NETWORK, `👋 Remote player left: ${squirrelId}`);
+          // Logger.debug(LogCategory.NETWORK, `👋 Remote player left: ${squirrelId}`);
     this.eventBus.emit('player_disconnected', { squirrelId });
   }
 
   private handleWorldState(message: NetworkMessage): void {
-    Logger.debug(LogCategory.NETWORK, '🌍 World state received');
+          // Logger.debug(LogCategory.NETWORK, '🌍 World state received');
     // Handle world state updates
     if (message.data) {
       this.eventBus.emit('world_state_update', message.data);
@@ -703,10 +703,10 @@ export class NetworkSystem extends System {
   }
 
   private handlePositionCorrection(message: NetworkMessage): void {
-    Logger.debug(LogCategory.NETWORK, '🔧 Position correction received from server:', {
-      original: message.originalPosition,
-      corrected: message.position
-    });
+    // Logger.debug(LogCategory.NETWORK, '🔧 Position correction received from server:', {
+    //   original: message.originalPosition,
+    //   corrected: message.position
+    // });
     
     // TASK 3 FIX: Apply server position correction to local player
     if (message.position && message.squirrelId === this.localSquirrelId) {
@@ -716,7 +716,7 @@ export class NetworkSystem extends System {
         originalPosition: message.originalPosition
       });
       
-      Logger.debug(LogCategory.NETWORK, '✅ Applied server position correction to local player');
+      // Logger.debug(LogCategory.NETWORK, '✅ Applied server position correction to local player');
     }
   }
 
@@ -760,7 +760,7 @@ export class NetworkSystem extends System {
         timestamp: performance.now()
       };
       
-      Logger.debug(LogCategory.NETWORK, `📦 Sending batch of ${this.batchedUpdates.length} updates`);
+      // Logger.debug(LogCategory.NETWORK, `📦 Sending batch of ${this.batchedUpdates.length} updates`);
       
       // TASK URGENTA.5: Use retry logic for batched updates
       this.retryWithBackoff(async () => {
@@ -790,12 +790,12 @@ export class NetworkSystem extends System {
   }
 
   private async handleLocalPlayerMove(data: any): Promise<void> {
-    Logger.debugExpensive(LogCategory.NETWORK, () => `🎯 RECEIVED PLAYER_MOVED EVENT! Data: ${JSON.stringify(data)}`);
+    // Logger.debugExpensive(LogCategory.NETWORK, () => `🎯 RECEIVED PLAYER_MOVED EVENT! Data: ${JSON.stringify(data)}`);
     
     // TASK URGENTA.1: Position update throttling
     const now = performance.now();
     if (now - this.lastPositionUpdate < this.positionUpdateThrottle) {
-      Logger.debug(LogCategory.NETWORK, '⏱️ Throttling position update');
+      // Logger.debug(LogCategory.NETWORK, '⏱️ Throttling position update');
       return;
     }
     this.lastPositionUpdate = now;
@@ -823,9 +823,9 @@ export class NetworkSystem extends System {
       // TASK URGENTA.1: Add to batch instead of sending immediately
       this.addToBatch(update);
       
-      Logger.debugExpensive(LogCategory.NETWORK, () => 
-        `📦 Added position update to batch: (${data.position.x.toFixed(1)}, ${data.position.z.toFixed(1)}) as ${characterType}`
-      );
+      // Logger.debugExpensive(LogCategory.NETWORK, () => 
+      //   `📦 Added position update to batch: (${data.position.x.toFixed(1)}, ${data.position.z.toFixed(1)}) as ${characterType}`
+      // );
     } else {
       Logger.warn(LogCategory.NETWORK, '❌ CANNOT SEND - WebSocket not open. State:', this.websocket?.readyState);
     }
@@ -1006,7 +1006,7 @@ export class NetworkSystem extends System {
       this.lastQualityValue = quality;
       this.lastQualityUpdate = now;
       
-      Logger.debug(LogCategory.NETWORK, `📊 Connection quality: ${quality}`);
+      // Logger.debug(LogCategory.NETWORK, `📊 Connection quality: ${quality}`);
       this.eventBus.emit('network.connection_quality', this.connectionMetrics);
     }
   }
@@ -1040,7 +1040,7 @@ export class NetworkSystem extends System {
     
     // TASK URGENTA.1: Send any remaining batched updates before disconnecting
     if (this.batchedUpdates.length > 0) {
-      Logger.debug(LogCategory.NETWORK, `📦 Sending final batch of ${this.batchedUpdates.length} updates before disconnect`);
+      // Logger.debug(LogCategory.NETWORK, `📦 Sending final batch of ${this.batchedUpdates.length} updates before disconnect`);
       this.sendBatchedUpdates();
     }
     
@@ -1145,7 +1145,7 @@ export class NetworkSystem extends System {
       // Use sessionStorage for unique ID per browser session (prevents multiplayer conflicts)
       const sessionId = sessionStorage.getItem('squirrelId');
       if (sessionId) {
-        Logger.debug(LogCategory.NETWORK, `📦 Retrieved squirrelId from sessionStorage: ${sessionId}`);
+        // Logger.debug(LogCategory.NETWORK, `📦 Retrieved squirrelId from sessionStorage: ${sessionId}`);
         return sessionId;
       }
       
@@ -1160,7 +1160,7 @@ export class NetworkSystem extends System {
     try {
       // Store in sessionStorage for unique ID per browser session
       sessionStorage.setItem('squirrelId', squirrelId);
-      Logger.debug(LogCategory.NETWORK, `💾 Stored squirrelId in sessionStorage: ${squirrelId}`);
+      // Logger.debug(LogCategory.NETWORK, `💾 Stored squirrelId in sessionStorage: ${squirrelId}`);
     } catch (error) {
       Logger.error(LogCategory.NETWORK, '❌ Failed to store squirrelId in sessionStorage:', error);
     }
@@ -1285,7 +1285,7 @@ export class NetworkSystem extends System {
             timestamp: performance.now()
           } as NetworkMessage);
         } else {
-          Logger.debug(LogCategory.NETWORK, `🔄 Skipping own player in existing players: ${playerData.squirrelId}`);
+          // Logger.debug(LogCategory.NETWORK, `🔄 Skipping own player in existing players: ${playerData.squirrelId}`);
         }
       }
     }
@@ -1314,7 +1314,7 @@ export class NetworkSystem extends System {
         if (player.squirrelId && player.position) {
           // Skip if this is the local player
           if (player.squirrelId === this.localSquirrelId) {
-            Logger.debug(LogCategory.NETWORK, `🔄 Skipping own player in existing_players: ${player.squirrelId}`);
+            // Logger.debug(LogCategory.NETWORK, `🔄 Skipping own player in existing_players: ${player.squirrelId}`);
             continue;
           }
           
@@ -1345,7 +1345,7 @@ export class NetworkSystem extends System {
 
   private handleBatchUpdate(message: NetworkMessage): void {
     if (message.updates && Array.isArray(message.updates)) {
-      Logger.debug(LogCategory.NETWORK, `📦 Processing batch update with ${message.updates.length} updates`);
+      // Logger.debug(LogCategory.NETWORK, `📦 Processing batch update with ${message.updates.length} updates`);
       
       for (const update of message.updates) {
         if (update.type === 'player_update') {

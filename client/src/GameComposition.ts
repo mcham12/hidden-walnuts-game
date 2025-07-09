@@ -110,7 +110,7 @@ export class SceneManager implements ISceneManager {
       // Use static import for better performance
       const { TerrainService } = await import('./services/TerrainService');
       this.terrainService = new TerrainService();
-      Logger.debug(LogCategory.TERRAIN, '✅ Terrain service initialized for camera');
+      // Logger.debug(LogCategory.TERRAIN, '✅ Terrain service initialized for camera');
     } catch (error) {
       Logger.warn(LogCategory.TERRAIN, 'Failed to initialize terrain service for camera:', error);
     }
@@ -197,7 +197,7 @@ export class SceneManager implements ISceneManager {
       // Add all forest objects to the scene
       forestObjects.forEach(obj => this.scene.add(obj));
       
-      Logger.info(LogCategory.TERRAIN, `Added ${forestObjects.length} forest objects to scene`);
+      // Logger.info(LogCategory.TERRAIN, `Added ${forestObjects.length} forest objects to scene`);
       this.eventBus.emit('forest.loaded');
     } catch (error) {
       Logger.error(LogCategory.TERRAIN, 'Failed to load forest objects', error);
@@ -377,7 +377,7 @@ export class AssetManager implements IAssetManager {
   async loadSquirrelModel(): Promise<import('three').Group> {
     if (this.cache.has('squirrel')) {
       const cachedModel = this.cache.get('squirrel');
-      Logger.debug(LogCategory.CORE, `📦 Using cached squirrel model, scale: x=${cachedModel.scale.x.toFixed(2)}, y=${cachedModel.scale.y.toFixed(2)}, z=${cachedModel.scale.z.toFixed(2)}`);
+      // Logger.debug(LogCategory.CORE, `📦 Using cached squirrel model, scale: x=${cachedModel.scale.x.toFixed(2)}, y=${cachedModel.scale.y.toFixed(2)}, z=${cachedModel.scale.z.toFixed(2)}`);
       return cachedModel.clone();
     }
 
@@ -397,7 +397,7 @@ export class AssetManager implements IAssetManager {
           model.castShadow = true;
           model.receiveShadow = true;
           
-          Logger.debug(LogCategory.CORE, `📦 Caching squirrel model with scale: x=${model.scale.x.toFixed(2)}, y=${model.scale.y.toFixed(2)}, z=${model.scale.z.toFixed(2)}`);
+          // Logger.debug(LogCategory.CORE, `📦 Caching squirrel model with scale: x=${model.scale.x.toFixed(2)}, y=${model.scale.y.toFixed(2)}, z=${model.scale.z.toFixed(2)}`);
           this.cache.set('squirrel', model);
           resolve(model.clone());
         },
@@ -471,8 +471,7 @@ export class GameManager {
   private localPlayer?: Entity;
   private isRunning = false;
   private lastFrameTime = 0;
-  private lastCameraUpdate = 0;
-  private cameraUpdateInterval = 500; // Update camera every 500ms instead of every frame
+
   private networkAnimationSystem: NetworkAnimationSystem;
   private npcSystem!: NPCSystem;
   private characterSelectionSystem!: CharacterSelectionSystem;
@@ -540,37 +539,37 @@ export class GameManager {
       'CharacterSelectionSystem'
     ]);
 
-    Logger.info(LogCategory.CORE, '🎮 GameManager initialized with 15 systems');
+    // Logger.info(LogCategory.CORE, '🎮 GameManager initialized with 15 systems');
   }
 
   async initialize(canvas: HTMLCanvasElement): Promise<void> {
     try {
-      Logger.info(LogCategory.CORE, '🎯 Starting game initialization...');
+      // Logger.info(LogCategory.CORE, '🎯 Starting game initialization...');
 
       // 1. Initialize terrain service early (optimized for speed)
-      Logger.info(LogCategory.CORE, '🌍 Initializing terrain service...');
+      // Logger.info(LogCategory.CORE, '🌍 Initializing terrain service...');
       const terrainService = container.resolve(ServiceTokens.TERRAIN_SERVICE) as any;
       await terrainService.initialize();
-      Logger.info(LogCategory.CORE, '✅ Terrain service initialized');
+      // Logger.info(LogCategory.CORE, '✅ Terrain service initialized');
 
       // 2. Initialize scene (optimized for speed)
-      Logger.info(LogCategory.CORE, '🎨 Initializing scene...');
+      // Logger.info(LogCategory.CORE, '🎨 Initializing scene...');
       await this.sceneManager.initialize(canvas);
-      Logger.info(LogCategory.CORE, '✅ Scene initialized');
+      // Logger.info(LogCategory.CORE, '✅ Scene initialized');
       
-      Logger.info(LogCategory.CORE, '🌲 Loading terrain...');
+      // Logger.info(LogCategory.CORE, '🌲 Loading terrain...');
       await this.sceneManager.loadTerrain();
-      Logger.info(LogCategory.CORE, '✅ Terrain loaded');
+      // Logger.info(LogCategory.CORE, '✅ Terrain loaded');
       
-      Logger.info(LogCategory.CORE, '🌳 Loading forest...');
+      // Logger.info(LogCategory.CORE, '🌳 Loading forest...');
       await this.sceneManager.loadForest();
-      Logger.info(LogCategory.CORE, '✅ Forest loaded');
+      // Logger.info(LogCategory.CORE, '✅ Forest loaded');
       
       // 3. Wait for scene readiness
       await this.waitForSceneReady();
       
       // 4. Connect to multiplayer BEFORE creating player to get saved position
-      Logger.info(LogCategory.NETWORK, '🌐 Attempting multiplayer connection...');
+      // Logger.info(LogCategory.NETWORK, '🌐 Attempting multiplayer connection...');
       let savedPlayerData: { position: any; rotationY: number } | null = null;
       
       try {
@@ -581,7 +580,7 @@ export class GameManager {
           
           // Listen for saved position from server
           this.eventBus.subscribe('apply_saved_position', (data: { position: any; rotationY: number }) => {
-            Logger.info(LogCategory.PLAYER, '📍 Received saved position from server:', data.position);
+            // Logger.info(LogCategory.PLAYER, '📍 Received saved position from server:', data.position);
             if (!resolved) {
               resolved = true;
               resolve(data);
@@ -600,17 +599,17 @@ export class GameManager {
         
         // POSITION PERSISTENCE FIX: Connect to network AFTER setting up event listener
         await this.networkSystem.connect();
-        Logger.info(LogCategory.NETWORK, '✅ Multiplayer connection established');
+        // Logger.info(LogCategory.NETWORK, '✅ Multiplayer connection established');
         
         // POSITION PERSISTENCE FIX: Wait for WebSocket to be ready before waiting for saved position
         // This ensures the event listener is set up before the server sends the init message
         await new Promise<void>((resolve) => {
           const checkWebSocketReady = () => {
             if (this.networkSystem.isConnected()) {
-              Logger.info(LogCategory.NETWORK, '✅ WebSocket is ready, waiting for saved position...');
+              // Logger.info(LogCategory.NETWORK, '✅ WebSocket is ready, waiting for saved position...');
               resolve();
             } else {
-              Logger.debug(LogCategory.NETWORK, '⏳ Waiting for WebSocket to be ready...');
+              // Logger.debug(LogCategory.NETWORK, '⏳ Waiting for WebSocket to be ready...');
               setTimeout(checkWebSocketReady, 50);
             }
           };
@@ -618,13 +617,13 @@ export class GameManager {
         });
         
         // Wait for saved position with timeout
-        Logger.info(LogCategory.PLAYER, '⏳ Waiting for saved position from server...');
+        // Logger.info(LogCategory.PLAYER, '⏳ Waiting for saved position from server...');
         savedPlayerData = await savedPositionPromise;
         
         if (savedPlayerData) {
-          Logger.info(LogCategory.PLAYER, '✅ Saved position received successfully:', savedPlayerData.position);
+          // Logger.info(LogCategory.PLAYER, '✅ Saved position received successfully:', savedPlayerData.position);
         } else {
-          Logger.warn(LogCategory.PLAYER, '⚠️ No saved position received from server, will use random spawn');
+          // Logger.warn(LogCategory.PLAYER, '⚠️ No saved position received from server, will use random spawn');
           // POSITION PERSISTENCE FIX: Set savedPlayerData to null explicitly to ensure random spawn
           savedPlayerData = null;
         }
@@ -635,18 +634,18 @@ export class GameManager {
       
       // 5. Create local player (will use saved position if available)
       await this.createLocalPlayer(savedPlayerData);
-      Logger.info(LogCategory.PLAYER, `🎮 Local player created: ${this.localPlayer?.id.value}`);
+      // Logger.info(LogCategory.PLAYER, `🎮 Local player created: ${this.localPlayer?.id.value}`);
       
       // 6. Start input listening
       this.inputManager.startListening();
-      Logger.info(LogCategory.INPUT, '🎮 Input listening started - WASD controls active!');
+      // Logger.info(LogCategory.INPUT, '🎮 Input listening started - WASD controls active!');
       
       // 7. Initialize character selection system
-      Logger.info(LogCategory.CORE, '🎭 Character selection system initialized');
+      // Logger.info(LogCategory.CORE, '🎭 Character selection system initialized');
       
       // Listen for character selection changes to update camera
       this.eventBus.subscribe('character:selection_changed', (event: any) => {
-        Logger.info(LogCategory.CORE, `🎭 Character changed to: ${event.selectedCharacter}`);
+        // Logger.info(LogCategory.CORE, `🎭 Character changed to: ${event.selectedCharacter}`);
         
         // FIXED: Notify animation system of character change
         this.eventBus.emit('player:character_changed', {
@@ -664,7 +663,7 @@ export class GameManager {
       
       // FIXED: Listen for game character ready event
       this.eventBus.subscribe('game:character_ready', (event: any) => {
-        Logger.info(LogCategory.CORE, `🎭 Game character ready: ${event.characterType}`);
+        // Logger.info(LogCategory.CORE, `🎭 Game character ready: ${event.characterType}`);
         
         // Notify animation system that character is ready
         this.eventBus.emit('player:animation_ready', {
@@ -677,7 +676,7 @@ export class GameManager {
       
       // Emit initialization complete
       this.eventBus.emit('game.initialized');
-      Logger.info(LogCategory.CORE, '🚀 Game initialization complete!');
+      // Logger.info(LogCategory.CORE, '🚀 Game initialization complete!');
       
     } catch (error) {
       Logger.error(LogCategory.CORE, '💥 Game initialization failed:', error);
@@ -692,10 +691,10 @@ export class GameManager {
         const renderer = this.sceneManager.getRenderer();
         
         if (scene && renderer && renderer.domElement) {
-          Logger.debug(LogCategory.RENDER, '✅ Scene fully ready for entities');
+          // Logger.debug(LogCategory.RENDER, '✅ Scene fully ready for entities');
           resolve();
         } else {
-          Logger.warn(LogCategory.RENDER, '⏳ Waiting for scene readiness...');
+          // Logger.warn(LogCategory.RENDER, '⏳ Waiting for scene readiness...');
           setTimeout(checkScene, 10);
         }
       };
@@ -704,21 +703,21 @@ export class GameManager {
   }
 
   start(): void {
-    console.log('[GameManager] 🚀 start() method called');
+    // console.log('[GameManager] 🚀 start() method called');
     
     if (this.isRunning) {
-      console.log('[GameManager] ⚠️ Game already running, skipping start');
+      // console.log('[GameManager] ⚠️ Game already running, skipping start');
       return;
     }
     
     this.isRunning = true;
-    console.log('[GameManager] ✅ isRunning set to true, calling gameLoop()');
+    // console.log('[GameManager] ✅ isRunning set to true, calling gameLoop()');
     
     try {
       this.gameLoop();
-      console.log('[GameManager] ✅ Initial gameLoop() call completed');
+      // console.log('[GameManager] ✅ Initial gameLoop() call completed');
     } catch (error) {
-      console.error('[GameManager] 💥 Error starting game loop:', error);
+      // console.error('[GameManager] 💥 Error starting game loop:', error);
       this.isRunning = false;
     }
   }
@@ -730,11 +729,11 @@ export class GameManager {
 
   private async createLocalPlayer(savedPlayerData: { position: any; rotationY: number } | null): Promise<void> {
     try {
-      Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Starting local player creation...`);
+      // Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Starting local player creation...`);
       
       // Get PlayerFactory from container
       const playerFactory = container.resolve(ServiceTokens.PLAYER_FACTORY) as any;
-      Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: PlayerFactory resolved successfully`);
+      // Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: PlayerFactory resolved successfully`);
       
       // Get persistent squirrel ID or generate new one
       let squirrelId = this.getPersistentSquirrelId();
@@ -742,16 +741,16 @@ export class GameManager {
         squirrelId = crypto.randomUUID();
         this.setPersistentSquirrelId(squirrelId);
       }
-      Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Using player ID: ${squirrelId}`);
+      // Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Using player ID: ${squirrelId}`);
       
       // Get selected character type
       const characterSelectionManager = container.resolve(ServiceTokens.CHARACTER_SELECTION_MANAGER) as any;
       const selectedCharacter = characterSelectionManager.getSelectedCharacter();
-      Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Selected character type: ${selectedCharacter}`);
+      // Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Selected character type: ${selectedCharacter}`);
       
       // Create local player entity using appropriate method
       if (savedPlayerData) {
-        Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Creating local player with saved position data`);
+        // Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Creating local player with saved position data`);
         this.localPlayer = await playerFactory.createLocalPlayerWithPosition(
           squirrelId, 
           savedPlayerData.position, 
@@ -759,7 +758,7 @@ export class GameManager {
           selectedCharacter
         );
       } else {
-        Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Creating local player with random spawn`);
+        // Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Creating local player with random spawn`);
         this.localPlayer = await playerFactory.createLocalPlayer(squirrelId, selectedCharacter);
       }
       
@@ -767,38 +766,38 @@ export class GameManager {
         throw new Error('Failed to create local player entity');
       }
       
-      Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Local player entity created: ${this.localPlayer.id.value}`);
+      // Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Local player entity created: ${this.localPlayer.id.value}`);
       
       // Add to ECS
-      Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Adding local player entity to ECS...`);
+      // Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Adding local player entity to ECS...`);
       this.entityManager.addEntity(this.localPlayer);
-      Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Local player entity added to ECS: ${this.localPlayer.id.value}`);
+      // Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Local player entity added to ECS: ${this.localPlayer.id.value}`);
 
       // One-time snapshot: log player mesh and camera info
       const renderComp = this.localPlayer.getComponent<any>('render');
       if (renderComp && renderComp.mesh) {
-        const pos = renderComp.mesh.position;
-        const scale = renderComp.mesh.scale;
-        Logger.warn(LogCategory.PLAYER, `[SNAPSHOT] 🗺️ Player mesh position: (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`);
-        Logger.warn(LogCategory.PLAYER, `[SNAPSHOT] 📏 Player mesh scale: (${scale.x.toFixed(2)}, ${scale.y.toFixed(2)}, ${scale.z.toFixed(2)})`);
+        // const pos = renderComp.mesh.position;
+        // const scale = renderComp.mesh.scale;
+        // Logger.warn(LogCategory.PLAYER, `[SNAPSHOT] 🗺️ Player mesh position: (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`);
+        // Logger.warn(LogCategory.PLAYER, `[SNAPSHOT] 📏 Player mesh scale: (${scale.x.toFixed(2)}, ${scale.y.toFixed(2)}, ${scale.z.toFixed(2)})`);
       } else {
-        Logger.warn(LogCategory.PLAYER, `[SNAPSHOT] ❌ No mesh found on player render component!`);
+        // Logger.warn(LogCategory.PLAYER, `[SNAPSHOT] ❌ No mesh found on player render component!`);
       }
       const camera = this.sceneManager.getCamera && this.sceneManager.getCamera();
       if (camera) {
-        const cpos = camera.position;
-        Logger.warn(LogCategory.PLAYER, `[SNAPSHOT] 🎥 Camera position: (${cpos.x.toFixed(2)}, ${cpos.y.toFixed(2)}, ${cpos.z.toFixed(2)})`);
-        if ('target' in camera && camera.target) {
-          const t = (camera as any).target;
-          Logger.warn(LogCategory.PLAYER, `[SNAPSHOT] 🎯 Camera target: (${t.x.toFixed(2)}, ${t.y.toFixed(2)}, ${t.z.toFixed(2)})`);
-        }
+        // const cpos = camera.position;
+        // Logger.warn(LogCategory.PLAYER, `[SNAPSHOT] 🎥 Camera position: (${cpos.x.toFixed(2)}, ${cpos.y.toFixed(2)}, ${cpos.z.toFixed(2)})`);
+        // if ('target' in camera && camera.target) {
+        //   const t = (camera as any).target;
+        //   Logger.warn(LogCategory.PLAYER, `[SNAPSHOT] 🎯 Camera target: (${t.x.toFixed(2)}, ${t.y.toFixed(2)}, ${t.z.toFixed(2)})`);
+        // }
       }
       
       // Log components for debugging
-      const components = this.localPlayer.getComponents().map(c => c.type);
-      Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Local player entity components: ${components.join(', ')}`);
+      // const components = this.localPlayer.getComponents().map(c => c.type);
+      // Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Local player entity components: ${components.join(', ')}`);
       
-      Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Local player creation complete!`);
+      // Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Local player creation complete!`);
       
     } catch (error) {
       Logger.error(LogCategory.PLAYER, '🚨 Failed to create local player:', error);
@@ -830,7 +829,7 @@ export class GameManager {
 
       requestAnimationFrame(this.gameLoop);
     } catch (error) {
-      console.error('💥 [GameLoop] Critical error:', error);
+      // console.error('💥 [GameLoop] Critical error:', error);
       this.isRunning = false;
     }
   }
@@ -860,7 +859,7 @@ export class GameManager {
       const camera = this.sceneManager.getCamera();
       
       if (!renderer || !scene || !camera) {
-        Logger.warn(LogCategory.RENDER, '⚠️ [GameLoop] Render components not ready, skipping frame');
+        // Logger.warn(LogCategory.RENDER, '⚠️ [GameLoop] Render components not ready, skipping frame');
         return;
       }
       
@@ -881,11 +880,6 @@ export class GameManager {
       return;
     }
     
-    const now = performance.now();
-    if (now - this.lastCameraUpdate < this.cameraUpdateInterval) {
-      return; // Skip update if not enough time has passed
-    }
-    
     const position = this.localPlayer.getComponent<PositionComponent>('position');
     const rotation = this.localPlayer.getComponent<RotationComponent>('rotation');
     
@@ -894,7 +888,6 @@ export class GameManager {
         { x: position.value.x, y: position.value.y, z: position.value.z },
         { y: rotation.value.y }
       );
-      this.lastCameraUpdate = now;
     }
   }
 
@@ -928,7 +921,7 @@ export class GameManager {
       // Use sessionStorage for unique ID per browser session (prevents multiplayer conflicts)
       const sessionId = sessionStorage.getItem('squirrelId');
       if (sessionId) {
-        Logger.debug(LogCategory.PLAYER, `📦 Retrieved squirrelId from sessionStorage: ${sessionId}`);
+        // Logger.debug(LogCategory.PLAYER, `📦 Retrieved squirrelId from sessionStorage: ${sessionId}`);
         return sessionId;
       }
       
@@ -943,7 +936,7 @@ export class GameManager {
     try {
       // Store in sessionStorage for unique ID per browser session
       sessionStorage.setItem('squirrelId', squirrelId);
-      Logger.debug(LogCategory.PLAYER, `💾 Stored squirrelId in sessionStorage: ${squirrelId}`);
+      // Logger.debug(LogCategory.PLAYER, `💾 Stored squirrelId in sessionStorage: ${squirrelId}`);
     } catch (error) {
       Logger.error(LogCategory.PLAYER, '❌ Failed to store squirrelId in sessionStorage:', error);
     }
@@ -1053,5 +1046,5 @@ export function configureServices(): void {
   // Character Selection System - temporarily disabled to fix browser compatibility
   // Will be re-enabled once proper ES6 module loading is implemented
 
-  Logger.info(LogCategory.CORE, '🏗️ All services configured successfully');
+  // Logger.info(LogCategory.CORE, '🏗️ All services configured successfully');
 } 

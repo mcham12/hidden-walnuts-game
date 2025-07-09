@@ -3,7 +3,7 @@
 import { System, InputComponent } from '../ecs';
 import { EventBus } from '../core/EventBus';
 import { IInputManager } from '../GameComposition';
-import { Logger, LogCategory } from '../core/Logger';
+// import { Logger, LogCategory } from '../core/Logger';
 
 export class InputSystem extends System {
 
@@ -13,7 +13,7 @@ export class InputSystem extends System {
     private inputManager: IInputManager
   ) {
     super(eventBus, ['input'], 'InputSystem');
-    Logger.info(LogCategory.INPUT, '[InputSystem] Initialized');
+    // Logger.info(LogCategory.INPUT, '[InputSystem] Initialized');
   }
 
   update(_deltaTime: number): void {

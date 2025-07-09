@@ -63,7 +63,7 @@ export class ClientPredictionSystem extends System {
     if (!this.localPlayerEntity) {
       this.findLocalPlayer();
       if (this.localPlayerEntity) {
-        Logger.info(LogCategory.INPUT, '✅ ClientPredictionSystem found local player');
+        // Logger.info(LogCategory.INPUT, '✅ ClientPredictionSystem found local player');
       } else {
         Logger.warn(LogCategory.INPUT, '⚠️ ClientPredictionSystem: No local player found yet. Total entities:', this.entities.size);
       }
@@ -127,10 +127,10 @@ export class ClientPredictionSystem extends System {
           predicted: true // Mark as client prediction
         });
         
-        Logger.debugExpensive(LogCategory.INPUT, () => `🚀 EMITTED PLAYER_MOVED event - Seq: ${this.sequenceNumber} Pos: (${position.value.x.toFixed(1)}, ${position.value.z.toFixed(1)})`);
-        Logger.debugExpensive(LogCategory.INPUT, () => 
-          `📤 Applied local input ${this.sequenceNumber} at (${position.value.x.toFixed(1)}, ${position.value.z.toFixed(1)})`
-        );
+        // Logger.debugExpensive(LogCategory.INPUT, () => `🚀 EMITTED PLAYER_MOVED event - Seq: ${this.sequenceNumber} Pos: (${position.value.x.toFixed(1)}, ${position.value.z.toFixed(1)})`);
+        // Logger.debugExpensive(LogCategory.INPUT, () => 
+        //   `📤 Applied local input ${this.sequenceNumber} at (${position.value.x.toFixed(1)}, ${position.value.z.toFixed(1)})`
+        // );
       }
     });
   }
@@ -171,7 +171,7 @@ export class ClientPredictionSystem extends System {
     const newPosition = new Vector3(x, y, z);
     
     if (boundsViolation) {
-      Logger.debug(LogCategory.PLAYER, `Gentle world bounds applied: ${position.toString()} -> ${newPosition.toString()}`);
+      // Logger.debug(LogCategory.PLAYER, `Gentle world bounds applied: ${position.toString()} -> ${newPosition.toString()}`);
     }
     
     return newPosition;
@@ -270,7 +270,7 @@ export class ClientPredictionSystem extends System {
       return;
     }
     
-    Logger.debug(LogCategory.NETWORK, `🔄 Server reconciliation: Client (${data.clientPosition.x.toFixed(2)}, ${data.clientPosition.z.toFixed(2)}) -> Server (${data.serverPosition.x.toFixed(2)}, ${data.serverPosition.z.toFixed(2)}) Diff: ${data.difference.toFixed(3)}m`);
+    // Logger.debug(LogCategory.NETWORK, `🔄 Server reconciliation: Client (${data.clientPosition.x.toFixed(2)}, ${data.clientPosition.z.toFixed(2)}) -> Server (${data.serverPosition.x.toFixed(2)}, ${data.serverPosition.z.toFixed(2)}) Diff: ${data.difference.toFixed(3)}m`);
     
     // TASK 8 PHASE 3: Track reconciliation performance
     this.trackPerformanceMetrics('reconciliation');
@@ -308,9 +308,9 @@ export class ClientPredictionSystem extends System {
       value: interpolatedPosition
     });
     
-    Logger.debugExpensive(LogCategory.NETWORK, () => 
-      `Interpolated position: ${clientPosition.toString()} -> ${interpolatedPosition.toString()} (${interpolationFactor * 100}% towards server)`
-    );
+    // Logger.debugExpensive(LogCategory.NETWORK, () => 
+    //   `Interpolated position: ${clientPosition.toString()} -> ${interpolatedPosition.toString()} (${interpolationFactor * 100}% towards server)`
+    // );
   }
 
   // TASK 8 PHASE 2: Enhanced input validation for replay
@@ -364,7 +364,7 @@ export class ClientPredictionSystem extends System {
       input.sequenceNumber > this.lastProcessedSequence
     );
     
-    Logger.debug(LogCategory.NETWORK, `Replaying ${inputsToReplay.length} inputs after sequence ${this.lastProcessedSequence}`);
+    // Logger.debug(LogCategory.NETWORK, `Replaying ${inputsToReplay.length} inputs after sequence ${this.lastProcessedSequence}`);
     
     // TASK 8 ENHANCEMENT: Replay with proper timing and validation
     for (const inputSnapshot of inputsToReplay) {
@@ -385,7 +385,7 @@ export class ClientPredictionSystem extends System {
       }
     }
     
-    Logger.debug(LogCategory.NETWORK, `Replayed ${inputsToReplay.length} inputs after reconciliation`);
+    // Logger.debug(LogCategory.NETWORK, `Replayed ${inputsToReplay.length} inputs after reconciliation`);
   }
 
   // TASK 8 PHASE 3: Enhanced input buffer cleanup for memory optimization
@@ -406,9 +406,9 @@ export class ClientPredictionSystem extends System {
     
     // TASK 8 PHASE 3: Performance monitoring (log only every 300 frames to reduce spam)
     if (this.inputHistory.length > 20 && this.performanceMetrics.totalInputs % 300 === 0) {
-      Logger.debugExpensive(LogCategory.NETWORK, () => 
-        `Input buffer: ${this.inputHistory.length} inputs, oldest: ${(now - this.inputHistory[0]?.timestamp || 0).toFixed(0)}ms ago`
-      );
+      // Logger.debugExpensive(LogCategory.NETWORK, () => 
+      //   `Input buffer: ${this.inputHistory.length} inputs, oldest: ${(now - this.inputHistory[0]?.timestamp || 0).toFixed(0)}ms ago`
+      // );
     }
     
     // TASK 8 PHASE 3: Track cleanup performance
@@ -447,7 +447,7 @@ export class ClientPredictionSystem extends System {
     
     // Log performance metrics periodically (reduced frequency to reduce spam)
     if (this.performanceMetrics.totalInputs % 500 === 0) {
-      Logger.debug(LogCategory.NETWORK, `Performance metrics: ${JSON.stringify(this.performanceMetrics)}`);
+      // Logger.debug(LogCategory.NETWORK, `Performance metrics: ${JSON.stringify(this.performanceMetrics)}`);
     }
   }
 
@@ -470,7 +470,7 @@ export class ClientPredictionSystem extends System {
       input.sequenceNumber > data.sequence
     );
     
-    Logger.debugExpensive(LogCategory.NETWORK, () => `Acknowledged sequence ${data.sequence}, cleaned input history`);
+    // Logger.debugExpensive(LogCategory.NETWORK, () => `Acknowledged sequence ${data.sequence}, cleaned input history`);
   }
 
   acknowledgeServerInput(sequenceNumber: number): void {

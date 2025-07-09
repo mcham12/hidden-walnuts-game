@@ -671,7 +671,7 @@ export class CharacterFactory {
         return;
       }
       
-      Logger.info(LogCategory.PLAYER, `✅ Found ${gltf.animations.length} animations in: ${animationPath}`);
+              // Logger.info(LogCategory.PLAYER, `✅ Found ${gltf.animations.length} animations in: ${animationPath}`);
       
       // Add animations to the model and create actions
       gltf.animations.forEach((clip: THREE.AnimationClip, index: number) => {
@@ -688,7 +688,7 @@ export class CharacterFactory {
         Logger.debug(LogCategory.PLAYER, `✅ Created action for animation: ${animationName}`);
       });
       
-      Logger.info(LogCategory.PLAYER, `✅ Successfully loaded animation: ${animationName}`);
+              // Logger.info(LogCategory.PLAYER, `✅ Successfully loaded animation: ${animationName}`);
     } catch (error) {
       Logger.error(LogCategory.PLAYER, `❌ Failed to load animation ${animationName} from ${animationPath}:`, error);
     }

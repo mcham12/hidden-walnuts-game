@@ -51,7 +51,7 @@ export class PlayerAnimationController implements IPlayerAnimationController {
     // Setup transitions
     this.setupDefaultTransitions();
     
-    Logger.info(LogCategory.CORE, `[PlayerAnimationController] Initialized for player: ${playerId} (${characterConfig.name})`);
+    // Logger.info(LogCategory.CORE, `[PlayerAnimationController] Initialized for player: ${playerId} (${characterConfig.name})`);
   }
 
   /**
@@ -101,7 +101,7 @@ export class PlayerAnimationController implements IPlayerAnimationController {
         // Fire event
         this.fireAnimationEvent(this.previousState, state);
         
-        Logger.debug(LogCategory.CORE, `[PlayerAnimationController] Successfully played animation: ${animationName} for state: ${state}`);
+        // Logger.debug(LogCategory.CORE, `[PlayerAnimationController] Successfully played animation: ${animationName} for state: ${state}`);
       } else {
         Logger.warn(LogCategory.CORE, `[PlayerAnimationController] Failed to play animation: ${animationName} for state: ${state}`);
       }
@@ -214,7 +214,7 @@ export class PlayerAnimationController implements IPlayerAnimationController {
    * FIXED: Handle character change event
    */
   onCharacterChanged(): void {
-    Logger.debug(LogCategory.CORE, `[PlayerAnimationController] Character changed for player: ${this.playerId}`);
+          // Logger.debug(LogCategory.CORE, `[PlayerAnimationController] Character changed for player: ${this.playerId}`);
     
     // Reset animation state for new character
     this.currentState = PlayerAnimationState.IDLE_A;
@@ -236,7 +236,7 @@ export class PlayerAnimationController implements IPlayerAnimationController {
    * FIXED: Handle animation ready event
    */
   onAnimationReady(): void {
-    Logger.debug(LogCategory.CORE, `[PlayerAnimationController] Animation ready for player: ${this.playerId}`);
+          // Logger.debug(LogCategory.CORE, `[PlayerAnimationController] Animation ready for player: ${this.playerId}`);
     
     // Start with idle animation
     this.playAnimation(PlayerAnimationState.IDLE_A);
@@ -254,7 +254,7 @@ export class PlayerAnimationController implements IPlayerAnimationController {
    */
   dispose(): void {
     this.animationController.dispose();
-    Logger.info(LogCategory.CORE, `[PlayerAnimationController] Disposed controller for player: ${this.playerId}`);
+    // Logger.info(LogCategory.CORE, `[PlayerAnimationController] Disposed controller for player: ${this.playerId}`);
   }
 
   /**
@@ -353,9 +353,9 @@ export class PlayerAnimationController implements IPlayerAnimationController {
     const success = this.playAnimation(state);
     
     if (success) {
-      Logger.debug(LogCategory.CORE, 
-        `[PlayerAnimationController] Transitioned to: ${state} for player: ${this.playerId}`
-      );
+      // Logger.debug(LogCategory.CORE, 
+      //   `[PlayerAnimationController] Transitioned to: ${state} for player: ${this.playerId}`
+      // );
     }
   }
 
@@ -444,13 +444,13 @@ export class PlayerAnimationController implements IPlayerAnimationController {
    * Debug: Print current state info
    */
   debugPrintState(): void {
-    Logger.debug(LogCategory.CORE, `[PlayerAnimationController] Player: ${this.playerId}`);
-    Logger.debug(LogCategory.CORE, `  Current State: ${this.currentState}`);
-    Logger.debug(LogCategory.CORE, `  Previous State: ${this.previousState}`);
-    Logger.debug(LogCategory.CORE, `  Is Playing: ${this.isPlaying()}`);
-    Logger.debug(LogCategory.CORE, `  Is Paused: ${this.isPaused()}`);
-    if (this.inputState) {
-      Logger.debug(LogCategory.CORE, `  Input: ${JSON.stringify(this.inputState)}`);
-    }
+    // Logger.debug(LogCategory.CORE, `[PlayerAnimationController] Player: ${this.playerId}`);
+    // Logger.debug(LogCategory.CORE, `  Current State: ${this.currentState}`);
+    // Logger.debug(LogCategory.CORE, `  Previous State: ${this.previousState}`);
+    // Logger.debug(LogCategory.CORE, `  Is Playing: ${this.isPlaying()}`);
+    // Logger.debug(LogCategory.CORE, `  Is Paused: ${this.isPaused()}`);
+    // if (this.inputState) {
+    //   Logger.debug(LogCategory.CORE, `  Input: ${JSON.stringify(this.inputState)}`);
+    // }
   }
 } 

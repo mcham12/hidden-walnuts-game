@@ -30,7 +30,7 @@ export class NPCAIController {
     this.behaviors = this.createBehaviors(characterType);
     this.lastBehaviorChange = Date.now();
     
-    Logger.debug(LogCategory.CORE, `[NPCAIController] Created for NPC ${npc.id} (${characterType})`);
+    // Logger.debug(LogCategory.CORE, `[NPCAIController] Created for NPC ${npc.id} (${characterType})`);
   }
 
   /**
@@ -241,7 +241,7 @@ export class NPCAIController {
 
     this.performanceMetrics.behaviorTransitions++;
     
-    Logger.debug(LogCategory.CORE, `[NPCAIController] NPC ${this.npc.id} transitioned to ${behavior.type}`);
+          // Logger.debug(LogCategory.CORE, `[NPCAIController] NPC ${this.npc.id} transitioned to ${behavior.type}`);
     
     // Emit behavior change event
     this.eventBus.emit('npc.behavior_changed', {

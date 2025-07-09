@@ -12,7 +12,7 @@ export class RenderSystem extends System {
     private renderAdapter: IRenderAdapter
   ) {
     super(eventBus, ['position', 'rotation', 'render'], 'RenderSystem');
-    Logger.info(LogCategory.RENDER, '[RenderSystem] Initialized');
+    // Logger.info(LogCategory.RENDER, '[RenderSystem] Initialized');
   }
 
   update(_deltaTime: number): void {

@@ -1,6 +1,6 @@
 import { System, Entity } from '../ecs';
 import { EventBus } from '../core/EventBus';
-import { Logger, LogCategory } from '../core/Logger';
+// import { Logger, LogCategory } from '../core/Logger';
 import { AnimationState, CompressedAnimationData } from '../types/NetworkAnimationTypes';
 
 /**
@@ -27,7 +27,7 @@ export class NetworkAnimationSystem extends System {
     this.eventBus.subscribe('animation:state_changed', this.handleLocalAnimationChange.bind(this));
     this.eventBus.subscribe('network:animation_state_received', this.handleRemoteAnimationState.bind(this));
     
-    Logger.info(LogCategory.CORE, '[NetworkAnimationSystem] Initialized');
+    // Logger.info(LogCategory.CORE, '[NetworkAnimationSystem] Initialized');
   }
 
   update(_deltaTime: number): void {
@@ -112,7 +112,7 @@ export class NetworkAnimationSystem extends System {
       controller.setAnimationTime(compensatedTime);
     }
 
-    Logger.debug(LogCategory.NETWORK, `[NetworkAnimationSystem] Applied remote animation: ${data.currentAnimation} (latency: ${latency}ms)`);
+          // Logger.debug(LogCategory.NETWORK, `[NetworkAnimationSystem] Applied remote animation: ${data.currentAnimation} (latency: ${latency}ms)`);
   }
 
   /**

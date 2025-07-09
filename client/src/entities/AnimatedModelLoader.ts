@@ -26,7 +26,7 @@ export class AnimatedModelLoader {
     this.characterRegistry = characterRegistry;
     this.gltfLoader = new GLTFLoader();
     
-    Logger.info(LogCategory.CORE, '[AnimatedModelLoader] Initialized with character registry');
+    // Logger.info(LogCategory.CORE, '[AnimatedModelLoader] Initialized with character registry');
   }
 
   /**
@@ -67,11 +67,11 @@ export class AnimatedModelLoader {
       cacheEntry.lastAccessed = Date.now();
       cacheEntry.accessCount++;
       
-      Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading from cache: ${cacheKey}`);
+              // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading from cache: ${cacheKey}`);
       return cacheEntry.animatedModel;
     }
 
-    Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading model: ${path}`);
+            // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading model: ${path}`);
     
     try {
       // Load the GLTF model
@@ -103,7 +103,7 @@ export class AnimatedModelLoader {
         this.cacheModel(cacheKey, path, characterType, animatedModel, options.lodLevel ?? 0);
       }
 
-      Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Successfully loaded model: ${path}`);
+              // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Successfully loaded model: ${path}`);
       return animatedModel;
       
     } catch (error) {
@@ -147,7 +147,7 @@ export class AnimatedModelLoader {
       }
     }
 
-    Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Preloaded ${models.length} models for ${characterType}`);
+            // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Preloaded ${models.length} models for ${characterType}`);
     return models;
   }
 
@@ -177,7 +177,7 @@ export class AnimatedModelLoader {
   clearCache(): void {
     this.cache.clear();
     this.totalCacheMemory = 0;
-    Logger.info(LogCategory.CORE, '[AnimatedModelLoader] Cache cleared');
+    // Logger.info(LogCategory.CORE, '[AnimatedModelLoader] Cache cleared');
   }
 
   /**
@@ -212,21 +212,21 @@ export class AnimatedModelLoader {
    * Load GLTF model from path
    */
   private async loadGLTF(path: string): Promise<any> {
-    Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading GLTF from: ${path}`);
+            // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading GLTF from: ${path}`);
     
     try {
       const gltf = await new Promise<any>((resolve, reject) => {
         this.gltfLoader.load(
           path,
           (gltf) => {
-            Logger.info(LogCategory.CORE, `[AnimatedModelLoader] GLTF loaded successfully: ${path}`);
-            Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Scene children: ${gltf.scene?.children?.length || 0}`);
-            Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Animations: ${gltf.animations?.length || 0}`);
+                    // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] GLTF loaded successfully: ${path}`);
+        // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Scene children: ${gltf.scene?.children?.length || 0}`);
+        // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Animations: ${gltf.animations?.length || 0}`);
             resolve(gltf);
           },
-          (progress) => {
-            Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading progress: ${(progress.loaded / progress.total * 100).toFixed(1)}%`);
-          },
+          // (progress) => {
+          //   // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading progress: ${(progress.loaded / progress.total * 100).toFixed(1)}%`);
+          // },
           (error) => {
             Logger.error(LogCategory.CORE, `[AnimatedModelLoader] Failed to load GLTF: ${path}`, error);
             reject(error);
@@ -258,7 +258,7 @@ export class AnimatedModelLoader {
         (progress) => {
           // Reduced logging frequency to prevent spam
           if (progress.loaded === progress.total) {
-            Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading progress: ${path}`, progress);
+            // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading progress: ${path}`, progress);
           }
         },
         (error) => {
@@ -273,28 +273,28 @@ export class AnimatedModelLoader {
     characterConfig: CharacterConfig, 
     lodLevel: number
   ): Promise<AnimatedModel> {
-    Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Creating animated model for ${characterConfig.name}`);
+          // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Creating animated model for ${characterConfig.name}`);
     
     // Get the model from the GLTF scene
     const model = gltf.scene.clone();
-    Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Model cloned successfully`);
+          // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Model cloned successfully`);
     
     // Apply character scaling
     this.applyCharacterScale(model, characterConfig.scale);
-    Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Scale applied: ${characterConfig.scale}`);
+          // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Scale applied: ${characterConfig.scale}`);
 
     // Extract animation data from main model
     const animations = this.extractAnimationData(model);
     const blendshapes = this.extractBlendshapeData(model);
-    Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Extracted ${animations.size} animations and ${blendshapes.size} blendshapes`);
+          // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Extracted ${animations.size} animations and ${blendshapes.size} blendshapes`);
 
     // Create animation mixer
     const mixer = this.createAnimationMixer(model);
-    Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Animation mixer created`);
+          // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Animation mixer created`);
 
     // Load animations from separate files
     await this.loadCharacterAnimations(model, characterConfig, animations);
-    Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Character animations loaded`);
+          // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Character animations loaded`);
 
     // Create animated model
     const animatedModel: AnimatedModel = {
@@ -309,7 +309,7 @@ export class AnimatedModelLoader {
       isValid: true
     };
 
-    Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Animated model created successfully for ${characterConfig.name}`);
+          // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Animated model created successfully for ${characterConfig.name}`);
     return animatedModel;
   }
 
@@ -333,15 +333,15 @@ export class AnimatedModelLoader {
     characterConfig: CharacterConfig, 
     animations: Map<string, THREE.AnimationClip>
   ): Promise<void> {
-    Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading animations for ${characterConfig.name} (${Object.keys(characterConfig.animations).length} animations)`);
+    // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading animations for ${characterConfig.name} (${Object.keys(characterConfig.animations).length} animations)`);
     
     const animationPromises: Promise<void>[] = [];
     const animationEntries = Object.entries(characterConfig.animations);
     
-    Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Animation files to load for ${characterConfig.name}:`);
-    animationEntries.forEach(([name, path]) => {
-      Logger.info(LogCategory.CORE, `  - ${name}: ${path}`);
-    });
+          // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Animation files to load for ${characterConfig.name}:`);
+          // animationEntries.forEach(([name, path]) => {
+      //   // Logger.info(LogCategory.CORE, `  - ${name}: ${path}`);
+      // });
     
     // Load each animation file
     for (const [animationName, animationPath] of animationEntries) {
@@ -351,8 +351,8 @@ export class AnimatedModelLoader {
     
     try {
       await Promise.all(animationPromises);
-      Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loaded ${animationPromises.length} animations for ${characterConfig.name}`);
-      Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Final animation count for ${characterConfig.name}: ${model.animations.length} animations, ${animations.size} actions`);
+      // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loaded ${animationPromises.length} animations for ${characterConfig.name}`);
+      // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Final animation count for ${characterConfig.name}: ${model.animations.length} animations, ${animations.size} actions`);
     } catch (error) {
       Logger.warn(LogCategory.CORE, `[AnimatedModelLoader] Some animations failed to load for ${characterConfig.name}:`, error);
     }
@@ -368,7 +368,7 @@ export class AnimatedModelLoader {
     animations: Map<string, THREE.AnimationClip>
   ): Promise<void> {
     try {
-      Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading animation ${animationName} from: ${animationPath}`);
+      // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading animation ${animationName} from: ${animationPath}`);
       const gltfData = await this.loadGLTFWithAnimations(animationPath);
       
       if (!gltfData) {
@@ -386,7 +386,7 @@ export class AnimatedModelLoader {
         return;
       }
       
-      Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Found ${gltfData.animations.length} animations in: ${animationPath}`);
+              // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Found ${gltfData.animations.length} animations in: ${animationPath}`);
       
       // Add animations to the model and create actions
       gltfData.animations.forEach((clip: THREE.AnimationClip) => {
@@ -399,7 +399,7 @@ export class AnimatedModelLoader {
         
       });
       
-      Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Successfully loaded animation: ${animationName}`);
+              // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Successfully loaded animation: ${animationName}`);
     } catch (error) {
       Logger.error(LogCategory.CORE, `[AnimatedModelLoader] Failed to load animation ${animationName} from ${animationPath}:`, error);
     }
@@ -448,7 +448,7 @@ export class AnimatedModelLoader {
       // Force correct scale
       model.scale.set(scale, scale, scale);
     } else {
-      Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Scale applied correctly: ${actualScale.x.toFixed(2)}, ${actualScale.y.toFixed(2)}, ${actualScale.z.toFixed(2)}`);
+      // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Scale applied correctly: ${actualScale.x.toFixed(2)}, ${actualScale.y.toFixed(2)}, ${actualScale.z.toFixed(2)}`);
     }
   }
 
@@ -503,7 +503,7 @@ export class AnimatedModelLoader {
     this.cache.set(cacheKey, cacheEntry);
     this.totalCacheMemory += memorySize;
 
-    Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Cached model: ${cacheKey} (${memorySize} bytes)`);
+          // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Cached model: ${cacheKey} (${memorySize} bytes)`);
   }
 
   private evictOldestCacheEntry(): void {
@@ -522,7 +522,7 @@ export class AnimatedModelLoader {
       this.cache.delete(oldestKey);
       this.totalCacheMemory -= entry.memorySize;
       
-      Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Evicted cache entry: ${oldestKey}`);
+              // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Evicted cache entry: ${oldestKey}`);
     }
   }
 
@@ -619,6 +619,6 @@ export class AnimatedModelLoader {
    */
   dispose(): void {
     this.clearCache();
-    Logger.info(LogCategory.CORE, '[AnimatedModelLoader] Disposed');
+    // Logger.info(LogCategory.CORE, '[AnimatedModelLoader] Disposed');
   }
 } 

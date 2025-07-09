@@ -51,7 +51,7 @@ export class CharacterSelectionSystem extends System {
     this.modelLoader = modelLoader;
     
     this.setupEventListeners();
-    Logger.info(LogCategory.CORE, '[CharacterSelectionSystem] Initialized');
+    // Logger.info(LogCategory.CORE, '[CharacterSelectionSystem] Initialized');
   }
 
   /**
@@ -82,7 +82,7 @@ export class CharacterSelectionSystem extends System {
         this.eventBus
       );
       
-      Logger.info(LogCategory.CORE, '[CharacterSelectionSystem] Gallery initialized');
+      // Logger.info(LogCategory.CORE, '[CharacterSelectionSystem] Gallery initialized');
     } catch (error) {
       Logger.error(LogCategory.CORE, '[CharacterSelectionSystem] Failed to initialize gallery', error);
     }
@@ -178,7 +178,7 @@ export class CharacterSelectionSystem extends System {
       }
     };
     
-    Logger.info(LogCategory.CORE, '[CharacterSelectionSystem] Metrics reset');
+          // Logger.info(LogCategory.CORE, '[CharacterSelectionSystem] Metrics reset');
   }
 
   /**
@@ -252,7 +252,7 @@ export class CharacterSelectionSystem extends System {
         this.metrics.totalSelections;
     }
     
-    Logger.info(LogCategory.CORE, `[CharacterSelectionSystem] Character selected: ${event.selectedCharacter}`);
+          // Logger.info(LogCategory.CORE, `[CharacterSelectionSystem] Character selected: ${event.selectedCharacter}`);
     
     // Emit game-ready event
     this.eventBus.emit('game:character_ready', {
@@ -326,7 +326,7 @@ export class CharacterSelectionSystem extends System {
     // If no character is selected and we're in a game context, auto-select
     if (!selectedCharacter && this.isGameContext()) {
       const defaultCharacter = this.selectionManager.getSelectedCharacterOrDefault();
-      Logger.info(LogCategory.CORE, `[CharacterSelectionSystem] Auto-selecting default character: ${defaultCharacter}`);
+      // Logger.info(LogCategory.CORE, `[CharacterSelectionSystem] Auto-selecting default character: ${defaultCharacter}`);
       
       // Auto-select without showing gallery
       this.selectionManager.setSelectedCharacter(defaultCharacter);
@@ -363,6 +363,6 @@ export class CharacterSelectionSystem extends System {
       this.gallery.dispose();
     }
     
-    Logger.info(LogCategory.CORE, '[CharacterSelectionSystem] Disposed');
+    // Logger.info(LogCategory.CORE, '[CharacterSelectionSystem] Disposed');
   }
 } 
