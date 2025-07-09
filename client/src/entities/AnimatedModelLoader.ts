@@ -389,7 +389,7 @@ export class AnimatedModelLoader {
       Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Found ${gltfData.animations.length} animations in: ${animationPath}`);
       
       // Add animations to the model and create actions
-      gltfData.animations.forEach((clip: THREE.AnimationClip, index: number) => {
+      gltfData.animations.forEach((clip: THREE.AnimationClip) => {
         // Rename the clip to match the expected name
         clip.name = animationName;
         model.animations.push(clip);
