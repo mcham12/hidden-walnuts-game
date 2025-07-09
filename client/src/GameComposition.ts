@@ -490,6 +490,8 @@ export class GameManager {
     this.networkSystem = container.resolve(ServiceTokens.NETWORK_SYSTEM);
     this.playerManager = container.resolve(ServiceTokens.PLAYER_MANAGER);
     this.renderSystem = container.resolve(ServiceTokens.RENDER_SYSTEM);
+    this.inputAnimationSystem = container.resolve(ServiceTokens.INPUT_ANIMATION_SYSTEM);
+    this.animationSystem = container.resolve(ServiceTokens.ANIMATION_SYSTEM);
 
     // Initialize remaining systems (placeholders for now)
     this.interpolationSystem = new InterpolationSystem(this.eventBus);
@@ -497,8 +499,6 @@ export class GameManager {
     this.networkTickSystem = new NetworkTickSystem(this.eventBus);
     this.areaOfInterestSystem = new AreaOfInterestSystem(this.eventBus);
     this.networkCompressionSystem = new NetworkCompressionSystem(this.eventBus);
-    this.inputAnimationSystem = new InputAnimationSystem(this.eventBus);
-    this.animationSystem = new AnimationSystem(this.eventBus);
     this.networkAnimationSystem = new NetworkAnimationSystem(this.eventBus);
     this.npcSystem = container.resolve(ServiceTokens.NPC_SYSTEM);
     this.characterSelectionSystem = container.resolve(ServiceTokens.CHARACTER_SELECTION_SYSTEM);
@@ -1075,6 +1075,20 @@ export function configureServices(): void {
     return new RenderSystem(
       container.resolve<EventBus>(ServiceTokens.EVENT_BUS),
       renderAdapter
+    );
+  });
+
+  // Register InputAnimationSystem
+  container.registerSingleton(ServiceTokens.INPUT_ANIMATION_SYSTEM, () => {
+    return new InputAnimationSystem(
+      container.resolve<EventBus>(ServiceTokens.EVENT_BUS)
+    );
+  });
+
+  // Register AnimationSystem
+  container.registerSingleton(ServiceTokens.ANIMATION_SYSTEM, () => {
+    return new AnimationSystem(
+      container.resolve<EventBus>(ServiceTokens.EVENT_BUS)
     );
   });
 
