@@ -208,21 +208,41 @@ export class AnimatedModelLoader {
   /**
    * Private methods
    */
-  private async loadGLTF(path: string): Promise<THREE.Object3D> {
-    return new Promise((resolve, reject) => {
-      this.gltfLoader.load(
-        path,
-        (gltf) => {
-          resolve(gltf.scene);
-        },
-        (progress) => {
-          Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Loading progress: ${path}`, progress);
-        },
-        (error) => {
-          reject(error);
-        }
-      );
-    });
+  /**
+   * Load GLTF model from path
+   */
+  private async loadGLTF(path: string): Promise<any> {
+    Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Loading GLTF from: ${path}`);
+    
+    try {
+      const gltf = await new Promise<any>((resolve, reject) => {
+        this.gltfLoader.load(
+          path,
+          (gltf) => {
+            Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] GLTF loaded successfully: ${path}`);
+            Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Scene children: ${gltf.scene?.children?.length || 0}`);
+            Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Animations: ${gltf.animations?.length || 0}`);
+            resolve(gltf);
+          },
+          (progress) => {
+            Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Loading progress: ${(progress.loaded / progress.total * 100).toFixed(1)}%`);
+          },
+          (error) => {
+            Logger.error(LogCategory.CORE, `[AnimatedModelLoader] Failed to load GLTF: ${path}`, error);
+            reject(error);
+          }
+        );
+      });
+      
+      if (!gltf || !gltf.scene) {
+        throw new Error(`Invalid GLTF data: ${path}`);
+      }
+      
+      return gltf;
+    } catch (error) {
+      Logger.error(LogCategory.CORE, `[AnimatedModelLoader] GLTF loading failed: ${path}`, error);
+      throw error;
+    }
   }
 
   private async loadGLTFWithAnimations(path: string): Promise<{ scene: THREE.Object3D; animations: THREE.AnimationClip[] }> {
@@ -246,22 +266,32 @@ export class AnimatedModelLoader {
   }
 
   private async createAnimatedModel(
-    model: THREE.Object3D, 
+    gltf: any, 
     characterConfig: CharacterConfig, 
     lodLevel: number
   ): Promise<AnimatedModel> {
+    Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Creating animated model for ${characterConfig.name}`);
+    
+    // Get the model from the GLTF scene
+    const model = gltf.scene.clone();
+    Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Model cloned successfully`);
+    
     // Apply character scaling
     this.applyCharacterScale(model, characterConfig.scale);
+    Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Scale applied: ${characterConfig.scale}`);
 
     // Extract animation data from main model
     const animations = this.extractAnimationData(model);
     const blendshapes = this.extractBlendshapeData(model);
+    Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Extracted ${animations.size} animations and ${blendshapes.size} blendshapes`);
 
     // Create animation mixer
     const mixer = this.createAnimationMixer(model);
+    Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Animation mixer created`);
 
     // Load animations from separate files
     await this.loadCharacterAnimations(model, characterConfig, animations);
+    Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Character animations loaded`);
 
     // Create animated model
     const animatedModel: AnimatedModel = {
@@ -276,6 +306,7 @@ export class AnimatedModelLoader {
       isValid: true
     };
 
+    Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Animated model created successfully for ${characterConfig.name}`);
     return animatedModel;
   }
 
@@ -398,7 +429,27 @@ export class AnimatedModelLoader {
   }
 
   private applyCharacterScale(model: THREE.Object3D, scale: number): void {
-    model.scale.setScalar(scale);
+    // Apply scale to the main model
+    model.scale.set(scale, scale, scale);
+    
+    // Also apply scale to all children to ensure consistency
+    model.traverse((child) => {
+      if (child !== model) {
+        child.scale.set(scale, scale, scale);
+      }
+    });
+    
+    // Validate scale was applied correctly
+    const actualScale = model.scale;
+    if (Math.abs(actualScale.x - scale) > 0.01 || 
+        Math.abs(actualScale.y - scale) > 0.01 || 
+        Math.abs(actualScale.z - scale) > 0.01) {
+      Logger.warn(LogCategory.CORE, `[AnimatedModelLoader] Scale validation failed: expected=${scale}, actual=${actualScale.x.toFixed(2)},${actualScale.y.toFixed(2)},${actualScale.z.toFixed(2)}`);
+      // Force correct scale
+      model.scale.set(scale, scale, scale);
+    } else {
+      Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Scale applied correctly: ${actualScale.x.toFixed(2)}, ${actualScale.y.toFixed(2)}, ${actualScale.z.toFixed(2)}`);
+    }
   }
 
   private getModelPath(characterConfig: CharacterConfig, lodLevel: number): string {

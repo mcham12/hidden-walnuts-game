@@ -72,7 +72,18 @@ export class PlayerFactory {
     }
     
     // TASK 8 FIX: Apply proper scaling and ensure model is visible
-    model.scale.set(characterScale, characterScale, characterScale);
+    // Scale is already applied by AnimatedModelLoader, just validate it
+    const actualScale = model.scale;
+    if (Math.abs(actualScale.x - characterScale) > 0.01 || 
+        Math.abs(actualScale.y - characterScale) > 0.01 || 
+        Math.abs(actualScale.z - characterScale) > 0.01) {
+      Logger.warn(LogCategory.PLAYER, `⚠️ Model scale mismatch for ${selectedCharacterType}: expected=${characterScale}, actual=${actualScale.x.toFixed(2)},${actualScale.y.toFixed(2)},${actualScale.z.toFixed(2)}`);
+      // Force correct scale
+      model.scale.set(characterScale, characterScale, characterScale);
+    } else {
+      Logger.warn(LogCategory.PLAYER, `✅ Model scale validated for ${selectedCharacterType}: ${actualScale.x.toFixed(2)}, ${actualScale.y.toFixed(2)}, ${actualScale.z.toFixed(2)}`);
+    }
+    
     model.position.set(spawnX, spawnY, spawnZ);
     model.rotation.y = spawnRotationY;
     
@@ -238,22 +249,46 @@ export class PlayerFactory {
       if (characterConfig) {
         characterScale = characterConfig.scale;
         Logger.warn(LogCategory.PLAYER, `✅ ${characterType} remote model loaded successfully with scale ${characterScale}`);
+        
+        // Validate that the model was scaled correctly by AnimatedModelLoader
+        const actualScale = model.scale;
+        if (Math.abs(actualScale.x - characterScale) > 0.01 || 
+            Math.abs(actualScale.y - characterScale) > 0.01 || 
+            Math.abs(actualScale.z - characterScale) > 0.01) {
+          Logger.warn(LogCategory.PLAYER, `⚠️ Model scale mismatch for ${characterType}: expected=${characterScale}, actual=${actualScale.x.toFixed(2)},${actualScale.y.toFixed(2)},${actualScale.z.toFixed(2)}`);
+          // Force correct scale
+          model.scale.set(characterScale, characterScale, characterScale);
+        } else {
+          Logger.warn(LogCategory.PLAYER, `✅ Model scale validated for ${characterType}: ${actualScale.x.toFixed(2)}, ${actualScale.y.toFixed(2)}, ${actualScale.z.toFixed(2)}`);
+        }
       } else {
         Logger.warn(LogCategory.PLAYER, `⚠️ No character config found for ${characterType}, using default scale`);
       }
     } catch (error) {
       Logger.error(LogCategory.PLAYER, `❌ Failed to load ${characterType} remote model, falling back to squirrel`, error);
+      Logger.error(LogCategory.PLAYER, `🔍 Error details:`, {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        characterType,
+        squirrelId
+      });
+      
       // Fallback to squirrel model
-      const gltf = await this.assetManager.loadModel('/assets/models/squirrel.glb');
-      if (!gltf || !gltf.scene) {
-        throw new Error('Failed to load fallback squirrel model for remote player');
+      try {
+        const gltf = await this.assetManager.loadModel('/assets/models/squirrel.glb');
+        if (!gltf || !gltf.scene) {
+          throw new Error('Failed to load fallback squirrel model for remote player');
+        }
+        model = gltf.scene.clone();
+        characterScale = 0.3; // Default scale for fallback
+        Logger.warn(LogCategory.PLAYER, `✅ Fallback squirrel model loaded for ${squirrelId}`);
+      } catch (fallbackError) {
+        Logger.error(LogCategory.PLAYER, `❌ Failed to load fallback squirrel model for ${squirrelId}`, fallbackError);
+        throw new Error(`Failed to load any model for remote player ${squirrelId}`);
       }
-      model = gltf.scene.clone();
-      characterScale = 0.3; // Default scale for fallback
     }
     
-    // Apply proper scaling and positioning
-    model.scale.set(characterScale, characterScale, characterScale);
+    // Apply positioning (scale is already applied by AnimatedModelLoader)
     model.position.set(position.x, position.y, position.z);
     model.rotation.y = rotation.y;
     
@@ -397,7 +432,18 @@ export class PlayerFactory {
     }
     
     // Apply proper scaling and positioning
-    model.scale.set(characterScale, characterScale, characterScale);
+    // Scale is already applied by AnimatedModelLoader, just validate it
+    const actualScale = model.scale;
+    if (Math.abs(actualScale.x - characterScale) > 0.01 || 
+        Math.abs(actualScale.y - characterScale) > 0.01 || 
+        Math.abs(actualScale.z - characterScale) > 0.01) {
+      Logger.warn(LogCategory.PLAYER, `⚠️ Model scale mismatch for ${selectedCharacterType}: expected=${characterScale}, actual=${actualScale.x.toFixed(2)},${actualScale.y.toFixed(2)},${actualScale.z.toFixed(2)}`);
+      // Force correct scale
+      model.scale.set(characterScale, characterScale, characterScale);
+    } else {
+      Logger.info(LogCategory.PLAYER, `✅ Model scale validated for ${selectedCharacterType}: ${actualScale.x.toFixed(2)}, ${actualScale.y.toFixed(2)}, ${actualScale.z.toFixed(2)}`);
+    }
+    
     model.position.set(spawnX, spawnY, spawnZ);
     model.rotation.y = spawnRotationY;
     
