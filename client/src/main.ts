@@ -1,4 +1,5 @@
 // Clean Entry Point - A++ Architecture
+// MVP-8a: Fresh start for animated squirrel players and NPC characters
 
 import { configureServices, GameManager } from './GameComposition';
 import { container, ServiceTokens } from './core/Container';

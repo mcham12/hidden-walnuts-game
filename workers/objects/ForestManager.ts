@@ -3,7 +3,8 @@
 // It is responsible for spawning system-generated walnuts, resetting the map every 24 hours,
 // tracking walnut activity (for hot zones), and handling Nut Rush mini-events.
 // Each day is identified by a cycle key like "2025-05-03".
-// This object should also maintain a list of walnut spawn locations and recent actions..
+// This object should also maintain a list of walnut spawn locations and recent actions.
+// MVP-8a: Fresh start for animated squirrel players and NPC characters.
 
 import { TREE_COUNT, SHRUB_COUNT, TERRAIN_SIZE, ANTI_CHEAT, MOVEMENT_VALIDATION } from "../constants";
 import type { Walnut, WalnutOrigin, HidingMethod, ForestObject } from "../types";
