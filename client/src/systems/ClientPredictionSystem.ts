@@ -404,8 +404,8 @@ export class ClientPredictionSystem extends System {
       this.inputHistory = this.inputHistory.slice(-maxBufferSize);
     }
     
-    // TASK 8 PHASE 3: Performance monitoring (log only every 60 frames to reduce spam)
-    if (this.inputHistory.length > 20 && this.performanceMetrics.totalInputs % 60 === 0) {
+    // TASK 8 PHASE 3: Performance monitoring (log only every 300 frames to reduce spam)
+    if (this.inputHistory.length > 20 && this.performanceMetrics.totalInputs % 300 === 0) {
       Logger.debugExpensive(LogCategory.NETWORK, () => 
         `Input buffer: ${this.inputHistory.length} inputs, oldest: ${(now - this.inputHistory[0]?.timestamp || 0).toFixed(0)}ms ago`
       );
@@ -445,8 +445,8 @@ export class ClientPredictionSystem extends System {
         break;
     }
     
-    // Log performance metrics periodically
-    if (this.performanceMetrics.totalInputs % 100 === 0) {
+    // Log performance metrics periodically (reduced frequency to reduce spam)
+    if (this.performanceMetrics.totalInputs % 500 === 0) {
       Logger.debug(LogCategory.NETWORK, `Performance metrics: ${JSON.stringify(this.performanceMetrics)}`);
     }
   }

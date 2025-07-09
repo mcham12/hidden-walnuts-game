@@ -487,8 +487,8 @@ export class NetworkTickSystem extends System {
         break;
     }
     
-    // Log performance metrics periodically
-    if (this.performanceMetrics.totalTicks % 50 === 0) {
+    // Log performance metrics periodically (reduced frequency to reduce spam)
+    if (this.performanceMetrics.totalTicks % 250 === 0) {
       Logger.debug(LogCategory.NETWORK, `Network performance: ${JSON.stringify(this.performanceMetrics)}`);
     }
   }

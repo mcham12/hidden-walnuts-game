@@ -230,6 +230,8 @@ export class SceneManager implements ISceneManager {
   updateCameraToFollowPlayer(playerPosition: { x: number; y: number; z: number }, playerRotation: { y: number }): void {
     if (!this.camera) return;
     
+    Logger.debug(LogCategory.RENDER, `🎥 SceneManager: Moving camera to follow player at (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
+    
     // Camera configuration constants - EVEN CLOSER CAMERA FOR BETTER GAMEPLAY
     const baseDistance = 2.5; // Reduced from 4 to 2.5 for even closer camera
     const baseHeight = 2; // Reduced from 3 to 2 for even lower camera angle
@@ -881,6 +883,7 @@ export class GameManager {
     const rotation = this.localPlayer.getComponent<RotationComponent>('rotation');
     
     if (position && rotation) {
+      Logger.debug(LogCategory.RENDER, `🎥 Updating camera to follow player at (${position.value.x.toFixed(1)}, ${position.value.y.toFixed(1)}, ${position.value.z.toFixed(1)})`);
       this.sceneManager.updateCameraToFollowPlayer(
         { x: position.value.x, y: position.value.y, z: position.value.z },
         { y: rotation.value.y }

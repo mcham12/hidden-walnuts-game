@@ -279,8 +279,8 @@ export class AnimationSystem extends System {
    * Check if we should log performance metrics
    */
   private shouldLogPerformance(): boolean {
-    // Log every 60 frames (approximately once per second at 60fps)
-    return this.frameCount % 60 === 0;
+    // Log every 300 frames (approximately once per 5 seconds at 60fps) to reduce spam
+    return this.frameCount % 300 === 0;
   }
 
   /**
