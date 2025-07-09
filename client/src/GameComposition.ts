@@ -473,6 +473,8 @@ export class GameManager {
   private localPlayer?: Entity;
   private isRunning = false;
   private lastFrameTime = 0;
+  private lastCameraUpdate = 0;
+  private cameraUpdateInterval = 100; // Update camera every 100ms instead of every frame
   private networkAnimationSystem: NetworkAnimationSystem;
   private npcSystem!: NPCSystem;
   private characterSelectionSystem!: CharacterSelectionSystem;
@@ -864,8 +866,10 @@ export class GameManager {
         return;
       }
       
-      // CHEN'S FIX: Update camera to follow local player
-      this.updateCameraToFollowLocalPlayer();
+      // CHEN'S FIX: Update camera to follow local player (only when player exists)
+      if (this.localPlayer) {
+        this.updateCameraToFollowLocalPlayer();
+      }
       
       renderer.render(scene, camera);
     } catch (error) {
@@ -879,6 +883,11 @@ export class GameManager {
       return;
     }
     
+    const now = performance.now();
+    if (now - this.lastCameraUpdate < this.cameraUpdateInterval) {
+      return; // Skip update if not enough time has passed
+    }
+    
     const position = this.localPlayer.getComponent<PositionComponent>('position');
     const rotation = this.localPlayer.getComponent<RotationComponent>('rotation');
     
@@ -888,6 +897,7 @@ export class GameManager {
         { x: position.value.x, y: position.value.y, z: position.value.z },
         { y: rotation.value.y }
       );
+      this.lastCameraUpdate = now;
     }
   }
 

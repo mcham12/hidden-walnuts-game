@@ -256,7 +256,10 @@ export class AnimatedModelLoader {
           });
         },
         (progress) => {
-          Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Loading progress: ${path}`, progress);
+          // Reduced logging frequency to prevent spam
+          if (progress.loaded === progress.total) {
+            Logger.debug(LogCategory.CORE, `[AnimatedModelLoader] Loading progress: ${path}`, progress);
+          }
         },
         (error) => {
           reject(error);
