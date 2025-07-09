@@ -30,7 +30,21 @@ export class PlayerFactory {
     // TASK 8 FIX: Spawn players very close to origin for easier multiplayer testing
     const spawnX = Math.random() * 10 - 5; // Random spawn between -5 and 5 (closer to origin)
     const spawnZ = Math.random() * 10 - 5; // Random spawn between -5 and 5 (closer to origin)
-    const spawnY = 1.0; // Fixed height above ground
+    
+    // Get proper terrain height for spawn position
+    let spawnY = 1.0; // Default fallback height
+    try {
+      const { container, ServiceTokens } = await import('../core/Container');
+      const terrainService = container.resolve(ServiceTokens.TERRAIN_SERVICE) as any;
+      if (terrainService) {
+        const terrainHeight = await terrainService.getTerrainHeight(spawnX, spawnZ);
+        spawnY = terrainHeight + 0.2; // Spawn slightly above terrain surface
+        Logger.warn(LogCategory.PLAYER, `📍 Terrain height at spawn: ${terrainHeight.toFixed(2)}, spawn Y: ${spawnY.toFixed(2)}`);
+      }
+    } catch (error) {
+      Logger.warn(LogCategory.PLAYER, `⚠️ Could not get terrain height, using default Y=${spawnY}`, error);
+    }
+    
     const spawnRotationY = Math.random() * Math.PI * 2; // Random rotation
     
     Logger.warn(LogCategory.PLAYER, `📍 Spawn position: (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
@@ -175,6 +189,13 @@ export class PlayerFactory {
         squirrelId: playerId,
         lastUpdate: performance.now(),
         characterType: selectedCharacterType
+      })
+      .addComponent<InputComponent>({
+        type: 'input',
+        forward: false,
+        backward: false,
+        turnLeft: false,
+        turnRight: false
       });
     
     Logger.warn(LogCategory.PLAYER, `✅ Basic components added to entity`);

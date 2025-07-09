@@ -734,9 +734,19 @@ export class GameManager {
       const selectedCharacter = characterSelectionManager.getSelectedCharacter();
       Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Selected character type: ${selectedCharacter}`);
       
-      // Create local player entity
-      Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Creating local player with saved position data`);
-      this.localPlayer = await playerFactory.createLocalPlayer(squirrelId, selectedCharacter, savedPlayerData);
+      // Create local player entity using appropriate method
+      if (savedPlayerData) {
+        Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Creating local player with saved position data`);
+        this.localPlayer = await playerFactory.createLocalPlayerWithPosition(
+          squirrelId, 
+          savedPlayerData.position, 
+          savedPlayerData.rotationY, 
+          selectedCharacter
+        );
+      } else {
+        Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Creating local player with random spawn`);
+        this.localPlayer = await playerFactory.createLocalPlayer(squirrelId, selectedCharacter);
+      }
       
       if (!this.localPlayer) {
         throw new Error('Failed to create local player entity');

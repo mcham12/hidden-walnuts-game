@@ -39,18 +39,19 @@ export class CharacterSelectionManager implements ICharacterSelectionStorage {
   }
 
   /**
-   * FIXED: Get the currently selected character (no auto-selection)
+   * FIXED: Get the currently selected character with fallback to default
    */
-  getSelectedCharacter(): string | null {
+  getSelectedCharacter(): string {
     try {
       const stored = localStorage.getItem(this.storageKey);
       if (stored && this.validateCharacterType(stored)) {
         return stored;
       }
-      return null;
+      // Return default character instead of null
+      return this.defaultCharacter;
     } catch (error) {
       Logger.error(LogCategory.CORE, '[CharacterSelectionManager] Error getting selected character', error);
-      return null;
+      return this.defaultCharacter;
     }
   }
 
