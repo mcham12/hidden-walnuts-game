@@ -475,6 +475,7 @@ export class GameManager {
   private networkAnimationSystem: NetworkAnimationSystem;
   private npcSystem!: NPCSystem;
   private characterSelectionSystem!: CharacterSelectionSystem;
+  private debugLogged = false; // Added for debug test
 
   constructor() {
     // Get dependencies from container
@@ -789,6 +790,12 @@ export class GameManager {
       // ===========================================
       // Log every 3 seconds to avoid console spam
       const shouldLog = Math.floor(performance.now() / 1000) % 3 === 0 && performance.now() % 100 < 16;
+      
+      // TEST: Log once immediately to verify debug is working
+      if (!this.debugLogged) {
+        Logger.warn(LogCategory.ECS, `[CRITICAL] 🧪 DEBUG TEST: Game loop is running!`);
+        this.debugLogged = true;
+      }
       
       if (shouldLog) {
         Logger.warn(LogCategory.ECS, `[CRITICAL] 📊 Total entities: ${this.entityManager.getAllEntities().length}`);
