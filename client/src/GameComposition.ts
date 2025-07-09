@@ -703,9 +703,29 @@ export class GameManager {
   }
 
   start(): void {
-    if (this.isRunning) return;
+    // ===========================================
+    // 🚨 CRITICAL DEBUG CODE - REMOVE AFTER FIXING GAME LOOP ISSUE
+    // ===========================================
+    Logger.warn(LogCategory.CORE, `[GameManager] 🚀 start() method called, isRunning=${this.isRunning}`);
+    
+    if (this.isRunning) {
+      Logger.warn(LogCategory.CORE, `[GameManager] ⚠️ Game already running, skipping start`);
+      return;
+    }
+    
     this.isRunning = true;
+    Logger.warn(LogCategory.CORE, `[GameManager] ✅ isRunning set to true, calling gameLoop()`);
+    
+    // Test if requestAnimationFrame is available
+    if (typeof requestAnimationFrame === 'undefined') {
+      Logger.error(LogCategory.CORE, `[GameManager] ❌ requestAnimationFrame is not available!`);
+      return;
+    }
+    
+    Logger.warn(LogCategory.CORE, `[GameManager] 🎬 About to call gameLoop() for the first time`);
     this.gameLoop();
+    Logger.warn(LogCategory.CORE, `[GameManager] 🎬 Initial gameLoop() call completed`);
+    // ===========================================
   }
 
   stop(): void {
@@ -781,9 +801,19 @@ export class GameManager {
   private static readonly TARGET_DELTA_TIME = 1/60; // 60fps target
 
   private gameLoop = (): void => {
-    if (!this.isRunning) return;
+    // ===========================================
+    // 🚨 CRITICAL DEBUG CODE - REMOVE AFTER FIXING GAME LOOP ISSUE
+    // ===========================================
+    Logger.warn(LogCategory.CORE, `[GameLoop] 🔄 gameLoop() called, isRunning=${this.isRunning}`);
+    
+    if (!this.isRunning) {
+      Logger.warn(LogCategory.CORE, `[GameLoop] ❌ isRunning is false, exiting gameLoop`);
+      return;
+    }
 
     try {
+      Logger.warn(LogCategory.CORE, `[GameLoop] 💫 Entering try block`);
+      
       // ===========================================
       // 🚨 CRITICAL DEBUG CODE - REMOVE AFTER FIXING PLAYER VISIBILITY ISSUE
       // ===========================================
@@ -817,6 +847,8 @@ export class GameManager {
       }
       // ===========================================
       
+      Logger.warn(LogCategory.CORE, `[GameLoop] ⏱️ About to calculate deltaTime`);
+      
       // CHEN'S FIX: Variable timestep with frame drop protection
       const now = performance.now();
       let deltaTime = this.lastFrameTime === 0 ? GameManager.TARGET_DELTA_TIME : (now - this.lastFrameTime) / 1000;
@@ -825,14 +857,22 @@ export class GameManager {
       // Cap deltaTime to prevent spiral of death on frame drops
       deltaTime = Math.min(deltaTime, GameManager.MAX_DELTA_TIME);
       
+      Logger.warn(LogCategory.CORE, `[GameLoop] ✅ deltaTime calculated: ${deltaTime.toFixed(4)}`);
+      
       // CHEN'S FIX: Protected ECS system updates
+      Logger.warn(LogCategory.CORE, `[GameLoop] 🔧 About to call safeSystemUpdate`);
       this.safeSystemUpdate(deltaTime);
+      Logger.warn(LogCategory.CORE, `[GameLoop] ✅ safeSystemUpdate completed`);
       
       // Check character selection input
+      Logger.warn(LogCategory.CORE, `[GameLoop] 🎮 About to check character selection input`);
       this.checkCharacterSelectionInput();
+      Logger.warn(LogCategory.CORE, `[GameLoop] ✅ Character selection input checked`);
       
       // CHEN'S FIX: Protected rendering
+      Logger.warn(LogCategory.CORE, `[GameLoop] 🎨 About to call safeRender`);
       this.safeRender();
+      Logger.warn(LogCategory.CORE, `[GameLoop] ✅ safeRender completed`);
       
       // Reset error count if we've been stable
       const currentTime = performance.now();
@@ -841,11 +881,16 @@ export class GameManager {
       }
       
     } catch (error) {
+      Logger.error(LogCategory.CORE, `[GameLoop] 💥 Error in gameLoop:`, error);
       this.handleGameLoopError(error);
     }
 
+    Logger.warn(LogCategory.CORE, `[GameLoop] 🔄 About to schedule next frame with requestAnimationFrame`);
+    
     // Continue game loop even after errors (with throttling)
     requestAnimationFrame(this.gameLoop);
+    
+    Logger.warn(LogCategory.CORE, `[GameLoop] ✅ requestAnimationFrame scheduled`);
   };
 
   private safeSystemUpdate(deltaTime: number): void {
