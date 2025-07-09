@@ -8,7 +8,7 @@ export const puduConfig: CharacterConfig = {
   id: 'pudu',
   name: 'Pudu',
   modelPath: '/assets/models/Pudu_LOD0.glb',
-  scale: 0.32,
+  scale: 1.0,
   lodPaths: {
     lod0: '/assets/models/Pudu_LOD0.glb',
     lod1: '/assets/models/Pudu_LOD1.glb',

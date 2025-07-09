@@ -8,7 +8,7 @@ export const geckoConfig: CharacterConfig = {
   id: 'gecko',
   name: 'Gecko',
   modelPath: '/assets/models/Gecko_LOD0.glb',
-  scale: 0.25,
+  scale: 1.0,
   lodPaths: {
     lod0: '/assets/models/Gecko_LOD0.glb',
     lod1: '/assets/models/Gecko_LOD1.glb',

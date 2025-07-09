@@ -810,64 +810,14 @@ export class GameManager {
 
     try {
       // ===========================================
-      // 🚨 BYPASS LOGGER TEST - DIRECT CONSOLE.LOG
+      // 🚨 DEBUG TESTING COMPLETED - GAME LOOP RUNNING
       // ===========================================
-      // Test if game loop is running at all
-      if (!this.debugLogged) {
-        console.log('🧪 [DIRECT TEST] Game loop is running!');
-        this.debugLogged = true;
-      }
       
       // ===========================================
-      // 🚨 ESSENTIAL DEBUG - REDUCED SPAM
+      // 🚨 DEBUG LOGGING REMOVED - ISSUE RESOLVED
       // ===========================================
-      // Log every 3 seconds to avoid console spam
-      const shouldLog = Math.floor(performance.now() / 1000) % 3 === 0 && performance.now() % 100 < 16;
-      
-      if (shouldLog) {
-        console.log(`[CRITICAL] 📊 Total entities: ${this.entityManager.getAllEntities().length}`);
-        console.log(`[CRITICAL] 🎯 Local player: ${!!this.localPlayer ? 'EXISTS' : 'MISSING'}, ID: ${this.localPlayer?.id.value || 'none'}`);
-        
-        if (this.localPlayer) {
-          const components = this.localPlayer.getComponents().map(c => c.type);
-          console.log(`[CRITICAL] 🧩 Components: ${components.join(', ')}`);
-          
-          const renderComp = this.localPlayer.getComponent<any>('render');
-          if (renderComp) {
-            console.log(`[CRITICAL] 🎨 Render component: mesh=${!!renderComp.mesh}, visible=${renderComp.visible}`);
-            if (renderComp.mesh) {
-              const pos = renderComp.mesh.position;
-              console.log(`[CRITICAL] 🗺️ Player mesh position: (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`);
-              const scale = renderComp.mesh.scale;
-              console.log(`[CRITICAL] 📏 Player mesh scale: (${scale.x.toFixed(2)}, ${scale.y.toFixed(2)}, ${scale.z.toFixed(2)})`);
-            }
-          }
-        }
-        
-        // Check RenderSystem
-        const renderSystem = this.entityManager.getAllSystems().find(s => s.constructor.name === 'RenderSystem');
-        if (renderSystem) {
-          console.log(`[CRITICAL] 🖼️ RenderSystem found with ${(renderSystem as any).entities?.size || 0} entities`);
-        }
-        
-        // Check scene children
-        const scene = this.sceneManager.getScene();
-        if (scene) {
-          console.log(`[CRITICAL] 🎭 Scene has ${scene.children.length} children`);
-        }
-
-        // Log camera info
-        const camera = this.sceneManager.getCamera && this.sceneManager.getCamera();
-        if (camera) {
-          const cpos = camera.position;
-          console.log(`[CRITICAL] 🎥 Camera position: (${cpos.x.toFixed(2)}, ${cpos.y.toFixed(2)}, ${cpos.z.toFixed(2)})`);
-          // Only log camera.target if it exists (OrbitControls etc.)
-          if ('target' in camera && camera.target) {
-            const t = (camera as any).target;
-            console.log(`[CRITICAL] 🎯 Camera target: (${t.x.toFixed(2)}, ${t.y.toFixed(2)}, ${t.z.toFixed(2)})`);
-          }
-        }
-      }
+      // Character scale has been fixed from 0.3 to 1.0
+      // Players should now be visible in the game
 
       const currentTime = performance.now();
       const deltaTime = (currentTime - this.lastFrameTime) / 1000;

@@ -8,7 +8,7 @@ export const sparrowConfig: CharacterConfig = {
   id: 'sparrow',
   name: 'Sparrow',
   modelPath: '/assets/models/Sparrow_LOD0.glb',
-  scale: 0.22,
+  scale: 1.0,
   lodPaths: {
     lod0: '/assets/models/Sparrow_LOD0.glb',
     lod1: '/assets/models/Sparrow_LOD1.glb',

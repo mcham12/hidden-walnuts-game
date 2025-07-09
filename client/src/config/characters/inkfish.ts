@@ -8,7 +8,7 @@ export const inkfishConfig: CharacterConfig = {
   id: 'inkfish',
   name: 'Inkfish',
   modelPath: '/assets/models/Inkfish_LOD0.glb',
-  scale: 0.4,
+  scale: 1.0,
   lodPaths: {
     lod0: '/assets/models/Inkfish_LOD0.glb',
     lod1: '/assets/models/Inkfish_LOD1.glb',

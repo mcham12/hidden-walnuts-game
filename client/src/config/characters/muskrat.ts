@@ -8,7 +8,7 @@ export const muskratConfig: CharacterConfig = {
   id: 'muskrat',
   name: 'Muskrat',
   modelPath: '/assets/models/Muskrat_LOD0.glb',
-  scale: 0.28,
+  scale: 1.0,
   lodPaths: {
     lod0: '/assets/models/Muskrat_LOD0.glb',
     lod1: '/assets/models/Muskrat_LOD1.glb',

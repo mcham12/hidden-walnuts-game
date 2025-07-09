@@ -8,7 +8,7 @@ export const taipanConfig: CharacterConfig = {
   id: 'taipan',
   name: 'Taipan',
   modelPath: '/assets/models/Taipan_LOD0.glb',
-  scale: 0.35,
+  scale: 1.0,
   lodPaths: {
     lod0: '/assets/models/Taipan_LOD0.glb',
     lod1: '/assets/models/Taipan_LOD1.glb',

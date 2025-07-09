@@ -8,7 +8,7 @@ export const colobusConfig: CharacterConfig = {
   id: 'colobus',
   name: 'Colobus',
   modelPath: '/assets/models/Colobus_LOD0.glb',
-  scale: 0.3,
+  scale: 1.0,
   lodPaths: {
     lod0: '/assets/models/Colobus_LOD0.glb',
     lod1: '/assets/models/Colobus_LOD1.glb',

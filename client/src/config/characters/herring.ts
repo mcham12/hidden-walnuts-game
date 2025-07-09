@@ -8,7 +8,7 @@ export const herringConfig: CharacterConfig = {
   id: 'herring',
   name: 'Herring',
   modelPath: '/assets/models/Herring_LOD0.glb',
-  scale: 0.35,
+  scale: 1.0,
   lodPaths: {
     lod0: '/assets/models/Herring_LOD0.glb',
     lod1: '/assets/models/Herring_LOD1.glb',
