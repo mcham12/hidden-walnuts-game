@@ -703,29 +703,9 @@ export class GameManager {
   }
 
   start(): void {
-    // ===========================================
-    // 🚨 CRITICAL DEBUG CODE - REMOVE AFTER FIXING GAME LOOP ISSUE
-    // ===========================================
-    Logger.warn(LogCategory.CORE, `[GameManager] 🚀 start() method called, isRunning=${this.isRunning}`);
-    
-    if (this.isRunning) {
-      Logger.warn(LogCategory.CORE, `[GameManager] ⚠️ Game already running, skipping start`);
-      return;
-    }
-    
+    if (this.isRunning) return;
     this.isRunning = true;
-    Logger.warn(LogCategory.CORE, `[GameManager] ✅ isRunning set to true, calling gameLoop()`);
-    
-    // Test if requestAnimationFrame is available
-    if (typeof requestAnimationFrame === 'undefined') {
-      Logger.error(LogCategory.CORE, `[GameManager] ❌ requestAnimationFrame is not available!`);
-      return;
-    }
-    
-    Logger.warn(LogCategory.CORE, `[GameManager] 🎬 About to call gameLoop() for the first time`);
     this.gameLoop();
-    Logger.warn(LogCategory.CORE, `[GameManager] 🎬 Initial gameLoop() call completed`);
-    // ===========================================
   }
 
   stop(): void {
@@ -801,53 +781,44 @@ export class GameManager {
   private static readonly TARGET_DELTA_TIME = 1/60; // 60fps target
 
   private gameLoop = (): void => {
-    // ===========================================
-    // 🚨 CRITICAL DEBUG CODE - REMOVE AFTER FIXING GAME LOOP ISSUE
-    // ===========================================
-    Logger.warn(LogCategory.CORE, `[GameLoop] 🔄 gameLoop() called, isRunning=${this.isRunning}`);
-    
-    if (!this.isRunning) {
-      Logger.warn(LogCategory.CORE, `[GameLoop] ❌ isRunning is false, exiting gameLoop`);
-      return;
-    }
+    if (!this.isRunning) return;
 
     try {
-      Logger.warn(LogCategory.CORE, `[GameLoop] 💫 Entering try block`);
-      
       // ===========================================
-      // 🚨 CRITICAL DEBUG CODE - REMOVE AFTER FIXING PLAYER VISIBILITY ISSUE
+      // 🚨 ESSENTIAL DEBUG - REDUCED SPAM
       // ===========================================
-      // Log every second to identify the exact issue
-      const shouldLog = Math.floor(performance.now() / 1000) % 1 === 0 && performance.now() % 100 < 16;
+      // Log every 3 seconds to avoid console spam
+      const shouldLog = Math.floor(performance.now() / 1000) % 3 === 0 && performance.now() % 100 < 16;
       
       if (shouldLog) {
-        Logger.warn(LogCategory.ECS, `[GameLoop] 🎮 Game loop running, isRunning=${this.isRunning}`);
-        Logger.warn(LogCategory.ECS, `[GameLoop] 📊 Total entities in EntityManager: ${this.entityManager.getAllEntities().length}`);
-        Logger.warn(LogCategory.ECS, `[GameLoop] 🎯 Local player exists: ${!!this.localPlayer}, ID: ${this.localPlayer?.id.value || 'none'}`);
+        Logger.warn(LogCategory.ECS, `[CRITICAL] 📊 Total entities: ${this.entityManager.getAllEntities().length}`);
+        Logger.warn(LogCategory.ECS, `[CRITICAL] 🎯 Local player: ${!!this.localPlayer ? 'EXISTS' : 'MISSING'}, ID: ${this.localPlayer?.id.value || 'none'}`);
         
-        // Check if local player has components
         if (this.localPlayer) {
           const components = this.localPlayer.getComponents().map(c => c.type);
-          Logger.warn(LogCategory.ECS, `[GameLoop] 🧩 Local player components: ${components.join(', ')}`);
+          Logger.warn(LogCategory.ECS, `[CRITICAL] 🧩 Components: ${components.join(', ')}`);
           
           const renderComp = this.localPlayer.getComponent<any>('render');
           if (renderComp) {
-            Logger.warn(LogCategory.ECS, `[GameLoop] 🎨 Local player render component: mesh=${!!renderComp.mesh}, visible=${renderComp.visible}`);
+            Logger.warn(LogCategory.ECS, `[CRITICAL] 🎨 Render: mesh=${!!renderComp.mesh}, visible=${renderComp.visible}`);
+            if (renderComp.mesh) {
+              Logger.warn(LogCategory.ECS, `[CRITICAL] 🎨 Mesh position: (${renderComp.mesh.position.x.toFixed(1)}, ${renderComp.mesh.position.y.toFixed(1)}, ${renderComp.mesh.position.z.toFixed(1)})`);
+            }
           } else {
-            Logger.warn(LogCategory.ECS, `[GameLoop] ❌ Local player missing render component!`);
+            Logger.warn(LogCategory.ECS, `[CRITICAL] ❌ MISSING RENDER COMPONENT!`);
           }
         }
         
-        // Check RenderSystem specifically
         const renderSystemEntities = this.renderSystem.getEntities();
-        Logger.warn(LogCategory.ECS, `[GameLoop] 🖼️ RenderSystem has ${renderSystemEntities.length} entities`);
+        Logger.warn(LogCategory.ECS, `[CRITICAL] 🖼️ RenderSystem entities: ${renderSystemEntities.length}`);
         
-        // Check if systems are registered
-        Logger.warn(LogCategory.ECS, `[GameLoop] 🔧 Systems in EntityManager: ${this.entityManager.getAllSystems().map((s: any) => s.systemId).join(', ')}`);
+        // Check scene children count
+        const scene = this.sceneManager.getScene();
+        if (scene) {
+          Logger.warn(LogCategory.ECS, `[CRITICAL] 🎭 Scene children: ${scene.children.length}`);
+        }
       }
       // ===========================================
-      
-      Logger.warn(LogCategory.CORE, `[GameLoop] ⏱️ About to calculate deltaTime`);
       
       // CHEN'S FIX: Variable timestep with frame drop protection
       const now = performance.now();
@@ -857,22 +828,14 @@ export class GameManager {
       // Cap deltaTime to prevent spiral of death on frame drops
       deltaTime = Math.min(deltaTime, GameManager.MAX_DELTA_TIME);
       
-      Logger.warn(LogCategory.CORE, `[GameLoop] ✅ deltaTime calculated: ${deltaTime.toFixed(4)}`);
-      
       // CHEN'S FIX: Protected ECS system updates
-      Logger.warn(LogCategory.CORE, `[GameLoop] 🔧 About to call safeSystemUpdate`);
       this.safeSystemUpdate(deltaTime);
-      Logger.warn(LogCategory.CORE, `[GameLoop] ✅ safeSystemUpdate completed`);
       
       // Check character selection input
-      Logger.warn(LogCategory.CORE, `[GameLoop] 🎮 About to check character selection input`);
       this.checkCharacterSelectionInput();
-      Logger.warn(LogCategory.CORE, `[GameLoop] ✅ Character selection input checked`);
       
       // CHEN'S FIX: Protected rendering
-      Logger.warn(LogCategory.CORE, `[GameLoop] 🎨 About to call safeRender`);
       this.safeRender();
-      Logger.warn(LogCategory.CORE, `[GameLoop] ✅ safeRender completed`);
       
       // Reset error count if we've been stable
       const currentTime = performance.now();
@@ -885,32 +848,13 @@ export class GameManager {
       this.handleGameLoopError(error);
     }
 
-    Logger.warn(LogCategory.CORE, `[GameLoop] 🔄 About to schedule next frame with requestAnimationFrame`);
-    
     // Continue game loop even after errors (with throttling)
     requestAnimationFrame(this.gameLoop);
-    
-    Logger.warn(LogCategory.CORE, `[GameLoop] ✅ requestAnimationFrame scheduled`);
   };
 
   private safeSystemUpdate(deltaTime: number): void {
     try {
-      // ===========================================
-      // 🚨 TEMPORARY DEBUG CODE - REMOVE AFTER FIXING PLAYER VISIBILITY ISSUE
-      // ===========================================
-      // Only log every 2 seconds to avoid console spam
-      const shouldLog = Math.floor(performance.now() / 1000) % 2 === 0 && performance.now() % 100 < 16;
-      
-      if (shouldLog) {
-        Logger.warn(LogCategory.ECS, `[GameLoop] Starting ECS system update with deltaTime=${deltaTime.toFixed(4)}`);
-      }
       this.entityManager.update(deltaTime);
-      if (shouldLog) {
-        Logger.warn(LogCategory.ECS, `[GameLoop] ECS system update completed successfully`);
-      }
-      // ===========================================
-      // 🚨 END TEMPORARY DEBUG CODE
-      // ===========================================
     } catch (error) {
       Logger.error(LogCategory.ECS, '🚨 [GameLoop] ECS System update failed:', error);
       
@@ -936,22 +880,6 @@ export class GameManager {
         Logger.warn(LogCategory.RENDER, '⚠️ [GameLoop] Render components not ready, skipping frame');
         return;
       }
-      
-      // ===========================================
-      // 🚨 TEMPORARY DEBUG CODE - REMOVE AFTER FIXING PLAYER VISIBILITY ISSUE
-      // ===========================================
-      // Debug scene contents every 3 seconds to avoid console spam
-      // This helps identify if models are actually being added to the Three.js scene
-      const now = Math.floor(performance.now() / 1000);
-      if (now % 3 === 0 && performance.now() % 1000 < 16) {
-        Logger.warn(LogCategory.RENDER, `[Scene] Scene has ${scene.children.length} children:`);
-        scene.children.forEach((child, index) => {
-          Logger.warn(LogCategory.RENDER, `[Scene] Child ${index}: type=${child.type}, visible=${child.visible}, position=(${child.position.x.toFixed(1)}, ${child.position.y.toFixed(1)}, ${child.position.z.toFixed(1)}), scale=(${child.scale.x.toFixed(2)}, ${child.scale.y.toFixed(2)}, ${child.scale.z.toFixed(2)})`);
-        });
-      }
-      // ===========================================
-      // 🚨 END TEMPORARY DEBUG CODE
-      // ===========================================
       
       // CHEN'S FIX: Update camera to follow local player
       this.updateCameraToFollowLocalPlayer();
