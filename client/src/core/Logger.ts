@@ -51,7 +51,19 @@ class GameLogger {
     // Log environment detection for debugging
     if (environment !== 'production') {
       console.info(`🎯 Logger initialized for ${environment} environment`);
+      console.info(`🎯 Logger config: level=${this.config.level}, categories=${Array.from(this.config.enabledCategories).join(', ')}`);
+      
+      // Test that Logger is working
+      this.testLogger();
     }
+  }
+
+  // Test method to verify Logger is working
+  private testLogger(): void {
+    this.debug(LogCategory.CORE, '🧪 Logger test: DEBUG message');
+    this.info(LogCategory.CORE, '🧪 Logger test: INFO message');
+    this.warn(LogCategory.CORE, '🧪 Logger test: WARN message');
+    this.error(LogCategory.CORE, '🧪 Logger test: ERROR message');
   }
 
   private detectEnvironment(): 'development' | 'preview' | 'production' {
@@ -87,7 +99,7 @@ class GameLogger {
       case 'development':
         return LogLevel.DEBUG;
       case 'preview':
-        return LogLevel.WARN; // TASK 8 FIX: Reduce console spam in preview - only show WARN and ERROR
+        return LogLevel.DEBUG; // FIXED: Allow all log levels in preview for debugging
       case 'production':
         return LogLevel.ERROR;
       default:
@@ -100,7 +112,7 @@ class GameLogger {
       case 'development':
         return new Set(Object.values(LogCategory)); // All categories
       case 'preview':
-        return new Set([LogCategory.CORE, LogCategory.NETWORK, LogCategory.PLAYER]); // TASK 8 FIX: Reduce categories in preview
+        return new Set(Object.values(LogCategory)); // FIXED: Enable all categories in preview
       case 'production':
         return new Set([LogCategory.CORE, LogCategory.NETWORK]); // Critical only
       default:
@@ -157,6 +169,10 @@ class GameLogger {
   private log(level: LogLevel, category: LogCategory, message: string, ...args: any[]): void {
     // Early return for disabled logging - ZERO performance cost
     if (level < this.config.level || !this.config.enabledCategories.has(category)) {
+      // DEBUG: Log why this message was filtered (only in development/preview)
+      if (this.config.environment !== 'production') {
+        console.debug(`🔇 [LOGGER DEBUG] Filtered log: level=${level} (min=${this.config.level}), category=${category} (enabled=${this.config.enabledCategories.has(category)})`);
+      }
       return;
     }
 
@@ -178,20 +194,26 @@ class GameLogger {
     
     const logMessage = `${levelEmoji} ${timeTag} ${envTag} ${categoryTag} ${message}`;
     
-    switch (level) {
-      case LogLevel.TRACE:
-      case LogLevel.DEBUG:
-        console.debug(logMessage, ...args);
-        break;
-      case LogLevel.INFO:
-        console.info(logMessage, ...args);
-        break;
-      case LogLevel.WARN:
-        console.warn(logMessage, ...args);
-        break;
-      case LogLevel.ERROR:
-        console.error(logMessage, ...args);
-        break;
+    // FIXED: Add fallback to ensure logs always appear
+    try {
+      switch (level) {
+        case LogLevel.TRACE:
+        case LogLevel.DEBUG:
+          console.debug(logMessage, ...args);
+          break;
+        case LogLevel.INFO:
+          console.info(logMessage, ...args);
+          break;
+        case LogLevel.WARN:
+          console.warn(logMessage, ...args);
+          break;
+        case LogLevel.ERROR:
+          console.error(logMessage, ...args);
+          break;
+      }
+    } catch (error) {
+      // FALLBACK: If console logging fails, use basic console.log
+      console.log(`[LOGGER FALLBACK] ${logMessage}`, ...args);
     }
   }
 

@@ -772,6 +772,26 @@ export class GameManager {
       Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Adding local player entity to ECS...`);
       this.entityManager.addEntity(this.localPlayer);
       Logger.warn(LogCategory.PLAYER, `🎯 GameComposition: Local player entity added to ECS: ${this.localPlayer.id.value}`);
+
+      // One-time snapshot: log player mesh and camera info
+      const renderComp = this.localPlayer.getComponent<any>('render');
+      if (renderComp && renderComp.mesh) {
+        const pos = renderComp.mesh.position;
+        const scale = renderComp.mesh.scale;
+        Logger.warn(LogCategory.PLAYER, `[SNAPSHOT] 🗺️ Player mesh position: (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`);
+        Logger.warn(LogCategory.PLAYER, `[SNAPSHOT] 📏 Player mesh scale: (${scale.x.toFixed(2)}, ${scale.y.toFixed(2)}, ${scale.z.toFixed(2)})`);
+      } else {
+        Logger.warn(LogCategory.PLAYER, `[SNAPSHOT] ❌ No mesh found on player render component!`);
+      }
+      const camera = this.sceneManager.getCamera && this.sceneManager.getCamera();
+      if (camera) {
+        const cpos = camera.position;
+        Logger.warn(LogCategory.PLAYER, `[SNAPSHOT] 🎥 Camera position: (${cpos.x.toFixed(2)}, ${cpos.y.toFixed(2)}, ${cpos.z.toFixed(2)})`);
+        if ('target' in camera && camera.target) {
+          const t = (camera as any).target;
+          Logger.warn(LogCategory.PLAYER, `[SNAPSHOT] 🎯 Camera target: (${t.x.toFixed(2)}, ${t.y.toFixed(2)}, ${t.z.toFixed(2)})`);
+        }
+      }
       
       // Log components for debugging
       const components = this.localPlayer.getComponents().map(c => c.type);
@@ -815,6 +835,12 @@ export class GameManager {
           const renderComp = this.localPlayer.getComponent<any>('render');
           if (renderComp) {
             console.log(`[CRITICAL] 🎨 Render component: mesh=${!!renderComp.mesh}, visible=${renderComp.visible}`);
+            if (renderComp.mesh) {
+              const pos = renderComp.mesh.position;
+              console.log(`[CRITICAL] 🗺️ Player mesh position: (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`);
+              const scale = renderComp.mesh.scale;
+              console.log(`[CRITICAL] 📏 Player mesh scale: (${scale.x.toFixed(2)}, ${scale.y.toFixed(2)}, ${scale.z.toFixed(2)})`);
+            }
           }
         }
         
@@ -828,6 +854,18 @@ export class GameManager {
         const scene = this.sceneManager.getScene();
         if (scene) {
           console.log(`[CRITICAL] 🎭 Scene has ${scene.children.length} children`);
+        }
+
+        // Log camera info
+        const camera = this.sceneManager.getCamera && this.sceneManager.getCamera();
+        if (camera) {
+          const cpos = camera.position;
+          console.log(`[CRITICAL] 🎥 Camera position: (${cpos.x.toFixed(2)}, ${cpos.y.toFixed(2)}, ${cpos.z.toFixed(2)})`);
+          // Only log camera.target if it exists (OrbitControls etc.)
+          if ('target' in camera && camera.target) {
+            const t = (camera as any).target;
+            console.log(`[CRITICAL] 🎯 Camera target: (${t.x.toFixed(2)}, ${t.y.toFixed(2)}, ${t.z.toFixed(2)})`);
+          }
         }
       }
 
