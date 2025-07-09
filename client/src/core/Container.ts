@@ -8,6 +8,7 @@ import { CharacterGallery } from '../ui/CharacterGallery';
 import { PlayerFactory } from '../entities/PlayerFactory';
 import { EventBus } from './EventBus';
 import { initializeCharacterRegistry } from '../config/characters';
+import { AnimationSystem } from '../systems/AnimationSystem';
 
 export type Constructor<T = {}> = new (...args: any[]) => T;
 export type Factory<T> = () => T;
@@ -194,5 +195,5 @@ container.registerSingleton(ServiceTokens.PLAYER_FACTORY, () => {
 // Animation System registration
 container.registerSingleton(ServiceTokens.ANIMATION_SYSTEM, () => {
   const eventBus = container.resolve<EventBus>(ServiceTokens.EVENT_BUS);
-  return new (require('../systems/AnimationSystem').AnimationSystem)(eventBus);
+  return new AnimationSystem(eventBus);
 }); 

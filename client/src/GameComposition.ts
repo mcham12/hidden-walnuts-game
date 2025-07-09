@@ -299,7 +299,13 @@ export class SceneManager implements ISceneManager {
     if (!this.scene) return toPosition;
     
     try {
-      const THREE = require('three');
+      // Use dynamic import for browser compatibility
+      // const THREE = require('three');
+      // Instead, use the global THREE import (already imported at top)
+      const THREE = (window as any).THREE || undefined;
+      if (!THREE) {
+        throw new Error('THREE.js not available globally');
+      }
       
       // Create raycaster from player to ideal camera position
       const direction = {
