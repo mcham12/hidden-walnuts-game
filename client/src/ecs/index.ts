@@ -217,30 +217,16 @@ export class EntityManager {
   }
 
   update(deltaTime: number): void {
-    Logger.warn(LogCategory.ECS, `🔄 EntityManager update - ${this.systems.length} systems, ${this.entities.size} entities`);
-    
     // Update systems in execution order
     for (const systemId of this.systemExecutionOrder) {
       const system = this.systemLookup.get(systemId);
       if (system) {
         try {
-          const entityCount = system.getEntities().length;
-          Logger.warn(LogCategory.ECS, `🎯 Updating system: ${systemId} with ${entityCount} entities`);
-          
-          // Special logging for RenderSystem
-          if (systemId === 'RenderSystem') {
-            Logger.warn(LogCategory.ECS, `🎨 [RenderSystem] Starting update with ${entityCount} entities`);
-            system.update(deltaTime);
-            Logger.warn(LogCategory.ECS, `🎨 [RenderSystem] Update complete`);
-          } else {
-            system.update(deltaTime);
-          }
+          system.update(deltaTime);
         } catch (error) {
           Logger.error(LogCategory.ECS, `🚨 System ${systemId} update failed:`, error);
           throw error;
         }
-      } else {
-        Logger.warn(LogCategory.ECS, `⚠️ System not found in lookup: ${systemId}`);
       }
     }
   }
