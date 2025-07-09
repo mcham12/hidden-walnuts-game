@@ -817,7 +817,22 @@ export class GameManager {
 
   private safeSystemUpdate(deltaTime: number): void {
     try {
+      // ===========================================
+      // 🚨 TEMPORARY DEBUG CODE - REMOVE AFTER FIXING PLAYER VISIBILITY ISSUE
+      // ===========================================
+      // Only log every 2 seconds to avoid console spam
+      const shouldLog = Math.floor(performance.now() / 1000) % 2 === 0 && performance.now() % 100 < 16;
+      
+      if (shouldLog) {
+        Logger.warn(LogCategory.ECS, `[GameLoop] Starting ECS system update with deltaTime=${deltaTime.toFixed(4)}`);
+      }
       this.entityManager.update(deltaTime);
+      if (shouldLog) {
+        Logger.warn(LogCategory.ECS, `[GameLoop] ECS system update completed successfully`);
+      }
+      // ===========================================
+      // 🚨 END TEMPORARY DEBUG CODE
+      // ===========================================
     } catch (error) {
       Logger.error(LogCategory.ECS, '🚨 [GameLoop] ECS System update failed:', error);
       
@@ -843,6 +858,22 @@ export class GameManager {
         Logger.warn(LogCategory.RENDER, '⚠️ [GameLoop] Render components not ready, skipping frame');
         return;
       }
+      
+      // ===========================================
+      // 🚨 TEMPORARY DEBUG CODE - REMOVE AFTER FIXING PLAYER VISIBILITY ISSUE
+      // ===========================================
+      // Debug scene contents every 3 seconds to avoid console spam
+      // This helps identify if models are actually being added to the Three.js scene
+      const now = Math.floor(performance.now() / 1000);
+      if (now % 3 === 0 && performance.now() % 1000 < 16) {
+        Logger.warn(LogCategory.RENDER, `[Scene] Scene has ${scene.children.length} children:`);
+        scene.children.forEach((child, index) => {
+          Logger.warn(LogCategory.RENDER, `[Scene] Child ${index}: type=${child.type}, visible=${child.visible}, position=(${child.position.x.toFixed(1)}, ${child.position.y.toFixed(1)}, ${child.position.z.toFixed(1)}), scale=(${child.scale.x.toFixed(2)}, ${child.scale.y.toFixed(2)}, ${child.scale.z.toFixed(2)})`);
+        });
+      }
+      // ===========================================
+      // 🚨 END TEMPORARY DEBUG CODE
+      // ===========================================
       
       // CHEN'S FIX: Update camera to follow local player
       this.updateCameraToFollowLocalPlayer();

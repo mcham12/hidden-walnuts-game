@@ -217,18 +217,46 @@ export class EntityManager {
   }
 
   update(deltaTime: number): void {
+    // ===========================================
+    // 🚨 TEMPORARY DEBUG CODE - REMOVE AFTER FIXING PLAYER VISIBILITY ISSUE
+    // ===========================================
+    // Only log every 2 seconds to avoid console spam
+    const shouldLog = Math.floor(performance.now() / 1000) % 2 === 0 && performance.now() % 100 < 16;
+    
+    if (shouldLog) {
+      Logger.warn(LogCategory.ECS, `[EntityManager] Starting update with ${this.systemExecutionOrder.length} systems in order: [${this.systemExecutionOrder.join(', ')}]`);
+      Logger.warn(LogCategory.ECS, `[EntityManager] Total entities: ${this.entities.size}, Total systems: ${this.systems.length}`);
+    }
+    
     // Update systems in execution order
     for (const systemId of this.systemExecutionOrder) {
       const system = this.systemLookup.get(systemId);
       if (system) {
         try {
+          if (shouldLog) {
+            Logger.warn(LogCategory.ECS, `[EntityManager] Updating system: ${systemId} with ${system.getEntities().length} entities`);
+          }
           system.update(deltaTime);
+          if (shouldLog) {
+            Logger.warn(LogCategory.ECS, `[EntityManager] System ${systemId} updated successfully`);
+          }
         } catch (error) {
           Logger.error(LogCategory.ECS, `🚨 System ${systemId} update failed:`, error);
           throw error;
         }
+      } else {
+        if (shouldLog) {
+          Logger.warn(LogCategory.ECS, `⚠️ System ${systemId} not found in lookup, skipping`);
+        }
       }
     }
+    
+    if (shouldLog) {
+      Logger.warn(LogCategory.ECS, `[EntityManager] Update completed successfully`);
+    }
+    // ===========================================
+    // 🚨 END TEMPORARY DEBUG CODE
+    // ===========================================
   }
 
   getEntitiesWithComponent(componentType: string): Entity[] {
