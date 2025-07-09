@@ -873,16 +873,22 @@ export class GameManager {
   }
 
   private updateCameraToFollowLocalPlayer(): void {
-    if (!this.localPlayer) return;
+    if (!this.localPlayer) {
+      Logger.warn(LogCategory.CORE, `📷 [Camera] No local player available for camera follow`);
+      return;
+    }
     
     const position = this.localPlayer.getComponent<PositionComponent>('position');
     const rotation = this.localPlayer.getComponent<RotationComponent>('rotation');
     
     if (position && rotation) {
+      Logger.warn(LogCategory.CORE, `📷 [Camera] Updating camera to follow player at position (${position.value.x.toFixed(1)}, ${position.value.y.toFixed(1)}, ${position.value.z.toFixed(1)}) with rotation ${rotation.value.y.toFixed(2)}`);
       this.sceneManager.updateCameraToFollowPlayer(
         { x: position.value.x, y: position.value.y, z: position.value.z },
         { y: rotation.value.y }
       );
+    } else {
+      Logger.warn(LogCategory.CORE, `📷 [Camera] Local player missing position or rotation component`);
     }
   }
 

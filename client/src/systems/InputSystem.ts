@@ -17,10 +17,10 @@ export class InputSystem extends System {
   }
 
   update(_deltaTime: number): void {
-    Logger.debug(LogCategory.INPUT, `🔄 InputSystem update - processing ${this.entities.size} input entities`);
+    Logger.warn(LogCategory.INPUT, `🔄 InputSystem update - processing ${this.entities.size} input entities`);
     
     const inputState = this.inputManager.getInputState();
-    Logger.debug(LogCategory.INPUT, `🎮 Input state: W=${inputState.forward}, S=${inputState.backward}, A=${inputState.turnLeft}, D=${inputState.turnRight}`);
+    Logger.warn(LogCategory.INPUT, `🎮 Input state: W=${inputState.forward}, S=${inputState.backward}, A=${inputState.turnLeft}, D=${inputState.turnRight}`);
     
     for (const entity of this.entities.values()) {
       const inputComponent = entity.getComponent<InputComponent>('input');
@@ -33,11 +33,11 @@ export class InputSystem extends System {
       
       // Only update local player input
       if (!networkComponent?.isLocalPlayer) {
-        Logger.debug(LogCategory.INPUT, `⏭️ Skipping remote player ${entity.id.value} for input processing`);
+        Logger.warn(LogCategory.INPUT, `⏭️ Skipping remote player ${entity.id.value} for input processing`);
         continue;
       }
       
-      Logger.debug(LogCategory.INPUT, `🎮 Processing local player ${entity.id.value} input`);
+      Logger.warn(LogCategory.INPUT, `🎮 Processing local player ${entity.id.value} input`);
       
       // Update input component with current state
       const oldInput = { ...inputComponent };
@@ -49,7 +49,7 @@ export class InputSystem extends System {
       // Log if input changed
       if (oldInput.forward !== inputState.forward || oldInput.backward !== inputState.backward || 
           oldInput.turnLeft !== inputState.turnLeft || oldInput.turnRight !== inputState.turnRight) {
-        Logger.info(LogCategory.INPUT, `🎮 Input changed for local player ${entity.id.value}: W=${inputState.forward}, S=${inputState.backward}, A=${inputState.turnLeft}, D=${inputState.turnRight}`);
+        Logger.warn(LogCategory.INPUT, `🎮 Input changed for local player ${entity.id.value}: W=${inputState.forward}, S=${inputState.backward}, A=${inputState.turnLeft}, D=${inputState.turnRight}`);
       }
       
       // Emit input event for other systems
@@ -60,6 +60,6 @@ export class InputSystem extends System {
       });
     }
     
-    Logger.debug(LogCategory.INPUT, `✅ InputSystem update complete`);
+    Logger.warn(LogCategory.INPUT, `✅ InputSystem update complete`);
   }
 } 
