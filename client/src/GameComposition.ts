@@ -784,6 +784,39 @@ export class GameManager {
     if (!this.isRunning) return;
 
     try {
+      // ===========================================
+      // 🚨 CRITICAL DEBUG CODE - REMOVE AFTER FIXING PLAYER VISIBILITY ISSUE
+      // ===========================================
+      // Log every second to identify the exact issue
+      const shouldLog = Math.floor(performance.now() / 1000) % 1 === 0 && performance.now() % 100 < 16;
+      
+      if (shouldLog) {
+        Logger.warn(LogCategory.ECS, `[GameLoop] 🎮 Game loop running, isRunning=${this.isRunning}`);
+        Logger.warn(LogCategory.ECS, `[GameLoop] 📊 Total entities in EntityManager: ${this.entityManager.getAllEntities().length}`);
+        Logger.warn(LogCategory.ECS, `[GameLoop] 🎯 Local player exists: ${!!this.localPlayer}, ID: ${this.localPlayer?.id.value || 'none'}`);
+        
+        // Check if local player has components
+        if (this.localPlayer) {
+          const components = this.localPlayer.getComponents().map(c => c.type);
+          Logger.warn(LogCategory.ECS, `[GameLoop] 🧩 Local player components: ${components.join(', ')}`);
+          
+          const renderComp = this.localPlayer.getComponent<any>('render');
+          if (renderComp) {
+            Logger.warn(LogCategory.ECS, `[GameLoop] 🎨 Local player render component: mesh=${!!renderComp.mesh}, visible=${renderComp.visible}`);
+          } else {
+            Logger.warn(LogCategory.ECS, `[GameLoop] ❌ Local player missing render component!`);
+          }
+        }
+        
+        // Check RenderSystem specifically
+        const renderSystemEntities = this.renderSystem.getEntities();
+        Logger.warn(LogCategory.ECS, `[GameLoop] 🖼️ RenderSystem has ${renderSystemEntities.length} entities`);
+        
+        // Check if systems are registered
+        Logger.warn(LogCategory.ECS, `[GameLoop] 🔧 Systems in EntityManager: ${this.entityManager.getAllSystems().map((s: any) => s.systemId).join(', ')}`);
+      }
+      // ===========================================
+      
       // CHEN'S FIX: Variable timestep with frame drop protection
       const now = performance.now();
       let deltaTime = this.lastFrameTime === 0 ? GameManager.TARGET_DELTA_TIME : (now - this.lastFrameTime) / 1000;

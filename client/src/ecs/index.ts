@@ -268,4 +268,12 @@ export class EntityManager {
     this.entities.clear();
     this.systems = [];
   }
+
+  getAllEntities(): Entity[] {
+    return Array.from(this.entities.values());
+  }
+
+  getAllSystems(): System[] {
+    return this.systems;
+  }
 } 
