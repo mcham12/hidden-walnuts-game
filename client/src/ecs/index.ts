@@ -224,8 +224,17 @@ export class EntityManager {
       const system = this.systemLookup.get(systemId);
       if (system) {
         try {
-          Logger.warn(LogCategory.ECS, `🎯 Updating system: ${systemId} with ${system.getEntities().length} entities`);
-          system.update(deltaTime);
+          const entityCount = system.getEntities().length;
+          Logger.warn(LogCategory.ECS, `🎯 Updating system: ${systemId} with ${entityCount} entities`);
+          
+          // Special logging for RenderSystem
+          if (systemId === 'RenderSystem') {
+            Logger.warn(LogCategory.ECS, `🎨 [RenderSystem] Starting update with ${entityCount} entities`);
+            system.update(deltaTime);
+            Logger.warn(LogCategory.ECS, `🎨 [RenderSystem] Update complete`);
+          } else {
+            system.update(deltaTime);
+          }
         } catch (error) {
           Logger.error(LogCategory.ECS, `🚨 System ${systemId} update failed:`, error);
           throw error;

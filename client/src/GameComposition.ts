@@ -503,6 +503,10 @@ export class GameManager {
     this.npcSystem = container.resolve(ServiceTokens.NPC_SYSTEM);
     this.characterSelectionSystem = container.resolve(ServiceTokens.CHARACTER_SELECTION_SYSTEM);
 
+    // DEBUG: Log system resolution
+    Logger.warn(LogCategory.CORE, `🔧 [GameComposition] RenderSystem resolved: ${this.renderSystem ? 'YES' : 'NO'}`);
+    Logger.warn(LogCategory.CORE, `🔧 [GameComposition] RenderSystem systemId: ${this.renderSystem?.systemId || 'UNDEFINED'}`);
+
     // Register all systems with EntityManager in correct execution order
     this.entityManager.addSystem(this.inputSystem);
     this.entityManager.addSystem(this.clientPredictionSystem);
@@ -519,6 +523,9 @@ export class GameManager {
     this.entityManager.addSystem(this.networkAnimationSystem);
     this.entityManager.addSystem(this.npcSystem);
     this.entityManager.addSystem(this.characterSelectionSystem);
+
+    // DEBUG: Log system registration
+    Logger.warn(LogCategory.CORE, `🔧 [GameComposition] All systems registered with EntityManager`);
 
     // Set system execution order for optimal performance
     this.entityManager.setSystemExecutionOrder([
@@ -538,6 +545,9 @@ export class GameManager {
       'NPCSystem',
       'CharacterSelectionSystem'
     ]);
+
+    // DEBUG: Log execution order
+    Logger.warn(LogCategory.CORE, `🔧 [GameComposition] System execution order set`);
 
     Logger.info(LogCategory.CORE, '🎮 GameManager initialized with 15 systems');
   }
