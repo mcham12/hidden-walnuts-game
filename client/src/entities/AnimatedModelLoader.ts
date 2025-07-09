@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Logger, LogCategory } from '../core/Logger';
 import { CharacterRegistry } from '../core/CharacterRegistry';
 import { CharacterConfig } from '../types/CharacterTypes';
@@ -16,7 +15,7 @@ import {
  */
 export class AnimatedModelLoader {
   private cache = new Map<string, AnimationCacheEntry>();
-  private gltfLoader: GLTFLoader;
+  private gltfLoader: any; // Will be initialized dynamically
   private characterRegistry: CharacterRegistry;
   private maxCacheSize: number = 50; // Maximum number of cached models
   private totalCacheMemory: number = 0;
@@ -24,7 +23,8 @@ export class AnimatedModelLoader {
 
   constructor(characterRegistry: CharacterRegistry) {
     this.characterRegistry = characterRegistry;
-    this.gltfLoader = new GLTFLoader();
+    // Initialize GLTFLoader dynamically like AssetManager
+    this.gltfLoader = null as any; // Will be initialized on first use
     
     // Logger.info(LogCategory.CORE, '[AnimatedModelLoader] Initialized with character registry');
   }
@@ -212,22 +212,21 @@ export class AnimatedModelLoader {
    * Load GLTF model from path
    */
   private async loadGLTF(path: string): Promise<any> {
-            // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading GLTF from: ${path}`);
+    // Initialize GLTFLoader dynamically like AssetManager
+    if (!this.gltfLoader) {
+      const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+      this.gltfLoader = new GLTFLoader();
+    }
     
     try {
       const gltf = await new Promise<any>((resolve, reject) => {
         this.gltfLoader.load(
           path,
-          (gltf) => {
-                    // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] GLTF loaded successfully: ${path}`);
-        // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Scene children: ${gltf.scene?.children?.length || 0}`);
-        // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Animations: ${gltf.animations?.length || 0}`);
+          (gltf: any) => {
             resolve(gltf);
           },
-          // (progress) => {
-          //   // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading progress: ${(progress.loaded / progress.total * 100).toFixed(1)}%`);
-          // },
-          (error) => {
+          undefined,
+          (error: any) => {
             Logger.error(LogCategory.CORE, `[AnimatedModelLoader] Failed to load GLTF: ${path}`, error);
             reject(error);
           }
@@ -246,22 +245,28 @@ export class AnimatedModelLoader {
   }
 
   private async loadGLTFWithAnimations(path: string): Promise<{ scene: THREE.Object3D; animations: THREE.AnimationClip[] }> {
+    // Initialize GLTFLoader dynamically like AssetManager
+    if (!this.gltfLoader) {
+      const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+      this.gltfLoader = new GLTFLoader();
+    }
+    
     return new Promise((resolve, reject) => {
       this.gltfLoader.load(
         path,
-        (gltf) => {
+        (gltf: any) => {
           resolve({
             scene: gltf.scene,
             animations: gltf.animations || []
           });
         },
-        (progress) => {
+        (progress: any) => {
           // Reduced logging frequency to prevent spam
           if (progress.loaded === progress.total) {
             // Logger.info(LogCategory.CORE, `[AnimatedModelLoader] Loading progress: ${path}`, progress);
           }
         },
-        (error) => {
+        (error: any) => {
           reject(error);
         }
       );
