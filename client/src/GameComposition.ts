@@ -470,12 +470,11 @@ export class GameManager {
   private inputSystem: any; // CHEN'S FIX: Will be properly resolved
   private localPlayer?: Entity;
   private isRunning = false;
-  private errorCount = 0;
-  private maxErrors = 10;
+  private lastFrameTime = 0;
+  private debugLogged = false;
   private networkAnimationSystem: NetworkAnimationSystem;
   private npcSystem!: NPCSystem;
   private characterSelectionSystem!: CharacterSelectionSystem;
-  private debugLogged = false; // Added for debug test
 
   constructor() {
     // Get dependencies from container
@@ -704,9 +703,23 @@ export class GameManager {
   }
 
   start(): void {
-    if (this.isRunning) return;
+    console.log('[GameManager] 🚀 start() method called');
+    
+    if (this.isRunning) {
+      console.log('[GameManager] ⚠️ Game already running, skipping start');
+      return;
+    }
+    
     this.isRunning = true;
-    this.gameLoop();
+    console.log('[GameManager] ✅ isRunning set to true, calling gameLoop()');
+    
+    try {
+      this.gameLoop();
+      console.log('[GameManager] ✅ Initial gameLoop() call completed');
+    } catch (error) {
+      console.error('[GameManager] 💥 Error starting game loop:', error);
+      this.isRunning = false;
+    }
   }
 
   stop(): void {
@@ -772,92 +785,66 @@ export class GameManager {
     }
   }
 
-  // CHEN'S FIX: Error boundaries and crash recovery like Unity
-  private lastErrorTime = 0;
-  private static readonly ERROR_RECOVERY_DELAY = 1000; // 1 second
-  
-  // CHEN'S FIX: Variable timestep with frame drop protection
-  private lastFrameTime = 0;
-  private static readonly MAX_DELTA_TIME = 1/30; // Cap at 30fps for consistency
-  private static readonly TARGET_DELTA_TIME = 1/60; // 60fps target
-
   private gameLoop = (): void => {
     if (!this.isRunning) return;
 
     try {
+      // ===========================================
+      // 🚨 BYPASS LOGGER TEST - DIRECT CONSOLE.LOG
+      // ===========================================
+      // Test if game loop is running at all
+      if (!this.debugLogged) {
+        console.log('🧪 [DIRECT TEST] Game loop is running!');
+        this.debugLogged = true;
+      }
+      
       // ===========================================
       // 🚨 ESSENTIAL DEBUG - REDUCED SPAM
       // ===========================================
       // Log every 3 seconds to avoid console spam
       const shouldLog = Math.floor(performance.now() / 1000) % 3 === 0 && performance.now() % 100 < 16;
       
-      // TEST: Log once immediately to verify debug is working
-      if (!this.debugLogged) {
-        Logger.warn(LogCategory.ECS, `[CRITICAL] 🧪 DEBUG TEST: Game loop is running!`);
-        this.debugLogged = true;
-      }
-      
       if (shouldLog) {
-        Logger.warn(LogCategory.ECS, `[CRITICAL] 📊 Total entities: ${this.entityManager.getAllEntities().length}`);
-        Logger.warn(LogCategory.ECS, `[CRITICAL] 🎯 Local player: ${!!this.localPlayer ? 'EXISTS' : 'MISSING'}, ID: ${this.localPlayer?.id.value || 'none'}`);
+        console.log(`[CRITICAL] 📊 Total entities: ${this.entityManager.getAllEntities().length}`);
+        console.log(`[CRITICAL] 🎯 Local player: ${!!this.localPlayer ? 'EXISTS' : 'MISSING'}, ID: ${this.localPlayer?.id.value || 'none'}`);
         
         if (this.localPlayer) {
           const components = this.localPlayer.getComponents().map(c => c.type);
-          Logger.warn(LogCategory.ECS, `[CRITICAL] 🧩 Components: ${components.join(', ')}`);
+          console.log(`[CRITICAL] 🧩 Components: ${components.join(', ')}`);
           
           const renderComp = this.localPlayer.getComponent<any>('render');
           if (renderComp) {
-            Logger.warn(LogCategory.ECS, `[CRITICAL] 🎨 Render: mesh=${!!renderComp.mesh}, visible=${renderComp.visible}`);
-            if (renderComp.mesh) {
-              Logger.warn(LogCategory.ECS, `[CRITICAL] 🎨 Mesh position: (${renderComp.mesh.position.x.toFixed(1)}, ${renderComp.mesh.position.y.toFixed(1)}, ${renderComp.mesh.position.z.toFixed(1)})`);
-            }
-          } else {
-            Logger.warn(LogCategory.ECS, `[CRITICAL] ❌ MISSING RENDER COMPONENT!`);
+            console.log(`[CRITICAL] 🎨 Render component: mesh=${!!renderComp.mesh}, visible=${renderComp.visible}`);
           }
         }
         
-        const renderSystemEntities = this.renderSystem.getEntities();
-        Logger.warn(LogCategory.ECS, `[CRITICAL] 🖼️ RenderSystem entities: ${renderSystemEntities.length}`);
+        // Check RenderSystem
+        const renderSystem = this.entityManager.getAllSystems().find(s => s.constructor.name === 'RenderSystem');
+        if (renderSystem) {
+          console.log(`[CRITICAL] 🖼️ RenderSystem found with ${(renderSystem as any).entities?.size || 0} entities`);
+        }
         
-        // Check scene children count
+        // Check scene children
         const scene = this.sceneManager.getScene();
         if (scene) {
-          Logger.warn(LogCategory.ECS, `[CRITICAL] 🎭 Scene children: ${scene.children.length}`);
+          console.log(`[CRITICAL] 🎭 Scene has ${scene.children.length} children`);
         }
       }
-      // ===========================================
-      
-      // CHEN'S FIX: Variable timestep with frame drop protection
-      const now = performance.now();
-      let deltaTime = this.lastFrameTime === 0 ? GameManager.TARGET_DELTA_TIME : (now - this.lastFrameTime) / 1000;
-      this.lastFrameTime = now;
-      
-      // Cap deltaTime to prevent spiral of death on frame drops
-      deltaTime = Math.min(deltaTime, GameManager.MAX_DELTA_TIME);
-      
-      // CHEN'S FIX: Protected ECS system updates
-      this.safeSystemUpdate(deltaTime);
-      
-      // Check character selection input
-      this.checkCharacterSelectionInput();
-      
-      // CHEN'S FIX: Protected rendering
-      this.safeRender();
-      
-      // Reset error count if we've been stable
-      const currentTime = performance.now();
-      if (currentTime - this.lastErrorTime > GameManager.ERROR_RECOVERY_DELAY) {
-        this.errorCount = 0;
-      }
-      
-    } catch (error) {
-      Logger.error(LogCategory.CORE, `[GameLoop] 💥 Error in gameLoop:`, error);
-      this.handleGameLoopError(error);
-    }
 
-    // Continue game loop even after errors (with throttling)
-    requestAnimationFrame(this.gameLoop);
-  };
+      const currentTime = performance.now();
+      const deltaTime = (currentTime - this.lastFrameTime) / 1000;
+      this.lastFrameTime = currentTime;
+
+      this.safeSystemUpdate(deltaTime);
+      this.checkCharacterSelectionInput();
+      this.safeRender();
+
+      requestAnimationFrame(this.gameLoop);
+    } catch (error) {
+      console.error('💥 [GameLoop] Critical error:', error);
+      this.isRunning = false;
+    }
+  }
 
   private safeSystemUpdate(deltaTime: number): void {
     try {
@@ -929,70 +916,6 @@ export class GameManager {
       // Clear the key to prevent repeated triggers
       // Note: This is a simple approach - in a real implementation you'd want to track key states more carefully
     }
-  }
-
-  private handleGameLoopError(error: any): void {
-    const now = performance.now();
-    this.errorCount++;
-    this.lastErrorTime = now;
-    
-         Logger.error(LogCategory.ECS, `Game loop error #${this.errorCount}`, error);
-    
-    // Circuit breaker pattern - stop if too many errors
-    if (this.errorCount >= this.maxErrors) {
-      Logger.error(LogCategory.CORE, '💥 [GameLoop] Too many errors, initiating emergency stop!');
-      this.emergencyStop();
-      return;
-    }
-    
-    // Attempt graceful recovery
-    this.attemptRecovery();
-  }
-
-  private attemptRecovery(): void {
-    Logger.debug(LogCategory.CORE, '🔧 [GameLoop] Attempting system recovery...');
-    
-    try {
-      // Try to reinitialize critical systems
-      const renderer = this.sceneManager.getRenderer();
-      if (renderer) {
-        renderer.setSize(renderer.domElement.width, renderer.domElement.height);
-      }
-      
-      Logger.info(LogCategory.CORE, '✅ [GameLoop] Recovery successful');
-    } catch (recoveryError) {
-      Logger.error(LogCategory.CORE, '💥 [GameLoop] Recovery failed:', recoveryError);
-    }
-  }
-
-  private emergencyStop(): void {
-    this.isRunning = false;
-    this.inputManager.stopListening();
-    
-    // Stop network timer to prevent further errors
-    if (this.networkTickSystem && typeof this.networkTickSystem.stopNetworkTimer === 'function') {
-      this.networkTickSystem.stopNetworkTimer();
-    }
-    
-    // Show error UI
-    this.showErrorUI();
-  }
-
-  private showErrorUI(): void {
-    const errorDiv = document.createElement('div');
-    errorDiv.style.cssText = `
-      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: #ff4444; color: white; padding: 20px; border-radius: 10px;
-      font-family: monospace; font-size: 14px; text-align: center; z-index: 9999;
-    `;
-    errorDiv.innerHTML = `
-      <h3>🚨 Game Error</h3>
-      <p>The game encountered critical errors and has stopped.</p>
-      <button onclick="location.reload()" style="margin-top: 10px; padding: 5px 15px;">
-        Restart Game
-      </button>
-    `;
-    document.body.appendChild(errorDiv);
   }
 
   // Public getters for debug UI access
