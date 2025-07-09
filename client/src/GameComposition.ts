@@ -471,7 +471,6 @@ export class GameManager {
   private localPlayer?: Entity;
   private isRunning = false;
   private lastFrameTime = 0;
-  private debugLogged = false;
   private networkAnimationSystem: NetworkAnimationSystem;
   private npcSystem!: NPCSystem;
   private characterSelectionSystem!: CharacterSelectionSystem;
