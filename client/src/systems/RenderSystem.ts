@@ -16,7 +16,12 @@ export class RenderSystem extends System {
   }
 
   update(_deltaTime: number): void {
-    Logger.debug(LogCategory.RENDER, `🔄 RenderSystem update - processing ${this.entities.size} entities`);
+    Logger.warn(LogCategory.RENDER, `🔄 RenderSystem update - processing ${this.entities.size} entities`);
+    
+    if (this.entities.size === 0) {
+      Logger.warn(LogCategory.RENDER, `⚠️ RenderSystem: No entities to process`);
+      return;
+    }
     
     for (const entity of this.entities.values()) {
       const renderComponent = entity.getComponent<RenderComponent>('render');
@@ -35,7 +40,7 @@ export class RenderSystem extends System {
       
       // Log entity details for debugging
       const entityType = networkComponent?.isLocalPlayer ? 'LOCAL_PLAYER' : networkComponent ? 'REMOTE_PLAYER' : 'OTHER';
-      Logger.debug(LogCategory.RENDER, `🎨 Processing ${entityType} entity ${entity.id.value} at position ${positionComponent ? `(${positionComponent.value.x.toFixed(1)}, ${positionComponent.value.y.toFixed(1)}, ${positionComponent.value.z.toFixed(1)})` : 'NO_POSITION'}`);
+      Logger.warn(LogCategory.RENDER, `🎨 Processing ${entityType} entity ${entity.id.value} at position ${positionComponent ? `(${positionComponent.value.x.toFixed(1)}, ${positionComponent.value.y.toFixed(1)}, ${positionComponent.value.z.toFixed(1)})` : 'NO_POSITION'}`);
       
       // Update mesh position if position component exists
       if (positionComponent) {
@@ -44,27 +49,27 @@ export class RenderSystem extends System {
           positionComponent.value.y,
           positionComponent.value.z
         );
-        Logger.debug(LogCategory.RENDER, `📍 Updated mesh position for entity ${entity.id.value}`);
+        Logger.warn(LogCategory.RENDER, `📍 Updated mesh position for entity ${entity.id.value} to (${positionComponent.value.x.toFixed(1)}, ${positionComponent.value.y.toFixed(1)}, ${positionComponent.value.z.toFixed(1)})`);
       }
       
       // Update mesh rotation if rotation component exists
       const rotationComponent = entity.getComponent<RotationComponent>('rotation');
       if (rotationComponent) {
         renderComponent.mesh.rotation.y = rotationComponent.value.y;
-        Logger.debug(LogCategory.RENDER, `🔄 Updated mesh rotation for entity ${entity.id.value}`);
+        Logger.warn(LogCategory.RENDER, `🔄 Updated mesh rotation for entity ${entity.id.value} to ${rotationComponent.value.y.toFixed(2)}`);
       }
       
       // Check mesh visibility
       if (renderComponent.visible !== renderComponent.mesh.visible) {
         renderComponent.mesh.visible = renderComponent.visible;
-        Logger.debug(LogCategory.RENDER, `👁️ Updated mesh visibility for entity ${entity.id.value}: ${renderComponent.visible}`);
+        Logger.warn(LogCategory.RENDER, `👁️ Updated mesh visibility for entity ${entity.id.value}: ${renderComponent.visible}`);
       }
       
       // Log mesh details
-      Logger.debug(LogCategory.RENDER, `📊 Entity ${entity.id.value} mesh: visible=${renderComponent.mesh.visible}, position=(${renderComponent.mesh.position.x.toFixed(1)}, ${renderComponent.mesh.position.y.toFixed(1)}, ${renderComponent.mesh.position.z.toFixed(1)})`);
+      Logger.warn(LogCategory.RENDER, `📊 Entity ${entity.id.value} mesh: visible=${renderComponent.mesh.visible}, position=(${renderComponent.mesh.position.x.toFixed(1)}, ${renderComponent.mesh.position.y.toFixed(1)}, ${renderComponent.mesh.position.z.toFixed(1)}), scale=(${renderComponent.mesh.scale.x.toFixed(2)}, ${renderComponent.mesh.scale.y.toFixed(2)}, ${renderComponent.mesh.scale.z.toFixed(2)})`);
     }
     
-    Logger.debug(LogCategory.RENDER, `✅ RenderSystem update complete - processed ${this.entities.size} entities`);
+    Logger.warn(LogCategory.RENDER, `✅ RenderSystem update complete - processed ${this.entities.size} entities`);
   }
 
   // Handle visual effects through abstraction
@@ -80,7 +85,28 @@ export class RenderSystem extends System {
   }
 
   protected onEntityAdded(entity: Entity): void {
-    Logger.info(LogCategory.RENDER, `[RenderSystem] Entity ${entity.id.value} added with components: ${entity.getComponents().map(c => c.type).join(', ')}`);
+    Logger.warn(LogCategory.RENDER, `[RenderSystem] Entity ${entity.id.value} added with components: ${entity.getComponents().map(c => c.type).join(', ')}`);
+    
+    // Check if entity has required components
+    const renderComponent = entity.getComponent<RenderComponent>('render');
+    const positionComponent = entity.getComponent<PositionComponent>('position');
+    const networkComponent = entity.getComponent<NetworkComponent>('network');
+    
+    if (renderComponent) {
+      Logger.warn(LogCategory.RENDER, `[RenderSystem] Entity ${entity.id.value} has render component with mesh: ${renderComponent.mesh ? 'YES' : 'NO'}, visible: ${renderComponent.visible}`);
+      if (renderComponent.mesh) {
+        Logger.warn(LogCategory.RENDER, `[RenderSystem] Entity ${entity.id.value} mesh details: position=(${renderComponent.mesh.position.x.toFixed(1)}, ${renderComponent.mesh.position.y.toFixed(1)}, ${renderComponent.mesh.position.z.toFixed(1)}), scale=(${renderComponent.mesh.scale.x.toFixed(2)}, ${renderComponent.mesh.scale.y.toFixed(2)}, ${renderComponent.mesh.scale.z.toFixed(2)}), visible=${renderComponent.mesh.visible}`);
+      }
+    }
+    
+    if (positionComponent) {
+      Logger.warn(LogCategory.RENDER, `[RenderSystem] Entity ${entity.id.value} has position component: (${positionComponent.value.x.toFixed(1)}, ${positionComponent.value.y.toFixed(1)}, ${positionComponent.value.z.toFixed(1)})`);
+    }
+    
+    if (networkComponent) {
+      const entityType = networkComponent.isLocalPlayer ? 'LOCAL_PLAYER' : 'REMOTE_PLAYER';
+      Logger.warn(LogCategory.RENDER, `[RenderSystem] Entity ${entity.id.value} is ${entityType} with squirrelId: ${networkComponent.squirrelId}`);
+    }
     
     // Subscribe to fade events for this entity
     this.eventBus.subscribe('render.fade', (data: { entityId: string, opacity: number }) => {

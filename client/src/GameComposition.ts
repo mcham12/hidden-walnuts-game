@@ -483,13 +483,10 @@ export class GameManager {
     this.movementSystem = container.resolve(ServiceTokens.MOVEMENT_SYSTEM);
     this.networkSystem = container.resolve(ServiceTokens.NETWORK_SYSTEM);
     this.playerManager = container.resolve(ServiceTokens.PLAYER_MANAGER);
+    this.renderSystem = container.resolve(ServiceTokens.RENDER_SYSTEM);
 
     // Initialize remaining systems (placeholders for now)
     this.interpolationSystem = new InterpolationSystem(this.eventBus);
-    
-    // RenderSystem needs a render adapter
-    const renderAdapter = new ThreeJSRenderAdapter();
-    this.renderSystem = new RenderSystem(this.eventBus, renderAdapter);
     
     this.networkTickSystem = new NetworkTickSystem(this.eventBus);
     this.areaOfInterestSystem = new AreaOfInterestSystem(this.eventBus);
@@ -1050,22 +1047,28 @@ export function configureServices(): void {
     );
   });
 
-  container.registerSingleton(ServiceTokens.INPUT_ANIMATION_SYSTEM, () => {
-    return new InputAnimationSystem(
-      container.resolve<EventBus>(ServiceTokens.EVENT_BUS)
-    );
-  });
-
-  container.registerSingleton(ServiceTokens.ANIMATION_SYSTEM, () => {
-    return new AnimationSystem(
-      container.resolve<EventBus>(ServiceTokens.EVENT_BUS)
-    );
-  });
-
   container.registerSingleton(ServiceTokens.NPC_SYSTEM, () => {
     return new NPCSystem(
       container.resolve<EventBus>(ServiceTokens.EVENT_BUS),
       container.resolve(ServiceTokens.TERRAIN_SERVICE)
+    );
+  });
+
+  container.registerSingleton(ServiceTokens.CHARACTER_SELECTION_SYSTEM, () => {
+    return new CharacterSelectionSystem(
+      container.resolve(ServiceTokens.CHARACTER_REGISTRY),
+      container.resolve(ServiceTokens.CHARACTER_SELECTION_MANAGER),
+      container.resolve(ServiceTokens.ANIMATED_MODEL_LOADER),
+      container.resolve<EventBus>(ServiceTokens.EVENT_BUS)
+    );
+  });
+
+  // Register RenderSystem with render adapter
+  container.registerSingleton(ServiceTokens.RENDER_SYSTEM, () => {
+    const renderAdapter = new ThreeJSRenderAdapter();
+    return new RenderSystem(
+      container.resolve<EventBus>(ServiceTokens.EVENT_BUS),
+      renderAdapter
     );
   });
 
