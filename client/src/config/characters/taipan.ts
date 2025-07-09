@@ -7,40 +7,40 @@ import { CharacterConfig, AIBehaviorType } from '../../types/CharacterTypes';
 export const taipanConfig: CharacterConfig = {
   id: 'taipan',
   name: 'Taipan',
-  modelPath: '/assets/models/Taipan_LOD0.glb',
+  modelPath: 'assets/models/Taipan_LOD0.glb',
   scale: 1.0,
   lodPaths: {
-    lod0: '/assets/models/Taipan_LOD0.glb',
-    lod1: '/assets/models/Taipan_LOD1.glb',
-    lod2: '/assets/models/Taipan_LOD2.glb',
-    lod3: '/assets/models/Taipan_LOD3.glb'
+    lod0: 'assets/models/Taipan_LOD0.glb',
+    lod1: 'assets/models/Taipan_LOD1.glb',
+    lod2: 'assets/models/Taipan_LOD2.glb',
+    lod3: 'assets/models/Taipan_LOD3.glb'
   },
   animations: {
     // Core animations
-    idle_a: '/assets/models/Animations/Single/Taipan_Idle_A.glb',
-    idle_b: '/assets/models/Animations/Single/Taipan_Idle_B.glb',
-    idle_c: '/assets/models/Animations/Single/Taipan_Idle_C.glb',
-    walk: '/assets/models/Animations/Single/Taipan_Walk.glb',
-    run: '/assets/models/Animations/Single/Taipan_Run.glb',
-    jump: '/assets/models/Animations/Single/Taipan_Jump.glb',
+    idle_a: 'assets/models/Animations/Single/Taipan_Idle_A.glb',
+    idle_b: 'assets/models/Animations/Single/Taipan_Idle_B.glb',
+    idle_c: 'assets/models/Animations/Single/Taipan_Idle_C.glb',
+    walk: 'assets/models/Animations/Single/Taipan_Walk.glb',
+    run: 'assets/models/Animations/Single/Taipan_Run.glb',
+    jump: 'assets/models/Animations/Single/Taipan_Jump.glb',
     
     // Movement animations
-    swim: '/assets/models/Animations/Single/Taipan_Swim.glb',
-    fly: '/assets/models/Animations/Single/Taipan_Fly.glb',
-    roll: '/assets/models/Animations/Single/Taipan_Roll.glb',
-    bounce: '/assets/models/Animations/Single/Taipan_Bounce.glb',
-    spin: '/assets/models/Animations/Single/Taipan_Spin.glb',
+    swim: 'assets/models/Animations/Single/Taipan_Swim.glb',
+    fly: 'assets/models/Animations/Single/Taipan_Fly.glb',
+    roll: 'assets/models/Animations/Single/Taipan_Roll.glb',
+    bounce: 'assets/models/Animations/Single/Taipan_Bounce.glb',
+    spin: 'assets/models/Animations/Single/Taipan_Spin.glb',
     
     // Action animations
-    eat: '/assets/models/Animations/Single/Taipan_Eat.glb',
-    clicked: '/assets/models/Animations/Single/Taipan_Clicked.glb',
-    fear: '/assets/models/Animations/Single/Taipan_Fear.glb',
-    death: '/assets/models/Animations/Single/Taipan_Death.glb',
-    sit: '/assets/models/Animations/Single/Taipan_Sit.glb',
+    eat: 'assets/models/Animations/Single/Taipan_Eat.glb',
+    clicked: 'assets/models/Animations/Single/Taipan_Clicked.glb',
+    fear: 'assets/models/Animations/Single/Taipan_Fear.glb',
+    death: 'assets/models/Animations/Single/Taipan_Death.glb',
+    sit: 'assets/models/Animations/Single/Taipan_Sit.glb',
     
     // Special animations
-    attack: '/assets/models/Animations/Single/Taipan_Attack.glb',
-    hit: '/assets/models/Animations/Single/Taipan_Hit.glb'
+    attack: 'assets/models/Animations/Single/Taipan_Attack.glb',
+    hit: 'assets/models/Animations/Single/Taipan_Hit.glb'
   },
   blendshapes: {
     // Eye expressions

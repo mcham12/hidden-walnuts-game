@@ -7,41 +7,41 @@ import { CharacterConfig, AIBehaviorType } from '../../types/CharacterTypes';
 export const inkfishConfig: CharacterConfig = {
   id: 'inkfish',
   name: 'Inkfish',
-  modelPath: '/assets/models/Inkfish_LOD0.glb',
+  modelPath: 'assets/models/Inkfish_LOD0.glb',
   scale: 1.0,
   lodPaths: {
-    lod0: '/assets/models/Inkfish_LOD0.glb',
-    lod1: '/assets/models/Inkfish_LOD1.glb',
-    lod2: '/assets/models/Inkfish_LOD2.glb',
-    lod3: '/assets/models/Inkfish_LOD3.glb'
+    lod0: 'assets/models/Inkfish_LOD0.glb',
+    lod1: 'assets/models/Inkfish_LOD1.glb',
+    lod2: 'assets/models/Inkfish_LOD2.glb',
+    lod3: 'assets/models/Inkfish_LOD3.glb'
   },
   animations: {
     // Core animations
-    idle_a: '/assets/models/Animations/Single/Inkfish_Idle_A.glb',
-    idle_b: '/assets/models/Animations/Single/Inkfish_Idle_B.glb',
-    idle_c: '/assets/models/Animations/Single/Inkfish_Idle_C.glb',
-    walk: '/assets/models/Animations/Single/Inkfish_Walk.glb',
-    run: '/assets/models/Animations/Single/Inkfish_Run.glb',
-    jump: '/assets/models/Animations/Single/Inkfish_Jump.glb',
+    idle_a: 'assets/models/Animations/Single/Inkfish_Idle_A.glb',
+    idle_b: 'assets/models/Animations/Single/Inkfish_Idle_B.glb',
+    idle_c: 'assets/models/Animations/Single/Inkfish_Idle_C.glb',
+    walk: 'assets/models/Animations/Single/Inkfish_Walk.glb',
+    run: 'assets/models/Animations/Single/Inkfish_Run.glb',
+    jump: 'assets/models/Animations/Single/Inkfish_Jump.glb',
     
     // Movement animations
-    swim: '/assets/models/Animations/Single/Inkfish_Swim.glb',
-    fly: '/assets/models/Animations/Single/Inkfish_Fly.glb',
-    roll: '/assets/models/Animations/Single/Inkfish_Roll.glb',
-    bounce: '/assets/models/Animations/Single/Inkfish_Bounce.glb',
-    spin: '/assets/models/Animations/Single/Inkfish_Spin.glb',
+    swim: 'assets/models/Animations/Single/Inkfish_Swim.glb',
+    fly: 'assets/models/Animations/Single/Inkfish_Fly.glb',
+    roll: 'assets/models/Animations/Single/Inkfish_Roll.glb',
+    bounce: 'assets/models/Animations/Single/Inkfish_Bounce.glb',
+    spin: 'assets/models/Animations/Single/Inkfish_Spin.glb',
     
     // Action animations
-    eat: '/assets/models/Animations/Single/Inkfish_Eat.glb',
-    clicked: '/assets/models/Animations/Single/Inkfish_Clicked.glb',
-    fear: '/assets/models/Animations/Single/Inkfish_Fear.glb',
-    death: '/assets/models/Animations/Single/Inkfish_Death.glb',
-    sit: '/assets/models/Animations/Single/Inkfish_Sit.glb',
+    eat: 'assets/models/Animations/Single/Inkfish_Eat.glb',
+    clicked: 'assets/models/Animations/Single/Inkfish_Clicked.glb',
+    fear: 'assets/models/Animations/Single/Inkfish_Fear.glb',
+    death: 'assets/models/Animations/Single/Inkfish_Death.glb',
+    sit: 'assets/models/Animations/Single/Inkfish_Sit.glb',
     
     // Special animations
-    attack: '/assets/models/Animations/Single/Inkfish_Attack.glb',
-    hit: '/assets/models/Animations/Single/Inkfish_Hit.glb',
-    splash: '/assets/models/Animations/Single/Inkfish_Splash.glb'
+    attack: 'assets/models/Animations/Single/Inkfish_Attack.glb',
+    hit: 'assets/models/Animations/Single/Inkfish_Hit.glb',
+    splash: 'assets/models/Animations/Single/Inkfish_Splash.glb'
   },
   blendshapes: {
     // Eye expressions

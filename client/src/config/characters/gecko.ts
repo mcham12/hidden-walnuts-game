@@ -7,40 +7,40 @@ import { CharacterConfig, AIBehaviorType } from '../../types/CharacterTypes';
 export const geckoConfig: CharacterConfig = {
   id: 'gecko',
   name: 'Gecko',
-  modelPath: '/assets/models/Gecko_LOD0.glb',
+  modelPath: 'assets/models/Gecko_LOD0.glb',
   scale: 1.0,
   lodPaths: {
-    lod0: '/assets/models/Gecko_LOD0.glb',
-    lod1: '/assets/models/Gecko_LOD1.glb',
-    lod2: '/assets/models/Gecko_LOD2.glb',
-    lod3: '/assets/models/Gecko_LOD3.glb'
+    lod0: 'assets/models/Gecko_LOD0.glb',
+    lod1: 'assets/models/Gecko_LOD1.glb',
+    lod2: 'assets/models/Gecko_LOD2.glb',
+    lod3: 'assets/models/Gecko_LOD3.glb'
   },
   animations: {
     // Core animations
-    idle_a: '/assets/models/Animations/Single/Gecko_Idle_A.glb',
-    idle_b: '/assets/models/Animations/Single/Gecko_Idle_B.glb',
-    idle_c: '/assets/models/Animations/Single/Gecko_Idle_C.glb',
-    walk: '/assets/models/Animations/Single/Gecko_Walk.glb',
-    run: '/assets/models/Animations/Single/Gecko_Run.glb',
-    jump: '/assets/models/Animations/Single/Gecko_Jump.glb',
+    idle_a: 'assets/models/Animations/Single/Gecko_Idle_A.glb',
+    idle_b: 'assets/models/Animations/Single/Gecko_Idle_B.glb',
+    idle_c: 'assets/models/Animations/Single/Gecko_Idle_C.glb',
+    walk: 'assets/models/Animations/Single/Gecko_Walk.glb',
+    run: 'assets/models/Animations/Single/Gecko_Run.glb',
+    jump: 'assets/models/Animations/Single/Gecko_Jump.glb',
     
     // Movement animations
-    swim: '/assets/models/Animations/Single/Gecko_Swim.glb',
-    fly: '/assets/models/Animations/Single/Gecko_Fly.glb',
-    roll: '/assets/models/Animations/Single/Gecko_Roll.glb',
-    bounce: '/assets/models/Animations/Single/Gecko_Bounce.glb',
-    spin: '/assets/models/Animations/Single/Gecko_Spin.glb',
+    swim: 'assets/models/Animations/Single/Gecko_Swim.glb',
+    fly: 'assets/models/Animations/Single/Gecko_Fly.glb',
+    roll: 'assets/models/Animations/Single/Gecko_Roll.glb',
+    bounce: 'assets/models/Animations/Single/Gecko_Bounce.glb',
+    spin: 'assets/models/Animations/Single/Gecko_Spin.glb',
     
     // Action animations
-    eat: '/assets/models/Animations/Single/Gecko_Eat.glb',
-    clicked: '/assets/models/Animations/Single/Gecko_Clicked.glb',
-    fear: '/assets/models/Animations/Single/Gecko_Fear.glb',
-    death: '/assets/models/Animations/Single/Gecko_Death.glb',
-    sit: '/assets/models/Animations/Single/Gecko_Sit.glb',
+    eat: 'assets/models/Animations/Single/Gecko_Eat.glb',
+    clicked: 'assets/models/Animations/Single/Gecko_Clicked.glb',
+    fear: 'assets/models/Animations/Single/Gecko_Fear.glb',
+    death: 'assets/models/Animations/Single/Gecko_Death.glb',
+    sit: 'assets/models/Animations/Single/Gecko_Sit.glb',
     
     // Special animations
-    attack: '/assets/models/Animations/Single/Gecko_Attack.glb',
-    hit: '/assets/models/Animations/Single/Gecko_Hit.glb'
+    attack: 'assets/models/Animations/Single/Gecko_Attack.glb',
+    hit: 'assets/models/Animations/Single/Gecko_Hit.glb'
   },
   blendshapes: {
     // Eye expressions

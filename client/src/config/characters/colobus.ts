@@ -7,40 +7,40 @@ import { CharacterConfig, AIBehaviorType } from '../../types/CharacterTypes';
 export const colobusConfig: CharacterConfig = {
   id: 'colobus',
   name: 'Colobus',
-  modelPath: '/assets/models/Colobus_LOD0.glb',
+  modelPath: 'assets/models/Colobus_LOD0.glb',
   scale: 1.0,
   lodPaths: {
-    lod0: '/assets/models/Colobus_LOD0.glb',
-    lod1: '/assets/models/Colobus_LOD1.glb',
-    lod2: '/assets/models/Colobus_LOD2.glb',
-    lod3: '/assets/models/Colobus_LOD3.glb'
+    lod0: 'assets/models/Colobus_LOD0.glb',
+    lod1: 'assets/models/Colobus_LOD1.glb',
+    lod2: 'assets/models/Colobus_LOD2.glb',
+    lod3: 'assets/models/Colobus_LOD3.glb'
   },
   animations: {
     // Core animations
-    idle_a: '/assets/models/Animations/Single/Colobus_Idle_A.glb',
-    idle_b: '/assets/models/Animations/Single/Colobus_Idle_B.glb',
-    idle_c: '/assets/models/Animations/Single/Colobus_Idle_C.glb',
-    walk: '/assets/models/Animations/Single/Colobus_Walk.glb',
-    run: '/assets/models/Animations/Single/Colobus_Run.glb',
-    jump: '/assets/models/Animations/Single/Colobus_Jump.glb',
+    idle_a: 'assets/models/Animations/Single/Colobus_Idle_A.glb',
+    idle_b: 'assets/models/Animations/Single/Colobus_Idle_B.glb',
+    idle_c: 'assets/models/Animations/Single/Colobus_Idle_C.glb',
+    walk: 'assets/models/Animations/Single/Colobus_Walk.glb',
+    run: 'assets/models/Animations/Single/Colobus_Run.glb',
+    jump: 'assets/models/Animations/Single/Colobus_Jump.glb',
     
     // Movement animations
-    swim: '/assets/models/Animations/Single/Colobus_Swim.glb',
-    fly: '/assets/models/Animations/Single/Colobus_Fly.glb',
-    roll: '/assets/models/Animations/Single/Colobus_Roll.glb',
-    bounce: '/assets/models/Animations/Single/Colobus_Bounce.glb',
-    spin: '/assets/models/Animations/Single/Colobus_Spin.glb',
+    swim: 'assets/models/Animations/Single/Colobus_Swim.glb',
+    fly: 'assets/models/Animations/Single/Colobus_Fly.glb',
+    roll: 'assets/models/Animations/Single/Colobus_Roll.glb',
+    bounce: 'assets/models/Animations/Single/Colobus_Bounce.glb',
+    spin: 'assets/models/Animations/Single/Colobus_Spin.glb',
     
     // Action animations
-    eat: '/assets/models/Animations/Single/Colobus_Eat.glb',
-    clicked: '/assets/models/Animations/Single/Colobus_Clicked.glb',
-    fear: '/assets/models/Animations/Single/Colobus_Fear.glb',
-    death: '/assets/models/Animations/Single/Colobus_Death.glb',
-    sit: '/assets/models/Animations/Single/Colobus_Sit.glb',
+    eat: 'assets/models/Animations/Single/Colobus_Eat.glb',
+    clicked: 'assets/models/Animations/Single/Colobus_Clicked.glb',
+    fear: 'assets/models/Animations/Single/Colobus_Fear.glb',
+    death: 'assets/models/Animations/Single/Colobus_Death.glb',
+    sit: 'assets/models/Animations/Single/Colobus_Sit.glb',
     
     // Special animations
-    attack: '/assets/models/Animations/Single/Colobus_Attack.glb',
-    hit: '/assets/models/Animations/Single/Colobus_Hit.glb'
+    attack: 'assets/models/Animations/Single/Colobus_Attack.glb',
+    hit: 'assets/models/Animations/Single/Colobus_Hit.glb'
   },
   blendshapes: {
     // Eye expressions

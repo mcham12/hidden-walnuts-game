@@ -75,14 +75,14 @@ export class PlayerFactory {
         Logger.warn(LogCategory.PLAYER, `⚠️ No character config found for ${selectedCharacterType}, using default scale`);
       }
     } catch (error) {
-      Logger.error(LogCategory.PLAYER, `❌ Failed to load ${selectedCharacterType} model, falling back to squirrel`, error);
-      // Fallback to squirrel model
-      const gltf = await this.assetManager.loadModel('/assets/models/squirrel.glb');
+      Logger.error(LogCategory.PLAYER, `❌ Failed to load ${selectedCharacterType} model, falling back to colobus`, error);
+      // Fallback to colobus model (default character)
+      const gltf = await this.assetManager.loadModel('assets/models/Colobus_LOD0.glb');
       if (!gltf || !gltf.scene) {
-        throw new Error('Failed to load fallback squirrel model');
+        throw new Error('Failed to load fallback colobus model');
       }
       model = gltf.scene.clone();
-      characterScale = 0.3; // Default scale for fallback
+      characterScale = 1.0; // Default scale for colobus
     }
     
     // TASK 8 FIX: Apply proper scaling and ensure model is visible
@@ -294,17 +294,17 @@ export class PlayerFactory {
         squirrelId
       });
       
-      // Fallback to squirrel model
+      // Fallback to colobus model
       try {
-        const gltf = await this.assetManager.loadModel('/assets/models/squirrel.glb');
+        const gltf = await this.assetManager.loadModel('assets/models/Colobus_LOD0.glb');
         if (!gltf || !gltf.scene) {
-          throw new Error('Failed to load fallback squirrel model for remote player');
+          throw new Error('Failed to load fallback colobus model for remote player');
         }
         model = gltf.scene.clone();
-        characterScale = 0.3; // Default scale for fallback
-        Logger.warn(LogCategory.PLAYER, `✅ Fallback squirrel model loaded for ${squirrelId}`);
+        characterScale = 1.0; // Default scale for colobus
+        Logger.warn(LogCategory.PLAYER, `✅ Fallback colobus model loaded for ${squirrelId}`);
       } catch (fallbackError) {
-        Logger.error(LogCategory.PLAYER, `❌ Failed to load fallback squirrel model for ${squirrelId}`, fallbackError);
+        Logger.error(LogCategory.PLAYER, `❌ Failed to load fallback colobus model for ${squirrelId}`, fallbackError);
         throw new Error(`Failed to load any model for remote player ${squirrelId}`);
       }
     }
@@ -442,14 +442,14 @@ export class PlayerFactory {
         Logger.warn(LogCategory.PLAYER, `⚠️ No character config found for ${selectedCharacterType}, using default scale`);
       }
     } catch (error) {
-      Logger.error(LogCategory.PLAYER, `❌ Failed to load ${selectedCharacterType} model, falling back to squirrel`, error);
-      // Fallback to squirrel model
-      const gltf = await this.assetManager.loadModel('/assets/models/squirrel.glb');
+      Logger.error(LogCategory.PLAYER, `❌ Failed to load ${selectedCharacterType} model, falling back to colobus`, error);
+      // Fallback to colobus model (default character)
+      const gltf = await this.assetManager.loadModel('assets/models/Colobus_LOD0.glb');
       if (!gltf || !gltf.scene) {
-        throw new Error('Failed to load fallback squirrel model');
+        throw new Error('Failed to load fallback colobus model');
       }
       model = gltf.scene.clone();
-      characterScale = 0.3; // Default scale for fallback
+      characterScale = 1.0; // Default scale for colobus
     }
     
     // Apply proper scaling and positioning

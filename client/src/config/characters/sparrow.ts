@@ -7,40 +7,40 @@ import { CharacterConfig, AIBehaviorType } from '../../types/CharacterTypes';
 export const sparrowConfig: CharacterConfig = {
   id: 'sparrow',
   name: 'Sparrow',
-  modelPath: '/assets/models/Sparrow_LOD0.glb',
+  modelPath: 'assets/models/Sparrow_LOD0.glb',
   scale: 1.0,
   lodPaths: {
-    lod0: '/assets/models/Sparrow_LOD0.glb',
-    lod1: '/assets/models/Sparrow_LOD1.glb',
-    lod2: '/assets/models/Sparrow_LOD2.glb',
-    lod3: '/assets/models/Sparrow_LOD3.glb'
+    lod0: 'assets/models/Sparrow_LOD0.glb',
+    lod1: 'assets/models/Sparrow_LOD1.glb',
+    lod2: 'assets/models/Sparrow_LOD2.glb',
+    lod3: 'assets/models/Sparrow_LOD3.glb'
   },
   animations: {
     // Core animations
-    idle_a: '/assets/models/Animations/Single/Sparrow_Idle_A.glb',
-    idle_b: '/assets/models/Animations/Single/Sparrow_Idle_B.glb',
-    idle_c: '/assets/models/Animations/Single/Sparrow_Idle_C.glb',
-    walk: '/assets/models/Animations/Single/Sparrow_Walk.glb',
-    run: '/assets/models/Animations/Single/Sparrow_Run.glb',
-    jump: '/assets/models/Animations/Single/Sparrow_Jump.glb',
+    idle_a: 'assets/models/Animations/Single/Sparrow_Idle_A.glb',
+    idle_b: 'assets/models/Animations/Single/Sparrow_Idle_B.glb',
+    idle_c: 'assets/models/Animations/Single/Sparrow_Idle_C.glb',
+    walk: 'assets/models/Animations/Single/Sparrow_Walk.glb',
+    run: 'assets/models/Animations/Single/Sparrow_Run.glb',
+    jump: 'assets/models/Animations/Single/Sparrow_Jump.glb',
     
     // Movement animations
-    swim: '/assets/models/Animations/Single/Sparrow_Swim.glb',
-    fly: '/assets/models/Animations/Single/Sparrow_Fly.glb',
-    roll: '/assets/models/Animations/Single/Sparrow_Roll.glb',
-    bounce: '/assets/models/Animations/Single/Sparrow_Bounce.glb',
-    spin: '/assets/models/Animations/Single/Sparrow_Spin.glb',
+    swim: 'assets/models/Animations/Single/Sparrow_Swim.glb',
+    fly: 'assets/models/Animations/Single/Sparrow_Fly.glb',
+    roll: 'assets/models/Animations/Single/Sparrow_Roll.glb',
+    bounce: 'assets/models/Animations/Single/Sparrow_Bounce.glb',
+    spin: 'assets/models/Animations/Single/Sparrow_Spin.glb',
     
     // Action animations
-    eat: '/assets/models/Animations/Single/Sparrow_Eat.glb',
-    clicked: '/assets/models/Animations/Single/Sparrow_Clicked.glb',
-    fear: '/assets/models/Animations/Single/Sparrow_Fear.glb',
-    death: '/assets/models/Animations/Single/Sparrow_Death.glb',
-    sit: '/assets/models/Animations/Single/Sparrow_Sit.glb',
+    eat: 'assets/models/Animations/Single/Sparrow_Eat.glb',
+    clicked: 'assets/models/Animations/Single/Sparrow_Clicked.glb',
+    fear: 'assets/models/Animations/Single/Sparrow_Fear.glb',
+    death: 'assets/models/Animations/Single/Sparrow_Death.glb',
+    sit: 'assets/models/Animations/Single/Sparrow_Sit.glb',
     
     // Special animations
-    attack: '/assets/models/Animations/Single/Sparrow_Attack.glb',
-    hit: '/assets/models/Animations/Single/Sparrow_Hit.glb'
+    attack: 'assets/models/Animations/Single/Sparrow_Attack.glb',
+    hit: 'assets/models/Animations/Single/Sparrow_Hit.glb'
   },
   blendshapes: {
     // Eye expressions

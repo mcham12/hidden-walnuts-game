@@ -7,40 +7,40 @@ import { CharacterConfig, AIBehaviorType } from '../../types/CharacterTypes';
 export const muskratConfig: CharacterConfig = {
   id: 'muskrat',
   name: 'Muskrat',
-  modelPath: '/assets/models/Muskrat_LOD0.glb',
+  modelPath: 'assets/models/Muskrat_LOD0.glb',
   scale: 1.0,
   lodPaths: {
-    lod0: '/assets/models/Muskrat_LOD0.glb',
-    lod1: '/assets/models/Muskrat_LOD1.glb',
-    lod2: '/assets/models/Muskrat_LOD2.glb',
-    lod3: '/assets/models/Muskrat_LOD3.glb'
+    lod0: 'assets/models/Muskrat_LOD0.glb',
+    lod1: 'assets/models/Muskrat_LOD1.glb',
+    lod2: 'assets/models/Muskrat_LOD2.glb',
+    lod3: 'assets/models/Muskrat_LOD3.glb'
   },
   animations: {
     // Core animations
-    idle_a: '/assets/models/Animations/Single/Muskrat_Idle_A.glb',
-    idle_b: '/assets/models/Animations/Single/Muskrat_Idle_B.glb',
-    idle_c: '/assets/models/Animations/Single/Muskrat_Idle_C.glb',
-    walk: '/assets/models/Animations/Single/Muskrat_Walk.glb',
-    run: '/assets/models/Animations/Single/Muskrat_Run.glb',
-    jump: '/assets/models/Animations/Single/Muskrat_Jump.glb',
+    idle_a: 'assets/models/Animations/Single/Muskrat_Idle_A.glb',
+    idle_b: 'assets/models/Animations/Single/Muskrat_Idle_B.glb',
+    idle_c: 'assets/models/Animations/Single/Muskrat_Idle_C.glb',
+    walk: 'assets/models/Animations/Single/Muskrat_Walk.glb',
+    run: 'assets/models/Animations/Single/Muskrat_Run.glb',
+    jump: 'assets/models/Animations/Single/Muskrat_Jump.glb',
     
     // Movement animations
-    swim: '/assets/models/Animations/Single/Muskrat_Swim.glb',
-    fly: '/assets/models/Animations/Single/Muskrat_Fly.glb',
-    roll: '/assets/models/Animations/Single/Muskrat_Roll.glb',
-    bounce: '/assets/models/Animations/Single/Muskrat_Bounce.glb',
-    spin: '/assets/models/Animations/Single/Muskrat_Spin.glb',
+    swim: 'assets/models/Animations/Single/Muskrat_Swim.glb',
+    fly: 'assets/models/Animations/Single/Muskrat_Fly.glb',
+    roll: 'assets/models/Animations/Single/Muskrat_Roll.glb',
+    bounce: 'assets/models/Animations/Single/Muskrat_Bounce.glb',
+    spin: 'assets/models/Animations/Single/Muskrat_Spin.glb',
     
     // Action animations
-    eat: '/assets/models/Animations/Single/Muskrat_Eat.glb',
-    clicked: '/assets/models/Animations/Single/Muskrat_Clicked.glb',
-    fear: '/assets/models/Animations/Single/Muskrat_Fear.glb',
-    death: '/assets/models/Animations/Single/Muskrat_Death.glb',
-    sit: '/assets/models/Animations/Single/Muskrat_Sit.glb',
+    eat: 'assets/models/Animations/Single/Muskrat_Eat.glb',
+    clicked: 'assets/models/Animations/Single/Muskrat_Clicked.glb',
+    fear: 'assets/models/Animations/Single/Muskrat_Fear.glb',
+    death: 'assets/models/Animations/Single/Muskrat_Death.glb',
+    sit: 'assets/models/Animations/Single/Muskrat_Sit.glb',
     
     // Special animations
-    attack: '/assets/models/Animations/Single/Muskrat_Attack.glb',
-    hit: '/assets/models/Animations/Single/Muskrat_Hit.glb'
+    attack: 'assets/models/Animations/Single/Muskrat_Attack.glb',
+    hit: 'assets/models/Animations/Single/Muskrat_Hit.glb'
   },
   blendshapes: {
     // Eye expressions
