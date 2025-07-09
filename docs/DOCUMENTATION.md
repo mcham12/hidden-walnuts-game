@@ -19,9 +19,9 @@ Welcome to the Hidden Walnuts project documentation. This directory contains com
   - [Overview](mvp-7/README.md) - MVP 7 objectives and status
   - [Completion Summary](mvp-7/COMPLETION_SUMMARY.md) - Completed tasks and achievements
   - [Task Documentation](mvp-7/tasks/) - Individual task specifications and status
-- **[MVP 8 - Animated Squirrel Players & NPC Characters](mvp-8/)** - Current development phase
-  - [Overview](mvp-8/README.md) - MVP 8 objectives and status
-  - [Task Documentation](mvp-8/tasks/) - Individual task specifications and status
+- **[MVP 8a - Animated Squirrel Players & NPC Characters](mvp-8a/)** - Current development phase
+  - [Overview](mvp-8a/README.md) - MVP 8a objectives and status
+  - [Task Documentation](mvp-8a/tasks/) - Individual task specifications and status
 
 ## 🎯 Quick Navigation
 
@@ -32,8 +32,8 @@ Welcome to the Hidden Walnuts project documentation. This directory contains com
 4. Check [MVP Plan](MVP_Plan_Hidden_Walnuts-2.md) for current priorities
 
 ### **For Current Development**
-1. Review [MVP 8 Overview](mvp-8/README.md) for current status
-2. Check [Task Documentation](mvp-8/tasks/) for specific task details
+1. Review [MVP 8a Overview](mvp-8a/README.md) for current status
+2. Check [Task Documentation](mvp-8a/tasks/) for specific task details
 3. Follow [Coding Conventions](conventions.md) for consistency
 4. Use [AI Guidelines](README_AI.md) when working with AI tools
 
@@ -71,8 +71,8 @@ Welcome to the Hidden Walnuts project documentation. This directory contains com
 
 ## 📊 Current Status
 
-- **Active MVP**: MVP 8 (Animated Squirrel Players & NPC Characters)
-- **Current Task**: Task 1 - Animated Squirrel Model
+- **Active MVP**: MVP 8a (Animated Squirrel Players & NPC Characters)
+- **Current Task**: Task 1 - Multiple Character Models
 - **Documentation**: Complete and up-to-date
 - **Structure**: Organized by MVP and task hierarchy
 

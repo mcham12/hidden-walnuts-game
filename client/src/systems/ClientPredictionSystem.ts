@@ -404,12 +404,12 @@ export class ClientPredictionSystem extends System {
       this.inputHistory = this.inputHistory.slice(-maxBufferSize);
     }
     
-    // TASK 8 PHASE 3: Performance monitoring
-    if (this.inputHistory.length > 20) {
-      Logger.debugExpensive(LogCategory.NETWORK, () => 
-        `Input buffer: ${this.inputHistory.length} inputs, oldest: ${(now - this.inputHistory[0]?.timestamp || 0).toFixed(0)}ms ago`
-      );
-    }
+    // TASK 8 PHASE 3: Performance monitoring - DISABLED to reduce console spam
+    // if (this.inputHistory.length > 20) {
+    //   Logger.debugExpensive(LogCategory.NETWORK, () => 
+    //     `Input buffer: ${this.inputHistory.length} inputs, oldest: ${(now - this.inputHistory[0]?.timestamp || 0).toFixed(0)}ms ago`
+    //   );
+    // }
     
     // TASK 8 PHASE 3: Track cleanup performance
     this.trackPerformanceMetrics('cleanup');

@@ -1,0 +1,379 @@
+.
+├── .DS_Store
+├── .github
+│   └── workflows
+│       ├── deploy-client.yml
+│       └── deploy-worker.yml
+├── .gitignore
+├── client
+│   ├── .env.development
+│   ├── .env.preview
+│   ├── .env.production
+│   ├── .gitignore
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── public
+│   │   ├── _routes.json
+│   │   └── assets
+│   │       └── models
+│   │           └── test.txt
+│   ├── src
+│   │   ├── ARCHITECTURE_README.md
+│   │   ├── core
+│   │   │   ├── Container.ts
+│   │   │   ├── EventBus.ts
+│   │   │   ├── Logger.ts
+│   │   │   └── types.ts
+│   │   ├── ecs
+│   │   │   └── index.ts
+│   │   ├── ENTERPRISE_ARCHITECTURE.md
+│   │   ├── entities
+│   │   │   └── PlayerFactory.ts
+│   │   ├── forest.ts
+│   │   ├── GameComposition.ts
+│   │   ├── main.ts
+│   │   ├── rendering
+│   │   │   └── IRenderAdapter.ts
+│   │   ├── services
+│   │   │   └── TerrainService.ts
+│   │   ├── style.css
+│   │   ├── systems
+│   │   │   ├── AreaOfInterestSystem.ts
+│   │   │   ├── ClientPredictionSystem.ts
+│   │   │   ├── InputSystem.ts
+│   │   │   ├── InterpolationSystem.ts
+│   │   │   ├── MovementSystem.ts
+│   │   │   ├── NetworkCompressionSystem.ts
+│   │   │   ├── NetworkSystem.ts
+│   │   │   ├── NetworkTickSystem.ts
+│   │   │   ├── PlayerManager.ts
+│   │   │   └── RenderSystem.ts
+│   │   ├── terrain.ts
+│   │   ├── test
+│   │   │   ├── multiplayer-sync.test.ts
+│   │   │   └── setup.ts
+│   │   ├── types.ts
+│   │   ├── validation
+│   │   └── vite-env.d.ts
+│   ├── test-multiplayer.html
+│   ├── test-results
+│   │   ├── assets
+│   │   │   ├── index-D_ryMEPs.js
+│   │   │   └── index-X8b7Z_4p.css
+│   │   ├── bg.png
+│   │   ├── data
+│   │   ├── favicon.ico
+│   │   ├── favicon.svg
+│   │   ├── html.meta.json.gz
+│   │   └── index.html
+│   ├── tsconfig.json
+│   ├── vite.config.ts
+│   └── vitest.config.ts
+├── DEVELOPMENT.md
+├── docs
+│   ├── conventions.md
+│   ├── DOCUMENTATION.md
+│   ├── GameVision.md
+│   ├── MVP_Plan_Hidden_Walnuts-2.md
+│   ├── mvp-7
+│   │   ├── completion-summary.md
+│   │   ├── README.md
+│   │   └── tasks
+│   │       ├── 01-authentication
+│   │       │   ├── completion.md
+│   │       │   ├── implementation.md
+│   │       │   ├── README.md
+│   │       │   └── testing.md
+│   │       ├── 02-error-handling
+│   │       │   ├── README.md
+│   │       │   └── testing.md
+│   │       ├── 03-visual-sync
+│   │       │   └── README.md
+│   │       ├── 04-api-consolidation
+│   │       │   └── README.md
+│   │       ├── 05-authoritative-server
+│   │       │   └── README.md
+│   │       ├── 06-websocket-lifecycle
+│   │       │   └── README.md
+│   │       ├── 07-core-events
+│   │       │   ├── completion.md
+│   │       │   └── README.md
+│   │       ├── 08-client-prediction
+│   │       │   ├── completion.md
+│   │       │   ├── implementation.md
+│   │       │   └── README.md
+│   │       ├── 09-interest-management
+│   │       │   ├── completion.md
+│   │       │   └── README.md
+│   │       ├── 10-testing-validation
+│   │       │   └── README.md
+│   │       └── urgenta-optimization
+│   │           ├── code-examples.md
+│   │           ├── completion.md
+│   │           └── README.md
+│   ├── PROJECT_STRUCTURE.md
+│   ├── README_AI.md
+│   ├── README.md
+│   └── repo_structure.txt
+├── env.example
+├── hide-walnut.sh
+├── package_files.sh
+├── package-lock.json
+├── package.json
+├── public
+│   ├── .DS_Store
+│   └── assets
+│       ├── .DS_Store
+│       ├── models
+│       │   ├── .DS_Store
+│       │   ├── Animations
+│       │   │   ├── .DS_Store
+│       │   │   ├── Colobus_Animations.glb
+│       │   │   ├── Gecko_Animations.glb
+│       │   │   ├── Herring_Animations.glb
+│       │   │   ├── Inkfish_Animations.glb
+│       │   │   ├── Muskrat_Animations.glb
+│       │   │   ├── Pudu_Animations.glb
+│       │   │   ├── Single
+│       │   │   │   ├── Colobus_Attack.glb
+│       │   │   │   ├── Colobus_Bounce.glb
+│       │   │   │   ├── Colobus_Clicked.glb
+│       │   │   │   ├── Colobus_Death.glb
+│       │   │   │   ├── Colobus_Eat.glb
+│       │   │   │   ├── Colobus_Fear.glb
+│       │   │   │   ├── Colobus_Fly.glb
+│       │   │   │   ├── Colobus_Hit.glb
+│       │   │   │   ├── Colobus_Idle_A.glb
+│       │   │   │   ├── Colobus_Idle_B.glb
+│       │   │   │   ├── Colobus_Idle_C.glb
+│       │   │   │   ├── Colobus_Jump.glb
+│       │   │   │   ├── Colobus_Roll.glb
+│       │   │   │   ├── Colobus_Run.glb
+│       │   │   │   ├── Colobus_Sit.glb
+│       │   │   │   ├── Colobus_Spin.glb
+│       │   │   │   ├── Colobus_Swim.glb
+│       │   │   │   ├── Colobus_Walk.glb
+│       │   │   │   ├── Gecko_Attack.glb
+│       │   │   │   ├── Gecko_Bounce.glb
+│       │   │   │   ├── Gecko_Clicked.glb
+│       │   │   │   ├── Gecko_Death.glb
+│       │   │   │   ├── Gecko_Eat.glb
+│       │   │   │   ├── Gecko_Fear.glb
+│       │   │   │   ├── Gecko_Fly.glb
+│       │   │   │   ├── Gecko_Hit.glb
+│       │   │   │   ├── Gecko_Idle_A.glb
+│       │   │   │   ├── Gecko_Idle_B.glb
+│       │   │   │   ├── Gecko_Idle_C.glb
+│       │   │   │   ├── Gecko_Jump.glb
+│       │   │   │   ├── Gecko_Roll.glb
+│       │   │   │   ├── Gecko_Run.glb
+│       │   │   │   ├── Gecko_Sit.glb
+│       │   │   │   ├── Gecko_Spin.glb
+│       │   │   │   ├── Gecko_Swim.glb
+│       │   │   │   ├── Gecko_Walk.glb
+│       │   │   │   ├── Herring_Attack.glb
+│       │   │   │   ├── Herring_Bounce.glb
+│       │   │   │   ├── Herring_Clicked.glb
+│       │   │   │   ├── Herring_Death.glb
+│       │   │   │   ├── Herring_Eat.glb
+│       │   │   │   ├── Herring_Fear.glb
+│       │   │   │   ├── Herring_Fly.glb
+│       │   │   │   ├── Herring_Hit.glb
+│       │   │   │   ├── Herring_Idle_A.glb
+│       │   │   │   ├── Herring_Idle_B.glb
+│       │   │   │   ├── Herring_Idle_C.glb
+│       │   │   │   ├── Herring_Jump.glb
+│       │   │   │   ├── Herring_Roll.glb
+│       │   │   │   ├── Herring_Run.glb
+│       │   │   │   ├── Herring_Sit.glb
+│       │   │   │   ├── Herring_Splash.glb
+│       │   │   │   ├── Herring_Swim.glb
+│       │   │   │   ├── Herring_Walk.glb
+│       │   │   │   ├── Inkfish_Attack.glb
+│       │   │   │   ├── Inkfish_Bounce.glb
+│       │   │   │   ├── Inkfish_Clicked.glb
+│       │   │   │   ├── Inkfish_Death.glb
+│       │   │   │   ├── Inkfish_Eat.glb
+│       │   │   │   ├── Inkfish_Fear.glb
+│       │   │   │   ├── Inkfish_Fly.glb
+│       │   │   │   ├── Inkfish_Hit.glb
+│       │   │   │   ├── Inkfish_Idle_A.glb
+│       │   │   │   ├── Inkfish_Idle_B.glb
+│       │   │   │   ├── Inkfish_Idle_C.glb
+│       │   │   │   ├── Inkfish_Jump.glb
+│       │   │   │   ├── Inkfish_Roll.glb
+│       │   │   │   ├── Inkfish_Run.glb
+│       │   │   │   ├── Inkfish_Sit.glb
+│       │   │   │   ├── Inkfish_Splash.glb
+│       │   │   │   ├── Inkfish_Swim.glb
+│       │   │   │   ├── Inkfish_Walk.glb
+│       │   │   │   ├── Muskrat_Attack.glb
+│       │   │   │   ├── Muskrat_Bounce.glb
+│       │   │   │   ├── Muskrat_Clicked.glb
+│       │   │   │   ├── Muskrat_Death.glb
+│       │   │   │   ├── Muskrat_Eat.glb
+│       │   │   │   ├── Muskrat_Fear.glb
+│       │   │   │   ├── Muskrat_Fly.glb
+│       │   │   │   ├── Muskrat_Hit.glb
+│       │   │   │   ├── Muskrat_Idle_A.glb
+│       │   │   │   ├── Muskrat_Idle_B.glb
+│       │   │   │   ├── Muskrat_Idle_C.glb
+│       │   │   │   ├── Muskrat_Jump.glb
+│       │   │   │   ├── Muskrat_Roll.glb
+│       │   │   │   ├── Muskrat_Run.glb
+│       │   │   │   ├── Muskrat_Sit.glb
+│       │   │   │   ├── Muskrat_Spin.glb
+│       │   │   │   ├── Muskrat_Swim.glb
+│       │   │   │   ├── Muskrat_Walk.glb
+│       │   │   │   ├── Pudu_Attack.glb
+│       │   │   │   ├── Pudu_Bounce.glb
+│       │   │   │   ├── Pudu_Clicked.glb
+│       │   │   │   ├── Pudu_Death.glb
+│       │   │   │   ├── Pudu_Eat.glb
+│       │   │   │   ├── Pudu_Fear.glb
+│       │   │   │   ├── Pudu_Fly.glb
+│       │   │   │   ├── Pudu_Hit.glb
+│       │   │   │   ├── Pudu_Idle_A.glb
+│       │   │   │   ├── Pudu_Idle_B.glb
+│       │   │   │   ├── Pudu_Idle_C.glb
+│       │   │   │   ├── Pudu_Jump.glb
+│       │   │   │   ├── Pudu_Roll.glb
+│       │   │   │   ├── Pudu_Run.glb
+│       │   │   │   ├── Pudu_Sit.glb
+│       │   │   │   ├── Pudu_Spin.glb
+│       │   │   │   ├── Pudu_Swim.glb
+│       │   │   │   ├── Pudu_Walk.glb
+│       │   │   │   ├── Sparrow_Attack.glb
+│       │   │   │   ├── Sparrow_Bounce.glb
+│       │   │   │   ├── Sparrow_Clicked.glb
+│       │   │   │   ├── Sparrow_Death.glb
+│       │   │   │   ├── Sparrow_Eat.glb
+│       │   │   │   ├── Sparrow_Fear.glb
+│       │   │   │   ├── Sparrow_Fly.glb
+│       │   │   │   ├── Sparrow_Hit.glb
+│       │   │   │   ├── Sparrow_Idle_A.glb
+│       │   │   │   ├── Sparrow_Idle_B.glb
+│       │   │   │   ├── Sparrow_Idle_C.glb
+│       │   │   │   ├── Sparrow_Jump.glb
+│       │   │   │   ├── Sparrow_Roll.glb
+│       │   │   │   ├── Sparrow_Run.glb
+│       │   │   │   ├── Sparrow_Sit.glb
+│       │   │   │   ├── Sparrow_Spin.glb
+│       │   │   │   ├── Sparrow_Swim.glb
+│       │   │   │   ├── Sparrow_Walk.glb
+│       │   │   │   ├── Taipan_Attack.glb
+│       │   │   │   ├── Taipan_Bounce.glb
+│       │   │   │   ├── Taipan_Clicked.glb
+│       │   │   │   ├── Taipan_Death.glb
+│       │   │   │   ├── Taipan_Eat.glb
+│       │   │   │   ├── Taipan_Fear.glb
+│       │   │   │   ├── Taipan_Fly.glb
+│       │   │   │   ├── Taipan_Hit.glb
+│       │   │   │   ├── Taipan_Idle_A.glb
+│       │   │   │   ├── Taipan_Idle_B.glb
+│       │   │   │   ├── Taipan_Idle_C.glb
+│       │   │   │   ├── Taipan_Jump.glb
+│       │   │   │   ├── Taipan_Roll.glb
+│       │   │   │   ├── Taipan_Run.glb
+│       │   │   │   ├── Taipan_Sit.glb
+│       │   │   │   ├── Taipan_Spin.glb
+│       │   │   │   ├── Taipan_Swim.glb
+│       │   │   │   └── Taipan_Walk.glb
+│       │   │   ├── Sparrow_Animations.glb
+│       │   │   └── Taipan_Animations.glb
+│       │   ├── Branch_01.glb
+│       │   ├── Bush_01.glb
+│       │   ├── Bush_02.glb
+│       │   ├── Bush_03.glb
+│       │   ├── Colobus_LOD0.glb
+│       │   ├── Colobus_LOD1.glb
+│       │   ├── Colobus_LOD2.glb
+│       │   ├── Colobus_LOD3.glb
+│       │   ├── Flowers_01.glb
+│       │   ├── Flowers_02.glb
+│       │   ├── Gecko_LOD0.glb
+│       │   ├── Gecko_LOD1.glb
+│       │   ├── Gecko_LOD2.glb
+│       │   ├── Gecko_LOD3.glb
+│       │   ├── Grass_01.glb
+│       │   ├── Grass_02.glb
+│       │   ├── Ground_01.glb
+│       │   ├── Ground_02.glb
+│       │   ├── Ground_03.glb
+│       │   ├── Herring_LOD0.glb
+│       │   ├── Herring_LOD1.glb
+│       │   ├── Herring_LOD2.glb
+│       │   ├── Herring_LOD3.glb
+│       │   ├── Inkfish_LOD0.glb
+│       │   ├── Inkfish_LOD1.glb
+│       │   ├── Inkfish_LOD2.glb
+│       │   ├── Inkfish_LOD3.glb
+│       │   ├── Merged LOD
+│       │   │   ├── Colobus_LOD_All.glb
+│       │   │   ├── Gecko_LOD_All.glb
+│       │   │   ├── Herring_LOD_All.glb
+│       │   │   ├── Inkfish_LOD_All.glb
+│       │   │   ├── Muskrat_LOD_All.glb
+│       │   │   ├── Pudu_LOD_All.glb
+│       │   │   ├── Sparrow_LOD_All.glb
+│       │   │   └── Taipan_LOD_All.glb
+│       │   ├── Mushroom_01.glb
+│       │   ├── Mushroom_02.glb
+│       │   ├── Muskrat_LOD0.glb
+│       │   ├── Muskrat_LOD1.glb
+│       │   ├── Muskrat_LOD2.glb
+│       │   ├── Muskrat_LOD3.glb
+│       │   ├── Pudu_LOD0.glb
+│       │   ├── Pudu_LOD1.glb
+│       │   ├── Pudu_LOD2.glb
+│       │   ├── Pudu_LOD3.glb
+│       │   ├── Rock_01.glb
+│       │   ├── Rock_02.glb
+│       │   ├── Rock_03.glb
+│       │   ├── Rock_04.glb
+│       │   ├── Rock_05.glb
+│       │   ├── Sparrow_LOD0.glb
+│       │   ├── Sparrow_LOD1.glb
+│       │   ├── Sparrow_LOD2.glb
+│       │   ├── Sparrow_LOD3.glb
+│       │   ├── squirrel.glb
+│       │   ├── Stump_01.glb
+│       │   ├── Taipan_LOD0.glb
+│       │   ├── Taipan_LOD1.glb
+│       │   ├── Taipan_LOD2.glb
+│       │   ├── Taipan_LOD3.glb
+│       │   ├── Tree_01.glb
+│       │   ├── Tree_02.glb
+│       │   ├── Tree_03.glb
+│       │   ├── Tree_04.glb
+│       │   └── Tree_05.glb
+│       └── Textures
+│           ├── T_Colobus.png
+│           ├── T_Gecko.png
+│           ├── T_Herring.png
+│           ├── T_Inkfish.png
+│           ├── T_Muskrat.png
+│           ├── T_Pudu.png
+│           ├── T_Sparrow.png
+│           └── T_Taipan.png
+├── README.md
+├── repo_structure.txt
+├── tsconfig.json
+├── workers
+│   ├── api.ts
+│   ├── constants.ts
+│   ├── Logger.ts
+│   ├── objects
+│   │   ├── ForestManager.ts
+│   │   ├── Leaderboard.ts
+│   │   ├── registry.ts
+│   │   ├── SquirrelSession.ts
+│   │   └── WalnutRegistry.ts
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── types.ts
+└── wrangler.toml
+
+42 directories, 335 files

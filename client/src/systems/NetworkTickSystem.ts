@@ -171,7 +171,8 @@ export class NetworkTickSystem extends System {
     });
     
     // CHEN'S FIX: Use conditional logging for frequent operations
-    Logger.debugExpensive(LogCategory.NETWORK, () => `Queued update ${this.sequenceNumber} for compression`);
+    // TASK 8 FIX: Disabled to reduce console spam
+    // Logger.debugExpensive(LogCategory.NETWORK, () => `Queued update ${this.sequenceNumber} for compression`);
   }
 
   private queueLocalMovement(_data: any): void {

@@ -485,13 +485,15 @@ export class NetworkSystem extends System {
 
   private handleNetworkMessage(message: NetworkMessage): void {
     // TASK 8 FIX: Reduce verbose logging in preview mode
-    Logger.debug(LogCategory.NETWORK, '📨 RAW WEBSOCKET MESSAGE RECEIVED:', message);
-    Logger.debug(LogCategory.NETWORK, `⏰ Message received at ${Date.now()}, type: ${message.type}`);
+    // TASK 8 FIX: Disabled to reduce console spam
+    // Logger.debug(LogCategory.NETWORK, '📨 RAW WEBSOCKET MESSAGE RECEIVED:', message);
+    // Logger.debug(LogCategory.NETWORK, `⏰ Message received at ${Date.now()}, type: ${message.type}`);
     
     // Skip our own messages, but only if we have a valid squirrelId
     // POSITION PERSISTENCE FIX: Allow init messages to pass through even if they have local squirrelId
     if (message.squirrelId && message.squirrelId === this.localSquirrelId && message.type !== 'init') {
-      Logger.debug(LogCategory.NETWORK, '🔄 Skipping own message from:', message.squirrelId);
+      // TASK 8 FIX: Disabled to reduce console spam
+    // Logger.debug(LogCategory.NETWORK, '🔄 Skipping own message from:', message.squirrelId);
       return;
     }
 
@@ -530,7 +532,8 @@ export class NetworkSystem extends System {
         this.handlePositionCorrection(message);
         break;
       case 'heartbeat':
-        Logger.debug(LogCategory.NETWORK, '💓 HEARTBEAT received');
+        // TASK 8 FIX: Disabled to reduce console spam
+    // Logger.debug(LogCategory.NETWORK, '💓 HEARTBEAT received');
         this.handleHeartbeatResponse(message);
         break;
       case 'batch_update':
@@ -578,7 +581,8 @@ export class NetworkSystem extends System {
   }
 
   private handleRemotePlayerUpdate(message: NetworkMessage): void {
-    Logger.debugExpensive(LogCategory.NETWORK, () => `🎯 Remote player update: ${message.squirrelId} at (${message.position?.x.toFixed(1)}, ${message.position?.z.toFixed(1)})`);
+    // TASK 8 FIX: Disabled to reduce console spam
+    // Logger.debugExpensive(LogCategory.NETWORK, () => `🎯 Remote player update: ${message.squirrelId} at (${message.position?.x.toFixed(1)}, ${message.position?.z.toFixed(1)})`);
     
     // TASK 4 FIX: Remote player updates are CRITICAL for player visibility
     // Do NOT batch these - send immediately to prevent delays
