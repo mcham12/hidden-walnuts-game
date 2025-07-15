@@ -76,7 +76,7 @@ This plan outlines the development roadmap for *Hidden Walnuts*, a 3D multiplaye
 
 ---
 
-## MVP 8: Animated Squirrel Players & NPC Characters 🎯 **CURRENT FOCUS**
+## MVP 8b: Animated Squirrel Players & NPC Characters 🎯 **CURRENT FOCUS**
 
 **Objective**: Implement animated squirrel player avatars and NPC characters to create a vibrant, living forest environment.
 
