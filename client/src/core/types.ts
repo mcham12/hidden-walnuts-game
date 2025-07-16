@@ -124,12 +124,12 @@ export class EntityId {
 
 // New for MVP 8b: Character types
 export interface CharacterAnimationMap {
-  idle: string;
-  walk: string;
-  run: string;
-  jump: string;
+  idle?: string;
+  walk?: string;
+  run?: string;
+  jump?: string;
   // Extensible: add more states as needed (e.g., attack, dig)
-  [key: string]: string; // For future animations
+  [key: string]: string | undefined; // For future animations
 }
 
 export interface CharacterType {
@@ -144,6 +144,6 @@ export interface CharacterType {
     jumpHeight: number;
     // Add more as needed
   };
-  unlockCondition: 'always' | `level:${number}` | `achievement:${string}`; // Data-driven unlocking
+  unlockCondition: string; // Data-driven unlocking (was: 'always' | `level:${number}` | `achievement:${string}`)
   isNPCCompatible: boolean; // Can be used for NPCs
 }

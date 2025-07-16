@@ -379,6 +379,11 @@ export class GameManager {
     this.movementSystem = container.resolve(ServiceTokens.MOVEMENT_SYSTEM);
     this.networkSystem = container.resolve(ServiceTokens.NETWORK_SYSTEM);
     this.playerManager = container.resolve(ServiceTokens.PLAYER_MANAGER);
+    
+    // Initialize CharacterRegistry to trigger character registration logs
+    container.resolve(ServiceTokens.CHARACTER_REGISTRY);
+    Logger.info(LogCategory.CORE, '📚 CharacterRegistry initialized');
+    
     this.interpolationSystem = new InterpolationSystem(this.eventBus);
     
     const renderAdapter = new ThreeJSRenderAdapter();

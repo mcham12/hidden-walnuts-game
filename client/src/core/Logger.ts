@@ -85,13 +85,13 @@ class GameLogger {
   private getLogLevel(environment: string): LogLevel {
     switch (environment) {
       case 'development':
-        return LogLevel.WARN; // Reduced to WARN to eliminate debug messages completely
+        return LogLevel.INFO; // Back to INFO to show character registration and other important messages
       case 'preview':
         return LogLevel.WARN; // TASK 8 FIX: Reduce console spam in preview - only show WARN and ERROR
       case 'production':
         return LogLevel.ERROR;
       default:
-        return LogLevel.WARN; // Reduced to WARN
+        return LogLevel.INFO; // Back to INFO
     }
   }
 

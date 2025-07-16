@@ -308,9 +308,7 @@ export class ClientPredictionSystem extends System {
       value: interpolatedPosition
     });
     
-    Logger.debugExpensive(LogCategory.NETWORK, () => 
-      `Interpolated position: ${clientPosition.toString()} -> ${interpolatedPosition.toString()} (${interpolationFactor * 100}% towards server)`
-    );
+    // Removed debug logging to eliminate console spam
   }
 
   // TASK 8 PHASE 2: Enhanced input validation for replay
@@ -404,12 +402,7 @@ export class ClientPredictionSystem extends System {
       this.inputHistory = this.inputHistory.slice(-maxBufferSize);
     }
     
-    // TASK 8 PHASE 3: Performance monitoring (reduced frequency to reduce console spam)
-    if (this.inputHistory.length > 25 && this.performanceMetrics.totalInputs % 50 === 0) {
-      Logger.debugExpensive(LogCategory.NETWORK, () => 
-        `Input buffer: ${this.inputHistory.length} inputs, oldest: ${(now - this.inputHistory[0]?.timestamp || 0).toFixed(0)}ms ago`
-      );
-    }
+    // TASK 8 PHASE 3: Performance monitoring (removed debug logging to eliminate console spam)
     
     // TASK 8 PHASE 3: Track cleanup performance
     this.trackPerformanceMetrics('cleanup');
@@ -445,10 +438,7 @@ export class ClientPredictionSystem extends System {
         break;
     }
     
-    // Log performance metrics periodically (reduced frequency to reduce console spam)
-    if (this.performanceMetrics.totalInputs % 500 === 0) {
-      Logger.debug(LogCategory.NETWORK, `Performance metrics: ${JSON.stringify(this.performanceMetrics)}`);
-    }
+    // Log performance metrics periodically (removed to eliminate console spam)
   }
 
   // TASK 8 PHASE 3: Get performance stats for monitoring
@@ -470,7 +460,7 @@ export class ClientPredictionSystem extends System {
       input.sequenceNumber > data.sequence
     );
     
-    Logger.debugExpensive(LogCategory.NETWORK, () => `Acknowledged sequence ${data.sequence}, cleaned input history`);
+    // Removed debug logging to eliminate console spam
   }
 
   acknowledgeServerInput(sequenceNumber: number): void {
