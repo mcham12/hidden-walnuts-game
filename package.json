@@ -1,5 +1,6 @@
 {
   "name": "hidden-walnuts-game",
+  "type": "module",
   "version": "0.1.0",
   "private": true,
   "description": "Online multiplayer 3D game where squirrels hide and seek walnuts",
@@ -14,6 +15,7 @@
     "install:all": "npm install && cd client && npm install && cd ../workers && npm install"
   },
   "dependencies": {
+    "three": "^0.178.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
