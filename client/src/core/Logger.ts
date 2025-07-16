@@ -85,20 +85,20 @@ class GameLogger {
   private getLogLevel(environment: string): LogLevel {
     switch (environment) {
       case 'development':
-        return LogLevel.DEBUG;
+        return LogLevel.WARN; // Reduced to WARN to eliminate debug messages completely
       case 'preview':
         return LogLevel.WARN; // TASK 8 FIX: Reduce console spam in preview - only show WARN and ERROR
       case 'production':
         return LogLevel.ERROR;
       default:
-        return LogLevel.DEBUG; // More verbose for debugging
+        return LogLevel.WARN; // Reduced to WARN
     }
   }
 
   private getEnabledCategories(environment: string): Set<LogCategory> {
     switch (environment) {
       case 'development':
-        return new Set(Object.values(LogCategory)); // All categories
+        return new Set([LogCategory.CORE, LogCategory.PLAYER]); // Removed NETWORK and INPUT to eliminate debug spam
       case 'preview':
         return new Set([LogCategory.CORE, LogCategory.NETWORK, LogCategory.PLAYER]); // TASK 8 FIX: Reduce categories in preview
       case 'production':

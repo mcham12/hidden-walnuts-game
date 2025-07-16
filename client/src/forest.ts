@@ -76,8 +76,8 @@ export async function createForest(): Promise<THREE.Object3D[]> {
 
   // Load models
   let treeModel, shrubModel;
-  const treePath = '/assets/models/Tree_01.glb';
-  const shrubPath = '/assets/models/Bush_01.glb';
+      const treePath = '/assets/models/environment/Tree_01.glb';
+      const shrubPath = '/assets/models/environment/Bush_01.glb';
   const treeUrl = `${window.location.origin}${treePath}`;
   const shrubUrl = `${window.location.origin}${shrubPath}`;
   try {
