@@ -123,6 +123,10 @@ export class EntityId {
 }
 
 // New for MVP 8b: Character types
+export interface Component {
+  type: string;
+}
+
 export interface CharacterAnimationMap {
   idle?: string;
   walk?: string;
@@ -144,6 +148,12 @@ export interface CharacterType {
     jumpHeight: number;
     // Add more as needed
   };
-  unlockCondition: string; // Data-driven unlocking (was: 'always' | `level:${number}` | `achievement:${string}`)
+  unlockCondition: string; // Data-driven unlocking
   isNPCCompatible: boolean; // Can be used for NPCs
+}
+
+// New component for entities to track character type
+export interface CharacterComponent extends Component {
+  type: 'character';
+  characterId: string; // References registry ID
 }

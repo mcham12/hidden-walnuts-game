@@ -94,6 +94,13 @@ export abstract class System {
   addEntity(entity: Entity): void {
     if (this.canHandle(entity)) {
       this.entities.set(entity.id.value, entity);
+      
+      // Debug logging for local player entities
+      const networkComponent = entity.getComponent<any>('network');
+      if (networkComponent?.isLocalPlayer) {
+        Logger.info(LogCategory.ECS, `🎮 Adding LOCAL player entity ${entity.id.value} to ${this.systemId}`);
+      }
+      
       this.onEntityAdded(entity);
     }
   }
@@ -150,6 +157,13 @@ export class EntityManager {
 
   addEntity(entity: Entity): void {
     this.entities.set(entity.id.value, entity);
+    
+    // Debug logging for local player entities
+    const networkComponent = entity.getComponent<any>('network');
+    if (networkComponent?.isLocalPlayer) {
+      Logger.info(LogCategory.ECS, `🎮 Adding LOCAL player entity ${entity.id.value} to EntityManager`);
+      Logger.info(LogCategory.ECS, `🎮 Local player components: ${entity.getComponents().map(c => c.type).join(', ')}`);
+    }
     
     // Notify all systems about the new entity
     for (const system of this.systems) {

@@ -126,6 +126,7 @@ export class NetworkTickSystem extends System {
     const rotation = this.localPlayerEntity.getComponent<RotationComponent>('rotation');
     const velocity = this.localPlayerEntity.getComponent<VelocityComponent>('velocity');
     const network = this.localPlayerEntity.getComponent<NetworkComponent>('network');
+    const character = this.localPlayerEntity.getComponent<any>('character');
     
     if (!position || !rotation || !network) return;
     
@@ -136,6 +137,7 @@ export class NetworkTickSystem extends System {
       sequenceNumber: this.sequenceNumber,
       timestamp: timestamp,
       squirrelId: network.squirrelId,
+      characterId: character?.characterId || 'squirrel',
       position: {
         x: position.value.x,
         y: position.value.y, 

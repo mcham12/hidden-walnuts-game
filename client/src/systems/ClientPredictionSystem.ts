@@ -118,11 +118,13 @@ export class ClientPredictionSystem extends System {
         // Emit movement event for network system
         const position = this.localPlayerEntity!.getComponent<PositionComponent>('position')!;
         const rotation = this.localPlayerEntity!.getComponent<RotationComponent>('rotation')!;
+        const character = this.localPlayerEntity!.getComponent<any>('character');
         
         this.eventBus.emit(GameEvents.PLAYER_MOVED, {
           entityId: this.localPlayerEntity!.id.value,
           position: position.value,
           rotation: rotation.value,
+          characterId: character?.characterId || 'squirrel',
           sequenceNumber: this.sequenceNumber,
           predicted: true // Mark as client prediction
         });

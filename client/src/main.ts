@@ -5,6 +5,50 @@ import { container, ServiceTokens } from './core/Container';
 import { EventBus, GameEvents } from './core/EventBus';
 import { Logger, LogCategory } from './core/Logger';
 
+// Add debug element to page
+const debugDiv = document.createElement('div');
+debugDiv.style.cssText = `
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: rgba(0,0,0,0.8);
+  color: white;
+  padding: 10px;
+  border-radius: 5px;
+  font-family: monospace;
+  font-size: 12px;
+  z-index: 9999;
+  max-width: 300px;
+`;
+debugDiv.innerHTML = 'Game loading...';
+document.body.appendChild(debugDiv);
+
+// Override console.log to also show in debug div
+const originalLog = console.log;
+const originalWarn = console.warn;
+const originalError = console.error;
+
+console.log = (...args) => {
+  originalLog.apply(console, args);
+  if (args[0] && typeof args[0] === 'string' && args[0].includes('🎮')) {
+    debugDiv.innerHTML += '<br>' + args.join(' ');
+  }
+};
+
+console.warn = (...args) => {
+  originalWarn.apply(console, args);
+  if (args[0] && typeof args[0] === 'string' && args[0].includes('⚠️')) {
+    debugDiv.innerHTML += '<br>' + args.join(' ');
+  }
+};
+
+console.error = (...args) => {
+  originalError.apply(console, args);
+  if (args[0] && typeof args[0] === 'string' && args[0].includes('❌')) {
+    debugDiv.innerHTML += '<br>' + args.join(' ');
+  }
+};
+
 class Application {
   private gameManager?: GameManager;
   private canvas?: HTMLCanvasElement;

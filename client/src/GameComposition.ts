@@ -1,6 +1,5 @@
 // client/src/GameComposition.ts
 
-
 import { container, ServiceTokens } from './core/Container';
 import { EventBus } from './core/EventBus';
 import { Logger, LogCategory } from './core/Logger';
@@ -115,7 +114,8 @@ export class SceneManager implements ISceneManager {
       }
     }
     
-    this.camera.position.set(0, initialCameraY, 50);
+    // Position camera to better see the spawn area (local player spawns between -5 and 5 on X/Z)
+    this.camera.position.set(0, 10, 10); // TEMPORARY: Closer camera position for debugging
     this.camera.lookAt(0, 0, 0);
     this.constrainCameraToWorldBounds();
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -299,7 +299,7 @@ export class AssetManager implements IAssetManager {
       Logger.debug(LogCategory.CORE, `📦 Using cached squirrel model, scale: x=${cachedModel.scale.x.toFixed(2)}, y=${cachedModel.scale.y.toFixed(2)}, z=${cachedModel.scale.z.toFixed(2)}`);
       return cachedModel.clone();
     }
-    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
     
     const loader = new GLTFLoader();
     
@@ -328,9 +328,10 @@ export class AssetManager implements IAssetManager {
   }
   async loadModel(path: string): Promise<any> {
     if (this.cache.has(path)) {
-      return this.cache.get(path).clone();
+      const cachedGltf = this.cache.get(path);
+      return cachedGltf;
     }
-    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
     const loader = new GLTFLoader();
     
     return new Promise((resolve, reject) => {
@@ -379,11 +380,6 @@ export class GameManager {
     this.movementSystem = container.resolve(ServiceTokens.MOVEMENT_SYSTEM);
     this.networkSystem = container.resolve(ServiceTokens.NETWORK_SYSTEM);
     this.playerManager = container.resolve(ServiceTokens.PLAYER_MANAGER);
-    
-    // Initialize CharacterRegistry to trigger character registration logs
-    container.resolve(ServiceTokens.CHARACTER_REGISTRY);
-    Logger.info(LogCategory.CORE, '📚 CharacterRegistry initialized');
-    
     this.interpolationSystem = new InterpolationSystem(this.eventBus);
     
     const renderAdapter = new ThreeJSRenderAdapter();
@@ -533,9 +529,9 @@ export class GameManager {
     }
     if (playerFactory && typeof playerFactory.createLocalPlayer === 'function') {
       if (savedPlayerData) {
-        this.localPlayer = await playerFactory.createLocalPlayerWithPosition(playerId, savedPlayerData.position, savedPlayerData.rotationY);
+        this.localPlayer = await playerFactory.createLocalPlayerWithPosition(playerId, savedPlayerData.position, savedPlayerData.rotationY, 'colobus');
       } else {
-        this.localPlayer = await playerFactory.createLocalPlayer(playerId);
+        this.localPlayer = await playerFactory.createLocalPlayer(playerId, 'colobus');
       }
       
       if (this.localPlayer) {
@@ -609,16 +605,35 @@ export class GameManager {
     }
   }
   private updateCameraToFollowLocalPlayer(): void {
-    if (!this.localPlayer) return;
+    Logger.debug(LogCategory.RENDER, `📷 updateCameraToFollowLocalPlayer called, localPlayer exists: ${!!this.localPlayer}`);
+    
+    if (!this.localPlayer) {
+      Logger.warn(LogCategory.RENDER, '⚠️ No local player available for camera follow');
+      return;
+    }
     
     const position = this.localPlayer.getComponent<PositionComponent>('position');
     const rotation = this.localPlayer.getComponent<RotationComponent>('rotation');
     
+    Logger.debug(LogCategory.RENDER, `📷 Local player components - position: ${!!position}, rotation: ${!!rotation}`);
+    
     if (position && rotation) {
+      Logger.debug(LogCategory.RENDER, `📷 Camera following local player at (${position.value.x.toFixed(1)}, ${position.value.y.toFixed(1)}, ${position.value.z.toFixed(1)})`);
+      
+      // Get camera position for debugging
+      const camera = this.sceneManager.getCamera();
+      if (camera) {
+        Logger.debug(LogCategory.RENDER, `📷 Camera position: (${camera.position.x.toFixed(1)}, ${camera.position.y.toFixed(1)}, ${camera.position.z.toFixed(1)})`);
+        Logger.debug(LogCategory.RENDER, `📷 Camera target: (${position.value.x.toFixed(1)}, ${position.value.y.toFixed(1)}, ${position.value.z.toFixed(1)})`);
+      }
+      
       this.sceneManager.updateCameraToFollowPlayer(
         { x: position.value.x, y: position.value.y, z: position.value.z },
         { y: rotation.value.y }
       );
+    } else {
+      Logger.warn(LogCategory.RENDER, '⚠️ Local player missing position or rotation component');
+      Logger.warn(LogCategory.RENDER, `⚠️ Local player components: ${this.localPlayer.getComponents().map(c => c.type).join(', ')}`);
     }
   }
   private handleGameLoopError(error: any): void {

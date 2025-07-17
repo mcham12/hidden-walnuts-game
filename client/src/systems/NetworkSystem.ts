@@ -730,6 +730,7 @@ export class NetworkSystem extends System {
       const update = {
         type: 'player_update',
         squirrelId: this.localSquirrelId || 'unknown',
+        characterId: data.characterId || 'squirrel',
         position: { x: data.position.x, y: data.position.y, z: data.position.z },
         rotationY: data.rotation.y,
         timestamp: performance.now()
