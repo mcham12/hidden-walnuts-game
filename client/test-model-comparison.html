@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Loading Comparison Test</title>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; }
+        #info { 
+            position: absolute; 
+            top: 10px; 
+            left: 10px; 
+            background: rgba(0,0,0,0.8); 
+            color: white; 
+            padding: 10px; 
+            border-radius: 5px;
+            max-width: 400px;
+            font-size: 12px;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        button {
+            margin: 5px;
+            padding: 5px 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover { background: #45a049; }
+        .error { color: #ff6b6b; }
+        .success { color: #51cf66; }
+        .warning { color: #ffd43b; }
+    </style>
+</head>
+<body>
+    <div id="info">Loading...</div>
+    <div id="controls">
+        <button onclick="loadSquirrel()">Load Squirrel</button>
+        <button onclick="loadColobus()">Load Colobus</button>
+        <button onclick="loadBoth()">Load Both</button>
+        <button onclick="clearScene()">Clear Scene</button>
+        <button onclick="toggleDebug()">Toggle Debug</button>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js';
+        import { GLTFLoader } from 'https://unpkg.com/three@0.158.0/examples/jsm/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'https://unpkg.com/three@0.158.0/examples/jsm/controls/OrbitControls.js';
+
+        let scene, camera, renderer, controls;
+        let debugMode = false;
+        let loadedModels = new Map();
+
+        function log(message, type = 'info') {
+            const infoDiv = document.getElementById('info');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+            infoDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(5, 5, 5);
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+
+            // Ground
+            const groundGeometry = new THREE.PlaneGeometry(20, 20);
+            const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x90EE90 });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            log('Scene initialized successfully', 'success');
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function analyzeModel(model, name) {
+            log(`=== Analyzing ${name} ===`, 'info');
+            
+            // Basic properties
+            log(`Type: ${model.type}`, 'info');
+            log(`Children count: ${model.children.length}`, 'info');
+            log(`Visible: ${model.visible}`, 'info');
+            log(`Position: (${model.position.x.toFixed(2)}, ${model.position.y.toFixed(2)}, ${model.position.z.toFixed(2)})`, 'info');
+            log(`Scale: (${model.scale.x.toFixed(2)}, ${model.scale.y.toFixed(2)}, ${model.scale.z.toFixed(2)})`, 'info');
+            log(`Rotation: (${model.rotation.x.toFixed(2)}, ${model.rotation.y.toFixed(2)}, ${model.rotation.z.toFixed(2)})`, 'info');
+
+            // Mesh analysis
+            let meshCount = 0;
+            let materialCount = 0;
+            let visibleMeshCount = 0;
+            let boundingBox = new THREE.Box3();
+            let hasBoundingBox = false;
+
+            model.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    meshCount++;
+                    if (child.material) {
+                        materialCount++;
+                        log(`  Mesh ${meshCount}: material=${child.material.type}, visible=${child.visible}`, 'info');
+                    }
+                    if (child.visible) {
+                        visibleMeshCount++;
+                    }
+                    
+                    // Calculate bounding box
+                    if (child.geometry) {
+                        child.geometry.computeBoundingBox();
+                        if (child.geometry.boundingBox) {
+                            boundingBox.expandByObject(child);
+                            hasBoundingBox = true;
+                        }
+                    }
+                }
+            });
+
+            log(`Mesh count: ${meshCount}`, 'info');
+            log(`Visible mesh count: ${visibleMeshCount}`, 'info');
+            log(`Material count: ${materialCount}`, 'info');
+
+            if (hasBoundingBox) {
+                const size = boundingBox.getSize(new THREE.Vector3());
+                const center = boundingBox.getCenter(new THREE.Vector3());
+                log(`Bounding box size: (${size.x.toFixed(2)}, ${size.y.toFixed(2)}, ${size.z.toFixed(2)})`, 'info');
+                log(`Bounding box center: (${center.x.toFixed(2)}, ${center.y.toFixed(2)}, ${center.z.toFixed(2)})`, 'info');
+            }
+
+            // Scene integration test
+            const testClone = model.clone();
+            scene.add(testClone);
+            log(`Scene children after adding ${name}: ${scene.children.length}`, 'info');
+            log(`Test clone in scene: ${scene.children.includes(testClone)}`, 'info');
+            scene.remove(testClone);
+
+            return {
+                meshCount,
+                visibleMeshCount,
+                materialCount,
+                boundingBox: hasBoundingBox ? boundingBox : null
+            };
+        }
+
+        async function loadModel(path, name, position = { x: 0, y: 0, z: 0 }) {
+            try {
+                log(`Loading ${name} from ${path}...`, 'info');
+                
+                // Test asset availability
+                const response = await fetch(path);
+                if (!response.ok) {
+                    throw new Error(`Asset not found: ${path} (${response.status})`);
+                }
+                log(`Asset available: ${path}`, 'success');
+
+                const loader = new GLTFLoader();
+                const gltf = await loader.loadAsync(path);
+                
+                if (!gltf || !gltf.scene) {
+                    throw new Error('Model loaded but scene is null');
+                }
+
+                const model = gltf.scene;
+                log(`Model loaded successfully: ${name}`, 'success');
+
+                // Analyze the model
+                const analysis = analyzeModel(model, name);
+
+                // Configure the model
+                model.position.set(position.x, position.y, position.z);
+                model.scale.set(0.3, 0.3, 0.3);
+                model.castShadow = true;
+                model.receiveShadow = true;
+
+                // Apply shadow settings to children
+                model.traverse((child) => {
+                    if (child instanceof THREE.Mesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+
+                // Add to scene
+                scene.add(model);
+                loadedModels.set(name, model);
+
+                log(`✅ ${name} added to scene at (${position.x}, ${position.y}, ${position.z})`, 'success');
+                log(`Scene children count: ${scene.children.length}`, 'info');
+
+                return { model, analysis };
+
+            } catch (error) {
+                log(`❌ Failed to load ${name}: ${error.message}`, 'error');
+                console.error(`Error loading ${name}:`, error);
+                return null;
+            }
+        }
+
+        window.loadSquirrel = async () => {
+            const result = await loadModel('/assets/models/environment/squirrel.glb', 'Squirrel', { x: -3, y: 0, z: 0 });
+            if (result) {
+                log('Squirrel model test completed', 'success');
+            }
+        };
+
+        window.loadColobus = async () => {
+            const result = await loadModel('/assets/models/characters/Colobus_LOD0.glb', 'Colobus', { x: 3, y: 0, z: 0 });
+            if (result) {
+                log('Colobus model test completed', 'success');
+            }
+        };
+
+        window.loadBoth = async () => {
+            log('Loading both models for comparison...', 'info');
+            const squirrelResult = await loadModel('/assets/models/environment/squirrel.glb', 'Squirrel', { x: -3, y: 0, z: 0 });
+            const colobusResult = await loadModel('/assets/models/characters/Colobus_LOD0.glb', 'Colobus', { x: 3, y: 0, z: 0 });
+            
+            if (squirrelResult && colobusResult) {
+                log('=== COMPARISON RESULTS ===', 'info');
+                log(`Squirrel - Meshes: ${squirrelResult.analysis.meshCount}, Visible: ${squirrelResult.analysis.visibleMeshCount}`, 'info');
+                log(`Colobus - Meshes: ${colobusResult.analysis.meshCount}, Visible: ${colobusResult.analysis.visibleMeshCount}`, 'info');
+                
+                if (squirrelResult.analysis.visibleMeshCount !== colobusResult.analysis.visibleMeshCount) {
+                    log('⚠️ Different visible mesh counts detected!', 'warning');
+                }
+            }
+        };
+
+        window.clearScene = () => {
+            loadedModels.forEach((model, name) => {
+                scene.remove(model);
+                log(`Removed ${name} from scene`, 'info');
+            });
+            loadedModels.clear();
+            log('Scene cleared', 'success');
+        };
+
+        window.toggleDebug = () => {
+            debugMode = !debugMode;
+            log(`Debug mode: ${debugMode ? 'ON' : 'OFF'}`, debugMode ? 'success' : 'info');
+        };
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize
+        init();
+        log('Model comparison test ready. Use buttons to test different models.', 'success');
+    </script>
+</body>
+</html> 

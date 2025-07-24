@@ -102,18 +102,6 @@ export class SceneManager implements ISceneManager {
       2000  
     );
     
-    let initialCameraY = 50; 
-    if (this.terrainService) {
-      try {
-        const terrainHeight = this.terrainService.getTerrainHeightSync(0, 50);
-        if (terrainHeight !== null) {
-          initialCameraY = terrainHeight + 25; 
-        }
-      } catch (error) {
-        Logger.warn(LogCategory.TERRAIN, 'Failed to get initial terrain height for camera, using default');
-      }
-    }
-    
     // Position camera to better see the spawn area (local player spawns between -5 and 5 on X/Z)
     this.camera.position.set(0, 10, 10); // TEMPORARY: Closer camera position for debugging
     this.camera.lookAt(0, 0, 0);
@@ -537,6 +525,19 @@ export class GameManager {
       if (this.localPlayer) {
         Logger.info(LogCategory.PLAYER, '🐿️ Local player created with ID:', this.localPlayer.id.value);
         this.entityManager.addEntity(this.localPlayer);
+        
+        // Set up the local player in the Area of Interest system
+        const position = this.localPlayer.getComponent<PositionComponent>('position');
+        if (position) {
+          this.areaOfInterestSystem.setLocalPlayer(playerId, {
+            x: position.value.x,
+            y: position.value.y,
+            z: position.value.z
+          });
+          Logger.info(LogCategory.PLAYER, `🎯 Set local player ${playerId} in AreaOfInterestSystem`);
+        } else {
+          Logger.warn(LogCategory.PLAYER, `⚠️ Local player has no position component for AreaOfInterestSystem`);
+        }
       }
     }
   }
@@ -572,17 +573,13 @@ export class GameManager {
   private safeSystemUpdate(deltaTime: number): void {
     try {
       this.entityManager.update(deltaTime);
+      
+      // Test log to verify systems are being called
+      Logger.debugExpensive(LogCategory.CORE, () => `🔄 Game loop update - deltaTime: ${deltaTime.toFixed(3)}s`);
+      
+      this.updateCameraToFollowLocalPlayer();
     } catch (error) {
-      Logger.error(LogCategory.ECS, '🚨 [GameLoop] ECS System update failed:', error);
-      
-      if (error instanceof Error && error.stack) {
-        const systemMatch = error.stack.match(/(\w+System)\.update/);
-        if (systemMatch) {
-          Logger.error(LogCategory.ECS, '🎯 [GameLoop] Failed system:', systemMatch[1]);
-        }
-      }
-      
-      throw error; 
+      this.handleGameLoopError(error);
     }
   }
   private safeRender(): void {

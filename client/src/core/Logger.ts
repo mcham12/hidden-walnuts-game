@@ -98,7 +98,7 @@ class GameLogger {
   private getEnabledCategories(environment: string): Set<LogCategory> {
     switch (environment) {
       case 'development':
-        return new Set([LogCategory.CORE, LogCategory.PLAYER]); // Removed NETWORK and INPUT to eliminate debug spam
+        return new Set([LogCategory.CORE, LogCategory.PLAYER, LogCategory.SPATIAL]); // Added SPATIAL for AOI debugging
       case 'preview':
         return new Set([LogCategory.CORE, LogCategory.NETWORK, LogCategory.PLAYER]); // TASK 8 FIX: Reduce categories in preview
       case 'production':

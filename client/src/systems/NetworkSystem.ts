@@ -582,12 +582,15 @@ export class NetworkSystem extends System {
     
     // TASK 4 FIX: Remote player updates are CRITICAL for player visibility
     // Do NOT batch these - send immediately to prevent delays
-    this.eventBus.emit('remote_player_state', {
+    const eventData = {
       squirrelId: message.squirrelId,
       position: message.position,
       rotationY: message.rotationY,
       timestamp: message.timestamp
-    });
+    };
+    
+    Logger.debugExpensive(LogCategory.NETWORK, () => `📤 Emitting remote_player_state event: ${JSON.stringify(eventData)}`);
+    this.eventBus.emit('remote_player_state', eventData);
   }
 
   private handlePlayerJoined(message: NetworkMessage): void {
@@ -1236,13 +1239,17 @@ export class NetworkSystem extends System {
           
           Logger.info(LogCategory.NETWORK, `🎯 Processing existing player from separate message: ${player.squirrelId}`);
           
-          // Emit immediately - do NOT batch critical player visibility events
-          this.eventBus.emit('remote_player_state', {
+          const eventData = {
             squirrelId: player.squirrelId,
             position: player.position,
             rotationY: player.rotationY || 0,
             timestamp: message.timestamp || performance.now()
-          });
+          };
+          
+          Logger.debugExpensive(LogCategory.NETWORK, () => `📤 Emitting remote_player_state for existing player: ${JSON.stringify(eventData)}`);
+          
+          // Emit immediately - do NOT batch critical player visibility events
+          this.eventBus.emit('remote_player_state', eventData);
           
           // Also emit the join event for other systems
           this.eventBus.emit('remote_player_joined', {

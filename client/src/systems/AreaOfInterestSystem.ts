@@ -3,6 +3,7 @@
 import { System } from '../ecs';
 import { EventBus } from '../core/EventBus';
 import { Logger, LogCategory } from '../core/Logger';
+import { GameEvents } from '../core/EventBus';
 
 interface PlayerEntry {
   squirrelId: string;
@@ -21,30 +22,65 @@ export class AreaOfInterestSystem extends System {
   private localPosition: { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 };
   private remotePlayers = new Map<string, PlayerEntry>();
   private lastUpdateTime = 0;
+  private isInitialized = false;
 
   constructor(eventBus: EventBus) {
     super(eventBus, [], 'AreaOfInterestSystem');
     
-    // Listen for player state updates
-    this.eventBus.subscribe('network.player_state_received', this.handlePlayerStateUpdate.bind(this));
-    this.eventBus.subscribe('local_player_moved', this.handleLocalPlayerMove.bind(this));
-    this.eventBus.subscribe('player_disconnected', this.handlePlayerDisconnected.bind(this));
+    // Validate eventBus
+    if (!eventBus) {
+      throw new Error('AreaOfInterestSystem requires a valid EventBus');
+    }
+    
+    // Subscribe to events with proper error handling
+    try {
+      this.eventBus.subscribe('network.player_state_received', this.handlePlayerStateUpdate.bind(this));
+      this.eventBus.subscribe(GameEvents.PLAYER_MOVED, this.handleLocalPlayerMove.bind(this));
+      this.eventBus.subscribe('player_disconnected', this.handlePlayerDisconnected.bind(this));
+      this.eventBus.subscribe('remote_player_created', this.handleRemotePlayerCreated.bind(this));
+      
+      this.isInitialized = true;
+      Logger.info(LogCategory.SPATIAL, `🎯 AreaOfInterestSystem initialized - Interest radius: ${AreaOfInterestSystem.INTEREST_RADIUS}m, Culling radius: ${AreaOfInterestSystem.CULLING_RADIUS}m`);
+      Logger.info(LogCategory.SPATIAL, `🧪 AreaOfInterestSystem constructor completed successfully`);
+      Logger.info(LogCategory.SPATIAL, `🧪 AreaOfInterestSystem eventBus available: ${!!eventBus}`);
+    } catch (error) {
+      Logger.error(LogCategory.SPATIAL, `❌ Failed to initialize AreaOfInterestSystem:`, error);
+      throw error;
+    }
   }
 
   setLocalPlayer(squirrelId: string, position: { x: number; y: number; z: number }): void {
+    if (!squirrelId || !position) {
+      Logger.error(LogCategory.SPATIAL, `❌ Invalid parameters for setLocalPlayer: squirrelId=${squirrelId}, position=`, position);
+      return;
+    }
+    
     this.localPlayerId = squirrelId;
     this.localPosition = { ...position };
+    Logger.info(LogCategory.SPATIAL, `🎯 Set local player: ${squirrelId} at (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
   }
 
   update(_deltaTime: number): void {
+    if (!this.isInitialized) {
+      Logger.warn(LogCategory.SPATIAL, `⚠️ AreaOfInterestSystem not initialized, skipping update`);
+      return;
+    }
+    
     const now = performance.now();
     
     if (now - this.lastUpdateTime < AreaOfInterestSystem.UPDATE_INTERVAL) {
       return;
     }
     
-    this.updateAreaOfInterest();
-    this.lastUpdateTime = now;
+    // Test log to verify system is being called
+    Logger.debugExpensive(LogCategory.SPATIAL, () => `🔄 AreaOfInterestSystem update called - localPlayerId: ${this.localPlayerId}, remotePlayers: ${this.remotePlayers.size}`);
+    
+    try {
+      this.updateAreaOfInterest();
+      this.lastUpdateTime = now;
+    } catch (error) {
+      Logger.error(LogCategory.SPATIAL, `❌ Error in AreaOfInterestSystem update:`, error);
+    }
   }
 
   private handlePlayerStateUpdate(data: {
@@ -54,8 +90,18 @@ export class AreaOfInterestSystem extends System {
     velocity?: { x: number; y: number; z: number };
     timestamp: number;
   }): void {
+    if (!this.isInitialized) {
+      Logger.warn(LogCategory.SPATIAL, `⚠️ AreaOfInterestSystem not initialized, ignoring player state update`);
+      return;
+    }
+    
     if (data.squirrelId === this.localPlayerId) {
       return; // Skip local player
+    }
+
+    if (!data.position) {
+      Logger.warn(LogCategory.SPATIAL, `⚠️ Player state update missing position for ${data.squirrelId}`);
+      return;
     }
 
     const distance = this.calculateDistance(this.localPosition, data.position);
@@ -74,10 +120,10 @@ export class AreaOfInterestSystem extends System {
     
     // Handle entering/leaving interest area
     if (player.isInRange && !wasInRange) {
-      Logger.debug(LogCategory.SPATIAL, `Player ${data.squirrelId} entered interest range (${distance.toFixed(1)}m)`);
+      Logger.info(LogCategory.SPATIAL, `👁️ Player ${data.squirrelId} entered interest range (${distance.toFixed(1)}m)`);
       this.eventBus.emit('player_entered_interest', { squirrelId: data.squirrelId, distance });
     } else if (!player.isInRange && wasInRange) {
-      Logger.debug(LogCategory.SPATIAL, `Player ${data.squirrelId} left interest range (${distance.toFixed(1)}m)`);
+      Logger.info(LogCategory.SPATIAL, `🙈 Player ${data.squirrelId} left interest range (${distance.toFixed(1)}m)`);
       this.eventBus.emit('player_left_interest', { squirrelId: data.squirrelId, distance });
     }
 
@@ -90,12 +136,59 @@ export class AreaOfInterestSystem extends System {
   }
 
   private handleLocalPlayerMove(data: {
+    entityId: string;
     position: { x: number; y: number; z: number };
+    rotation: { x: number; y: number; z: number; w: number };
+    characterId: string;
+    sequenceNumber: number;
+    predicted: boolean;
   }): void {
+    if (!this.isInitialized) {
+      Logger.warn(LogCategory.SPATIAL, `⚠️ AreaOfInterestSystem not initialized, ignoring local player move`);
+      return;
+    }
+    
+    Logger.debugExpensive(LogCategory.SPATIAL, () => `🎯 Local player moved to (${data.position.x.toFixed(1)}, ${data.position.y.toFixed(1)}, ${data.position.z.toFixed(1)})`);
     this.localPosition = { ...data.position };
   }
 
+  private handleRemotePlayerCreated(data: {
+    squirrelId: string;
+    position: { x: number; y: number; z: number };
+    mesh: any;
+    characterId: string;
+  }): void {
+    if (!this.isInitialized) {
+      Logger.warn(LogCategory.SPATIAL, `⚠️ AreaOfInterestSystem not initialized, ignoring remote player created`);
+      return;
+    }
+    
+    Logger.info(LogCategory.SPATIAL, `🎯 Remote player created: ${data.squirrelId} at (${data.position.x.toFixed(1)}, ${data.position.y.toFixed(1)}, ${data.position.z.toFixed(1)})`);
+    
+    // Add to tracking and check if in range
+    const distance = this.calculateDistance(this.localPosition, data.position);
+    const player: PlayerEntry = {
+      squirrelId: data.squirrelId,
+      position: data.position,
+      lastUpdate: performance.now(),
+      isInRange: distance <= AreaOfInterestSystem.INTEREST_RADIUS,
+      distance
+    };
+    
+    this.remotePlayers.set(data.squirrelId, player);
+    
+    if (player.isInRange) {
+      Logger.info(LogCategory.SPATIAL, `👁️ New remote player ${data.squirrelId} is in interest range (${distance.toFixed(1)}m)`);
+      this.eventBus.emit('player_entered_interest', { squirrelId: data.squirrelId, distance });
+    }
+  }
+
   private handlePlayerDisconnected(data: { squirrelId: string }): void {
+    if (!this.isInitialized) {
+      Logger.warn(LogCategory.SPATIAL, `⚠️ AreaOfInterestSystem not initialized, ignoring player disconnected`);
+      return;
+    }
+    
     if (this.remotePlayers.has(data.squirrelId)) {
       Logger.debug(LogCategory.SPATIAL, `Removed disconnected player ${data.squirrelId} from area tracking`);
       this.remotePlayers.delete(data.squirrelId);
@@ -103,7 +196,10 @@ export class AreaOfInterestSystem extends System {
   }
 
   private updateAreaOfInterest(): void {
-    if (!this.localPlayerId) return;
+    if (!this.localPlayerId) {
+      Logger.debugExpensive(LogCategory.SPATIAL, () => `⚠️ No local player ID set in AreaOfInterestSystem`);
+      return;
+    }
 
     let playersInRange = 0;
     let playersCulled = 0;
@@ -128,14 +224,17 @@ export class AreaOfInterestSystem extends System {
       
       // Handle range transitions
       if (player.isInRange && !wasInRange) {
+        Logger.info(LogCategory.SPATIAL, `👁️ Player ${squirrelId} entered interest range (${distance.toFixed(1)}m)`);
         this.eventBus.emit('player_entered_interest', { squirrelId, distance });
       } else if (!player.isInRange && wasInRange) {
+        Logger.info(LogCategory.SPATIAL, `🙈 Player ${squirrelId} left interest range (${distance.toFixed(1)}m)`);
         this.eventBus.emit('player_left_interest', { squirrelId, distance });
       }
       
       // Cull distant players
       if (distance > AreaOfInterestSystem.CULLING_RADIUS) {
         this.remotePlayers.delete(squirrelId);
+        Logger.info(LogCategory.SPATIAL, `✂️ Player ${squirrelId} culled at distance ${distance.toFixed(1)}m`);
         this.eventBus.emit('player_culled', { squirrelId, distance });
         playersCulled++;
       }

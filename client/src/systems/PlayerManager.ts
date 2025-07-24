@@ -13,7 +13,7 @@ import { CharacterRegistry } from '../core/CharacterRegistry'; // New import
 interface RemotePlayer {
   entity: Entity;
   squirrelId: string;
-  mesh: THREE.Mesh | null;
+  mesh: THREE.Object3D | null;
   lastPosition: THREE.Vector3;
   lastRotation: THREE.Quaternion;
   lastUpdate: number;
@@ -119,11 +119,86 @@ export class PlayerManager extends System {
 
   private async loadModelFor(character: CharacterType): Promise<THREE.Object3D> {
     try {
+      Logger.info(LogCategory.PLAYER, `🎨 Loading model for ${character.name} from path: ${character.modelPath}`);
+      
+      // Validate asset path exists
+      try {
+        const response = await fetch(character.modelPath);
+        if (!response.ok) {
+          throw new Error(`Asset not found: ${character.modelPath} (${response.status})`);
+        }
+        Logger.info(LogCategory.PLAYER, `✅ Asset path validated: ${character.modelPath}`);
+      } catch (error) {
+        Logger.error(LogCategory.PLAYER, `❌ Asset path validation failed: ${character.modelPath}`, error);
+        throw error;
+      }
+      
       const gltf = await this.assetManager.loadModel(character.modelPath);
       if (!gltf || !gltf.scene) {
         throw new Error('Model loaded but scene is null');
       }
       const model = gltf.scene;
+      
+      // Comprehensive model validation
+      Logger.info(LogCategory.PLAYER, `🔍 Model validation for ${character.name}:`);
+      Logger.info(LogCategory.PLAYER, `  - Model type: ${model.type}`);
+      Logger.info(LogCategory.PLAYER, `  - Children count: ${model.children.length}`);
+      Logger.info(LogCategory.PLAYER, `  - Visible: ${model.visible}`);
+      Logger.info(LogCategory.PLAYER, `  - Position: (${model.position.x.toFixed(2)}, ${model.position.y.toFixed(2)}, ${model.position.z.toFixed(2)})`);
+      Logger.info(LogCategory.PLAYER, `  - Scale: (${model.scale.x.toFixed(2)}, ${model.scale.y.toFixed(2)}, ${model.scale.z.toFixed(2)})`);
+      
+      // Validate model structure
+      let meshCount = 0;
+      let skinnedMeshCount = 0;
+      let materialCount = 0;
+      model.traverse((child: THREE.Object3D) => {
+        const isMesh = child instanceof THREE.Mesh || child.type === 'Mesh';
+        const isSkinnedMesh = child instanceof THREE.SkinnedMesh || child.type === 'SkinnedMesh';
+        
+        if (isMesh) {
+          meshCount++;
+          const meshMaterial = (child as THREE.Mesh).material;
+          if (meshMaterial) {
+            materialCount++;
+            const materialType = Array.isArray(meshMaterial) ? 'Material[]' : meshMaterial.type;
+            Logger.debug(LogCategory.PLAYER, `    - Mesh material: ${materialType}`);
+          }
+        } else if (isSkinnedMesh) {
+          skinnedMeshCount++;
+          const skinnedMaterial = (child as THREE.SkinnedMesh).material;
+          if (skinnedMaterial) {
+            materialCount++;
+            const materialType = Array.isArray(skinnedMaterial) ? 'Material[]' : skinnedMaterial.type;
+            Logger.debug(LogCategory.PLAYER, `    - SkinnedMesh material: ${materialType}`);
+          }
+        }
+      });
+      Logger.info(LogCategory.PLAYER, `  - Mesh count: ${meshCount}`);
+      Logger.info(LogCategory.PLAYER, `  - SkinnedMesh count: ${skinnedMeshCount}`);
+      Logger.info(LogCategory.PLAYER, `  - Total renderable objects: ${meshCount + skinnedMeshCount}`);
+      Logger.info(LogCategory.PLAYER, `  - Material count: ${materialCount}`);
+      
+      // Test that the model can be cloned
+      const testClone = model.clone();
+      Logger.info(LogCategory.PLAYER, `🎨 Model cloning test for ${character.name}: original=${!!model}, clone=${!!testClone}`);
+      
+      // Validate clone structure
+      let cloneMeshCount = 0;
+      let cloneSkinnedMeshCount = 0;
+      testClone.traverse((child: THREE.Object3D) => {
+        const isMesh = child instanceof THREE.Mesh || child.type === 'Mesh';
+        const isSkinnedMesh = child instanceof THREE.SkinnedMesh || child.type === 'SkinnedMesh';
+        
+        if (isMesh) {
+          cloneMeshCount++;
+        } else if (isSkinnedMesh) {
+          cloneSkinnedMeshCount++;
+        }
+      });
+      Logger.info(LogCategory.PLAYER, `  - Clone mesh count: ${cloneMeshCount}`);
+      Logger.info(LogCategory.PLAYER, `  - Clone skinned mesh count: ${cloneSkinnedMeshCount}`);
+      Logger.info(LogCategory.PLAYER, `  - Clone total renderable objects: ${cloneMeshCount + cloneSkinnedMeshCount}`);
+      
       this.cachedModels.set(character.id, model);
       Logger.debug(LogCategory.PLAYER, `✅ Preloaded model for ${character.name}`);
       return model;
@@ -160,7 +235,7 @@ export class PlayerManager extends System {
   }
 
   private handleRemotePlayerState = async (data: any) => {
-    Logger.debugExpensive(LogCategory.PLAYER, () => `🎯 PLAYER MANAGER RECEIVED remote_player_state event for: ${data.squirrelId}`);
+    Logger.info(LogCategory.PLAYER, `🎯 PLAYER MANAGER RECEIVED remote_player_state event for: ${data.squirrelId}`);
     
     if (!this.scene || !this.assetManager) {
       Logger.warn(LogCategory.PLAYER, `⚠️ PlayerManager not ready for ${data.squirrelId}, initializing...`);
@@ -215,6 +290,9 @@ export class PlayerManager extends System {
         existingPlayer.lastPosition.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
         if (existingPlayer.mesh) {
           existingPlayer.mesh.position.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
+          Logger.debugExpensive(LogCategory.PLAYER, () => 
+            `🎯 Updated existing player ${data.squirrelId} mesh position to (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`
+          );
         }
       }
       if (typeof data.rotationY === 'number') {
@@ -280,175 +358,275 @@ export class PlayerManager extends System {
     rotation: { x: number; y: number; z: number; w: number };
     characterId: string;
   }): Promise<void> {
-    const character = await this.registry.getCharacter(data.characterId) || await this.registry.getDefaultCharacter();
+    const character = await this.registry.getCharacter(data.characterId);
     if (!character) {
-      Logger.error(LogCategory.PLAYER, `❌ No character found for ${data.characterId}, using default`);
+      Logger.error(LogCategory.PLAYER, `❌ No character found for ${data.characterId}`);
       return;
     }
-    Logger.debug(LogCategory.PLAYER, `🎯 Creating remote player: ${data.squirrelId} as ${character.name}`);
-    
-    let adjustedPosition = { ...data.position };
-    if (this.terrainService) {
-      try {
-        const terrainHeight = await Promise.race([
-          this.terrainService.getTerrainHeight(data.position.x, data.position.z),
-          new Promise<number>((resolve) => setTimeout(() => resolve(0.5), 100)) 
-        ]);
-        adjustedPosition.y = terrainHeight + 0.1; 
-        
-        Logger.debug(LogCategory.PLAYER, `📏 Adjusted remote player ${data.squirrelId} height to ${adjustedPosition.y.toFixed(2)} (terrain: ${terrainHeight.toFixed(2)})`);
-      } catch (error) {
-        Logger.warn(LogCategory.PLAYER, `Failed to get terrain height for remote player ${data.squirrelId}, using fallback`, error);
-        adjustedPosition.y = Math.max(data.position.y, 0.1);
-      }
-    } else {
-      adjustedPosition.y = Math.max(data.position.y, 0.1);
-    }
-    
-    const entity = new Entity(EntityId.generate());
-    
-    if (!this.scene || !this.assetManager) {
-      Logger.warn(LogCategory.PLAYER, `⚠️ Scene or AssetManager not ready for ${data.squirrelId}, initializing...`);
-      await this.initializeWithSceneAndAssets();
-    }
-    let mesh: THREE.Mesh | null = null;
-    if (this.assetManager && this.scene) {
-      try {
-        Logger.debug(LogCategory.PLAYER, `🎨 Creating mesh for ${data.squirrelId} as ${character.name}`);
-        
-        let model: THREE.Object3D;
-        if (this.cachedModels.has(character.id)) {
-          model = this.cachedModels.get(character.id)!;
-        } else if (this.modelLoadingPromises.has(character.id)) {
-          model = await this.modelLoadingPromises.get(character.id)!;
-        } else {
-          this.modelLoadingPromises.set(character.id, this.loadModelFor(character));
-          model = await this.modelLoadingPromises.get(character.id)!;
-        }
-        
-        if (model) {
-          mesh = model.clone() as THREE.Mesh;
-          mesh.position.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
-          mesh.quaternion.set(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w);
-          setMeshScaleRecursive(mesh, character.scale);
-          
-          const actualScale = mesh.scale;
-          if (Math.abs(actualScale.x - character.scale) > 0.01 || Math.abs(actualScale.y - character.scale) > 0.01 || Math.abs(actualScale.z - character.scale) > 0.01) {
-            Logger.warn(LogCategory.PLAYER, `⚠️ Scale validation failed for ${data.squirrelId}: expected=${character.scale}, actual=${actualScale.x.toFixed(2)},${actualScale.y.toFixed(2)},${actualScale.z.toFixed(2)}`);
-            mesh.scale.set(character.scale, character.scale, character.scale);
-          } else {
-            Logger.debug(LogCategory.PLAYER, `✅ Scale validation passed for ${data.squirrelId}: ${actualScale.x.toFixed(2)}, ${actualScale.y.toFixed(2)}, ${actualScale.z.toFixed(2)}`);
-          }
-          
-          mesh.traverse((child) => {
-            if (child instanceof THREE.Mesh && child.material) {
-              const material = child.material.clone();
-              if (material instanceof THREE.MeshStandardMaterial) {
-                material.color.multiplyScalar(0.8);
-              }
-              child.material = material;
-            }
-          });
-          
-          Logger.debug(LogCategory.PLAYER, `🎭 Adding mesh to scene for ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
-          this.scene.add(mesh);
-          Logger.debug(LogCategory.PLAYER, `✅ Added mesh for remote player ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
-        } else {
-          Logger.error(LogCategory.PLAYER, `❌ Failed to load model for ${character.name} (${data.squirrelId}): model was null`);
-        }
-        
-      } catch (error) {
-        Logger.error(LogCategory.PLAYER, `❌ Failed to load model for ${character.name} (${data.squirrelId})`, error);
-      }
-    } else {
-      Logger.error(LogCategory.PLAYER, `❌ Scene (${!!this.scene}) or AssetManager (${!!this.assetManager}) not available for ${data.squirrelId}`);
-    }
-    
-    const remotePlayer: RemotePlayer = {
-      entity,
-      squirrelId: data.squirrelId,
-      mesh,
-      lastPosition: new THREE.Vector3(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z),
-      lastRotation: new THREE.Quaternion(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w),
-      lastUpdate: performance.now(),
-      isVisible: true,
-      characterId: character.id
+
+    Logger.info(LogCategory.PLAYER, `🌐 Creating remote player ${data.squirrelId} as ${character.name} at (${data.position.x.toFixed(1)}, ${data.position.y.toFixed(1)}, ${data.position.z.toFixed(1)})`);
+
+    // Calculate adjusted position (same as local player)
+    const adjustedPosition = {
+      x: data.position.x,
+      y: data.position.y,
+      z: data.position.z
     };
-    
-    this.entityToSquirrelId.set(entity.id.toString(), data.squirrelId);
-    
-    this.remotePlayers.set(data.squirrelId, remotePlayer);
-    Logger.debug(LogCategory.PLAYER, `🎮 Remote player ${data.squirrelId} created successfully (${this.remotePlayers.size} total remote players)`);
-  }
 
-  private handlePlayerDisconnected(data: { squirrelId: string }): void {
-    if (!data.squirrelId || typeof data.squirrelId !== 'string') {
-      Logger.error(LogCategory.PLAYER, '❌ Invalid squirrelId in player_disconnected:', data.squirrelId);
-      return;
-    }
-    
-    const player = this.remotePlayers.get(data.squirrelId);
-    if (player) {
-      Logger.debug(LogCategory.PLAYER, `🗑️ Cleaning up disconnected player: ${data.squirrelId}`);
+    let mesh: THREE.Object3D | null = null;
+
+    try {
+      Logger.debug(LogCategory.PLAYER, `🎨 Creating mesh for ${data.squirrelId} as ${character.name}`);
       
-      if (player.mesh && this.scene) {
-        Logger.debug(LogCategory.PLAYER, `🎭 Removing mesh from scene for ${data.squirrelId}`);
-        this.scene.remove(player.mesh);
-        if (player.mesh.geometry) {
-          player.mesh.geometry.dispose();
-        }
-        if (player.mesh.material) {
-          if (Array.isArray(player.mesh.material)) {
-            player.mesh.material.forEach(mat => mat.dispose());
-          } else {
-            player.mesh.material.dispose();
+      // Use the cached model (or load if not cached)
+      if (this.cachedModels.has(character.id)) {
+        Logger.debug(LogCategory.PLAYER, `🎨 Using cached model for ${character.name}`);
+        mesh = this.cachedModels.get(character.id)!.clone(); // Clone the cached model
+      } else if (this.modelLoadingPromises.has(character.id)) {
+        Logger.debug(LogCategory.PLAYER, `🎨 Waiting for existing model load for ${character.name}`);
+        const loadedModel = await this.modelLoadingPromises.get(character.id)!;
+        mesh = loadedModel.clone(); // Clone the loaded model
+      } else {
+        Logger.debug(LogCategory.PLAYER, `🎨 Starting new model load for ${character.name}`);
+        this.modelLoadingPromises.set(character.id, this.loadModelFor(character));
+        const loadedModel = await this.modelLoadingPromises.get(character.id)!;
+        mesh = loadedModel.clone(); // Clone the loaded model
+      }
+      
+      Logger.info(LogCategory.PLAYER, `🎨 Model loaded for ${data.squirrelId}: ${!!mesh}`);
+      
+      if (!mesh) {
+        throw new Error(`Failed to load model for ${character.name}`);
+      }
+      
+      // Comprehensive mesh validation
+      Logger.info(LogCategory.PLAYER, `🔍 Remote player mesh validation for ${data.squirrelId}:`);
+      Logger.info(LogCategory.PLAYER, `  - Mesh type: ${mesh.type}`);
+      Logger.info(LogCategory.PLAYER, `  - Children count: ${mesh.children.length}`);
+      Logger.info(LogCategory.PLAYER, `  - Visible: ${mesh.visible}`);
+      Logger.info(LogCategory.PLAYER, `  - Position before: (${mesh.position.x.toFixed(2)}, ${mesh.position.y.toFixed(2)}, ${mesh.position.z.toFixed(2)})`);
+      Logger.info(LogCategory.PLAYER, `  - Scale before: (${mesh.scale.x.toFixed(2)}, ${mesh.scale.y.toFixed(2)}, ${mesh.scale.z.toFixed(2)})`);
+      
+      // Count meshes and materials
+      let meshCount = 0;
+      let skinnedMeshCount = 0;
+      let materialCount = 0;
+      mesh.traverse((child: THREE.Object3D) => {
+        const isMesh = child instanceof THREE.Mesh || child.type === 'Mesh';
+        const isSkinnedMesh = child instanceof THREE.SkinnedMesh || child.type === 'SkinnedMesh';
+        
+        if (isMesh) {
+          meshCount++;
+          if ((child as THREE.Mesh).material) {
+            materialCount++;
+          }
+        } else if (isSkinnedMesh) {
+          skinnedMeshCount++;
+          if ((child as THREE.SkinnedMesh).material) {
+            materialCount++;
           }
         }
-        Logger.debug(LogCategory.PLAYER, `🗑️ Removed and disposed mesh for disconnected player ${data.squirrelId}`);
+      });
+      Logger.info(LogCategory.PLAYER, `  - Mesh count: ${meshCount}`);
+      Logger.info(LogCategory.PLAYER, `  - SkinnedMesh count: ${skinnedMeshCount}`);
+      Logger.info(LogCategory.PLAYER, `  - Total renderable objects: ${meshCount + skinnedMeshCount}`);
+      Logger.info(LogCategory.PLAYER, `  - Material count: ${materialCount}`);
+      
+      // Configure mesh properties
+      mesh.position.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
+      mesh.quaternion.set(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w);
+      
+      // Apply scale (simplified - no recursive scaling)
+      mesh.scale.set(character.scale, character.scale, character.scale);
+      
+      // Apply shadow settings
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.traverse((child: THREE.Object3D) => {
+        const isMesh = child instanceof THREE.Mesh || child.type === 'Mesh';
+        const isSkinnedMesh = child instanceof THREE.SkinnedMesh || child.type === 'SkinnedMesh';
+        
+        if (isMesh || isSkinnedMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+      
+      // Post-configuration validation
+      Logger.info(LogCategory.PLAYER, `  - Position after: (${mesh.position.x.toFixed(2)}, ${mesh.position.y.toFixed(2)}, ${mesh.position.z.toFixed(2)})`);
+      Logger.info(LogCategory.PLAYER, `  - Scale after: (${mesh.scale.x.toFixed(2)}, ${mesh.scale.y.toFixed(2)}, ${mesh.scale.z.toFixed(2)})`);
+      Logger.info(LogCategory.PLAYER, `  - Visible after config: ${mesh.visible}`);
+      
+      // Validate scale
+      const actualScale = mesh.scale;
+      if (Math.abs(actualScale.x - character.scale) > 0.01 || 
+          Math.abs(actualScale.y - character.scale) > 0.01 || 
+          Math.abs(actualScale.z - character.scale) > 0.01) {
+        Logger.warn(LogCategory.PLAYER, `⚠️ Scale validation failed for ${data.squirrelId}: expected=${character.scale}, actual=${actualScale.x.toFixed(2)},${actualScale.y.toFixed(2)},${actualScale.z.toFixed(2)}`);
+        mesh.scale.set(character.scale, character.scale, character.scale);
+      } else {
+        Logger.debug(LogCategory.PLAYER, `✅ Scale validation passed for ${data.squirrelId}: ${actualScale.x.toFixed(2)}, ${actualScale.y.toFixed(2)}, ${actualScale.z.toFixed(2)}`);
       }
       
-      this.trackedSquirrelIds.delete(data.squirrelId);
-      this.entityToSquirrelId.delete(player.entity.id.toString());
+      // REMOVED: Material modifications that were causing visibility issues
+      // Remote players now use the same material approach as local players
       
-      this.remotePlayers.delete(data.squirrelId);
-      Logger.debug(LogCategory.PLAYER, `👋 Removed disconnected player: ${data.squirrelId} (${this.remotePlayers.size} remaining)`);
-      Logger.debugExpensive(LogCategory.PLAYER, () => `🔍 Remaining players: ${Array.from(this.remotePlayers.keys()).join(', ')}`);
-    } else {
-      Logger.warn(LogCategory.PLAYER, `⚠️ Attempted to disconnect non-existent player: ${data.squirrelId}`);
+      // Add mesh to scene with validation
+      Logger.info(LogCategory.PLAYER, `🎭 Adding mesh to scene for ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
+      Logger.info(LogCategory.PLAYER, `🎭 Mesh visible before scene add: ${mesh?.visible}`);
+      Logger.info(LogCategory.PLAYER, `🎭 Scene children count before add: ${this.scene?.children.length || 0}`);
+      
+      // Validate scene state before adding
+      if (!this.scene) {
+        throw new Error(`Scene is null when trying to add mesh for ${data.squirrelId}`);
+      }
+      
+      if (!mesh) {
+        throw new Error(`Mesh is null when trying to add to scene for ${data.squirrelId}`);
+      }
+      
+      this.scene.add(mesh);
+      
+      Logger.info(LogCategory.PLAYER, `✅ Added mesh for remote player ${data.squirrelId} at (${adjustedPosition.x.toFixed(1)}, ${adjustedPosition.y.toFixed(1)}, ${adjustedPosition.z.toFixed(1)})`);
+      Logger.info(LogCategory.PLAYER, `🎭 Mesh visible after scene add: ${mesh.visible}`);
+      Logger.info(LogCategory.PLAYER, `🎭 Scene children count after add: ${this.scene.children.length}`);
+      Logger.info(LogCategory.PLAYER, `🎭 Mesh in scene: ${this.scene.children.includes(mesh)}`);
+      
+      // Comprehensive scene validation
+      let sceneMeshCount = 0;
+      let sceneSkinnedMeshCount = 0;
+      this.scene.traverse((child: THREE.Object3D) => {
+        const isMesh = child instanceof THREE.Mesh || child.type === 'Mesh';
+        const isSkinnedMesh = child instanceof THREE.SkinnedMesh || child.type === 'SkinnedMesh';
+        
+        if (isMesh) {
+          sceneMeshCount++;
+        } else if (isSkinnedMesh) {
+          sceneSkinnedMeshCount++;
+        }
+      });
+      Logger.info(LogCategory.PLAYER, `🎭 Total meshes in scene: ${sceneMeshCount}`);
+      Logger.info(LogCategory.PLAYER, `🎭 Total skinned meshes in scene: ${sceneSkinnedMeshCount}`);
+      Logger.info(LogCategory.PLAYER, `🎭 Total renderable objects in scene: ${sceneMeshCount + sceneSkinnedMeshCount}`);
+      
+      // Verify mesh is properly added to scene
+      if (!this.scene.children.includes(mesh)) {
+        throw new Error(`Mesh for ${data.squirrelId} was NOT added to scene!`);
+      } else {
+        Logger.info(LogCategory.PLAYER, `✅ Mesh for ${data.squirrelId} successfully added to scene`);
+      }
+      
+      // Final visibility check
+      Logger.info(LogCategory.PLAYER, `🔍 Final mesh state for ${data.squirrelId}:`);
+      Logger.info(LogCategory.PLAYER, `  - In scene: ${this.scene.children.includes(mesh)}`);
+      Logger.info(LogCategory.PLAYER, `  - Visible: ${mesh.visible}`);
+      Logger.info(LogCategory.PLAYER, `  - Position: (${mesh.position.x.toFixed(2)}, ${mesh.position.y.toFixed(2)}, ${mesh.position.z.toFixed(2)})`);
+      Logger.info(LogCategory.PLAYER, `  - Scale: (${mesh.scale.x.toFixed(2)}, ${mesh.scale.y.toFixed(2)}, ${mesh.scale.z.toFixed(2)})`);
+      Logger.info(LogCategory.PLAYER, `  - Children: ${mesh.children.length}`);
+      
+    } catch (error) {
+      Logger.error(LogCategory.PLAYER, `❌ Failed to create mesh for ${data.squirrelId}:`, error);
+      mesh = null;
     }
-  }
-
-  private handlePlayerEnteredInterest(data: { squirrelId: string; distance: number }): void {
-    const player = this.remotePlayers.get(data.squirrelId);
-    if (player && !player.isVisible) {
-      player.isVisible = true;
-      if (player.mesh) {
-        player.mesh.visible = true;
-      }
-      Logger.debug(LogCategory.PLAYER, `👁️ Player ${data.squirrelId} entered interest range (${data.distance.toFixed(1)}m)`);
+    
+    Logger.info(LogCategory.PLAYER, `🎯 Final mesh for ${data.squirrelId}: ${!!mesh}`);
+    
+    if (mesh) {
+      const player: RemotePlayer = {
+        entity: new Entity(EntityId.generate()),
+        squirrelId: data.squirrelId,
+        mesh,
+        isVisible: true,
+        lastPosition: new THREE.Vector3(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z),
+        lastRotation: new THREE.Quaternion(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w),
+        lastUpdate: performance.now(),
+        characterId: data.characterId
+      };
+      
+      this.remotePlayers.set(data.squirrelId, player);
+      this.entityToSquirrelId.set(player.entity.id.toString(), data.squirrelId);
+      
+      Logger.info(LogCategory.PLAYER, `✅ Remote player ${data.squirrelId} created successfully`);
+      Logger.info(LogCategory.PLAYER, `👥 Total remote players: ${this.remotePlayers.size}`);
+    } else {
+      Logger.error(LogCategory.PLAYER, `❌ Failed to create remote player ${data.squirrelId} - no mesh created`);
     }
   }
 
   private handlePlayerLeftInterest(data: { squirrelId: string; distance: number }): void {
+    if (!data || !data.squirrelId) {
+      Logger.error(LogCategory.PLAYER, `❌ Invalid data in handlePlayerLeftInterest:`, data);
+      return;
+    }
+    
+    Logger.info(LogCategory.PLAYER, `🙈 PLAYER LEFT INTEREST: ${data.squirrelId} at distance ${data.distance.toFixed(1)}m`);
     const player = this.remotePlayers.get(data.squirrelId);
-    if (player && player.isVisible) {
+    
+    if (!player) {
+      Logger.warn(LogCategory.PLAYER, `⚠️ Player ${data.squirrelId} left interest but not found in remotePlayers`);
+      return;
+    }
+    
+    if (player.isVisible) {
       player.isVisible = false;
+      
       if (player.mesh) {
         player.mesh.visible = false;
+        Logger.info(LogCategory.PLAYER, `✅ Made player ${data.squirrelId} invisible (mesh.visible = false)`);
+      } else {
+        Logger.warn(LogCategory.PLAYER, `⚠️ Player ${data.squirrelId} left interest but has no mesh`);
       }
+      
       Logger.debug(LogCategory.PLAYER, `🙈 Player ${data.squirrelId} left interest range (${data.distance.toFixed(1)}m)`);
+    } else {
+      Logger.debug(LogCategory.PLAYER, `🔄 Player ${data.squirrelId} already invisible, no change needed`);
     }
   }
 
   private handlePlayerCulled(data: { squirrelId: string; distance: number }): void {
-    const player = this.remotePlayers.get(data.squirrelId);
-    if (player) {
-      if (player.mesh && this.scene) {
-        this.scene.remove(player.mesh);
-      }
-      player.isVisible = false;
-      Logger.debug(LogCategory.PLAYER, `✂️ Player ${data.squirrelId} culled at distance ${data.distance.toFixed(1)}m`);
+    if (!data || !data.squirrelId) {
+      Logger.error(LogCategory.PLAYER, `❌ Invalid data in handlePlayerCulled:`, data);
+      return;
     }
+    
+    Logger.info(LogCategory.PLAYER, `✂️ PLAYER CULLED: ${data.squirrelId} at distance ${data.distance.toFixed(1)}m`);
+    const player = this.remotePlayers.get(data.squirrelId);
+    
+    if (!player) {
+      Logger.warn(LogCategory.PLAYER, `⚠️ Attempted to cull non-existent player: ${data.squirrelId}`);
+      return;
+    }
+    
+    // Remove mesh from scene and dispose resources
+    if (player.mesh && this.scene) {
+      Logger.info(LogCategory.PLAYER, `🗑️ Removing mesh from scene for culled player ${data.squirrelId}`);
+      this.scene.remove(player.mesh);
+      
+      // Dispose of geometry and materials in the Object3D hierarchy
+      try {
+        player.mesh.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            if (child.geometry) {
+              child.geometry.dispose();
+            }
+            if (child.material) {
+              if (Array.isArray(child.material)) {
+                child.material.forEach((mat: THREE.Material) => mat.dispose());
+              } else {
+                child.material.dispose();
+              }
+            }
+          }
+        });
+        
+        Logger.info(LogCategory.PLAYER, `🗑️ Removed and disposed mesh for culled player ${data.squirrelId}`);
+      } catch (error) {
+        Logger.error(LogCategory.PLAYER, `❌ Error disposing mesh for ${data.squirrelId}:`, error);
+      }
+    }
+    
+    player.isVisible = false;
+    Logger.debug(LogCategory.PLAYER, `✂️ Player ${data.squirrelId} culled at distance ${data.distance.toFixed(1)}m`);
   }
 
   private updatePlayerMesh(player: RemotePlayer, _deltaTime: number): void {
@@ -471,7 +649,7 @@ export class PlayerManager extends System {
     return Array.from(this.remotePlayers.values()).filter(p => p.isVisible).length;
   }
 
-  getPlayerMesh(squirrelId: string): THREE.Mesh | null {
+  getPlayerMesh(squirrelId: string): THREE.Object3D | null {
     return this.remotePlayers.get(squirrelId)?.mesh || null;
   }
 
@@ -524,5 +702,162 @@ export class PlayerManager extends System {
     }
     
     Logger.debug(LogCategory.PLAYER, '🔍 === END SCENE DEBUG ===');
+  }
+
+  /**
+   * DEPRECATED: No longer needed - using unified fresh model approach
+   * Keeping for reference but not used in production
+   */
+  private async createRobustClone(model: THREE.Object3D, characterName: string): Promise<THREE.Object3D> {
+    Logger.debug(LogCategory.PLAYER, `🔧 DEPRECATED: createRobustClone called for ${characterName}`);
+    // Fallback to fresh model loading
+    const character = await this.registry.getCharacter(characterName.toLowerCase().replace(' ', ''));
+    if (character) {
+      return this.createFreshModelInstance(character);
+    }
+    return model.clone(); // Last resort
+  }
+
+  /**
+   * INDUSTRY-STANDARD: Create fresh model instance (same approach as local players)
+   * This is the most reliable approach for SkinnedMesh objects and unifies local/remote creation
+   */
+  private async createFreshModelInstance(character: CharacterType): Promise<THREE.Object3D> {
+    try {
+      Logger.debug(LogCategory.PLAYER, `🔄 Loading fresh model instance for ${character.name}`);
+      
+      // Load fresh model using the same approach as local players
+      const gltf = await this.assetManager.loadModel(character.modelPath);
+      if (!gltf || !gltf.scene) {
+        throw new Error(`Failed to load fresh model for ${character.name}`);
+      }
+      
+      const freshModel = gltf.scene;
+      Logger.debug(LogCategory.PLAYER, `✅ Fresh model instance loaded for ${character.name}`);
+      
+      return freshModel;
+    } catch (error) {
+      Logger.error(LogCategory.PLAYER, `❌ Failed to create fresh model instance for ${character.name}:`, error);
+      throw error; // Re-throw to let caller handle
+    }
+  }
+
+  /**
+   * Load a fresh model instance instead of cloning
+   * This is the most reliable approach for SkinnedMesh objects
+   */
+  private async createFreshModelClone(characterName: string): Promise<THREE.Object3D | null> {
+    try {
+      Logger.debug(LogCategory.PLAYER, `🔄 Loading fresh model for ${characterName}`);
+      
+      // Get character info
+      const character = await this.registry.getCharacter(characterName.toLowerCase().replace(' ', ''));
+      if (!character) {
+        Logger.error(LogCategory.PLAYER, `❌ No character found for ${characterName}`);
+        throw new Error(`No character found for ${characterName}`);
+      }
+      
+      // Load fresh model
+      const gltf = await this.assetManager.loadModel(character.modelPath);
+      if (!gltf || !gltf.scene) {
+        throw new Error(`Failed to load fresh model for ${characterName}`);
+      }
+      
+      const freshModel = gltf.scene;
+      Logger.debug(LogCategory.PLAYER, `✅ Fresh model loaded for ${characterName}`);
+      
+      return freshModel;
+    } catch (error) {
+      Logger.error(LogCategory.PLAYER, `❌ Failed to create fresh model for ${characterName}:`, error);
+      
+      // Fallback: return null and let caller handle it
+      Logger.warn(LogCategory.PLAYER, `⚠️ Failed to create fresh model for ${characterName}`);
+      return null;
+    }
+  }
+
+  private handlePlayerDisconnected(data: { squirrelId: string }): void {
+    if (!data.squirrelId || typeof data.squirrelId !== 'string') {
+      Logger.error(LogCategory.PLAYER, '❌ Invalid squirrelId in player_disconnected:', data.squirrelId);
+      return;
+    }
+    
+    const player = this.remotePlayers.get(data.squirrelId);
+    if (player) {
+      Logger.debug(LogCategory.PLAYER, `🗑️ Cleaning up disconnected player: ${data.squirrelId}`);
+      
+      if (player.mesh && this.scene) {
+        Logger.debug(LogCategory.PLAYER, `🎭 Removing mesh from scene for ${data.squirrelId}`);
+        this.scene.remove(player.mesh);
+        
+        // Dispose of geometry and materials in the Object3D hierarchy
+        player.mesh.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            if (child.geometry) {
+              child.geometry.dispose();
+            }
+            if (child.material) {
+              if (Array.isArray(child.material)) {
+                child.material.forEach((mat: THREE.Material) => mat.dispose());
+              } else {
+                child.material.dispose();
+              }
+            }
+          }
+        });
+        
+        Logger.debug(LogCategory.PLAYER, `🗑️ Removed and disposed mesh for disconnected player ${data.squirrelId}`);
+      }
+      
+      this.trackedSquirrelIds.delete(data.squirrelId);
+      this.entityToSquirrelId.delete(player.entity.id.toString());
+      
+      this.remotePlayers.delete(data.squirrelId);
+      Logger.debug(LogCategory.PLAYER, `👋 Removed disconnected player: ${data.squirrelId} (${this.remotePlayers.size} remaining)`);
+      Logger.debugExpensive(LogCategory.PLAYER, () => `🔍 Remaining players: ${Array.from(this.remotePlayers.keys()).join(', ')}`);
+    } else {
+      Logger.warn(LogCategory.PLAYER, `⚠️ Attempted to disconnect non-existent player: ${data.squirrelId}`);
+    }
+  }
+
+  private handlePlayerEnteredInterest(data: { squirrelId: string; distance: number }): void {
+    if (!data || !data.squirrelId) {
+      Logger.error(LogCategory.PLAYER, `❌ Invalid data in handlePlayerEnteredInterest:`, data);
+      return;
+    }
+    
+    Logger.info(LogCategory.PLAYER, `👁️ PLAYER ENTERED INTEREST: ${data.squirrelId} at distance ${data.distance.toFixed(1)}m`);
+    const player = this.remotePlayers.get(data.squirrelId);
+    
+    if (!player) {
+      Logger.warn(LogCategory.PLAYER, `⚠️ Player ${data.squirrelId} entered interest but not found in remotePlayers`);
+      return;
+    }
+    
+    if (!player.isVisible) {
+      player.isVisible = true;
+      
+      if (player.mesh) {
+        player.mesh.visible = true;
+        Logger.info(LogCategory.PLAYER, `✅ Made player ${data.squirrelId} visible (mesh.visible = true)`);
+        Logger.info(LogCategory.PLAYER, `🎭 Player ${data.squirrelId} mesh position: (${player.mesh.position.x.toFixed(1)}, ${player.mesh.position.y.toFixed(1)}, ${player.mesh.position.z.toFixed(1)})`);
+        
+        if (this.scene) {
+          Logger.info(LogCategory.PLAYER, `🎭 Player ${data.squirrelId} mesh in scene: ${this.scene.children.includes(player.mesh)}`);
+          
+          // Ensure mesh is in scene
+          if (!this.scene.children.includes(player.mesh)) {
+            Logger.warn(LogCategory.PLAYER, `⚠️ Player ${data.squirrelId} mesh not in scene, adding it`);
+            this.scene.add(player.mesh);
+          }
+        }
+      } else {
+        Logger.warn(LogCategory.PLAYER, `⚠️ Player ${data.squirrelId} entered interest but has no mesh`);
+      }
+      
+      Logger.info(LogCategory.PLAYER, `👁️ Player ${data.squirrelId} entered interest range (${data.distance.toFixed(1)}m)`);
+    } else {
+      Logger.info(LogCategory.PLAYER, `🔄 Player ${data.squirrelId} already visible, no change needed`);
+    }
   }
 }

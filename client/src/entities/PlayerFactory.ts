@@ -57,9 +57,9 @@ export class PlayerFactory {
     
     Logger.info(LogCategory.PLAYER, `✅ Model loaded successfully for ${character.name}`);
     
-    // Use the same approach as the test scene (no cloning, no child traversal)
+    // INDUSTRY-STANDARD: Fresh model instance (no cloning for SkinnedMesh)
     const model = gltf.scene;
-    Logger.info(LogCategory.PLAYER, `✅ Model loaded successfully (no cloning)`);
+    Logger.info(LogCategory.PLAYER, `✅ Fresh model instance loaded (no cloning)`);
     
     // Apply shadow settings like the squirrel model
     model.castShadow = true;
@@ -159,7 +159,7 @@ export class PlayerFactory {
     
     Logger.info(LogCategory.PLAYER, `✅ Model loaded successfully for ${character.name}`);
     
-    // Use the same approach as the test scene (no cloning, no child traversal)
+    // INDUSTRY-STANDARD: Fresh model instance (no cloning for SkinnedMesh)
     const model = gltf.scene;
     
     // Apply shadow settings like the squirrel model
@@ -237,7 +237,8 @@ export class PlayerFactory {
       throw new Error(`Failed to load model for ${character.name}`);
     }
     
-    const model = gltf.scene.clone();
+    // INDUSTRY-STANDARD: Fresh model instance (no cloning for SkinnedMesh)
+    const model = gltf.scene;
     
     model.scale.set(character.scale, character.scale, character.scale);
     model.traverse((child: THREE.Object3D) => {
