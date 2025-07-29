@@ -95,13 +95,20 @@ export abstract class System {
     if (this.canHandle(entity)) {
       this.entities.set(entity.id.value, entity);
       
-      // Debug logging for local player entities
+      // Debug logging for local player entities only
       const networkComponent = entity.getComponent<any>('network');
       if (networkComponent?.isLocalPlayer) {
         Logger.info(LogCategory.ECS, `🎮 Adding LOCAL player entity ${entity.id.value} to ${this.systemId}`);
       }
       
       this.onEntityAdded(entity);
+    } else {
+      // ONLY log critical RenderSystem failures for remote players
+      const networkComponent = entity.getComponent<any>('network');
+      if (networkComponent && !networkComponent.isLocalPlayer && this.systemId === 'RenderSystem') {
+        Logger.warn(LogCategory.ECS, `⚠️ REMOTE player ${networkComponent.squirrelId} CANNOT be handled by RenderSystem`);
+        Logger.warn(LogCategory.ECS, `⚠️ Required: [${this.requiredComponents.join(', ')}] Has: [${entity.getComponents().map(c => c.type).join(', ')}]`);
+      }
     }
   }
 
@@ -234,5 +241,36 @@ export class EntityManager {
   clear(): void {
     this.entities.clear();
     this.systems = [];
+  }
+
+  // Validation method to check for orphaned entities
+  validateEntityIntegrity(): { orphanedEntities: string[], systemMismatches: string[] } {
+    const orphanedEntities: string[] = [];
+    const systemMismatches: string[] = [];
+
+    // Check for entities that should be in systems but aren't
+    for (const [entityId, entity] of this.entities) {
+      for (const system of this.systems) {
+        const shouldBeInSystem = system['canHandle'](entity);
+        const isInSystem = system['entities'].has(entityId);
+        
+        if (shouldBeInSystem && !isInSystem) {
+          systemMismatches.push(`Entity ${entityId} should be in ${system.systemId} but isn't`);
+        } else if (!shouldBeInSystem && isInSystem) {
+          systemMismatches.push(`Entity ${entityId} is in ${system.systemId} but shouldn't be`);
+        }
+      }
+    }
+
+    // Check for entities in systems that aren't in EntityManager
+    for (const system of this.systems) {
+      for (const [entityId] of (system as any).entities) {
+        if (!this.entities.has(entityId)) {
+          orphanedEntities.push(`Entity ${entityId} in ${system.systemId} but not in EntityManager`);
+        }
+      }
+    }
+
+    return { orphanedEntities, systemMismatches };
   }
 } 

@@ -74,6 +74,26 @@ export class NetworkSystem extends System {
   // MVP 7 Task 7: Enhanced connection state management
   private connectionState: ConnectionState = ConnectionState.DISCONNECTED;
   
+  // BEST PRACTICE: Synchronous update queues instead of async events
+  private pendingPlayerUpdates: Array<{
+    squirrelId: string;
+    position: { x: number; y: number; z: number };
+    rotationY: number;
+    timestamp: number;
+    characterId?: string;
+  }> = [];
+  private pendingPlayerJoins: Array<{
+    squirrelId: string;
+    position: { x: number; y: number; z: number };
+    rotationY: number;
+    timestamp: number;
+    characterId?: string;
+  }> = [];
+  private pendingPlayerLeaves: Array<{
+    squirrelId: string;
+    timestamp: number;
+  }> = [];
+  
   // Enhanced connection monitoring
   private connectionStartTime: number = 0;
   private heartbeatResponses: number[] = []; // Track last 10 heartbeats for latency
@@ -97,6 +117,26 @@ export class NetworkSystem extends System {
   private batchInterval = 500; // 500ms batching window
   private lastPositionUpdate = 0;
   private positionUpdateThrottle = 100; // 100ms minimum between position updates
+  private lastSendLogTime = 0;
+  
+  // BEST PRACTICE: Public queue access for synchronous system processing
+  public getPendingPlayerUpdates() {
+    const updates = [...this.pendingPlayerUpdates];
+    this.pendingPlayerUpdates = [];
+    return updates;
+  }
+  
+  public getPendingPlayerJoins() {
+    const joins = [...this.pendingPlayerJoins];
+    this.pendingPlayerJoins = [];
+    return joins;
+  }
+  
+  public getPendingPlayerLeaves() {
+    const leaves = [...this.pendingPlayerLeaves];
+    this.pendingPlayerLeaves = [];
+    return leaves;
+  }
   
   constructor(eventBus: EventBus) {
     super(eventBus, ['network'], 'NetworkSystem');
@@ -350,9 +390,20 @@ export class NetworkSystem extends System {
       this.messageCount++;
       this.connectionMetrics.messageCount = this.messageCount;
       
-      Logger.debug(LogCategory.NETWORK, 'RAW WEBSOCKET MESSAGE DATA:', event.data);
       try {
         const message: NetworkMessage = JSON.parse(event.data);
+        
+        // CRITICAL DEBUG: Only log position updates and player events (not heartbeats or other spam)
+        if (message.type === 'position_update' || message.type === 'player_update' || 
+            message.type === 'player_joined' || message.type === 'player_join' ||
+            message.type === 'player_left' || message.type === 'player_leave') {
+          Logger.info(LogCategory.NETWORK, `📥 RECEIVED: ${message.type} from ${message.squirrelId} (local: ${this.localSquirrelId})`);
+          
+          if (message.position) {
+            Logger.info(LogCategory.NETWORK, `   📍 Position: (${message.position.x.toFixed(1)}, ${message.position.y.toFixed(1)}, ${message.position.z.toFixed(1)})`);
+          }
+        }
+        
         this.handleNetworkMessage(message);
       } catch (error) {
         const networkError: NetworkError = {
@@ -488,10 +539,15 @@ export class NetworkSystem extends System {
     Logger.debug(LogCategory.NETWORK, '📨 RAW WEBSOCKET MESSAGE RECEIVED:', message);
     Logger.debug(LogCategory.NETWORK, `⏰ Message received at ${Date.now()}, type: ${message.type}`);
     
+    // CRITICAL DEBUG: Always log the filtering decision for position updates
+    if (message.type === 'position_update' || message.type === 'player_update') {
+      Logger.info(LogCategory.NETWORK, `🔍 POSITION UPDATE FILTER CHECK: messageSquirrelId="${message.squirrelId}", localSquirrelId="${this.localSquirrelId}", isMatch=${message.squirrelId === this.localSquirrelId}`);
+    }
+    
     // Skip our own messages, but only if we have a valid squirrelId
     // POSITION PERSISTENCE FIX: Allow init messages to pass through even if they have local squirrelId
     if (message.squirrelId && message.squirrelId === this.localSquirrelId && message.type !== 'init') {
-      Logger.debug(LogCategory.NETWORK, '🔄 Skipping own message from:', message.squirrelId);
+      Logger.info(LogCategory.NETWORK, `🔄 SKIPPING OWN MESSAGE: type=${message.type}, from=${message.squirrelId}, localId=${this.localSquirrelId}`);
       return;
     }
 
@@ -578,49 +634,49 @@ export class NetworkSystem extends System {
   }
 
   private handleRemotePlayerUpdate(message: NetworkMessage): void {
-    Logger.debugExpensive(LogCategory.NETWORK, () => `🎯 Remote player update: ${message.squirrelId} at (${message.position?.x.toFixed(1)}, ${message.position?.z.toFixed(1)})`);
+    // CRITICAL DEBUG: Log all remote player updates to track position corruption
+    if (message.position) {
+      Logger.info(LogCategory.NETWORK, `📍 NETWORK UPDATE for ${message.squirrelId}: position=(${message.position.x.toFixed(1)}, ${message.position.y.toFixed(1)}, ${message.position.z.toFixed(1)})`);
+    }
     
-    // TASK 4 FIX: Remote player updates are CRITICAL for player visibility
-    // Do NOT batch these - send immediately to prevent delays
-    const eventData = {
-      squirrelId: message.squirrelId,
-      position: message.position,
-      rotationY: message.rotationY,
-      timestamp: message.timestamp
-    };
-    
-    Logger.debugExpensive(LogCategory.NETWORK, () => `📤 Emitting remote_player_state event: ${JSON.stringify(eventData)}`);
-    this.eventBus.emit('remote_player_state', eventData);
+    // BEST PRACTICE: Queue updates for synchronous processing instead of async events
+    if (message.position) {
+      this.pendingPlayerUpdates.push({
+        squirrelId: message.squirrelId,
+        position: message.position,
+        rotationY: message.rotationY || 0,
+        timestamp: message.timestamp || performance.now(),
+        characterId: (message as any).characterId || 'colobus'
+      });
+    }
   }
 
   private handlePlayerJoined(message: NetworkMessage): void {
+    Logger.info(LogCategory.NETWORK, `👋 Received player_joined for ${message.squirrelId} at position (${message.position?.x?.toFixed(1)}, ${message.position?.y?.toFixed(1)}, ${message.position?.z?.toFixed(1)})`);
     Logger.info(LogCategory.NETWORK, `👋 Player joined: ${message.squirrelId}`);
     
-    // TASK 4 FIX: Player join events are CRITICAL for multiplayer experience
-    // Do NOT batch these - emit immediately
+    // BEST PRACTICE: Queue joins for synchronous processing instead of async events
     if (message.position && typeof message.rotationY === 'number') {
-      this.eventBus.emit('remote_player_state', {
+      this.pendingPlayerJoins.push({
         squirrelId: message.squirrelId,
         position: message.position,
         rotationY: message.rotationY,
-        timestamp: message.timestamp
+        timestamp: message.timestamp || performance.now(),
+        characterId: (message as any).characterId || 'colobus'
       });
     } else {
       Logger.warn(LogCategory.NETWORK, `⚠️ Player joined without position data: ${message.squirrelId}`);
     }
-    
-    // Also emit the join event for other systems
-    this.eventBus.emit('remote_player_joined', {
-      squirrelId: message.squirrelId,
-      position: message.position,
-      rotationY: message.rotationY
-    });
   }
 
   private handlePlayerLeft(message: NetworkMessage): void {
     const { squirrelId } = message;
     Logger.debug(LogCategory.NETWORK, `👋 Remote player left: ${squirrelId}`);
-    this.eventBus.emit('player_disconnected', { squirrelId });
+    // BEST PRACTICE: Queue leaves for synchronous processing instead of async events
+    this.pendingPlayerLeaves.push({
+      squirrelId: squirrelId,
+      timestamp: message.timestamp || performance.now()
+    });
   }
 
   private handleWorldState(message: NetworkMessage): void {
@@ -738,6 +794,12 @@ export class NetworkSystem extends System {
         rotationY: data.rotation.y,
         timestamp: performance.now()
       };
+      
+      // CRITICAL DEBUG: Log what we're sending to server (throttled to avoid spam)
+      if (!this.lastSendLogTime || now - this.lastSendLogTime > 2000) { // Log max once every 2 seconds
+        Logger.info(LogCategory.NETWORK, `📤 SENDING to server: squirrelId=${update.squirrelId}, pos=(${update.position.x.toFixed(1)}, ${update.position.z.toFixed(1)})`);
+        this.lastSendLogTime = now;
+      }
       
       // TASK URGENTA.1: Add to batch instead of sending immediately
       this.addToBatch(update);
@@ -1228,7 +1290,7 @@ export class NetworkSystem extends System {
     if (message.players && Array.isArray(message.players)) {
       Logger.info(LogCategory.NETWORK, `👥 Received ${message.players.length} existing players in separate message`);
       
-      // TASK 4 FIX: Process existing players immediately to prevent delays
+      // BEST PRACTICE: Queue existing players for synchronous processing instead of async events
       for (const player of message.players) {
         if (player.squirrelId && player.position) {
           // Skip if this is the local player
@@ -1239,24 +1301,15 @@ export class NetworkSystem extends System {
           
           Logger.info(LogCategory.NETWORK, `🎯 Processing existing player from separate message: ${player.squirrelId}`);
           
-          const eventData = {
+          this.pendingPlayerJoins.push({
             squirrelId: player.squirrelId,
             position: player.position,
             rotationY: player.rotationY || 0,
-            timestamp: message.timestamp || performance.now()
-          };
-          
-          Logger.debugExpensive(LogCategory.NETWORK, () => `📤 Emitting remote_player_state for existing player: ${JSON.stringify(eventData)}`);
-          
-          // Emit immediately - do NOT batch critical player visibility events
-          this.eventBus.emit('remote_player_state', eventData);
-          
-          // Also emit the join event for other systems
-          this.eventBus.emit('remote_player_joined', {
-            squirrelId: player.squirrelId,
-            position: player.position,
-            rotationY: player.rotationY || 0
+            timestamp: message.timestamp || performance.now(),
+            characterId: player.characterId || 'colobus'
           });
+          
+          Logger.debugExpensive(LogCategory.NETWORK, () => `📤 Queued existing player for synchronous processing: ${player.squirrelId}`);
         } else {
           Logger.warn(LogCategory.NETWORK, `⚠️ Invalid existing player data:`, player);
         }

@@ -248,9 +248,11 @@ export class ClientPredictionSystem extends System {
         value: velocity
       });
       
-      // Update render mesh position immediately for responsiveness
+      // CRITICAL: Client prediction requires immediate mesh updates for responsiveness
+      // This is the ONLY exception to RenderSystem authority (local player only)
       const renderComponent = entity.getComponent<import('../ecs').RenderComponent>('render');
-      if (renderComponent?.mesh) {
+      const network = entity.getComponent<import('../ecs').NetworkComponent>('network');
+      if (renderComponent?.mesh && network?.isLocalPlayer) {
         renderComponent.mesh.position.set(newPosition.x, newPosition.y, newPosition.z);
         renderComponent.mesh.rotation.y = newRotation.y;
       }

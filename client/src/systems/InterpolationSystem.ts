@@ -3,6 +3,7 @@
 import { System, Entity, PositionComponent, RotationComponent, InterpolationComponent, NetworkComponent } from '../ecs';
 import { EventBus } from '../core/EventBus';
 import { Vector3, Rotation } from '../core/types';
+import { Logger, LogCategory } from '../core/Logger';
 
 export class InterpolationSystem extends System {
   // private static readonly INTERPOLATION_DELAY = 100; // Future: Render 100ms behind for smoothness
@@ -12,6 +13,11 @@ export class InterpolationSystem extends System {
 
   constructor(eventBus: EventBus) {
     super(eventBus, ['position', 'rotation', 'interpolation', 'network'], 'InterpolationSystem');
+    
+    // Listen for interpolation target updates from PlayerManager
+    this.eventBus.subscribe('interpolation.update_targets', (data: { entityId: string, targetPosition: Vector3, targetRotation: Rotation }) => {
+      this.updateTargets(data.entityId, data.targetPosition, data.targetRotation);
+    });
   }
 
   update(deltaTime: number): void {
@@ -32,6 +38,11 @@ export class InterpolationSystem extends System {
     if (network.isLocalPlayer) return;
 
     const timeSinceUpdate = now - network.lastUpdate;
+    
+    // Only log occasionally for stale players (every 5 seconds)
+    if (timeSinceUpdate > 5000 && Math.floor(now / 5000) !== Math.floor((now - deltaTime * 1000) / 5000)) {
+      Logger.info(LogCategory.PLAYER, `🔄 InterpolationSystem: ${network.squirrelId} - current: (${position.value.x.toFixed(1)}, ${position.value.y.toFixed(1)}, ${position.value.z.toFixed(1)}), target: (${interpolation.targetPosition.x.toFixed(1)}, ${interpolation.targetPosition.y.toFixed(1)}, ${interpolation.targetPosition.z.toFixed(1)}), stale: ${timeSinceUpdate.toFixed(0)}ms`);
+    }
     
     // Calculate adaptive interpolation speed based on distance
     const distanceToTarget = position.value.distanceTo(interpolation.targetPosition);
@@ -110,7 +121,23 @@ export class InterpolationSystem extends System {
   // Called when receiving network updates
   updateTargets(entityId: string, targetPosition: Vector3, targetRotation: Rotation): void {
     const entity = this.entities.get(entityId);
-    if (!entity) return;
+    if (!entity) {
+      Logger.error(LogCategory.PLAYER, `🚨 InterpolationSystem: Entity not found for ID: ${entityId}`);
+      return;
+    }
+
+    const networkComponent = entity.getComponent<NetworkComponent>('network');
+    if (!networkComponent) {
+      Logger.error(LogCategory.PLAYER, `🚨 InterpolationSystem: No network component for entity ${entityId}`);
+      return;
+    }
+
+    // CRITICAL DEBUG: Check if we're accidentally updating local player
+    if (networkComponent.isLocalPlayer) {
+      Logger.error(LogCategory.PLAYER, `🚨 CRITICAL BUG: InterpolationSystem trying to update LOCAL PLAYER! EntityId: ${entityId}, SquirrelId: ${networkComponent.squirrelId}`);
+      Logger.error(LogCategory.PLAYER, `🚨 Target position: (${targetPosition.x.toFixed(1)}, ${targetPosition.y.toFixed(1)}, ${targetPosition.z.toFixed(1)})`);
+      return; // Don't update local player through interpolation
+    }
 
     const interpolationComponent: InterpolationComponent = {
       type: 'interpolation',
@@ -122,12 +149,9 @@ export class InterpolationSystem extends System {
     entity.addComponent(interpolationComponent);
 
     // Update network component timestamp
-    const networkComponent = entity.getComponent<NetworkComponent>('network');
-    if (networkComponent) {
-      entity.addComponent<NetworkComponent>({
-        ...networkComponent,
-        lastUpdate: performance.now()
-      });
-    }
+    entity.addComponent<NetworkComponent>({
+      ...networkComponent,
+      lastUpdate: performance.now()
+    });
   }
 } 

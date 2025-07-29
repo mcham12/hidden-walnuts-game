@@ -91,10 +91,21 @@ export class SceneManager implements ISceneManager {
     }
   }
   async initialize(canvas: HTMLCanvasElement): Promise<void> {
+    // BEST PRACTICE: Robust initialization with error handling
+    if (!canvas) {
+      throw new Error('Canvas element is required for scene initialization');
+    }
+    
     const THREE = await import('three');
     
-    this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0x87CEEB, 10, 100);
+    try {
+      this.scene = new THREE.Scene();
+      this.scene.fog = new THREE.Fog(0x87CEEB, 10, 100);
+      Logger.debug(LogCategory.CORE, '✅ Scene created successfully');
+    } catch (error) {
+      Logger.error(LogCategory.CORE, '❌ Failed to create Three.js scene:', error);
+      throw new Error(`Scene initialization failed: ${error}`);
+    }
     this.camera = new THREE.PerspectiveCamera(
       75,
       canvas.clientWidth / canvas.clientHeight,
@@ -146,9 +157,25 @@ export class SceneManager implements ISceneManager {
       Logger.error(LogCategory.TERRAIN, 'Failed to load forest objects', error);
     }
   }
-  getScene(): import('three').Scene { return this.scene; }
-  getCamera(): import('three').PerspectiveCamera { return this.camera; }
-  getRenderer(): import('three').WebGLRenderer { return this.renderer; }
+  getScene(): import('three').Scene { 
+    // BEST PRACTICE: Robust scene management with validation
+    if (!this.scene) {
+      throw new Error('Scene not initialized - call initialize() first');
+    }
+    return this.scene; 
+  }
+  getCamera(): import('three').PerspectiveCamera { 
+    if (!this.camera) {
+      throw new Error('Camera not initialized - call initialize() first');
+    }
+    return this.camera; 
+  }
+  getRenderer(): import('three').WebGLRenderer { 
+    if (!this.renderer) {
+      throw new Error('Renderer not initialized - call initialize() first');
+    }
+    return this.renderer; 
+  }
   private constrainCameraToWorldBounds(): void {
     if (!this.camera) return;
     
@@ -317,7 +344,13 @@ export class AssetManager implements IAssetManager {
   async loadModel(path: string): Promise<any> {
     if (this.cache.has(path)) {
       const cachedGltf = this.cache.get(path);
-      return cachedGltf;
+      // Return a deep copy to prevent shared object mutations
+      return {
+        scene: cachedGltf.scene.clone(),
+        animations: cachedGltf.animations,
+        cameras: cachedGltf.cameras,
+        asset: cachedGltf.asset
+      };
     }
     const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
     const loader = new GLTFLoader();
@@ -352,7 +385,7 @@ export class GameManager {
   private clientPredictionSystem: ClientPredictionSystem;
   private areaOfInterestSystem: AreaOfInterestSystem;
   private networkCompressionSystem: NetworkCompressionSystem;
-  private playerManager: PlayerManager;
+  private playerManager: PlayerManager | null = null;
   private inputSystem: any; 
   private localPlayer?: Entity;
   private isRunning = false;
@@ -367,7 +400,7 @@ export class GameManager {
     this.clientPredictionSystem = container.resolve(ServiceTokens.CLIENT_PREDICTION_SYSTEM);
     this.movementSystem = container.resolve(ServiceTokens.MOVEMENT_SYSTEM);
     this.networkSystem = container.resolve(ServiceTokens.NETWORK_SYSTEM);
-    this.playerManager = container.resolve(ServiceTokens.PLAYER_MANAGER);
+    // DEFERRED: playerManager will be resolved after scene initialization
     this.interpolationSystem = new InterpolationSystem(this.eventBus);
     
     const renderAdapter = new ThreeJSRenderAdapter();
@@ -379,14 +412,15 @@ export class GameManager {
     this.entityManager.addSystem(this.inputSystem);
     this.entityManager.addSystem(this.clientPredictionSystem);
     this.entityManager.addSystem(this.movementSystem);
+    this.entityManager.addSystem(this.networkSystem);
+    // DEFERRED: playerManager will be added to systems after scene initialization
     this.entityManager.addSystem(this.interpolationSystem);
     this.entityManager.addSystem(this.areaOfInterestSystem);
     this.entityManager.addSystem(this.renderSystem);
     this.entityManager.addSystem(this.networkCompressionSystem);
     this.entityManager.addSystem(this.networkTickSystem);
-    this.entityManager.addSystem(this.networkSystem);
-    this.entityManager.addSystem(this.playerManager);
-    Logger.info(LogCategory.CORE, '🎮 GameManager initialized with 10 systems');
+    
+    Logger.info(LogCategory.CORE, '🎮 GameManager initialized - system execution order will be set after scene initialization');
   }
   async initialize(canvas: HTMLCanvasElement): Promise<void> {
     try {
@@ -399,6 +433,34 @@ export class GameManager {
       Logger.info(LogCategory.CORE, '🎨 Initializing scene...');
       await this.sceneManager.initialize(canvas);
       Logger.info(LogCategory.CORE, '✅ Scene initialized');
+      
+      // BEST PRACTICE: Configure scene-dependent services AFTER scene is initialized
+      Logger.info(LogCategory.CORE, '🏗️ Configuring scene-dependent services...');
+      configureSceneDependentServices();
+      
+      // BEST PRACTICE: Resolve scene-dependent services AFTER scene is guaranteed to be initialized
+      this.playerManager = container.resolve(ServiceTokens.PLAYER_MANAGER);
+      
+      // Add scene-dependent systems to entity manager
+      if (this.playerManager) {
+        this.entityManager.addSystem(this.playerManager);
+      }
+      
+      // Set proper system execution order now that all systems are available
+      this.entityManager.setSystemExecutionOrder([
+        'InputSystem',              // 1. Capture input immediately
+        'ClientPredictionSystem',   // 2. Apply local prediction  
+        'MovementSystem',           // 3. Process local movement
+        'NetworkSystem',            // 4. Handle network messages (creates entities)
+        'PlayerManager',            // 5. Manage player lifecycle (creates entities)
+        'InterpolationSystem',      // 6. Smooth remote player movement
+        'AreaOfInterestSystem',     // 7. Spatial culling
+        'RenderSystem',             // 8. Render all entities
+        'NetworkCompressionSystem', // 9. Compress outbound messages
+        'NetworkTickSystem'         // 10. Send network updates
+      ]);
+      
+      Logger.info(LogCategory.CORE, '✅ Scene-dependent services configured and added to systems with proper execution order');
       
       Logger.info(LogCategory.CORE, '🌲 Loading terrain...');
       await this.sceneManager.loadTerrain();
@@ -689,7 +751,12 @@ export class GameManager {
     document.body.appendChild(errorDiv);
   }
   public getEventBus(): EventBus { return this.eventBus; }
-  public getPlayerManager(): PlayerManager { return this.playerManager; }
+  public getPlayerManager(): PlayerManager { 
+    if (!this.playerManager) {
+      throw new Error('PlayerManager not initialized - call initialize() first');
+    }
+    return this.playerManager; 
+  }
   public getNetworkSystem(): NetworkSystem { return this.networkSystem; }
   public getLocalPlayer(): Entity | undefined { return this.localPlayer; }
   private getPersistentSquirrelId(): string | null {
@@ -717,6 +784,7 @@ export class GameManager {
 }
 
 export function configureServices(): void {
+  // BEST PRACTICE: Phase 1 - Core services (no scene dependencies)
   container.registerSingleton(ServiceTokens.EVENT_BUS, () => new EventBus());
   
   container.registerSingleton(ServiceTokens.ENTITY_MANAGER, () => 
@@ -732,16 +800,9 @@ export function configureServices(): void {
   container.registerSingleton(ServiceTokens.TERRAIN_SERVICE, () => {
     return new TerrainService();
   });
-  container.registerSingleton(ServiceTokens.CHARACTER_REGISTRY, () => new CharacterRegistry()); // New for MVP 8b
+  container.registerSingleton(ServiceTokens.CHARACTER_REGISTRY, () => new CharacterRegistry());
   
-  container.registerSingleton(ServiceTokens.PLAYER_FACTORY, () => {
-    return new PlayerFactory(
-      container.resolve(ServiceTokens.SCENE_MANAGER),
-      container.resolve(ServiceTokens.ASSET_MANAGER),
-      container.resolve(ServiceTokens.ENTITY_MANAGER),
-      container.resolve(ServiceTokens.TERRAIN_SERVICE)
-    );
-  });
+  // BEST PRACTICE: Phase 2 - Systems that don't require scene
   container.registerSingleton(ServiceTokens.INPUT_SYSTEM, () => {
     return new InputSystem(
       container.resolve<EventBus>(ServiceTokens.EVENT_BUS),
@@ -766,11 +827,29 @@ export function configureServices(): void {
   container.registerSingleton(ServiceTokens.NETWORK_SYSTEM, () => {
     return new NetworkSystem(container.resolve<EventBus>(ServiceTokens.EVENT_BUS));
   });
-  container.registerSingleton(ServiceTokens.PLAYER_MANAGER, () => {
-    return new PlayerManager(
-      container.resolve<EventBus>(ServiceTokens.EVENT_BUS),
+  
+  Logger.info(LogCategory.CORE, '🏗️ Phase 1 & 2 services configured successfully');
+}
+
+// BEST PRACTICE: Phase 3 - Scene-dependent services (called after scene initialization)
+export function configureSceneDependentServices(): void {
+  container.registerSingleton(ServiceTokens.PLAYER_FACTORY, () => {
+    return new PlayerFactory(
+      container.resolve(ServiceTokens.SCENE_MANAGER),
+      container.resolve(ServiceTokens.ASSET_MANAGER),
+      container.resolve(ServiceTokens.ENTITY_MANAGER),
       container.resolve(ServiceTokens.TERRAIN_SERVICE)
     );
   });
-  Logger.info(LogCategory.CORE, '🏗️ All services configured successfully');
+  
+  container.registerSingleton(ServiceTokens.PLAYER_MANAGER, () => {
+    return new PlayerManager(
+      container.resolve<EventBus>(ServiceTokens.EVENT_BUS),
+      container.resolve(ServiceTokens.TERRAIN_SERVICE),
+      container.resolve<ISceneManager>(ServiceTokens.SCENE_MANAGER),
+      container.resolve(ServiceTokens.ASSET_MANAGER)
+    );
+  });
+  
+  Logger.info(LogCategory.CORE, '🏗️ Phase 3 scene-dependent services configured successfully');
 }

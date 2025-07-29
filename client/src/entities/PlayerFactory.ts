@@ -57,9 +57,9 @@ export class PlayerFactory {
     
     Logger.info(LogCategory.PLAYER, `✅ Model loaded successfully for ${character.name}`);
     
-    // INDUSTRY-STANDARD: Fresh model instance (no cloning for SkinnedMesh)
+    // AssetManager now provides cloned scenes, no need to clone again  
     const model = gltf.scene;
-    Logger.info(LogCategory.PLAYER, `✅ Fresh model instance loaded (no cloning)`);
+    Logger.info(LogCategory.PLAYER, `✅ Fresh model instance from AssetManager`);
     
     // Apply shadow settings like the squirrel model
     model.castShadow = true;
@@ -75,8 +75,9 @@ export class PlayerFactory {
     
     const targetScale = character.scale;
     model.scale.set(targetScale, targetScale, targetScale);
-    model.position.set(spawnX, spawnY, spawnZ);
-    Logger.info(LogCategory.PLAYER, `✅ Model positioned at (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
+    // CRITICAL FIX: Do NOT set mesh position directly - RenderSystem has sole authority
+    // model.position.set(spawnX, spawnY, spawnZ);  // REMOVED - causes position corruption
+    Logger.info(LogCategory.PLAYER, `✅ Model scaled, position will be handled by RenderSystem`);
     
     const scene = this.sceneManager.getScene();
     Logger.info(LogCategory.PLAYER, `✅ Got scene, adding model to scene`);
@@ -159,7 +160,7 @@ export class PlayerFactory {
     
     Logger.info(LogCategory.PLAYER, `✅ Model loaded successfully for ${character.name}`);
     
-    // INDUSTRY-STANDARD: Fresh model instance (no cloning for SkinnedMesh)
+    // AssetManager now provides cloned scenes, no need to clone again
     const model = gltf.scene;
     
     // Apply shadow settings like the squirrel model
@@ -176,8 +177,9 @@ export class PlayerFactory {
     
     const targetScale = character.scale;
     model.scale.set(targetScale, targetScale, targetScale);
-    model.position.set(spawnX, spawnY, spawnZ);
-    model.rotation.y = spawnRotationY;
+    // CRITICAL FIX: Do NOT set mesh position/rotation directly - RenderSystem has sole authority
+    // model.position.set(spawnX, spawnY, spawnZ);  // REMOVED - causes position corruption
+    // model.rotation.y = spawnRotationY;  // REMOVED - RenderSystem handles this
     
     this.sceneManager.getScene().add(model);
     Logger.info(LogCategory.PLAYER, `✅ Local player added to scene at SAVED position (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
@@ -222,70 +224,6 @@ export class PlayerFactory {
     return entity;
   }
 
-  async createRemotePlayer(squirrelId: string, position: Vector3, rotation: Rotation, characterId: string = 'squirrel'): Promise<Entity> {
-    const character = await this.registry.getCharacter(characterId) || await this.registry.getDefaultCharacter();
-    if (!character) {
-      throw new Error(`No character found for ${characterId}`);
-    }
-    Logger.info(LogCategory.PLAYER, `🌐 Creating remote player: ${squirrelId} as ${character.name}`);
-    
-    const entity = this.entityManager.createEntity();
-    
-    const gltf = await this.assetManager.loadModel(character.modelPath);
-    if (!gltf || !gltf.scene) {
-      Logger.error(LogCategory.PLAYER, `❌ Failed to load model for ${character.name}`);
-      throw new Error(`Failed to load model for ${character.name}`);
-    }
-    
-    // INDUSTRY-STANDARD: Fresh model instance (no cloning for SkinnedMesh)
-    const model = gltf.scene;
-    
-    model.scale.set(character.scale, character.scale, character.scale);
-    model.traverse((child: THREE.Object3D) => {
-      if (child !== model) {
-        child.scale.set(character.scale, character.scale, character.scale);
-      }
-    });
-    model.position.set(position.x, position.y, position.z);
-    model.rotation.y = rotation.y; 
-    
-    model.traverse((child: any) => {
-      if (child.isMesh && child.material) {
-        const material = child.material.clone();
-        material.color.multiplyScalar(0.8); 
-        child.material = material;
-      }
-    });
-    
-    this.sceneManager.getScene().add(model);
-    Logger.info(LogCategory.PLAYER, `✅ Remote player added to scene at position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
-    
-    entity
-      .addComponent<PositionComponent>({
-        type: 'position',
-        value: position
-      })
-      .addComponent<RotationComponent>({
-        type: 'rotation',
-        value: rotation
-      })
-      .addComponent<RenderComponent>({
-        type: 'render',
-        mesh: model,
-        visible: true
-      })
-      .addComponent<NetworkComponent>({
-        type: 'network',
-        isLocalPlayer: false,
-        squirrelId: squirrelId,
-        lastUpdate: performance.now()
-      })
-      .addComponent<CharacterComponent>({
-        type: 'character',
-        characterId: character.id
-      });
-    
-    Logger.info(LogCategory.PLAYER, `✅ Remote player entity created`);
-    return entity;
-  }
+  // REMOVED: createRemotePlayer() - PlayerManager is now the single authority for remote player creation
+  // This eliminates the dual entity creation anti-pattern and ensures consistent behavior
 }

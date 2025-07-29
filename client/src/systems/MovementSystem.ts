@@ -1,7 +1,7 @@
 // client/src/systems/MovementSystem.ts
 
 import { System, Entity, PositionComponent, RotationComponent, InputComponent } from '../ecs';
-import { EventBus } from '../core/EventBus';
+import { EventBus, GameEvents } from '../core/EventBus';
 import { MovementConfig, Vector3 } from '../core/types';
 import { Logger, LogCategory } from '../core/Logger';
 import { container, ServiceTokens } from '../core/Container';
@@ -28,8 +28,10 @@ export class MovementSystem extends System {
   }
   private async updateEntityMovement(entity: Entity, deltaTime: number): Promise<void> {
     const network = entity.getComponent<import('../ecs').NetworkComponent>('network');
-    if (network?.isLocalPlayer) {
-      return;
+    
+    // CRITICAL FIX: Only process LOCAL player, skip remote players
+    if (!network?.isLocalPlayer) {
+      return; // Skip remote players - they should be handled by InterpolationSystem
     }
     
     const position = entity.getComponent<PositionComponent>('position')!;
@@ -87,15 +89,20 @@ export class MovementSystem extends System {
         type: 'rotation',
         value: newRotation
       });
-      const renderComponent = entity.getComponent<import('../ecs').RenderComponent>('render');
-      if (renderComponent?.mesh) {
-        renderComponent.mesh.position.set(newPosition.x, newPosition.y, newPosition.z);
-        renderComponent.mesh.rotation.y = newRotation.y;
-      }
+      // Removed direct mesh manipulation - RenderSystem has sole authority over mesh positioning
+      // Emit both events for compatibility
       this.eventBus.emit('entity_moved', {
         entityId: entity.id,
         position: newPosition,
         rotation: newRotation
+      });
+      
+      // CRITICAL FIX: Also emit PLAYER_MOVED so NetworkSystem receives the event
+      this.eventBus.emit(GameEvents.PLAYER_MOVED, {
+        entityId: entity.id.value,
+        position: newPosition,
+        rotation: newRotation,
+        characterId: characterComp?.characterId || 'squirrel'
       });
     }
   }
