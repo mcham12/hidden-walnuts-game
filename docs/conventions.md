@@ -25,26 +25,23 @@ These conventions ensure consistency and maintainability in the *Hidden Walnuts*
 - **Persistence**: Use Durable Objects in `registry.ts` for walnut and map state.
 - **WebSocket**: Handle events (e.g., `map_reset`, `walnut-rehidden`) with minimal data transfer.
 
-## Logging System
+## Logging System - **SIMPLIFIED**
 
-**🚨 CRITICAL: Use the Logger system, NOT console.log calls**
+**🚨 SIMPLIFIED: Use basic console.log for development**
 
-The codebase uses a sophisticated, production-ready logging system with categories, levels, and environment-aware behavior. **Never use direct console.log/warn/error calls.**
+The codebase now uses **simple console logging** instead of complex enterprise logging systems.
 
 ### **Client-Side Logging**
 ```typescript
-import { Logger, LogCategory } from '../core/Logger';
+// Simple development logging
+console.log('🎮 Game initialized successfully');
+console.log('🌐 WebSocket connected:', { playerId });
+console.warn('⚠️ Height lookup failed, using fallback:', { x, z });
+console.error('❌ Failed to spawn player:', error);
 
-// Proper logging with categories
-Logger.info(LogCategory.CORE, 'Game initialized successfully');
-Logger.debug(LogCategory.NETWORK, 'WebSocket connected', { playerId, sessionId });
-Logger.warn(LogCategory.TERRAIN, 'Height lookup failed, using fallback', { x, z });
-Logger.error(LogCategory.PLAYER, 'Failed to spawn player', error);
-
-// Performance tracking
-const perfId = Logger.perfStart(LogCategory.RENDER, 'terrain_generation');
-// ... expensive operation ...
-Logger.perfEnd(perfId);
+// Use emojis for easy visual scanning
+console.log('🐿️ Player moved to:', position);
+console.log('🌲 Forest loaded with', treeCount, 'trees');
 ```
 
 ### **Server-Side Logging (Workers)**

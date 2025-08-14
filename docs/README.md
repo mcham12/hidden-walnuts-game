@@ -4,68 +4,72 @@ A 3D multiplayer game where players hide and seek walnuts in a persistent forest
 
 ## 🎯 **Current Status**
 
-- **Current MVP**: MVP 8 (Enhanced Gameplay Features) 🎯 **IN PROGRESS**
-- **Recently Completed**: MVP 7 (Multiplayer Foundation) ✅ **COMPLETED**
+- **Current Phase**: MVP Simple 1 (Simplified Architecture) ✅ **COMPLETED**
+- **Architecture**: Stripped down from complex ECS to simple, focused game logic
 - **Deployment**: Hosted on Cloudflare Workers with Durable Objects
-- **Testing**: AI-driven automated testing with 90%+ coverage ✅
+- **Focus**: Simple, fun gameplay over enterprise complexity
 
 ## 🚀 **Key Features**
 
-### **MVP 7 Achievements** ✅ **COMPLETED**
-- **Real-time multiplayer** with client prediction and server reconciliation
-- **Zero-latency input** with 1cm precision server authority
-- **Interest management** with 60-80% network traffic reduction
-- **Robust error handling** with automatic reconnection
-- **Free tier compliance** with optimized resource usage
-- **AI-driven testing** with comprehensive coverage
+### **Recently Completed** ✅
+- **Simple Game Architecture** - Replaced complex ECS with straightforward Game.ts class
+- **Basic Multiplayer** - WebSocket connection with position sync
+- **3D Forest Environment** - Terrain and forest with Three.js
+- **Player Movement** - WASD controls with camera following
+- **Clean Codebase** - Reduced from 31 files to 8 focused files
 
-### **MVP 8 Planned Features** 🎯 **IN PROGRESS**
-- **Walnut collection and hiding mechanics**
-- **Scoring and leaderboard systems**
-- **Player progression and achievements**
-- **Social features and chat systems**
-- **Multiple game modes and challenges**
+### **Next Steps** 🎯
+- **Walnut Mechanics** - Hide and seek gameplay
+- **Scoring System** - Points for finding walnuts
+- **Player Synchronization** - Better multiplayer visual sync
+- **Game Polish** - Improved graphics and animations
 
 ## 🛠️ **Technology Stack**
 
 - **Frontend**: Three.js, TypeScript, Vite
 - **Backend**: Cloudflare Workers, Durable Objects, WebSockets
-- **Testing**: Vitest with AI-optimized workflow
+- **Architecture**: Simple, focused classes instead of complex ECS
 - **Deployment**: Cloudflare Pages and Workers
-
-## 🧪 **Testing Infrastructure**
-
-- **Framework**: Vitest (AI-optimized)
-- **Coverage**: 90%+ on critical multiplayer systems
-- **Scripts**: `npm run test`, `npm run test:coverage`, `npm run test:ui`
-- **Workflow**: AI-driven automated testing for all new features
 
 ## 📚 **Documentation**
 
-- [MVP Plan](docs/MVP_Plan_Hidden_Walnuts-2.md) - Development roadmap
-- [Project Structure](docs/PROJECT_STRUCTURE.md) - Codebase organization
-- [Architecture](docs/ENTERPRISE_ARCHITECTURE.md) - Technical design
-- [Conventions](docs/conventions.md) - Coding standards
+- [Game Vision](docs/GameVision.md) - Original game design vision
+- [MVP Plan](docs/MVP_Plan_Hidden_Walnuts-2.md) - Development roadmap (historical)
+- [Project Structure](docs/PROJECT_STRUCTURE.md) - Current codebase organization
 
 ## 🚀 **Quick Start**
 
 ```bash
 # Install dependencies
-npm install
+npm run install:all
 
-# Start development server
-npm run dev
+# Start backend (separate terminal)
+npm run dev:worker
 
-# Run tests
-npm run test
+# Start frontend (separate terminal)  
+npm run dev:client
 
-# Build for production
-npm run build
+# Or manually:
+cd workers && npx wrangler dev --port 8787
+cd client && npm run dev
 ```
 
-## 📊 **Performance**
+## 📊 **Simplified Architecture**
 
-- **60 FPS** target with smooth multiplayer sync
-- **0ms input latency** with client-side prediction
-- **60-80% network reduction** through interest management
-- **Free tier compliance** with optimized resource usage 
+Instead of complex enterprise patterns, we now have:
+
+- **Game.ts** - Main game logic (3D scene, multiplayer, input)
+- **main.ts** - Simple entry point
+- **terrain.ts & forest.ts** - 3D world generation
+- **Backend** - Cloudflare Workers with WebSocket support
+
+**Game runs at**: http://localhost:5173
+**Backend at**: http://localhost:8787
+
+## 🎮 **Controls**
+
+- **WASD** - Move player
+- **Mouse** - Look around (camera follows player)
+- **Game loads automatically** - No complex setup needed
+
+The focus is now on making a **fun, playable game** rather than an enterprise-grade system!

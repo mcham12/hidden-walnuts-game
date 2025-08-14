@@ -1,292 +1,146 @@
 # Project Structure Documentation
 
 ## Overview
-This document provides a comprehensive guide to the Hidden Walnuts game project structure, explaining the purpose and organization of all major files and directories.
+This document provides a guide to the **simplified** Hidden Walnuts game project structure. The project was recently streamlined from a complex enterprise architecture to a focused, simple game architecture.
 
 ## Root Directory Structure
 
 ```
 hidden-walnuts-game/
-├── client/                  # Three.js game client
-├── workers/                 # Cloudflare Workers backend
+├── client/                  # Three.js game client (simplified)
+├── workers/                 # Cloudflare Workers backend  
 ├── public/                  # Shared 3D assets
 ├── docs/                    # Documentation files
 └── configuration files      # Build and deployment configs
 ```
 
-## Client Architecture (`client/`)
+## Client Architecture (`client/`) - **SIMPLIFIED**
 
-### Entry Point & Bootstrap
-- **`main.ts`** - Application bootstrap and initialization
-  - Sets up canvas and event handlers
-  - Initializes dependency injection container
-  - Starts game manager and debug overlays
-  - Handles window resize and error boundaries
+### Current Simple Structure
+```
+client/src/
+├── Game.ts                  # Main game logic class
+├── main.ts                  # Simple entry point  
+├── terrain.ts               # 3D terrain generation
+├── forest.ts                # 3D forest objects
+├── types.ts                 # Basic type definitions
+├── style.css                # Styling
+├── vite-env.d.ts           # Vite types
+└── test/setup.ts           # Test setup
+```
 
-- **`GameComposition.ts`** - System orchestration and DI setup
-  - Configures all game systems with dependency injection
-  - Manages system execution order
-  - Handles game loop and error recovery
-  - Coordinates between client and server systems
+### Key Files
 
-### Core Framework (`src/core/`)
-- **`Container.ts`** - Dependency injection container
-  - Service registration and resolution
-  - Singleton and factory pattern support
-  - Lifecycle management for all services
+**`main.ts`** - Simple application bootstrap
+- Creates Game instance  
+- Initializes 3D scene
+- Connects to multiplayer
+- Handles errors gracefully
 
-- **`EventBus.ts`** - Observer pattern implementation
-  - Decoupled communication between systems
-  - Type-safe event publishing and subscription
-  - Performance-optimized event handling
+**`Game.ts`** - Core game logic (300 lines total)
+- Three.js scene setup
+- Basic multiplayer WebSocket connection
+- Player movement with WASD
+- Camera following
+- Simple networking
 
-- **`Logger.ts`** - Production-grade logging system
-  - Zero performance cost in production builds
-  - Categorized logging (CORE, NETWORK, TERRAIN, etc.)
-  - External error reporting integration
+**`terrain.ts`** - 3D world generation
+- Procedural terrain creation
+- Height calculations
+- Material and texture application
 
-- **`types.ts`** - Core type definitions
-  - Vector3, Rotation, and other domain models
-  - System interfaces and component types
-  - Network message types
+**`forest.ts`** - Environmental objects  
+- Tree and shrub placement
+- 3D model loading
+- Forest object management
 
-### ECS Framework (`src/ecs/`)
-- **`index.ts`** - Entity-Component-System implementation
-  - Entity management with O(1) lookups
-  - Component storage and filtering
-  - System execution pipeline
-  - Memory management and cleanup
+## ~~Removed Complex Architecture~~
 
-### Game Systems (`src/systems/`)
-10 optimized systems in execution order:
+The following complex systems were **removed** for simplicity:
 
-1. **`InputSystem.ts`** - Player input handling
-   - WASD movement controls
-   - Input state management
-   - Event-driven input processing
+- ~~ECS Framework~~ (10+ systems, complex)
+- ~~Dependency Injection~~ (Container, ServiceTokens)
+- ~~Enterprise Logging~~ (LogCategory, production logging)
+- ~~Client Prediction System~~ (reconciliation, anti-cheat)
+- ~~Area of Interest Management~~ (spatial optimization)
+- ~~Network Compression~~ (RLE, message batching)
+- ~~Complex Event Bus~~ (observer patterns)
+- ~~PlayerManager System~~ (lifecycle management)
+- ~~Interpolation System~~ (smooth movement)
 
-2. **`ClientPredictionSystem.ts`** - Local movement prediction
-   - Zero-latency input response
-   - Position prediction and reconciliation
-   - Input history management
+**Result**: From **31 files** down to **8 files** - much cleaner!
 
-3. **`MovementSystem.ts`** - Remote player movement
-   - Remote player position updates
-   - Movement validation and correction
-   - Anti-cheat measures
+## Server Architecture (`workers/`) - **KEPT SIMPLE**
 
-4. **`InterpolationSystem.ts`** - Smooth movement
-   - Remote player interpolation
-   - Position smoothing algorithms
-   - Visual consistency maintenance
+The backend remains functional with Durable Objects:
 
-5. **`AreaOfInterestSystem.ts`** - Spatial optimization
-   - Distance-based player culling
-   - Network traffic optimization
-   - Visibility range management
+**`api.ts`** - Main API router  
+- HTTP and WebSocket handling
+- Route delegation to Durable Objects
+- Basic error handling
 
-6. **`RenderSystem.ts`** - Visual updates
-   - Three.js scene management
-   - Entity rendering and updates
-   - Camera and lighting control
+**Durable Objects (`objects/`)**
+- `ForestManager.ts` - Map and multiplayer state
+- `SquirrelSession.ts` - Player sessions  
+- `WalnutRegistry.ts` - Game object tracking
+- `Leaderboard.ts` - Scoring system
 
-7. **`NetworkCompressionSystem.ts`** - Message batching
-   - RLE compression for network messages
-   - Message batching and optimization
-   - Bandwidth usage reduction
+## 3D Assets (`public/assets/`)
 
-8. **`NetworkTickSystem.ts`** - Rate-limited updates
-   - 5Hz network tick rate (optimized for free tier)
-   - State history management
-   - Memory cleanup and optimization
+**Models (`models/`)**
+- Environment: Trees, bushes, rocks, terrain
+- Characters: Squirrel avatars (multiple characters available)
+- Game Objects: Walnuts and interactive items
 
-9. **`NetworkSystem.ts`** - WebSocket handling
-   - Connection management and authentication
-   - Message sending and receiving
-   - Error handling and reconnection
-
-10. **`PlayerManager.ts`** - Player lifecycle
-    - Player entity creation and destruction
-    - Session management
-    - Player state synchronization
-
-### Domain Services (`src/services/`)
-- **`TerrainService.ts`** - Height calculations
-  - Procedural terrain generation
-  - Height map management
-  - Terrain collision detection
-
-### Entity Management (`src/entities/`)
-- **`PlayerFactory.ts`** - Player creation
-  - Squirrel model loading and setup
-  - Player component initialization
-  - Entity configuration
-
-### Rendering (`src/rendering/`)
-- **`IRenderAdapter.ts`** - Render abstraction
-  - Interface for different rendering backends
-  - Three.js implementation
-  - Future-proof rendering architecture
-
-### World Generation
-- **`terrain.ts`** - Terrain generation
-  - Procedural height map creation
-  - Terrain mesh generation
-  - Material and texture application
-
-- **`forest.ts`** - Forest object creation
-  - Tree and shrub placement
-  - 3D model loading and positioning
-  - Environmental object management
-
-### Configuration & Types
-- **`types.ts`** - Game-specific types
-  - Player, walnut, and game object types
-  - Network message interfaces
-  - System configuration types
-
-- **`vite.config.ts`** - Build configuration
-  - Development and production builds
-  - Asset optimization
-  - Environment-specific settings
-
-- **`tsconfig.json`** - TypeScript configuration
-  - Compiler options and paths
-  - Type checking rules
-  - Module resolution
-
-### Environment Configuration
-- **`.env.development`** - Development environment
-- **`.env.preview`** - Preview/staging environment
-- **`.env.production`** - Production environment
-
-## Server Architecture (`workers/`)
-
-### API Layer
-- **`api.ts`** - Main API router
-  - HTTP and WebSocket request handling
-  - Route delegation to Durable Objects
-  - CORS and security headers
-  - Error handling and logging
-
-### Durable Objects (`objects/`)
-- **`ForestManager.ts`** - Map cycle and multiplayer
-  - Daily forest reset and walnut spawning
-  - WebSocket connection management
-  - Player synchronization and validation
-  - Anti-cheat and movement validation
-
-- **`SquirrelSession.ts`** - Player state management
-  - Individual player session persistence
-  - Score tracking and statistics
-  - Power-up and ability management
-  - Session timeout and cleanup
-
-- **`WalnutRegistry.ts`** - Game object tracking
-  - Walnut positions and states
-  - Ownership and scoring
-  - Hiding and finding mechanics
-  - Spatial indexing for performance
-
-- **`Leaderboard.ts`** - Scoring system
-  - Real-time leaderboard management
-  - Score calculation and ranking
-  - Bonus point distribution
-  - Competition tracking
-
-- **`registry.ts`** - DO access and routing
-  - Centralized Durable Object access
-  - Instance management and caching
-  - Error handling and fallbacks
-
-### Configuration & Types
-- **`types.ts`** - Server-side type definitions
-  - API request/response types
-  - Durable Object interfaces
-  - WebSocket message types
-
-- **`constants.ts`** - Server constants
-  - Game configuration values
-  - Network timeouts and limits
-  - Environment-specific settings
-
-- **`Logger.ts`** - Server logging system
-  - Consistent logging across client/server
-  - Performance monitoring
-  - Error tracking and reporting
-
-## Shared Assets (`public/`)
-
-### 3D Models (`assets/models/`)
-- **Environment Objects**: Trees, bushes, rocks, ground textures
-- **Player Models**: Squirrel avatar and animations
-- **Game Objects**: Walnuts, power-ups, decorative elements
-
-### Textures (`assets/textures/`)
-- **Terrain Textures**: Ground, grass, and surface materials
-- **Object Textures**: Tree bark, leaf textures, rock surfaces
-- **UI Elements**: Icons, buttons, and interface graphics
-
-## Documentation (`docs/`)
-
-### Project Documentation
-- **`README.md`** - Main project overview and setup
-- **`PROJECT_STRUCTURE.md`** - This file - detailed architecture guide
-- **`GameVision.md`** - Game design and feature specifications
-- **`MVP_Plan_Hidden_Walnuts-2.md`** - Development roadmap and milestones
-- **`conventions.md`** - Coding standards and best practices
-- **`README_AI.md`** - AI usage guidelines and workflow
-
-### MVP Documentation (`docs/mvp-7/`)
-- **Task Documentation**: Individual task specifications and completion status
-- **Testing Documentation**: Test plans and validation procedures
-- **Implementation Summaries**: Technical details and architectural decisions
+**Textures (`textures/`)**  
+- Terrain textures and materials
+- Character textures and skins
+- Environmental surface materials
 
 ## Configuration Files
 
-### Build Configuration
-- **`package.json`** - Project dependencies and scripts
-- **`tsconfig.json`** - TypeScript compiler configuration
-- **`wrangler.toml`** - Cloudflare Workers deployment settings
+**Build & Deploy**
+- `package.json` - Dependencies and scripts
+- `tsconfig.json` - TypeScript configuration  
+- `wrangler.toml` - Cloudflare Workers settings
+- `vite.config.ts` - Build configuration
 
-### Development Tools
-- **`.gitignore`** - Git ignore patterns
-- **`hide-walnut.sh`** - Development utility scripts
+**Development**
+- `.gitignore` - Git ignore patterns
+- Environment files for different stages
 
 ## Development Workflow
 
 ### Local Development
 ```bash
-# Start client development server
-cd client && npm run dev
-
-# Start worker development server
+# Start backend (terminal 1)  
 cd workers && npx wrangler dev --port 8787
 
-# Build validation
-cd client && npm run build:preview
-cd workers && npm run build
+# Start frontend (terminal 2)
+cd client && npm run dev
+
+# Game available at: http://localhost:5173
+# Backend API at: http://localhost:8787
 ```
 
-### Deployment
-- **Client**: Deployed to Cloudflare Pages via GitHub Actions
-- **Workers**: Deployed to Cloudflare Workers via Wrangler
-- **Assets**: Served from Cloudflare CDN
+### Simple Architecture Benefits
+- **Easy to understand** - No complex patterns
+- **Quick to modify** - Change game logic in Game.ts
+- **Fast development** - No system dependencies
+- **Maintainable** - Clear, focused code
 
-## Automated Testing
+### Game Controls
+- **WASD** - Player movement
+- **Mouse** - Camera control (follows player)
+- **Multiplayer** - Automatic connection to other players
 
-- **Test Framework:** Vitest (AI-optimized)
-- **Test Location:** `client/src/test/`
-  - `setup.ts`: AI-friendly test utilities and environment
-  - `multiplayer-sync.test.ts`: Core multiplayer sync and integration tests
-- **Config:** `client/vitest.config.ts` (AI-optimized, coverage enforced)
-- **Scripts:**
-  - `npm run test` — run all tests
-  - `npm run test:coverage` — generate coverage report
-  - `npm run test:ui` — interactive test UI
-- **AI Workflow:**
-  - All tests are designed, maintained, and executed by Cursor AI
-  - Tests must be updated for all new features and bugfixes
-  - Coverage and results are reviewed before merge
+## Next Development Focus
 
-This structure provides a clean separation of concerns, with clear documentation, organized code, and standardized configuration management. 
+With the simplified architecture, development can focus on:
+
+1. **Core Gameplay** - Walnut hiding/seeking mechanics
+2. **Player Sync** - Better multiplayer visual synchronization  
+3. **Scoring System** - Points and leaderboards
+4. **Game Polish** - Graphics and user experience
+
+The goal is to create a **fun, playable game** rather than an enterprise-grade system!

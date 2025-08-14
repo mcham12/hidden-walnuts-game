@@ -11,17 +11,17 @@ This document covers AI usage in *Hidden Walnuts* development, focusing on code 
 - **Code Structure**: AI enforced vibe-coding conventions (`// AI NOTE:` comments, types from `types.ts`)
 - **Debugging**: Grok analyzed logs for persistence bugs and camera issues
 
-### MVP 6 (In Progress)
-- **Squirrel Avatar**: AI will assist with 3D squirrel model generation/refinement
-- **WASD Movement**: Grok will support smooth avatar movement with physics
-- **Third-Person Camera**: AI will design camera system following avatar
-- **Code Optimization**: AI will recommend performance tweaks
+### MVP Simple 1 (Completed)
+- **Architecture Simplification**: AI helped strip complex ECS to simple Game.ts
+- **Code Cleanup**: Removed 7,214 lines of over-engineered complexity
+- **Simple Multiplayer**: Basic WebSocket connection and player sync
+- **Focused Structure**: Reduced from 31 files to 8 focused files
 
-## Future AI Roles
-- **Multiplayer (MVP 8)**: WebSocket optimization, synchronization algorithms
-- **AI Mechanics (MVP 12)**: Predator AI behaviors using pathfinding
-- **Visuals (MVP 5, 7, 13)**: Noise functions, textures, dynamic lighting
-- **Code Quality (MVP 14)**: Debug log toggling and refactor suggestions
+## Current AI Role
+- **Simple Game Logic**: Help add walnut mechanics to Game.ts
+- **Multiplayer Polish**: Improve player synchronization 
+- **Core Gameplay**: Focus on fun game mechanics over architecture
+- **Code Clarity**: Keep code simple and understandable
 
 ## AI Workflow
 - **Tools**: Cursor AI for code generation, Grok for analysis
