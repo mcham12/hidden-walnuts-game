@@ -4,6 +4,9 @@ import { EntityId, Vector3, Rotation } from '../core/types';
 import { EventBus } from '../core/EventBus';
 import { Logger, LogCategory } from '../core/Logger';
 
+// Re-export types that are used by systems
+export { EntityId, Vector3, Rotation } from '../core/types';
+
 // Component base interface
 export interface Component {
   readonly type: string;

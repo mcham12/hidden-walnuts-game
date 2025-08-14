@@ -331,7 +331,7 @@ class Application {
     if (!this.gameManager) return {};
     
     const eventBus = this.gameManager.getEventBus();
-    const playerManager = this.gameManager.getPlayerManager();
+    // playerManager removed - using simple multiplayer system now
     const networkSystem = this.gameManager.getNetworkSystem();
     const localPlayer = this.gameManager.getLocalPlayer();
     
@@ -339,8 +339,8 @@ class Application {
       systems: 'Running',
       localPlayer: localPlayer?.id?.value || 'None',
       networkState: networkSystem?.isConnected() ? 'Connected' : 'Disconnected',
-      remotePlayers: playerManager?.getVisiblePlayerCount() || 0,
-      totalRemotePlayers: playerManager?.getAllPlayers()?.size || 0,
+      remotePlayers: 0, // TODO: implement in simple multiplayer system
+      totalRemotePlayers: 0, // TODO: implement in simple multiplayer system
       events: eventBus ? 'Active' : 'None'
     };
   }
@@ -354,15 +354,597 @@ class Application {
     // Add debug commands to global scope for browser console
     if (typeof window !== 'undefined') {
       (window as any).gameDebug = {
-        getPlayerManager: () => this.gameManager?.getPlayerManager(),
+        // getPlayerManager removed - using simple multiplayer system
         getNetworkSystem: () => this.gameManager?.getNetworkSystem(),
         getPlayerCount: () => {
-          const pm = this.gameManager?.getPlayerManager();
+          // pm removed - using simple multiplayer system
           return {
-            visible: pm?.getVisiblePlayerCount() || 0,
-            total: pm?.getAllPlayers()?.size || 0,
-            stats: pm?.getPlayerStats()
+            visible: 0, // TODO: implement in simple multiplayer system
+            total: 0, // TODO: implement in simple multiplayer system
+            stats: {} // TODO: implement in simple multiplayer system
           };
+        },
+        debugScene: () => {
+          try {
+            const sceneManager = container.resolve<import('./GameComposition').ISceneManager>(ServiceTokens.SCENE_MANAGER);
+            const scene = sceneManager.getScene();
+            const camera = sceneManager.getCamera();
+            
+            console.log('🔍 SCENE DEBUG:');
+            console.log(`Total scene children: ${scene.children.length}`);
+            console.log(`📷 Camera position: (${camera.position.x.toFixed(1)}, ${camera.position.y.toFixed(1)}, ${camera.position.z.toFixed(1)})`);
+            console.log(`📷 Camera near/far: ${camera.near}/${camera.far}`);
+            
+            let playerMeshes = 0;
+            scene.traverse((child: any) => {
+              if (child.__squirrelId || child.__entityType) {
+                playerMeshes++;
+                console.log(`Player mesh: ${child.__squirrelId || 'unknown'} (${child.__entityType || 'unknown'})`);
+                console.log(`  - visible: ${child.visible}`);
+                console.log(`  - position: (${child.position.x.toFixed(1)}, ${child.position.y.toFixed(1)}, ${child.position.z.toFixed(1)})`);
+                console.log(`  - scale: (${child.scale.x}, ${child.scale.y}, ${child.scale.z})`);
+                console.log(`  - in scene: ${scene.children.includes(child)}`);
+                
+                // Calculate distance from camera to player
+                const distance = Math.sqrt(
+                  Math.pow(child.position.x - camera.position.x, 2) +
+                  Math.pow(child.position.y - camera.position.y, 2) +
+                  Math.pow(child.position.z - camera.position.z, 2)
+                );
+                console.log(`  - distance from camera: ${distance.toFixed(2)}`);
+                
+                // Check if mesh is in camera frustum
+                child.traverse((submesh: any) => {
+                  if (submesh.isMesh) {
+                    console.log(`    - submesh visible: ${submesh.visible}`);
+                    console.log(`    - submesh material opacity: ${submesh.material?.opacity || 'N/A'}`);
+                    console.log(`    - submesh material transparent: ${submesh.material?.transparent || 'N/A'}`);
+                  }
+                });
+              }
+            });
+            
+            console.log(`Found ${playerMeshes} player meshes in scene`);
+            return { totalChildren: scene.children.length, playerMeshes };
+          } catch (error) {
+            console.error('Error debugging scene:', error);
+            return null;
+          }
+        },
+        setCameraFixed: (x = 0, y = 15, z = 15) => {
+          try {
+            const sceneManager = container.resolve<import('./GameComposition').ISceneManager>(ServiceTokens.SCENE_MANAGER);
+            const camera = sceneManager.getCamera();
+            
+            console.log(`📷 Setting camera to fixed position: (${x}, ${y}, ${z})`);
+            camera.position.set(x, y, z);
+            camera.lookAt(0, 2, 0);
+            
+            // Disable camera following by modifying the game manager temporarily
+            const gameManager = this.gameManager;
+            if (gameManager) {
+              console.log('📷 Disabling camera following temporarily');
+              (gameManager as any).updateCameraToFollowLocalPlayer = () => {
+                // No-op to disable camera following
+              };
+            }
+            
+            return { x: camera.position.x, y: camera.position.y, z: camera.position.z };
+          } catch (error) {
+            console.error('Error setting fixed camera:', error);
+            return null;
+          }
+        },
+        makeRemotePlayersVisible: () => {
+          try {
+            const sceneManager = container.resolve<import('./GameComposition').ISceneManager>(ServiceTokens.SCENE_MANAGER);
+            const scene = sceneManager.getScene();
+            
+            console.log('🔧 Making remote players more visible...');
+            let modifiedCount = 0;
+            let allSquirrelMeshes = 0;
+            
+            // First attempt: look for marked remote players
+            scene.traverse((child: any) => {
+              if (child.__squirrelId && child.__entityType === 'remote_player') {
+                console.log(`🔧 Found marked remote player: ${child.__squirrelId}`);
+                
+                // Make much larger temporarily
+                child.scale.set(2.0, 2.0, 2.0);
+                
+                // Ensure visibility
+                child.visible = true;
+                
+                // Modify materials to be more visible
+                child.traverse((submesh: any) => {
+                  if (submesh.isMesh && submesh.material) {
+                    if (Array.isArray(submesh.material)) {
+                      submesh.material.forEach((mat: any) => {
+                        mat.emissive = { r: 0.2, g: 0.2, b: 0.8 }; // Blue glow
+                        mat.emissiveIntensity = 0.3;
+                      });
+                    } else {
+                      submesh.material.emissive = { r: 0.2, g: 0.2, b: 0.8 }; // Blue glow
+                      submesh.material.emissiveIntensity = 0.3;
+                    }
+                    submesh.visible = true;
+                  }
+                });
+                
+                modifiedCount++;
+              }
+            });
+            
+            // If no marked remote players found, look for any squirrel models that might be remote players
+            if (modifiedCount === 0) {
+              console.log('🔧 No marked remote players found, looking for any squirrel models...');
+              
+              scene.traverse((child: any) => {
+                // Look for meshes that might be squirrel models (scale 0.3 is typical)
+                if (child.scale && Math.abs(child.scale.x - 0.3) < 0.1 && child.position) {
+                  allSquirrelMeshes++;
+                  console.log(`🔧 Found potential squirrel mesh at position (${child.position.x.toFixed(1)}, ${child.position.y.toFixed(1)}, ${child.position.z.toFixed(1)}) with scale (${child.scale.x}, ${child.scale.y}, ${child.scale.z})`);
+                  console.log(`🔧 Mesh has __squirrelId: ${child.__squirrelId || 'NONE'}, __entityType: ${child.__entityType || 'NONE'}`);
+                  
+                  // Make it visible regardless
+                  child.scale.set(2.0, 2.0, 2.0);
+                  child.visible = true;
+                  
+                  // Add bright red color to distinguish from local player
+                  child.traverse((submesh: any) => {
+                    if (submesh.isMesh && submesh.material) {
+                      if (Array.isArray(submesh.material)) {
+                        submesh.material.forEach((mat: any) => {
+                          mat.emissive = { r: 0.8, g: 0.1, b: 0.1 }; // Red glow
+                          mat.emissiveIntensity = 0.5;
+                        });
+                      } else {
+                        submesh.material.emissive = { r: 0.8, g: 0.1, b: 0.1 }; // Red glow  
+                        submesh.material.emissiveIntensity = 0.5;
+                      }
+                      submesh.visible = true;
+                    }
+                  });
+                  
+                  modifiedCount++;
+                }
+              });
+            }
+            
+            console.log(`🔧 Modified ${modifiedCount} meshes for visibility (found ${allSquirrelMeshes} potential squirrel meshes)`);
+            return { modified: modifiedCount, potentialSquirrels: allSquirrelMeshes };
+          } catch (error) {
+            console.error('Error making remote players visible:', error);
+            return null;
+          }
+        },
+        inspectAllMeshes: () => {
+          try {
+            const sceneManager = container.resolve<import('./GameComposition').ISceneManager>(ServiceTokens.SCENE_MANAGER);
+            const scene = sceneManager.getScene();
+            
+            console.log('🔍 FULL SCENE INSPECTION:');
+            console.log(`Scene has ${scene.children.length} direct children`);
+            
+            let totalMeshes = 0;
+            let squirrelMeshes = 0;
+            
+            scene.traverse((child: any) => {
+              if (child.isMesh || (child.scale && child.position)) {
+                totalMeshes++;
+                
+                const isSquirrelScale = child.scale && Math.abs(child.scale.x - 0.3) < 0.1;
+                const hasSquirrelId = child.__squirrelId;
+                const isRemotePlayer = child.__entityType === 'remote_player';
+                
+                if (isSquirrelScale || hasSquirrelId || isRemotePlayer) {
+                  squirrelMeshes++;
+                  console.log(`🐿️ SQUIRREL MESH #${squirrelMeshes}:`);
+                  console.log(`  - Type: ${child.type || 'unknown'}`);
+                  console.log(`  - Position: (${child.position?.x?.toFixed(1) || 'N/A'}, ${child.position?.y?.toFixed(1) || 'N/A'}, ${child.position?.z?.toFixed(1) || 'N/A'})`);
+                  console.log(`  - Scale: (${child.scale?.x || 'N/A'}, ${child.scale?.y || 'N/A'}, ${child.scale?.z || 'N/A'})`);
+                  console.log(`  - Visible: ${child.visible}`);
+                  console.log(`  - Parent: ${child.parent ? child.parent.type || 'Object3D' : 'NONE'}`);
+                  console.log(`  - In scene directly: ${scene.children.includes(child)}`);
+                  console.log(`  - __squirrelId: ${child.__squirrelId || 'NONE'}`);
+                  console.log(`  - __entityType: ${child.__entityType || 'NONE'}`);
+                  console.log(`  - Material count: ${child.material ? (Array.isArray(child.material) ? child.material.length : 1) : 'NO MATERIAL'}`);
+                  
+                  // Check if it has geometry
+                  if (child.geometry) {
+                    console.log(`  - Geometry: ${child.geometry.type}, vertices: ${child.geometry.attributes?.position?.count || 'unknown'}`);
+                  } else {
+                    console.log(`  - Geometry: NONE`);
+                  }
+                  
+                  // Check children
+                  if (child.children && child.children.length > 0) {
+                    console.log(`  - Children: ${child.children.length}`);
+                    child.children.forEach((childMesh: any, i: number) => {
+                      if (childMesh.isMesh) {
+                        console.log(`    - Child ${i}: ${childMesh.type}, visible: ${childMesh.visible}, material: ${!!childMesh.material}`);
+                      }
+                    });
+                  }
+                  
+                  console.log(`  ---`);
+                }
+              }
+            });
+            
+            console.log(`Total meshes in scene: ${totalMeshes}`);
+            console.log(`Squirrel-like meshes: ${squirrelMeshes}`);
+            
+            return { totalMeshes, squirrelMeshes };
+          } catch (error) {
+            console.error('Error inspecting meshes:', error);
+            return null;
+          }
+        },
+        fixRemotePlayerMesh: () => {
+          try {
+            const sceneManager = container.resolve<import('./GameComposition').ISceneManager>(ServiceTokens.SCENE_MANAGER);
+            const scene = sceneManager.getScene();
+            
+            console.log('🔧 FIXING REMOTE PLAYER MESH:');
+            let fixedCount = 0;
+            
+            scene.traverse((child: any) => {
+              if (child.__squirrelId && child.__entityType === 'remote_player') {
+                console.log(`🔧 Found remote player: ${child.__squirrelId}`);
+                console.log(`🔧 Remote player has ${child.children.length} children:`);
+                
+                child.children.forEach((childMesh: any, i: number) => {
+                  console.log(`  Child ${i}: ${childMesh.type}, visible: ${childMesh.visible}`);
+                  console.log(`    - isMesh: ${childMesh.isMesh}`);
+                  console.log(`    - geometry: ${!!childMesh.geometry}`);
+                  console.log(`    - material: ${!!childMesh.material}`);
+                  console.log(`    - position: (${childMesh.position?.x?.toFixed(1) || 'N/A'}, ${childMesh.position?.y?.toFixed(1) || 'N/A'}, ${childMesh.position?.z?.toFixed(1) || 'N/A'})`);
+                  console.log(`    - scale: (${childMesh.scale?.x || 'N/A'}, ${childMesh.scale?.y || 'N/A'}, ${childMesh.scale?.z || 'N/A'})`);
+                  
+                  if (childMesh.children && childMesh.children.length > 0) {
+                    console.log(`    - has ${childMesh.children.length} sub-children:`);
+                    childMesh.children.forEach((subChild: any, j: number) => {
+                      console.log(`      SubChild ${j}: ${subChild.type}, visible: ${subChild.visible}, isMesh: ${subChild.isMesh}, material: ${!!subChild.material}`);
+                      
+                      // Try to fix any invisible submeshes
+                      if (subChild.isMesh) {
+                        subChild.visible = true;
+                        if (subChild.material) {
+                          if (Array.isArray(subChild.material)) {
+                            subChild.material.forEach((mat: any) => {
+                              mat.emissive = { r: 1.0, g: 0.5, b: 0.0 }; // Bright orange
+                              mat.emissiveIntensity = 0.8;
+                            });
+                          } else {
+                            subChild.material.emissive = { r: 1.0, g: 0.5, b: 0.0 }; // Bright orange
+                            subChild.material.emissiveIntensity = 0.8;
+                          }
+                        }
+                        console.log(`      ✅ Enhanced SubChild ${j} with orange glow`);
+                      }
+                    });
+                  }
+                  
+                  // Also try to fix the direct child
+                  if (childMesh.isMesh) {
+                    childMesh.visible = true;
+                    if (childMesh.material) {
+                      if (Array.isArray(childMesh.material)) {
+                        childMesh.material.forEach((mat: any) => {
+                          mat.emissive = { r: 1.0, g: 0.0, b: 1.0 }; // Bright magenta
+                          mat.emissiveIntensity = 0.8;
+                        });
+                      } else {
+                        childMesh.material.emissive = { r: 1.0, g: 0.0, b: 1.0 }; // Bright magenta
+                        childMesh.material.emissiveIntensity = 0.8;
+                      }
+                    }
+                    console.log(`  ✅ Enhanced Child ${i} with magenta glow`);
+                  }
+                });
+                
+                // Make the container bigger too
+                child.scale.set(2.0, 2.0, 2.0);
+                console.log(`🔧 Scaled up remote player container to 2.0x`);
+                
+                fixedCount++;
+              }
+            });
+            
+            console.log(`🔧 Fixed ${fixedCount} remote player meshes`);
+            return { fixed: fixedCount };
+          } catch (error) {
+            console.error('Error fixing remote player mesh:', error);
+            return null;
+          }
+        },
+        findExactRemotePlayer: () => {
+          try {
+            const sceneManager = container.resolve<import('./GameComposition').ISceneManager>(ServiceTokens.SCENE_MANAGER);
+            const scene = sceneManager.getScene();
+            
+            console.log('🔍 SEARCHING FOR EXACT REMOTE PLAYER:');
+            const targetId = '717dfd7a-3659-4936-ae65-ff3008a40787';
+            
+            let found = false;
+            scene.traverse((child: any) => {
+              // Look for the exact mesh we know exists at position (6.0, 1.0, 1.6)
+              if (child.position && 
+                  Math.abs(child.position.x - 6.0) < 0.5 && 
+                  Math.abs(child.position.y - 1.0) < 0.5 && 
+                  Math.abs(child.position.z - 1.6) < 0.5) {
+                
+                found = true;
+                console.log(`🎯 FOUND MESH AT TARGET POSITION:`);
+                console.log(`  - Type: ${child.type}`);
+                console.log(`  - Position: (${child.position.x.toFixed(2)}, ${child.position.y.toFixed(2)}, ${child.position.z.toFixed(2)})`);
+                console.log(`  - Scale: (${child.scale?.x || 'N/A'}, ${child.scale?.y || 'N/A'}, ${child.scale?.z || 'N/A'})`);
+                console.log(`  - Visible: ${child.visible}`);
+                console.log(`  - __squirrelId: ${child.__squirrelId || 'NONE'}`);
+                console.log(`  - __entityType: ${child.__entityType || 'NONE'}`);
+                
+                // FORCE this mesh to be unmissable
+                console.log(`🔧 FORCING VISIBILITY ON TARGET MESH:`);
+                
+                // Make container huge and bright red
+                child.scale.set(5.0, 5.0, 5.0);
+                child.visible = true;
+                
+                // Skip the wireframe due to Three.js import issues
+                console.log('🔧 Skipping wireframe creation due to import issue');
+                
+                // Traverse all children and make them glow bright red
+                child.traverse((descendant: any) => {
+                  if (descendant.isMesh && descendant.material) {
+                    descendant.visible = true;
+                    if (Array.isArray(descendant.material)) {
+                      descendant.material.forEach((mat: any) => {
+                        mat.emissive = { r: 1.0, g: 0.0, b: 0.0 }; // Bright red
+                        mat.emissiveIntensity = 1.0; // Maximum glow
+                      });
+                    } else {
+                      descendant.material.emissive = { r: 1.0, g: 0.0, b: 0.0 }; // Bright red
+                      descendant.material.emissiveIntensity = 1.0; // Maximum glow
+                    }
+                    console.log(`  ✅ Made descendant ${descendant.type} glow bright red`);
+                  }
+                });
+                
+                console.log(`🔧 Target mesh scaled to 5.0x with red wireframe and bright red glow`);
+              }
+            });
+            
+            if (!found) {
+              console.log(`❌ NO MESH FOUND AT POSITION (6.0, 1.0, 1.6)`);
+            }
+            
+            return { found };
+          } catch (error) {
+            console.error('Error finding exact remote player:', error);
+            return null;
+          }
+        },
+        debugMaterialSharing: () => {
+          try {
+            const sceneManager = container.resolve<import('./GameComposition').ISceneManager>(ServiceTokens.SCENE_MANAGER);
+            const scene = sceneManager.getScene();
+            
+            console.log('🔍 INVESTIGATING MATERIAL SHARING:');
+            
+            let localPlayerMeshes = [];
+            let remotePlayerMeshes = [];
+            let allMaterials = new Map();
+            
+            scene.traverse((child: any) => {
+              if (child.scale && Math.abs(child.scale.x - 0.3) < 0.2) {
+                const position = `(${child.position?.x?.toFixed(1) || 'N/A'}, ${child.position?.y?.toFixed(1) || 'N/A'}, ${child.position?.z?.toFixed(1) || 'N/A'})`;
+                const meshInfo = {
+                  type: child.type,
+                  position: position,
+                  squirrelId: child.__squirrelId || 'NONE',
+                  entityType: child.__entityType || 'NONE',
+                  materials: []
+                };
+                
+                // Collect all materials in this mesh hierarchy
+                child.traverse((descendant: any) => {
+                  if (descendant.isMesh && descendant.material) {
+                    if (Array.isArray(descendant.material)) {
+                      descendant.material.forEach((mat: any, i: number) => {
+                        const matId = mat.uuid || `mat_${i}`;
+                        meshInfo.materials.push(matId);
+                        if (!allMaterials.has(matId)) {
+                          allMaterials.set(matId, []);
+                        }
+                        allMaterials.get(matId).push(`${meshInfo.squirrelId || meshInfo.entityType}_${descendant.type}`);
+                      });
+                    } else {
+                      const matId = descendant.material.uuid || 'unknown';
+                      meshInfo.materials.push(matId);
+                      if (!allMaterials.has(matId)) {
+                        allMaterials.set(matId, []);
+                      }
+                      allMaterials.get(matId).push(`${meshInfo.squirrelId || meshInfo.entityType}_${descendant.type}`);
+                    }
+                  }
+                });
+                
+                if (child.__entityType === 'remote_player') {
+                  remotePlayerMeshes.push(meshInfo);
+                } else {
+                  localPlayerMeshes.push(meshInfo);
+                }
+              }
+            });
+            
+            console.log(`📊 Found ${localPlayerMeshes.length} local player meshes, ${remotePlayerMeshes.length} remote player meshes`);
+            
+            localPlayerMeshes.forEach((mesh, i) => {
+              console.log(`🐿️ LOCAL MESH ${i + 1}:`);
+              console.log(`  Position: ${mesh.position}`);
+              console.log(`  SquirrelId: ${mesh.squirrelId}`);
+              console.log(`  Materials: [${mesh.materials.join(', ')}]`);
+            });
+            
+            remotePlayerMeshes.forEach((mesh, i) => {
+              console.log(`🌐 REMOTE MESH ${i + 1}:`);
+              console.log(`  Position: ${mesh.position}`);
+              console.log(`  SquirrelId: ${mesh.squirrelId}`);
+              console.log(`  Materials: [${mesh.materials.join(', ')}]`);
+            });
+            
+            console.log(`🔗 MATERIAL SHARING ANALYSIS:`);
+            let sharedMaterials = 0;
+            allMaterials.forEach((usedBy, materialId) => {
+              if (usedBy.length > 1) {
+                sharedMaterials++;
+                console.log(`  Material ${materialId} is SHARED by: ${usedBy.join(', ')}`);
+              }
+            });
+            
+            if (sharedMaterials === 0) {
+              console.log('  ✅ No shared materials detected');
+            } else {
+              console.log(`  ⚠️ Found ${sharedMaterials} shared materials - this could cause the bug!`);
+            }
+            
+            return { localMeshes: localPlayerMeshes.length, remoteMeshes: remotePlayerMeshes.length, sharedMaterials };
+          } catch (error) {
+            console.error('Error debugging material sharing:', error);
+            return null;
+          }
+        },
+        debugMeshHierarchy: () => {
+          try {
+            const sceneManager = container.resolve<import('./GameComposition').ISceneManager>(ServiceTokens.SCENE_MANAGER);
+            const scene = sceneManager.getScene();
+            
+            console.log('🔍 MESH HIERARCHY ANALYSIS:');
+            
+            scene.traverse((child: any) => {
+              if (child.__squirrelId === '717dfd7a-3659-4936-ae65-ff3008a40787') {
+                console.log(`🌐 REMOTE PLAYER HIERARCHY:`);
+                console.log(`Root: ${child.type} at (${child.position.x.toFixed(1)}, ${child.position.y.toFixed(1)}, ${child.position.z.toFixed(1)})`);
+                
+                const printHierarchy = (obj: any, depth = 0) => {
+                  const indent = '  '.repeat(depth);
+                  console.log(`${indent}- ${obj.type} (${obj.children.length} children)`);
+                  
+                  if (obj.isMesh && obj.material) {
+                    const matId = obj.material.uuid || 'unknown';
+                    console.log(`${indent}  📦 Material: ${matId}`);
+                    console.log(`${indent}  📦 Material object: ${typeof obj.material}`);
+                    console.log(`${indent}  📦 Is cloned: ${obj.material.name?.includes('clone') || 'unknown'}`);
+                  }
+                  
+                  obj.children.forEach((childObj: any) => {
+                    printHierarchy(childObj, depth + 1);
+                  });
+                };
+                
+                printHierarchy(child);
+              }
+            });
+            
+            // Also check local player for comparison
+            scene.traverse((child: any) => {
+              if (child.scale && Math.abs(child.scale.x - 0.3) < 0.1 && 
+                  child.position && child.position.x > 10) { // Local player is at position ~13
+                console.log(`🐿️ LOCAL PLAYER HIERARCHY:`);
+                console.log(`Root: ${child.type} at (${child.position.x.toFixed(1)}, ${child.position.y.toFixed(1)}, ${child.position.z.toFixed(1)})`);
+                
+                const printHierarchy = (obj: any, depth = 0) => {
+                  const indent = '  '.repeat(depth);
+                  console.log(`${indent}- ${obj.type} (${obj.children.length} children)`);
+                  
+                  if (obj.isMesh && obj.material) {
+                    const matId = obj.material.uuid || 'unknown';
+                    console.log(`${indent}  📦 Material: ${matId}`);
+                  }
+                  
+                  obj.children.forEach((childObj: any) => {
+                    printHierarchy(childObj, depth + 1);
+                  });
+                };
+                
+                printHierarchy(child);
+                return; // Only show first local player
+              }
+            });
+            
+            return { analyzed: true };
+          } catch (error) {
+            console.error('Error debugging mesh hierarchy:', error);
+            return null;
+          }
+        },
+        finalVisibilityTest: () => {
+          try {
+            const sceneManager = container.resolve<import('./GameComposition').ISceneManager>(ServiceTokens.SCENE_MANAGER);
+            const scene = sceneManager.getScene();
+            const camera = sceneManager.getCamera();
+            
+            console.log('🎯 FINAL VISIBILITY TEST:');
+            
+            scene.traverse((child: any) => {
+              if (child.__squirrelId === '717dfd7a-3659-4936-ae65-ff3008a40787') {
+                console.log(`🌐 Remote player found at (${child.position.x}, ${child.position.y}, ${child.position.z})`);
+                console.log(`📷 Camera at (${camera.position.x}, ${camera.position.y}, ${camera.position.z})`);
+                
+                // Make it ABSOLUTELY UNMISSABLE
+                child.scale.set(10.0, 10.0, 10.0);  // Massive scale
+                child.position.y = 5.0;  // Lift it up in the air
+                
+                child.traverse((descendant: any) => {
+                  if (descendant.isMesh && descendant.material) {
+                    // Bright emissive pink that glows in the dark
+                    descendant.material.emissive = { r: 1.0, g: 0.0, b: 1.0 };
+                    descendant.material.emissiveIntensity = 2.0;
+                    descendant.material.transparent = false;
+                    descendant.material.opacity = 1.0;
+                    descendant.visible = true;
+                    console.log(`✅ Made descendant UNMISSABLE: ${descendant.type}`);
+                  }
+                  descendant.visible = true;
+                });
+                
+                child.visible = true;
+                console.log(`🚀 Remote player made UNMISSABLE: 10x scale, pink glow, lifted to y=5`);
+                
+                return { success: true };
+              }
+            });
+            
+            return { tested: true };
+          } catch (error) {
+            console.error('Error in final visibility test:', error);
+            return null;
+          }
+        },
+        createTestRemotePlayer: async () => {
+          try {
+            const THREE = await import('three');
+            const sceneManager = container.resolve<import('./GameComposition').ISceneManager>(ServiceTokens.SCENE_MANAGER);
+            const scene = sceneManager.getScene();
+            
+            // Create a simple test mesh
+            const geometry = new THREE.BoxGeometry(2, 2, 2);
+            const material = new THREE.MeshStandardMaterial({ 
+              color: 0xff0000,
+              emissive: 0xff0000,
+              emissiveIntensity: 0.5
+            });
+            const testMesh = new THREE.Mesh(geometry, material);
+            
+            testMesh.position.set(6, 5, 1.6);
+            testMesh.name = 'TEST_REMOTE_PLAYER';
+            scene.add(testMesh);
+            
+            return { created: true };
+          } catch (error) {
+            return { error: error.message };
+          }
         },
         forceLogLevel: (category: string, level: string) => {
           Logger.info(LogCategory.CORE, `🔧 Force log test: ${category} ${level}`);

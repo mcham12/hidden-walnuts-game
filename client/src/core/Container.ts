@@ -112,12 +112,12 @@ export const ServiceTokens = {
   AREA_OF_INTEREST_SYSTEM: 'AreaOfInterestSystem',
   NETWORK_COMPRESSION_SYSTEM: 'NetworkCompressionSystem',
   INPUT_SYSTEM: 'InputSystem',
-  PLAYER_MANAGER: 'PlayerManager',
   TERRAIN_SERVICE: 'TerrainService',
   RENDER_ADAPTER: 'RenderAdapter',
   PLAYER_FACTORY: 'PlayerFactory',
   CAMERA_SYSTEM: 'CameraSystem',
-  CHARACTER_REGISTRY: 'CharacterRegistry'
+  CHARACTER_REGISTRY: 'CharacterRegistry',
+  SIMPLE_MULTIPLAYER_MANAGER: 'SimpleMultiplayerManager'
 } as const;
 
 // Global container instance

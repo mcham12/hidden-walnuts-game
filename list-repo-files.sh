@@ -46,6 +46,14 @@ find . -type f \
   -not -name "tsconfig.json" \
   -not -name "vite.config.ts" \
   -not -name "vitest.config.ts" \
+  -not -name ".DS_Store" \
+  -not -name "code_bundle.txt" \
+  -not -name "repo_files.txt" \
+  -not -name "docs_bundle.txt" \
+  -not -name "list-repo-files.sh" \
+  -not -name "concat_repo_files.sh" \
+  -not -name "list-docs-files.sh" \
+  -not -name "concat-docs-files.sh" \
   -print | tee "$OUTPUT"
 
 echo "File list written to $OUTPUT. Total files: $(wc -l < "$OUTPUT")"

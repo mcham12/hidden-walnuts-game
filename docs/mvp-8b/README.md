@@ -1,226 +1,281 @@
-# MVP 8: Animated Squirrel Players & NPC Characters
+MVP 8b: Character System Refactor & Animation Integration
+🎯 Objective
+Refactor the game to support multiple character types for players and NPCs, removing hardcoded squirrel assumptions. Implement animated characters with selection, locking, and extensibility. Add NPC system for dynamic forest population. This MVP focuses on a modular, future-proof character architecture to enable ongoing content additions without major rewrites.
+📊 Current Status
 
-## 🎯 **Objective**
-Implement animated squirrel player avatars and NPC characters to create a vibrant, living forest environment with smooth animations and realistic behaviors.
+Status: 📋 PENDING (Ready to start)
+Priority: 🔵 HIGH (Core for gameplay variety and immersion)
+Dependencies: MVP 7 (Multiplayer Foundation) ✅ COMPLETED
+Estimated Time: 4-6 weeks (extended for robustness after previous attempts)
+Success Focus: Tasks are granular, sequential, with built-in validation, testing, and iteration points to minimize failure risk. Each task includes explicit milestones, dependencies, and rollback strategies.
 
-## 📊 **Current Status**
-- **Status**: 📋 **PENDING** (Ready to start)
-- **Priority**: 🔵 **HIGH** (Foundation for engaging gameplay)
-- **Dependencies**: MVP 7 (Multiplayer Foundation) ✅ **COMPLETED**
-- **Estimated Time**: 3-4 weeks
+🏗️ Architecture Overview
+MVP 8b introduces a modular character system with enterprise-grade extensibility:
+Character System Components
 
-## 🏗️ **Architecture Overview**
+Character Registry - Centralized character definitions (types, models, animations, unlocks)
+Animation Manager - State-based animation control with blending
+Character Selection UI - Pre-game selector with locking/unlocking
+NPC Controller - AI-driven behaviors for non-player characters
+Multiplayer Sync - Character type and animation state synchronization
+Performance Optimizer - LOD, culling, and batching for multiple characters
 
-MVP 8 implements **animated character system** with **enterprise-grade animation management**:
+Refactor Principles
 
-### **Animation System Components**
-1. **Player Animation Controller** - Local player animation state management
-2. **NPC Animation System** - AI-driven character animations
-3. **Animation Synchronization** - Multiplayer animation state sync
-4. **Performance Optimization** - Efficient rendering for multiple characters
-5. **Character Customization** - Visual customization options
+No Hardcoding: All character-specific logic abstracted (e.g., via interfaces)
+Extensibility: Easy addition of new characters via config/data files
+Backward Compatibility: Preserve existing squirrel functionality as default
+Testing Focus: Each component testable in isolation
 
-### **Animation Pipeline**
-- **Input Processing** → **Animation State Machine** → **Blend Tree** → **Skeletal Animation** → **Network Sync**
+Data Flow
 
-### **NPC AI Integration**
-- **Behavior Trees** - Decision-making for NPC actions
-- **Pathfinding System** - Navigation through forest terrain
-- **Social Interactions** - NPC-to-NPC and NPC-to-player interactions
-- **Performance Monitoring** - AI efficiency and character count tracking
+Selection: UI → Registry → Spawn Factory
+Spawning: Factory → ECS Entity → Animation Setup
+Update: Input/AI → Animation State → Sync → Render
+NPC AI: Behavior Tree → Movement → Animation
 
-## 📋 **Task Overview**
+📋 Task Overview
+Tasks are ordered sequentially with dependencies. Each includes:
 
-| Task | Title | Status | Description |
-|------|-------|--------|-------------|
-| 1 | Animated Squirrel Model | 📋 **PENDING** | Rigged 3D squirrel model with animation skeleton |
-| 2 | Player Animation System | 📋 **PENDING** | Local player animation state management |
-| 3 | Animation Synchronization | 📋 **PENDING** | Multiplayer animation state synchronization |
-| 4 | NPC Character System | 📋 **PENDING** | AI-driven non-player character implementation |
-| 5 | Performance Optimization | 📋 **PENDING** | Efficient rendering for multiple animated characters |
-| 6 | Character Customization | 📋 **PENDING** | Visual customization options for players |
-| 7 | Testing & Validation | 📋 **PENDING** | Comprehensive animation and AI testing |
+Milestones: Measurable completion points
+Validation: Specific checks/tests
+Rollback: Recovery if issues arise
+AI Notes: Guidance for AI-assisted implementation
 
-## 🚀 **Key Features**
 
-### **Player Animation System**
-- **Core Animations**: Run, walk, jump, dig, idle, look around
-- **Animation Blending**: Smooth transitions between states
-- **Performance**: 60 FPS animation updates
-- **Network Sync**: Real-time animation state synchronization
 
-### **NPC AI System**
-- **Behavior Types**: Patrol, forage, socialize, flee
-- **Pathfinding**: Terrain-aware navigation
-- **Social Interactions**: NPC-to-NPC and NPC-to-player
-- **Performance**: Support 20+ NPCs simultaneously
 
-### **Animation Performance**
-- **Efficient Rendering**: Optimized for multiple characters
-- **LOD System**: Level of detail for distant characters
-- **Memory Management**: Automatic cleanup of unused animations
-- **Network Optimization**: Compressed animation data transmission
+Task
+Title
+Status
+Description
 
-## 📁 **Documentation Structure**
 
-```
-docs/mvp-8/
+
+1
+Character Registry & Data Model
+📋 PENDING
+Define extensible character definitions
+
+
+2
+Refactor Player Assumptions
+📋 PENDING
+Remove squirrel-specific code
+
+
+3
+Animation System Foundation
+📋 PENDING
+Implement core animation management
+
+
+4
+Character Selection UI
+📋 PENDING
+Add pre-game selector with locking
+
+
+5
+Player Spawn Refactor
+📋 PENDING
+Support multiple character types at spawn
+
+
+6
+NPC System Implementation
+📋 PENDING
+Add AI-controlled characters
+
+
+7
+Multiplayer Synchronization
+📋 PENDING
+Sync character types and animations
+
+
+8
+Performance & Optimization
+📋 PENDING
+Ensure scalability for multiple characters
+
+
+9
+Testing & Validation
+📋 PENDING
+Comprehensive system testing
+
+
+10
+Documentation & Extensibility Guide
+📋 PENDING
+Guide for adding new characters
+
+
+🚀 Key Features
+Character Registry
+
+JSON/config-based definitions (model paths, animations, stats, unlock conditions)
+Runtime loading for easy expansion
+Validation for missing assets/animations
+
+Animation System
+
+State machine with blending (idle, walk, run, etc.)
+Extensible per-character animation maps
+Performance: Instanced meshes, animation culling
+
+Player Selection
+
+UI with previews, locked/unlocked states
+Persistent unlocks (localStorage/server)
+Default to squirrel for backward compatibility
+
+NPC System
+
+Behavior trees for AI (patrol, interact, flee)
+Any character type usable as NPC
+Population manager for forest density
+
+Multiplayer Integration
+
+Character type sync on join
+Animation state broadcasting (optimized)
+Visual consistency across clients
+
+📁 Documentation Structure
+docs/mvp-8b/
 ├── README.md                    # This file - MVP overview
 ├── tasks/
-│   ├── 01-animated-model/       # Task 1: Animated Squirrel Model
-│   ├── 02-player-animations/    # Task 2: Player Animation System
-│   ├── 03-animation-sync/       # Task 3: Animation Synchronization
-│   ├── 04-npc-system/           # Task 4: NPC Character System
-│   ├── 05-performance/          # Task 5: Performance Optimization
-│   ├── 06-customization/        # Task 6: Character Customization
-│   └── 07-testing-validation/   # Task 7: Testing & Validation
-└── completion-summary.md        # Overall MVP 8 completion summary
-```
+│   ├── 01-registry/             # Task 1: Character Registry
+│   ├── 02-refactor/             # Task 2: Refactor Assumptions
+│   ├── 03-animation/            # Task 3: Animation Foundation
+│   ├── 04-selection-ui/         # Task 4: Character Selection
+│   ├── 05-spawn-refactor/       # Task 5: Player Spawn
+│   ├── 06-npc-system/           # Task 6: NPC Implementation
+│   ├── 07-multiplayer-sync/     # Task 7: Synchronization
+│   ├── 08-performance/          # Task 8: Optimization
+│   ├── 09-testing/              # Task 9: Testing & Validation
+│   └── 10-documentation/        # Task 10: Extensibility Guide
+└── completion-summary.md        # Overall MVP 8b completion summary
 
-## 🎮 **Technical Specifications**
+🎮 Technical Specifications
+Performance Targets
 
-### **Animation Performance**
-- **Frame Rate**: 60 FPS animation updates
-- **Character Limit**: 20+ animated characters simultaneously
-- **Network Bandwidth**: <2KB/s per animated character
-- **Memory Usage**: <50MB for animation system
+Frame Rate: 60 FPS with 20+ animated characters
+Memory Usage: <50MB for character system
+Network Bandwidth: <1KB/s per animated character
+Load Time: <2s for character models/animations
 
-### **NPC AI Performance**
-- **Update Rate**: 10Hz AI updates (optimized for free tier)
-- **Pathfinding**: A* algorithm with terrain awareness
-- **Behavior Complexity**: 5+ distinct behavior patterns
-- **Social Interactions**: Realistic NPC-to-NPC communication
+Extensibility Requirements
 
-### **Browser Compatibility**
-- **Chrome/Edge**: Full animation support (recommended)
-- **Firefox**: Full animation support
-- **Safari**: WebGL animation support required
-- **Mobile**: Touch-optimized animation controls
+Add new character: Config update + asset upload only
+New animations: Map to states without code changes
+Unlock system: Data-driven conditions
 
-## 🔧 **Development Workflow**
+Browser Compatibility
 
-### **Local Development**
-```bash
-# Start client development server
+Full support: Chrome, Firefox, Edge
+Mobile: Touch-optimized selection UI
+
+🔧 Development Workflow
+Local Development
+# Start client
 cd client && npm run dev
 
-# Start worker development server (from workers directory)
+# Start worker (from workers dir)
 cd workers && npx wrangler dev --port 8787
 
-# Test animation functionality
-# Open multiple browser tabs to test multiplayer animations
-```
+# Test animation
+# Open browser to localhost:5173
 
-### **Animation Testing**
-```bash
-# Run animation-specific tests
-cd client && npm run test:run -- --grep "animation"
+Testing Strategy
 
-# Performance testing
-cd client && npm run test:run -- --grep "performance"
-```
+Unit Tests: Per-component (registry lookup, animation blending)
+Integration: Full character lifecycle
+Performance: Load testing with 50+ NPCs
+Multiplayer: Sync validation across clients
 
-## 🧪 **Automated Testing Infrastructure**
+📈 Success Metrics
+Refactor Quality
 
-### **Test Framework Requirements**
-- **Framework**: Vitest (AI-optimized, fast, and Vite-native)
-- **Coverage**: 90%+ on all critical animation and AI systems
-- **Philosophy**: All tests designed for AI comprehension and maintenance
-- **Focus**: Animation state sync, AI behavior validation, and performance monitoring
+ No Hardcoding: All squirrel refs removed
+ Extensibility: Add test character in <5 min
+ Animation Smoothness: 60 FPS blending
+ NPC Behavior: 5+ distinct actions
 
-### **Test Workflow**
-1. **All new features and bugfixes** must include or update automated tests
-2. **Tests must pass locally** (`npm run test:run`) before PR/merge
-3. **Coverage reports** (`npm run test:coverage`) must meet thresholds
-4. **AI (Cursor) is responsible** for designing, maintaining, and running all tests
+System Stability
 
-### **Animation-Specific Test Requirements**
-- **Model Loading Tests**: Validate animated model loading and performance
-- **Animation State Tests**: Test animation transitions and blending
-- **Multiplayer Sync Tests**: Validate animation synchronization across clients
-- **Performance Tests**: Monitor animation system performance metrics
-- **AI Behavior Tests**: Validate NPC behavior patterns and decision-making
-- **Memory Tests**: Ensure no memory leaks in animation system
+ Memory Leaks: None after 1hr runtime
+ Error Rate: <1% in stress tests
+ Sync Accuracy: 100% state consistency
+ Load Time: <3s full init
 
-### **Test Coverage Targets**
-- **Animation Controller**: 95%+ coverage
-- **NPC AI System**: 90%+ coverage
-- **Animation Synchronization**: 95%+ coverage
-- **Performance Monitoring**: 85%+ coverage
-- **Character Customization**: 80%+ coverage
+User Experience
 
-## 📈 **Success Metrics**
+ Selection UI: Intuitive with previews
+ Animations: Natural and responsive
+ NPCs: Create living world feel
+ Customization: Easy future expansions
 
-### **Animation Quality**
-- [ ] **Smooth Transitions**: No visible animation popping
-- [ ] **Performance**: 60 FPS animation updates maintained
-- [ ] **Network Sync**: Animation states synchronized across clients
-- [ ] **Memory Efficiency**: <50MB animation system overhead
+🎯 Risk Mitigation
 
-### **NPC AI Quality**
-- [ ] **Realistic Behavior**: NPCs behave like real squirrels
-- [ ] **Performance**: 20+ NPCs without performance impact
-- [ ] **Social Interactions**: NPCs interact with each other and players
-- [ ] **Pathfinding**: Efficient navigation through forest terrain
+Granular Tasks: Small, testable steps
+Validation Milestones: Build/run after each sub-task
+Rollback Plans: Git branches per task
+Dependencies: Explicit pre-reqs checked
+AI Guidance: Use tools for complex animations/AI
 
-### **User Experience**
-- [ ] **Visual Polish**: High-quality character models and animations
-- [ ] **Responsiveness**: Immediate animation feedback to input
-- [ ] **Customization**: Player character customization options
-- [ ] **Immersion**: Living, breathing forest environment
+🚀 Next Steps
+Immediate (Task 1)
 
-## 🚀 **Next Steps**
+Define character data model
+Implement registry loading
+Add test characters
+Validate extensibility
 
-### **Immediate (Task 1)**
-- Source or create rigged squirrel 3D model
-- Implement basic animation skeleton
-- Test model loading and basic animations
-- Validate performance with single character
+Short Term (Tasks 2-5)
 
-### **Short Term (Tasks 2-4)**
-- Player animation system implementation
-- Multiplayer animation synchronization
-- NPC AI system development
-- Performance optimization and testing
+Core refactor
+Animation foundation
+Selection & spawn systems
 
-### **Long Term (Tasks 5-7)**
-- Character customization features
-- Advanced NPC behaviors
-- Comprehensive testing and validation
-- Performance monitoring and optimization
+Long Term (Tasks 6-10)
 
-## 📚 **Related Documentation**
+NPC integration
+Sync & optimization
+Full testing
 
-- **[GameVision.md](../GameVision.md)** - Overall game design and vision
-- **[MVP_Plan_Hidden_Walnuts-2.md](../MVP_Plan_Hidden_Walnuts-2.md)** - Complete development roadmap
-- **[ARCHITECTURE_README.md](../../client/src/ARCHITECTURE_README.md)** - Client architecture details
-- **[ENTERPRISE_ARCHITECTURE.md](../../client/src/ENTERPRISE_ARCHITECTURE.md)** - Enterprise patterns and principles
+📚 Related Documentation
 
-## 🚨 CRITICAL: AI Documentation Procedures
+GameVision.md - Overall game design
+MVP_Plan_Hidden_Walnuts-2.md - Roadmap
+ARCHITECTURE_README.md - Client architecture
+ENTERPRISE_ARCHITECTURE.md - Patterns/principles
 
-**ALL FUTURE AI CONVERSATIONS MUST FOLLOW THESE PROCEDURES:**
+🚨 CRITICAL: AI Documentation Procedures
+ALL FUTURE AI CONVERSATIONS MUST FOLLOW THESE PROCEDURES:
+📁 Documentation Organization
 
-### **📁 Documentation Organization**
-1. **MVP-Based Structure**: All documentation goes in `docs/mvp-<number>/tasks/` directories
-2. **Task Documentation**: Each task gets 4 files: `README.md`, `testing.md`, `implementation.md`, `completion.md`
-3. **Navigation Updates**: Always update `docs/DOCUMENTATION.md` with new links
-4. **No Root Documentation**: Never create documentation files in project root
+MVP-Based Structure: All documentation goes in docs/mvp-8b/tasks/ directories
+Task Documentation: Each task gets 4 files: README.md, testing.md, implementation.md, completion.md
+Navigation Updates: Always update docs/DOCUMENTATION.md with new links
+No Root Documentation: Never create documentation files in project root
 
-### **📝 File Naming Conventions**
-- **Task directories**: `01-animated-model/`, `02-player-animations/`, etc.
-- **Task files**: `README.md`, `testing.md`, `implementation.md`, `completion.md`
-- **MVP directories**: `mvp-8/`, `mvp-9/`, etc.
-- **Navigation**: `DOCUMENTATION.md` (not README.md in docs)
+📝 File Naming Conventions
 
-### **🔄 Documentation Workflow**
-1. **Reference** `docs/DOCUMENTATION.md` for complete structure
-2. **Create** task documentation in appropriate `docs/mvp-<number>/tasks/` directory
-3. **Use** consistent file naming for all task documentation
-4. **Update** navigation in `docs/DOCUMENTATION.md`
-5. **Cross-reference** related documents appropriately
+Task directories: 01-registry/, 02-refactor/, etc.
+Task files: README.md, testing.md, implementation.md, completion.md
+MVP directories: mvp-8b/, mvp-9/, etc.
+Navigation: DOCUMENTATION.md (not README.md in docs)
 
----
+🔄 Documentation Workflow
 
-**MVP 8 Status**: 📋 **PENDING**  
-**Previous MVP**: [MVP 7 - Multiplayer Foundation](../mvp-7/README.md) ✅  
-**Next MVP**: [MVP 9 - Enhanced Gameplay Features](../mvp-9/README.md) 
+Reference docs/DOCUMENTATION.md for complete structure
+Create task documentation in appropriate docs/mvp-8b/tasks/ directory
+Use consistent file naming for all task documentation
+Update navigation in docs/DOCUMENTATION.md
+Cross-reference related documents appropriately
+
+
+MVP 8b Status: 📋 PENDINGPrevious MVP: MVP 7 - Multiplayer Foundation ✅Next MVP: MVP 9 - Enhanced Gameplay Features

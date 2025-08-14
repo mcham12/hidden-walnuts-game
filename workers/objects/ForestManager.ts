@@ -36,6 +36,7 @@ interface PlayerConnection {
   lastActivity: number;
   position: { x: number; y: number; z: number };
   rotationY: number;
+  characterId: string; // Add character information
   // Enhanced error tracking
   errorCount: number;
   lastErrorTime: number;
@@ -57,6 +58,8 @@ interface PlayerConnection {
   flagReason?: string;
   // TASK 9: Interest management tracking
   nearbyPlayers?: number;
+  // Debug logging throttling
+  lastDebugLog?: number;
 }
 
 // Enhanced error types for server-side diagnostics
@@ -650,6 +653,7 @@ export default class ForestManager {
         lastActivity: Date.now(),
         position: sessionInfo?.position || { x: 50, y: 2, z: 50 },
         rotationY: sessionInfo?.rotationY || 0,
+        characterId: 'squirrel', // Default character
         // Enhanced error tracking
         errorCount: 0,
         lastErrorTime: 0,
@@ -716,8 +720,10 @@ export default class ForestManager {
 
       await this.sendWorldState(socket);
       await this.sendExistingPlayers(socket, squirrelId);
-      this.broadcastPlayerJoin(squirrelId, playerConnection);
       this.setupMessageHandlers(playerConnection);
+      
+      // Broadcast player join to other players after full setup
+      this.broadcastPlayerJoin(squirrelId, playerConnection);
       
       // TASK URGENTA.2: Start monitoring only when we have active connections
       this.startConnectionMonitoring();
@@ -1008,8 +1014,15 @@ export default class ForestManager {
       playerConnection.position = data.position;
       playerConnection.lastPositionUpdate = now;
       
+
+      
       if (typeof data.rotationY === 'number') {
         playerConnection.rotationY = data.rotationY;
+      }
+      
+      // Update character information if provided
+      if (data.characterId && typeof data.characterId === 'string') {
+        playerConnection.characterId = data.characterId;
       }
 
       // POSITION PERSISTENCE FIX: Save position more frequently during gameplay
@@ -1032,15 +1045,20 @@ export default class ForestManager {
       });
       
       // Broadcast authoritative position to other players
-      this.broadcastToOthers(playerConnection.squirrelId, {
+      const broadcastMessage = {
         type: 'player_update',
         squirrelId: playerConnection.squirrelId,
+        characterId: playerConnection.characterId,
         position: data.position,
         rotationY: data.rotationY,
         timestamp: now,
         sequenceNumber: sequenceNumber,
         authoritative: true // Mark as server-authoritative
-      });
+      };
+      
+
+      
+      this.broadcastToOthers(playerConnection.squirrelId, broadcastMessage);
       
       // Send position correction to client if position was modified
       if (!validation.isValid && validation.correctedPosition) {
@@ -1269,7 +1287,7 @@ export default class ForestManager {
     Logger.debug(LogCategory.PLAYER, `⚠️ Anti-cheat violation for ${playerConnection.squirrelId}: ${violationType}`, details);
   }
 
-  // TASK URGENTA.3: Storage Optimization - Batching methods
+  // TASK URGENTA.3: Storage Optimization - Batching
   private async batchStorageOperation(operation: any): Promise<void> {
     this.pendingStorageOps.push(operation);
     
@@ -1642,7 +1660,7 @@ export default class ForestManager {
       rotationY: playerConnection.rotationY,
       timestamp: Date.now()
     };
-
+    Logger.info(LogCategory.PLAYER, `📢 Broadcasting player_joined for ${squirrelId} to ${this.activePlayers.size - 1} other players`);
     this.broadcastToOthers(squirrelId, joinMessage);
   }
 
@@ -1728,11 +1746,13 @@ export default class ForestManager {
     let totalPlayers = 0;
     
     for (const [squirrelId, playerConnection] of this.activePlayers) {
-      if (squirrelId === excludeSquirrelId || playerConnection.socket.readyState !== WebSocket.OPEN) {
+      if (squirrelId === excludeSquirrelId) continue;
+      totalPlayers++;
+      
+      if (playerConnection.socket.readyState !== WebSocket.OPEN) {
+        Logger.warn(LogCategory.WEBSOCKET, `Skipped broadcast to ${squirrelId} - socket not open (state: ${playerConnection.socket.readyState})`);
         continue;
       }
-      
-      totalPlayers++;
       
       // Check if recipient should receive this message based on interest area
       if (this.shouldSendToPlayer(excludeSquirrelId, squirrelId, message)) {
@@ -1748,7 +1768,7 @@ export default class ForestManager {
     // Log performance metrics for interest management
     if (totalPlayers > 0) {
       const efficiency = ((sentCount / totalPlayers) * 100).toFixed(1);
-      Logger.debug(LogCategory.WEBSOCKET, `Interest broadcast: ${sentCount}/${totalPlayers} players (${efficiency}% efficiency)`);
+      Logger.debug(LogCategory.WEBSOCKET, `📊 Broadcast result: ${sentCount}/${totalPlayers} players received message (${efficiency}% efficiency)`);
     }
   }
 
@@ -1803,7 +1823,11 @@ export default class ForestManager {
     // For player updates, check distance-based interest
     if (message.type === 'player_update') {
       const distance = this.calculateDistance(sender.position, recipient.position);
-      return distance <= ForestManager.INTEREST_RADIUS;
+      const shouldSend = distance <= ForestManager.INTEREST_RADIUS;
+      
+
+      
+      return shouldSend;
     }
     
     // For other message types, use conservative approach (send to all)

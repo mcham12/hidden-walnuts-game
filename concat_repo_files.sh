@@ -115,7 +115,8 @@ while IFS= read -r file; do
   # Add file to output
   echo "Adding file: $file"
   echo "=== FILE: $file ===" >> "$OUTPUT"
-  cat "$file" >> "$OUTPUT" 2>/dev/null || echo "Error reading file content" >> "$OUTPUT"
+  # Remove // comments and /* ... */ block comments, preserve indentation and line breaks
+  sed -E '/\/\*/,/\*\//d; s/^[[:space:]]*\/\/.*$//; s/\/\/.*$//' "$file" | sed '/^\s*$/d' >> "$OUTPUT" 2>/dev/null || echo "Error reading file content" >> "$OUTPUT"
   echo "" >> "$OUTPUT"
   echo "=== END FILE ===" >> "$OUTPUT"
   echo "" >> "$OUTPUT"

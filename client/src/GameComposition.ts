@@ -10,7 +10,6 @@ import { InputSystem } from './systems/InputSystem';
 import { MovementSystem } from './systems/MovementSystem';
 import { ClientPredictionSystem } from './systems/ClientPredictionSystem';
 import { NetworkSystem } from './systems/NetworkSystem';
-import { PlayerManager } from './systems/PlayerManager';
 import { MovementConfig } from './core/types';
 import { InterpolationSystem } from './systems/InterpolationSystem';
 import { RenderSystem } from './systems/RenderSystem';
@@ -19,6 +18,8 @@ import { AreaOfInterestSystem } from './systems/AreaOfInterestSystem';
 import { NetworkCompressionSystem } from './systems/NetworkCompressionSystem';
 import { ThreeJSRenderAdapter } from './rendering/IRenderAdapter';
 import { CharacterRegistry } from './core/CharacterRegistry'; // New for MVP 8b
+import { SimpleMultiplayerManager } from './multiplayer/SimpleMultiplayerManager';
+import { NetworkIntegration } from './multiplayer/NetworkIntegration';
 
 export interface IInputManager {
   getInputState(): {
@@ -114,8 +115,8 @@ export class SceneManager implements ISceneManager {
     );
     
     // Position camera to better see the spawn area (local player spawns between -5 and 5 on X/Z)
-    this.camera.position.set(0, 10, 10); // TEMPORARY: Closer camera position for debugging
-    this.camera.lookAt(0, 0, 0);
+    this.camera.position.set(0, 15, 15); // DEBUGGING: Higher camera position to see more area
+    this.camera.lookAt(0, 2, 0); // Look slightly above ground level
     this.constrainCameraToWorldBounds();
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setSize(canvas.clientWidth, canvas.clientHeight);
@@ -312,7 +313,22 @@ export class AssetManager implements IAssetManager {
     if (this.cache.has('squirrel')) {
       const cachedModel = this.cache.get('squirrel');
       Logger.debug(LogCategory.CORE, `📦 Using cached squirrel model, scale: x=${cachedModel.scale.x.toFixed(2)}, y=${cachedModel.scale.y.toFixed(2)}, z=${cachedModel.scale.z.toFixed(2)}`);
-      return cachedModel.clone();
+      
+      // CRITICAL FIX: Deep clone with unique materials to prevent shared material bug
+      const clonedModel = cachedModel.clone();
+      clonedModel.traverse((child: any) => {
+        if (child.isMesh && child.material) {
+          // Clone materials to ensure each player has unique material instances
+          if (Array.isArray(child.material)) {
+            child.material = child.material.map((mat: any) => mat.clone());
+          } else {
+            child.material = child.material.clone();
+          }
+        }
+      });
+      
+      Logger.debug(LogCategory.CORE, `🔧 Deep cloned squirrel model with unique materials`);
+      return clonedModel;
     }
     const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
     
@@ -331,7 +347,20 @@ export class AssetManager implements IAssetManager {
           
           Logger.debug(LogCategory.CORE, `📦 Caching squirrel model with scale: x=${model.scale.x.toFixed(2)}, y=${model.scale.y.toFixed(2)}, z=${model.scale.z.toFixed(2)}`);
           this.cache.set('squirrel', model);
-          resolve(model.clone());
+          
+          // CRITICAL FIX: Deep clone the initial model too
+          const clonedModel = model.clone();
+          clonedModel.traverse((child: any) => {
+            if (child.isMesh && child.material) {
+              if (Array.isArray(child.material)) {
+                child.material = child.material.map((mat: any) => mat.clone());
+              } else {
+                child.material = child.material.clone();
+              }
+            }
+          });
+          
+          resolve(clonedModel);
         },
         undefined,
         (error) => {
@@ -344,9 +373,21 @@ export class AssetManager implements IAssetManager {
   async loadModel(path: string): Promise<any> {
     if (this.cache.has(path)) {
       const cachedGltf = this.cache.get(path);
-      // Return a deep copy to prevent shared object mutations
+      
+      // STANDARD PATTERN: Deep clone with material isolation for multiplayer
+      const clonedScene = cachedGltf.scene.clone();
+      clonedScene.traverse((child: any) => {
+        if (child.isMesh && child.material) {
+          if (Array.isArray(child.material)) {
+            child.material = child.material.map((mat: any) => mat.clone());
+          } else {
+            child.material = child.material.clone();
+          }
+        }
+      });
+      
       return {
-        scene: cachedGltf.scene.clone(),
+        scene: clonedScene,
         animations: cachedGltf.animations,
         cameras: cachedGltf.cameras,
         asset: cachedGltf.asset
@@ -359,6 +400,7 @@ export class AssetManager implements IAssetManager {
       loader.load(
         path,
         (gltf) => {
+          Logger.info(LogCategory.CORE, `📦 Caching new model: ${path}`);
           this.cache.set(path, gltf);
           resolve(gltf);
         },
@@ -385,8 +427,8 @@ export class GameManager {
   private clientPredictionSystem: ClientPredictionSystem;
   private areaOfInterestSystem: AreaOfInterestSystem;
   private networkCompressionSystem: NetworkCompressionSystem;
-  private playerManager: PlayerManager | null = null;
-  private inputSystem: any; 
+  private inputSystem: any;
+  private networkIntegration: NetworkIntegration | null = null; 
   private localPlayer?: Entity;
   private isRunning = false;
   private errorCount = 0;
@@ -438,26 +480,19 @@ export class GameManager {
       Logger.info(LogCategory.CORE, '🏗️ Configuring scene-dependent services...');
       configureSceneDependentServices();
       
-      // BEST PRACTICE: Resolve scene-dependent services AFTER scene is guaranteed to be initialized
-      this.playerManager = container.resolve(ServiceTokens.PLAYER_MANAGER);
+      // Simple multiplayer system is now integrated via NetworkIntegration
       
-      // Add scene-dependent systems to entity manager
-      if (this.playerManager) {
-        this.entityManager.addSystem(this.playerManager);
-      }
-      
-      // Set proper system execution order now that all systems are available
+      // Set simple system execution order (removed old PlayerManager)
       this.entityManager.setSystemExecutionOrder([
         'InputSystem',              // 1. Capture input immediately
         'ClientPredictionSystem',   // 2. Apply local prediction  
         'MovementSystem',           // 3. Process local movement
-        'NetworkSystem',            // 4. Handle network messages (creates entities)
-        'PlayerManager',            // 5. Manage player lifecycle (creates entities)
-        'InterpolationSystem',      // 6. Smooth remote player movement
-        'AreaOfInterestSystem',     // 7. Spatial culling
-        'RenderSystem',             // 8. Render all entities
-        'NetworkCompressionSystem', // 9. Compress outbound messages
-        'NetworkTickSystem'         // 10. Send network updates
+        'NetworkSystem',            // 4. Handle network messages
+        'InterpolationSystem',      // 5. Smooth remote player movement
+        'AreaOfInterestSystem',     // 6. Spatial culling
+        'RenderSystem',             // 7. Render all entities
+        'NetworkCompressionSystem', // 8. Compress outbound messages
+        'NetworkTickSystem'         // 9. Send network updates
       ]);
       
       Logger.info(LogCategory.CORE, '✅ Scene-dependent services configured and added to systems with proper execution order');
@@ -470,7 +505,15 @@ export class GameManager {
       await this.sceneManager.loadForest();
       Logger.info(LogCategory.CORE, '✅ Forest loaded');
       
-      await this.waitForSceneReady();
+      // SIMPLE TEST: Create a red remote player immediately  
+      Logger.info(LogCategory.NETWORK, '🔴 Creating test remote player...');
+      try {
+        const { createTestRemotePlayer } = await import('./test-remote-player');
+        createTestRemotePlayer(this.sceneManager.getScene());
+        Logger.info(LogCategory.NETWORK, '✅ Test remote player created');
+      } catch (error) {
+        Logger.error(LogCategory.NETWORK, '❌ Failed to create test remote player:', error);
+      }
       
       Logger.info(LogCategory.NETWORK, '🌐 Attempting multiplayer connection...');
       let savedPlayerData: { position: any; rotationY: number } | null = null;
@@ -496,8 +539,14 @@ export class GameManager {
           }, 2000); 
         });
         
-        await this.networkSystem.connect();
-        Logger.info(LogCategory.NETWORK, '✅ Multiplayer connection established');
+        Logger.info(LogCategory.NETWORK, '🔌 Attempting to connect to server...');
+        try {
+          await this.networkSystem.connect();
+          Logger.info(LogCategory.NETWORK, '✅ Multiplayer connection established');
+        } catch (error) {
+          Logger.error(LogCategory.NETWORK, '❌ Failed to connect to server:', error);
+          // Continue anyway for local testing
+        }
         
         await new Promise<void>((resolve) => {
           const checkWebSocketReady = () => {
@@ -554,6 +603,13 @@ export class GameManager {
           setTimeout(checkScene, 10);
         }
       };
+      
+      // Add timeout to prevent infinite hanging
+      setTimeout(() => {
+        Logger.warn(LogCategory.RENDER, '⚠️ Scene readiness timeout, proceeding anyway');
+        resolve();
+      }, 5000); // 5 second timeout
+      
       checkScene();
     });
   }
@@ -567,8 +623,6 @@ export class GameManager {
     this.inputManager.stopListening();
   }
   private async createLocalPlayer(savedPlayerData: { position: any; rotationY: number } | null): Promise<void> {
-    const playerFactory = container.resolve(ServiceTokens.PLAYER_FACTORY) as any;
-    
     let playerId = this.getPersistentSquirrelId();
     if (!playerId) {
       playerId = crypto.randomUUID();
@@ -577,30 +631,38 @@ export class GameManager {
     } else {
       Logger.info(LogCategory.PLAYER, `🔄 Using persistent squirrelId for local player: ${playerId}`);
     }
-    if (playerFactory && typeof playerFactory.createLocalPlayer === 'function') {
+
+    try {
+      const multiplayerManager = container.resolve(ServiceTokens.SIMPLE_MULTIPLAYER_MANAGER) as any;
+      const player = await multiplayerManager.createPlayer(playerId, true); // true = isLocal
+      
       if (savedPlayerData) {
-        this.localPlayer = await playerFactory.createLocalPlayerWithPosition(playerId, savedPlayerData.position, savedPlayerData.rotationY, 'colobus');
-      } else {
-        this.localPlayer = await playerFactory.createLocalPlayer(playerId, 'colobus');
+        const position = new (await import('three')).Vector3(
+          savedPlayerData.position.x,
+          savedPlayerData.position.y,
+          savedPlayerData.position.z
+        );
+        player.update(position, savedPlayerData.rotationY);
       }
       
-      if (this.localPlayer) {
-        Logger.info(LogCategory.PLAYER, '🐿️ Local player created with ID:', this.localPlayer.id.value);
-        this.entityManager.addEntity(this.localPlayer);
-        
-        // Set up the local player in the Area of Interest system
-        const position = this.localPlayer.getComponent<PositionComponent>('position');
-        if (position) {
-          this.areaOfInterestSystem.setLocalPlayer(playerId, {
-            x: position.value.x,
-            y: position.value.y,
-            z: position.value.z
-          });
-          Logger.info(LogCategory.PLAYER, `🎯 Set local player ${playerId} in AreaOfInterestSystem`);
-        } else {
-          Logger.warn(LogCategory.PLAYER, `⚠️ Local player has no position component for AreaOfInterestSystem`);
-        }
-      }
+      Logger.info(LogCategory.PLAYER, `🐿️ Local player created: ${player.id}`);
+      
+      // Store the local player ECS entity reference
+      this.localPlayer = player.entity;
+      
+      // Set up Area of Interest system
+      this.areaOfInterestSystem.setLocalPlayer(playerId, {
+        x: player.position.x,
+        y: player.position.y,
+        z: player.position.z
+      });
+      
+      // Set up network integration for remote players
+      this.networkIntegration = new NetworkIntegration(multiplayerManager, this.eventBus);
+      
+    } catch (error) {
+      Logger.error(LogCategory.PLAYER, '❌ Failed to create local player:', error);
+      throw error;
     }
   }
   private lastErrorTime = 0;
@@ -751,12 +813,6 @@ export class GameManager {
     document.body.appendChild(errorDiv);
   }
   public getEventBus(): EventBus { return this.eventBus; }
-  public getPlayerManager(): PlayerManager { 
-    if (!this.playerManager) {
-      throw new Error('PlayerManager not initialized - call initialize() first');
-    }
-    return this.playerManager; 
-  }
   public getNetworkSystem(): NetworkSystem { return this.networkSystem; }
   public getLocalPlayer(): Entity | undefined { return this.localPlayer; }
   private getPersistentSquirrelId(): string | null {
@@ -833,6 +889,14 @@ export function configureServices(): void {
 
 // BEST PRACTICE: Phase 3 - Scene-dependent services (called after scene initialization)
 export function configureSceneDependentServices(): void {
+  // Register simple multiplayer manager
+  container.registerSingleton(ServiceTokens.SIMPLE_MULTIPLAYER_MANAGER, () => {
+    return new SimpleMultiplayerManager(
+      container.resolve<ISceneManager>(ServiceTokens.SCENE_MANAGER).getScene(),
+      container.resolve(ServiceTokens.ENTITY_MANAGER)
+    );
+  });
+  
   container.registerSingleton(ServiceTokens.PLAYER_FACTORY, () => {
     return new PlayerFactory(
       container.resolve(ServiceTokens.SCENE_MANAGER),
@@ -842,14 +906,6 @@ export function configureSceneDependentServices(): void {
     );
   });
   
-  container.registerSingleton(ServiceTokens.PLAYER_MANAGER, () => {
-    return new PlayerManager(
-      container.resolve<EventBus>(ServiceTokens.EVENT_BUS),
-      container.resolve(ServiceTokens.TERRAIN_SERVICE),
-      container.resolve<ISceneManager>(ServiceTokens.SCENE_MANAGER),
-      container.resolve(ServiceTokens.ASSET_MANAGER)
-    );
-  });
   
   Logger.info(LogCategory.CORE, '🏗️ Phase 3 scene-dependent services configured successfully');
 }

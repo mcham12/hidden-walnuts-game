@@ -94,6 +94,9 @@ export class NetworkSystem extends System {
     timestamp: number;
   }> = [];
   
+  // FIX: Track processed players to prevent duplicates
+  private processedPlayers = new Set<string>();
+  
   // Enhanced connection monitoring
   private connectionStartTime: number = 0;
   private heartbeatResponses: number[] = []; // Track last 10 heartbeats for latency
@@ -653,10 +656,20 @@ export class NetworkSystem extends System {
 
   private handlePlayerJoined(message: NetworkMessage): void {
     Logger.info(LogCategory.NETWORK, `👋 Received player_joined for ${message.squirrelId} at position (${message.position?.x?.toFixed(1)}, ${message.position?.y?.toFixed(1)}, ${message.position?.z?.toFixed(1)})`);
+    
+    // FIX: Check for duplicate player joins
+    if (this.processedPlayers.has(message.squirrelId)) {
+      Logger.warn(LogCategory.NETWORK, `🚫 DUPLICATE PLAYER JOIN BLOCKED: ${message.squirrelId} already processed`);
+      return;
+    }
+    
     Logger.info(LogCategory.NETWORK, `👋 Player joined: ${message.squirrelId}`);
     
     // BEST PRACTICE: Queue joins for synchronous processing instead of async events
     if (message.position && typeof message.rotationY === 'number') {
+      // Mark as processed to prevent duplicates
+      this.processedPlayers.add(message.squirrelId);
+      
       this.pendingPlayerJoins.push({
         squirrelId: message.squirrelId,
         position: message.position,
@@ -672,6 +685,10 @@ export class NetworkSystem extends System {
   private handlePlayerLeft(message: NetworkMessage): void {
     const { squirrelId } = message;
     Logger.debug(LogCategory.NETWORK, `👋 Remote player left: ${squirrelId}`);
+    
+    // FIX: Remove from processed players set when they leave
+    this.processedPlayers.delete(squirrelId);
+    
     // BEST PRACTICE: Queue leaves for synchronous processing instead of async events
     this.pendingPlayerLeaves.push({
       squirrelId: squirrelId,
@@ -1072,6 +1089,9 @@ export class NetworkSystem extends System {
     this.setConnectionState(ConnectionState.DISCONNECTED);
     this.updateConnectionQuality('poor');
     
+    // FIX: Clear processed players set on disconnect to allow reconnection
+    this.processedPlayers.clear();
+    
     // MVP 7 Task 7: Emit comprehensive disconnect event
     this.eventBus.emit('network.graceful_disconnect', {
       timestamp: Date.now(),
@@ -1257,6 +1277,12 @@ export class NetworkSystem extends System {
       for (const playerData of message.data.existingPlayers) {
         // IMPORTANT: Now localSquirrelId is guaranteed to be set
         if (playerData.squirrelId !== this.localSquirrelId) {
+          // FIX: Check for duplicate existing players from init message
+          if (this.processedPlayers.has(playerData.squirrelId)) {
+            Logger.warn(LogCategory.NETWORK, `🚫 DUPLICATE INIT PLAYER BLOCKED: ${playerData.squirrelId} already processed`);
+            continue;
+          }
+          
           Logger.info(LogCategory.NETWORK, `🎯 Processing existing player from init: ${playerData.squirrelId}`);
           this.handlePlayerJoined({
             type: 'player_joined',
@@ -1299,7 +1325,16 @@ export class NetworkSystem extends System {
             continue;
           }
           
+          // FIX: Check for duplicate existing players
+          if (this.processedPlayers.has(player.squirrelId)) {
+            Logger.warn(LogCategory.NETWORK, `🚫 DUPLICATE EXISTING PLAYER BLOCKED: ${player.squirrelId} already processed`);
+            continue;
+          }
+          
           Logger.info(LogCategory.NETWORK, `🎯 Processing existing player from separate message: ${player.squirrelId}`);
+          
+          // Mark as processed to prevent duplicates
+          this.processedPlayers.add(player.squirrelId);
           
           this.pendingPlayerJoins.push({
             squirrelId: player.squirrelId,

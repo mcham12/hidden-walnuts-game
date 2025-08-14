@@ -109,6 +109,22 @@ export class RenderSystem extends System {
     if (this._lastRemotePlayerCount !== remotePlayerCount) {
       Logger.info(LogCategory.PLAYER, `📊 RenderSystem processing ${remotePlayerCount} remote players`);
       this._lastRemotePlayerCount = remotePlayerCount;
+      
+      // DEBUG: Log detailed scene info when remote player count changes
+      if (this.scene && remotePlayerCount > 0) {
+        Logger.info(LogCategory.PLAYER, `🔍 DEBUG: Scene has ${this.scene.children.length} total children`);
+        
+        // Count player meshes in scene
+        let playerMeshesInScene = 0;
+        this.scene.traverse((child: any) => {
+          if (child.__squirrelId || child.__entityType) {
+            playerMeshesInScene++;
+            Logger.info(LogCategory.PLAYER, `🔍 Found player mesh: ${child.__squirrelId || 'unknown'} (${child.__entityType || 'unknown'}), visible: ${child.visible}, position: (${child.position.x.toFixed(1)}, ${child.position.y.toFixed(1)}, ${child.position.z.toFixed(1)})`);
+          }
+        });
+        
+        Logger.info(LogCategory.PLAYER, `🔍 DEBUG: Found ${playerMeshesInScene} player meshes in scene`);
+      }
     }
   }
   private async updateEntityVisuals(entity: Entity): Promise<void> {
