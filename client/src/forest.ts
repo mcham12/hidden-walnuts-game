@@ -1,150 +1,167 @@
-// AI NOTE: Modified for MVP-5 to fix tree/shrub visibility by enhancing debug logs for GLTF and test asset loading.
-// Loads GLTF models and places them at positions fetched from /forest-objects, adjusted to terrain height.
-
+// Simplified forest generation for animated characters
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { API_BASE, DEBUG } from './main';
 import { getTerrainHeight } from './terrain';
-import { Logger, LogCategory } from './core/Logger';
 
 interface ForestObject {
   id: string;
-  type: 'tree' | 'shrub';
+  type: string;
   x: number;
   y: number;
   z: number;
-  scale: number;
+  scale?: number;
+  rotationY?: number;
+}
+
+const gltfLoader = new GLTFLoader();
+
+async function loadGLTF(url: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    gltfLoader.load(url, resolve, undefined, reject);
+  });
 }
 
 export async function createForest(): Promise<THREE.Object3D[]> {
-  const loader = new GLTFLoader();
-  const forestObjects: ForestObject[] = [];
-
-  // Fetch forest object positions from backend
-  try {
-    const fetchUrl = `${API_BASE}/forest-objects`;
-    Logger.debug(LogCategory.TERRAIN, `Fetching forest objects from: ${fetchUrl}`);
-    
-    const response = await fetch(fetchUrl);
-    Logger.debug(LogCategory.TERRAIN, `Forest response status: ${response.status}`);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      Logger.error(LogCategory.TERRAIN, `HTTP ${response.status}: ${errorText}`);
-      throw new Error(`HTTP error! Status: ${response.status}, Response: ${errorText}`);
-    }
-    
-    // Debug: Log raw response
-    const responseText = await response.text();
-    Logger.debug(LogCategory.TERRAIN, `Forest raw response length: ${responseText.length} chars`);
-    Logger.debug(LogCategory.TERRAIN, `Forest raw response preview: ${responseText.substring(0, 200)}...`);
-    
-    // Try to parse JSON
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (parseError) {
-      Logger.error(LogCategory.TERRAIN, `Forest JSON Parse Error: ${parseError instanceof Error ? parseError.message : 'Unknown parse error'}`);
-      Logger.error(LogCategory.TERRAIN, `Forest response that failed: ${responseText.substring(0, 500)}`);
-      throw parseError;
-    }
-    
-    if (!Array.isArray(data)) throw new Error('Invalid forest objects data: not an array');
-    forestObjects.push(...data);
-    Logger.info(LogCategory.TERRAIN, `Successfully loaded ${data.length} forest objects`);
-    // Forest objects fetched
-  } catch (error) {
-    Logger.error(LogCategory.TERRAIN, 'Failed to fetch forest objects', error);
-    return [];
-  }
-
-  const meshes: THREE.Object3D[] = [];
+  console.log('🌲 Creating simple forest...');
   
-  // Test asset serving with a simple text file
-  if (DEBUG) {
-    try {
-      const testPath = '/assets/models/test.txt';
-      const testUrl = `${window.location.origin}${testPath}`;
-          // Testing asset serving
-    const response = await fetch(testUrl);
-    await response.text(); // Test completed
-    // Asset fetch test completed
-    } catch (error) {
-      Logger.error(LogCategory.TERRAIN, 'Failed to fetch test asset', error);
-    }
-  }
-
-  // Load models
-  let treeModel, shrubModel;
-      const treePath = '/assets/models/environment/Tree_01.glb';
-      const shrubPath = '/assets/models/environment/Bush_01.glb';
-  const treeUrl = `${window.location.origin}${treePath}`;
-  const shrubUrl = `${window.location.origin}${shrubPath}`;
+  const forestObjects: THREE.Object3D[] = [];
+  
   try {
-    // Loading GLTF tree model
-    treeModel = await loader.loadAsync(treePath);
-    // Tree model loaded
-  } catch (error) {
-    console.error(`Failed to load ${treeUrl}:`, error);
-    if (DEBUG) {
-      try {
-        const response = await fetch(treeUrl);
-        await response.text(); // Debug response read
-        // Tree GLTF fetch debug completed
-      } catch (fetchError) {
-        console.error(`Failed to fetch ${treeUrl} for debugging:`, fetchError);
+    // Try to fetch forest objects from backend
+    const response = await fetch('http://localhost:8787/forest-objects');
+    
+    if (response.ok) {
+      const data: ForestObject[] = await response.json();
+      console.log(`🌲 Loaded ${data.length} forest objects from server`);
+      
+      for (const obj of data) {
+        try {
+          const mesh = await createForestObjectMesh(obj);
+          if (mesh) {
+            forestObjects.push(mesh);
+          }
+        } catch (error) {
+          console.warn(`⚠️ Failed to create mesh for ${obj.id}:`, error);
+        }
       }
+    } else {
+      console.warn('⚠️ Failed to fetch forest objects, creating simple forest');
+      const simpleForest = createSimpleForest();
+      forestObjects.push(...simpleForest);
     }
-    return [];
+  } catch (error) {
+    console.error('❌ Failed to fetch forest objects:', error);
+    const simpleForest = createSimpleForest();
+    forestObjects.push(...simpleForest);
   }
+  
+  console.log(`🌲 Created forest with ${forestObjects.length} objects`);
+  return forestObjects;
+}
+
+async function createForestObjectMesh(obj: ForestObject): Promise<THREE.Object3D | null> {
   try {
-    // Loading GLTF shrub model
-    shrubModel = await loader.loadAsync(shrubPath);
-    // Shrub model loaded
-  } catch (error) {
-    console.error(`Failed to load ${shrubUrl}:`, error);
-    if (DEBUG) {
-      try {
-        const response = await fetch(shrubUrl);
-        await response.text(); // Debug response read
-        // Shrub GLTF fetch debug completed
-      } catch (fetchError) {
-        console.error(`Failed to fetch ${shrubUrl} for debugging:`, fetchError);
-      }
-    }
-    return [];
-  }
+    // Map object types to model paths
+    const modelPaths: { [key: string]: string } = {
+      'Tree_01': '/assets/models/environment/Tree_01.glb',
+      'Tree_02': '/assets/models/environment/Tree_02.glb',
+      'Tree_03': '/assets/models/environment/Tree_03.glb',
+      'Tree_04': '/assets/models/environment/Tree_04.glb',
+      'Tree_05': '/assets/models/environment/Tree_05.glb',
+      'Bush_01': '/assets/models/environment/Bush_01.glb',
+      'Bush_02': '/assets/models/environment/Bush_02.glb',
+      'Bush_03': '/assets/models/environment/Bush_03.glb',
+      'Rock_01': '/assets/models/environment/Rock_01.glb',
+      'Rock_02': '/assets/models/environment/Rock_02.glb',
+      'Rock_03': '/assets/models/environment/Rock_03.glb'
+    };
 
-  for (const obj of forestObjects) {
+    const modelPath = modelPaths[obj.type];
+    if (!modelPath) {
+      console.warn(`⚠️ No model path for object type: ${obj.type}`);
+      return null;
+    }
+
+    const gltf = await loadGLTF(modelPath);
+    const mesh = gltf.scene.clone();
+
+    // Position the object
+    mesh.position.set(obj.x, obj.y, obj.z);
+    
+    // Apply terrain height if available
     try {
-      const model = obj.type === 'tree' ? treeModel.scene.clone() : shrubModel.scene.clone();
-      let terrainHeight;
-      try {
-        terrainHeight = getTerrainHeight(obj.x, obj.z);
-        if (terrainHeight < 0 || terrainHeight > 5) {
-          Logger.warn(LogCategory.TERRAIN, `Invalid terrain height for ${obj.type} ${obj.id} at (${obj.x}, ${obj.z}): ${terrainHeight}, using 0`);
-          terrainHeight = 0;
-        }
-      } catch (error) {
-        Logger.error(LogCategory.TERRAIN, `Failed to get terrain height for ${obj.type} ${obj.id}:`, error);
-        terrainHeight = 0;
+      const terrainHeight = getTerrainHeight(obj.x, obj.z);
+      if (typeof terrainHeight === 'number' && !isNaN(terrainHeight)) {
+        mesh.position.y = terrainHeight;
       }
-      model.position.set(obj.x, terrainHeight, obj.z);
-      model.scale.set(obj.scale, obj.scale, obj.scale);
-      model.traverse((child) => {
-        if (child instanceof THREE.Mesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-        }
-      });
-      model.userData = { id: obj.id, type: obj.type };
-      meshes.push(model);
-      // Forest mesh created
     } catch (error) {
-      Logger.error(LogCategory.TERRAIN, `Failed to create mesh for ${obj.id}:`, error);
+      console.warn(`⚠️ Failed to get terrain height for ${obj.id}, using original Y:`, error);
+    }
+
+    // Apply scale and rotation
+    if (obj.scale) {
+      mesh.scale.setScalar(obj.scale);
+    }
+    if (obj.rotationY) {
+      mesh.rotation.y = obj.rotationY;
+    }
+
+    // Enable shadows
+    mesh.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+
+    return mesh;
+  } catch (error) {
+    console.error(`❌ Failed to load ${obj.type} model:`, error);
+    return null;
+  }
+}
+
+function createSimpleForest(): THREE.Object3D[] {
+  console.log('🌲 Creating simple procedural forest...');
+  
+  const objects: THREE.Object3D[] = [];
+  
+  // Create some simple trees and bushes procedurally
+  for (let i = 0; i < 50; i++) {
+    // Random positions within a 100x100 area
+    const x = (Math.random() - 0.5) * 100;
+    const z = (Math.random() - 0.5) * 100;
+    
+    try {
+      const terrainHeight = getTerrainHeight(x, z);
+      const y = typeof terrainHeight === 'number' ? terrainHeight : 0;
+      
+      // Create simple tree geometry as fallback
+      const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.3, 3, 8);
+      const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+      
+      const leavesGeometry = new THREE.SphereGeometry(2, 8, 6);
+      const leavesMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
+      const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+      leaves.position.y = 2;
+      
+      const tree = new THREE.Group();
+      tree.add(trunk);
+      tree.add(leaves);
+      tree.position.set(x, y, z);
+      
+      // Enable shadows
+      trunk.castShadow = true;
+      trunk.receiveShadow = true;
+      leaves.castShadow = true;
+      leaves.receiveShadow = true;
+      
+      objects.push(tree);
+    } catch (error) {
+      console.warn(`⚠️ Failed to create simple tree at (${x}, ${z}):`, error);
     }
   }
-
-  // Forest creation completed
-  return meshes;
-} 
+  
+  return objects;
+}

@@ -3,8 +3,6 @@
 // The terrain is a 200x200 unit plane with heights up to 20 units, using a sin/cos-based noise function.
 
 import * as THREE from 'three';
-// import { API_BASE } from './main';
-import { Logger, LogCategory } from './core/Logger';
 
 // Global terrain data
 let terrainSeed: number | null = null;
@@ -15,10 +13,10 @@ export async function initializeTerrain(apiBase: string): Promise<void> {
     if (response.ok) {
       const data = await response.json();
       terrainSeed = data.seed;
-      Logger.debug(LogCategory.TERRAIN, `Fetched terrain seed: ${terrainSeed}`);
+      console.log(`🌍 Fetched terrain seed: ${terrainSeed}`);
     }
   } catch (error) {
-    Logger.error(LogCategory.TERRAIN, 'Failed to fetch terrain seed', error);
+    console.error('❌ Failed to fetch terrain seed:', error);
     // Use a default seed for offline mode
     terrainSeed = 12345;
   }
