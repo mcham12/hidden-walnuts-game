@@ -1,5 +1,6 @@
 // Simple Game class - replaces complex ECS architecture
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 export interface Player {
   id: string;
@@ -7,6 +8,10 @@ export interface Player {
   rotation: number;
   mesh: THREE.Object3D;
   isLocal: boolean;
+  animationMixer?: THREE.AnimationMixer;
+  animations?: Map<string, THREE.AnimationAction>;
+  currentAnimation?: THREE.AnimationAction;
+  isMoving: boolean;
 }
 
 export class Game {
@@ -17,6 +22,7 @@ export class Game {
   private localPlayerId: string | null = null;
   private websocket: WebSocket | null = null;
   private keys = new Set<string>();
+  private gltfLoader = new GLTFLoader();
   
   private lastFrame = 0;
   private isRunning = false;
@@ -91,9 +97,9 @@ export class Game {
       const wsUrl = `ws://localhost:8787/ws?squirrelId=${authData.squirrelId}&token=${authData.token}`;
       this.websocket = new WebSocket(wsUrl);
 
-      this.websocket.onopen = () => {
+      this.websocket.onopen = async () => {
         console.log('🌐 Connected to multiplayer!');
-        this.createLocalPlayer(authData.position);
+        await this.createLocalPlayer(authData.position);
       };
 
       this.websocket.onmessage = (event) => {
@@ -108,7 +114,7 @@ export class Game {
     } catch (error) {
       console.warn('Failed to connect to multiplayer:', error);
       // Create local player anyway for offline mode
-      this.createLocalPlayer({ x: 0, y: 2, z: 0 });
+      await this.createLocalPlayer({ x: 0, y: 2, z: 0 });
     }
   }
 
@@ -121,11 +127,109 @@ export class Game {
     return playerId;
   }
 
-  private createLocalPlayer(position: { x: number; y: number; z: number }): void {
+  private async loadColobusCharacter(): Promise<{
+    mesh: THREE.Group;
+    mixer: THREE.AnimationMixer;
+    animations: Map<string, THREE.AnimationAction>;
+    idleAnimation: THREE.AnimationAction;
+  }> {
+    // Load the character model
+    const modelGltf = await this.loadGLTF('/assets/models/characters/Colobus_LOD0.glb');
+    const characterMesh = modelGltf.scene.clone();
+    
+    // Set up the mesh
+    characterMesh.scale.set(0.5, 0.5, 0.5);
+    characterMesh.castShadow = true;
+    characterMesh.receiveShadow = true;
+    
+    // Enable shadows for all child meshes
+    characterMesh.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+
+    // Create animation mixer
+    const mixer = new THREE.AnimationMixer(characterMesh);
+    const animations = new Map<string, THREE.AnimationAction>();
+
+    // Load animations
+    const idleGltf = await this.loadGLTF('/assets/animations/characters/Single/Colobus_Idle_A.glb');
+    const runGltf = await this.loadGLTF('/assets/animations/characters/Single/Colobus_Run.glb');
+
+    // Create animation actions
+    if (idleGltf.animations.length > 0) {
+      const idleAction = mixer.clipAction(idleGltf.animations[0]);
+      idleAction.loop = THREE.LoopRepeat;
+      animations.set('idle', idleAction);
+    }
+
+    if (runGltf.animations.length > 0) {
+      const runAction = mixer.clipAction(runGltf.animations[0]);
+      runAction.loop = THREE.LoopRepeat;
+      animations.set('run', runAction);
+    }
+
+    const idleAnimation = animations.get('idle')!;
+
+    console.log(`🎭 Loaded Colobus with ${animations.size} animations`);
+
+    return {
+      mesh: characterMesh,
+      mixer,
+      animations,
+      idleAnimation
+    };
+  }
+
+  private loadGLTF(url: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.gltfLoader.load(url, resolve, undefined, reject);
+    });
+  }
+
+  private async createLocalPlayer(position: { x: number; y: number; z: number }): Promise<void> {
+    if (!this.localPlayerId) return;
+
+    console.log('🐿️ Loading Colobus character...');
+    
+    try {
+      const characterMesh = await this.loadColobusCharacter();
+      
+      const player: Player = {
+        id: this.localPlayerId,
+        position: new THREE.Vector3(position.x, position.y, position.z),
+        rotation: 0,
+        mesh: characterMesh.mesh,
+        isLocal: true,
+        animationMixer: characterMesh.mixer,
+        animations: characterMesh.animations,
+        currentAnimation: characterMesh.idleAnimation,
+        isMoving: false
+      };
+
+      player.mesh.position.copy(player.position);
+      this.scene.add(player.mesh);
+      this.players.set(this.localPlayerId, player);
+
+      // Start with idle animation
+      if (player.currentAnimation) {
+        player.currentAnimation.play();
+      }
+
+      console.log(`🐿️ Animated Colobus player created: ${this.localPlayerId}`);
+    } catch (error) {
+      console.error('❌ Failed to load Colobus character, falling back to capsule:', error);
+      this.createFallbackPlayer(position);
+    }
+  }
+
+  private createFallbackPlayer(position: { x: number; y: number; z: number }): void {
     if (!this.localPlayerId) return;
 
     const geometry = new THREE.CapsuleGeometry(0.3, 1.2);
-    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 }); // Green for local
+    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.scale.set(0.3, 0.3, 0.3);
     mesh.castShadow = true;
@@ -136,14 +240,15 @@ export class Game {
       position: new THREE.Vector3(position.x, position.y, position.z),
       rotation: 0,
       mesh: mesh,
-      isLocal: true
+      isLocal: true,
+      isMoving: false
     };
 
     mesh.position.copy(player.position);
     this.scene.add(mesh);
     this.players.set(this.localPlayerId, player);
 
-    console.log(`🐿️ Local player created: ${this.localPlayerId}`);
+    console.log(`🐿️ Fallback capsule player created: ${this.localPlayerId}`);
   }
 
   private createRemotePlayer(id: string, position: { x: number; y: number; z: number }): void {
@@ -267,6 +372,19 @@ export class Game {
       moved = true;
     }
 
+    // Update animation state based on movement
+    const wasMoving = player.isMoving;
+    player.isMoving = moved;
+    
+    if (player.isMoving !== wasMoving) {
+      this.updatePlayerAnimation(player, player.isMoving ? 'run' : 'idle');
+    }
+
+    // Update animation mixer
+    if (player.animationMixer) {
+      player.animationMixer.update(deltaTime);
+    }
+
     // Update mesh
     player.mesh.position.copy(player.position);
     player.mesh.rotation.y = player.rotation;
@@ -284,6 +402,28 @@ export class Game {
 
     // Update camera to follow player
     this.updateCamera(player);
+  }
+
+  private updatePlayerAnimation(player: Player, animationName: string): void {
+    if (!player.animations || !player.animationMixer) return;
+
+    const newAnimation = player.animations.get(animationName);
+    if (!newAnimation) {
+      console.warn(`⚠️ Animation '${animationName}' not found for player ${player.id}`);
+      return;
+    }
+
+    if (newAnimation === player.currentAnimation) return;
+
+    // Fade out current animation and fade in new one
+    if (player.currentAnimation) {
+      player.currentAnimation.fadeOut(0.2);
+    }
+    
+    newAnimation.reset().fadeIn(0.2).play();
+    player.currentAnimation = newAnimation;
+
+    console.log(`🎭 Player ${player.id} animation: ${animationName}`);
   }
 
   private updateCamera(player: Player): void {
