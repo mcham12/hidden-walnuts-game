@@ -61,8 +61,13 @@ export async function createForest(): Promise<THREE.Object3D[]> {
 
 async function createForestObjectMesh(obj: ForestObject): Promise<THREE.Object3D | null> {
   try {
-    // Map object types to model paths
+    // Map object types to model paths (backend sends 'tree', 'shrub', etc.)
     const modelPaths: { [key: string]: string } = {
+      // Backend object types
+      'tree': '/assets/models/environment/Tree_01.glb',
+      'shrub': '/assets/models/environment/Bush_01.glb',
+      'rock': '/assets/models/environment/Rock_01.glb',
+      // Legacy object types (if any)
       'Tree_01': '/assets/models/environment/Tree_01.glb',
       'Tree_02': '/assets/models/environment/Tree_02.glb',
       'Tree_03': '/assets/models/environment/Tree_03.glb',
