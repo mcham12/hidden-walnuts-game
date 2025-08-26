@@ -68,7 +68,7 @@ export class Game {
 
     this.mixer = new THREE.AnimationMixer(this.character);
 
-    gltf.animations.forEach((clip) => {
+    gltf.animations.forEach((clip: THREE.AnimationClip) => {
       const name = clip.name.toLowerCase();
       this.actions[name] = this.mixer.clipAction(clip);
     });
