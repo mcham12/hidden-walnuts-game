@@ -1,4 +1,4 @@
-import { Game } from '@/Game';
+import { Game } from './Game';
 
 async function main() {
   const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
