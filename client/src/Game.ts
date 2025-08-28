@@ -231,7 +231,7 @@ export class Game {
 
   private updateCamera() {
     // Camera behind: negative Z offset for behind if facing +Z
-    const offset = new THREE.Vector3(0, 2, -5).applyQuaternion(this.character.quaternion);
+    const offset = new THREE.Vector3(0, 1, -2).applyQuaternion(this.character.quaternion);
     this.camera.position.copy(this.character.position).add(offset);
     this.camera.lookAt(this.character.position);
   }
