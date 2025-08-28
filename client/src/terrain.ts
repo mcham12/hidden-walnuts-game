@@ -62,7 +62,7 @@ export async function createTerrain(): Promise<THREE.Mesh> {
   geometry.computeVertexNormals();
   
   const material = new THREE.MeshBasicMaterial({ 
-    color: 0x00ff00, // Neon green
+    color: 0x3a5f3a, // Natural green
     side: THREE.DoubleSide,
     wireframe: false
   });
