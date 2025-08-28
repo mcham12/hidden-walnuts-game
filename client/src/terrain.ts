@@ -15,7 +15,7 @@ export function getTerrainHeight(x: number, z: number): number {
   let height = noise(nx, nz) * 0.5 + 2; // Reduced amplitude and base height
   height += noise(nx * 2, nz * 2) * 0.3;
   height += noise(nx * 4, nz * 4) * 0.1;
-  return Math.max(0, height);
+  return Math.max(0.5, height); // Ensure minimum height of 0.5 for character positioning
 }
 
 export async function createTerrain(): Promise<THREE.Mesh> {

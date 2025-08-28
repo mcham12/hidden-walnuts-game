@@ -29,7 +29,8 @@ export class Game {
   private jumpVelocity = 5;
   private isJumping = false;
   private characters: Character[] = [];
-  private selectedCharacterId = 'colobus';
+  public selectedCharacterId = 'colobus';
+  private characterGroundOffset = 0; // Offset from character pivot to feet
 
   async init(canvas: HTMLCanvasElement) {
     // Scene
@@ -126,8 +127,12 @@ export class Game {
         this.actions[name] = this.mixer.clipAction(clip);
       }
 
+      // Calculate character's ground offset using bounding box
+      const box = new THREE.Box3().setFromObject(this.character);
+      this.characterGroundOffset = -box.min.y; // Distance from pivot to lowest point (feet)
+      
       this.setAction('idle');
-      this.character.position.y = getTerrainHeight(this.character.position.x, this.character.position.z);
+      this.character.position.y = getTerrainHeight(this.character.position.x, this.character.position.z) + this.characterGroundOffset;
     } catch (error) {
       console.error('Error loading character:', error);
     }
@@ -210,8 +215,8 @@ export class Game {
     if (this.isJumping) {
       this.velocity.y += this.gravity * delta;
       this.character.position.y += this.velocity.y * delta;
-      if (this.character.position.y <= getTerrainHeight(this.character.position.x, this.character.position.z)) {
-        this.character.position.y = getTerrainHeight(this.character.position.x, this.character.position.z);
+      if (this.character.position.y <= getTerrainHeight(this.character.position.x, this.character.position.z) + this.characterGroundOffset) {
+        this.character.position.y = getTerrainHeight(this.character.position.x, this.character.position.z) + this.characterGroundOffset;
         this.isJumping = false;
         this.velocity.y = 0;
         this.setAction(moving ? 'run' : 'idle');
@@ -221,8 +226,8 @@ export class Game {
     // Apply horizontal movement
     this.character.position.add(this.velocity.clone().setY(0).multiplyScalar(delta));
 
-    // Snap to terrain
-    this.character.position.y = getTerrainHeight(this.character.position.x, this.character.position.z);
+    // Snap to terrain with proper ground offset
+    this.character.position.y = getTerrainHeight(this.character.position.x, this.character.position.z) + this.characterGroundOffset;
 
     if (!this.isJumping) {
       this.setAction(moving ? 'run' : 'idle');
