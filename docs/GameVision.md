@@ -37,10 +37,13 @@ hidden-walnuts-game/
 ├── docs/ # Documentation
 └── public/assets/ # 3D models, textures, animations
 ## Implementation Status (Updated August 28, 2025)
-- ✅ Simplified Architecture: Single `Game.ts` for core logic, terrain, forest, and basic multiplayer foundation
-- ✅ Terrain System: Procedural generation with height mapping
-- ✅ Player Movement: WASD controls with camera following
-- ✅ Asset Loading: Basic 3D models and animations (focus: single-player character with idle/run/jump)
-- 🔄 Walnut Mechanics: Not yet implemented (next priority after single-player polish)
+- ✅ Simplified Architecture: Single `Game.ts` for core logic, terrain, forest, and animated character system
+- ✅ Terrain System: Procedural generation with height mapping and character terrain-following
+- ✅ Player Movement: WASD controls with smooth camera following and gravity physics
+- ✅ Character Animations: Colobus character with idle/run/jump animations and proper terrain positioning
+- ✅ Asset Loading: GLTF models with separate animation files and bounding box positioning
+- ✅ Character Physics: Gravity, jumping (Space key), and proper ground contact detection
+- 🔄 Walnut Mechanics: Not yet implemented (next priority after character system complete)
+- 📋 Multiplayer Integration: Backend ready, client integration pending
 - 📋 Scoring System: Backend ready (Leaderboard DO), client integration pending
 - 📋 Daily Reset: Backend configured, not active in single-player mode

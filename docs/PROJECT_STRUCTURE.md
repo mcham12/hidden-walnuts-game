@@ -30,17 +30,19 @@ client/src/
 - Initializes 3D scene
 - Handles errors gracefully
 
-**`Game.ts`** - Core game logic (~300 lines total)
-- Three.js scene setup
-- Colobus character loading with basic animations (idle, run, jump)
-- Player movement with WASD
-- Camera following
-- Terrain and forest integration
+**`Game.ts`** - Core game logic (~250 lines total)
+- Three.js scene setup with lighting and shadows
+- Animated Colobus character with idle/run/jump state switching
+- WASD movement with gravity physics and jumping (Space key)
+- Smooth camera following with lerp
+- Terrain height calculation with character bounding box positioning
+- Asset loading for GLTF models and separate animation files
 
 **`terrain.ts`** - 3D world generation
-- Procedural terrain creation
-- Height calculations
-- Material and texture application
+- Procedural terrain with noise-based height generation
+- Height calculation function for character positioning
+- Height-based color gradients (darker valleys, lighter peaks)
+- Minimum terrain height enforcement (0.5) for character stability
 
 **`forest.ts`** - Environmental objects
 - Tree and shrub placement

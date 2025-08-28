@@ -1,24 +1,49 @@
-Character Implementation Guide
-Overview
-Current focus: Single-player animated Colobus character in Three.js scene. Expandable to more characters/animations later.
-Available Assets
+# Character Implementation Guide ✅ **WORKING**
 
-Colobus:
+## Overview
+**Status: COMPLETED** - Fully animated Colobus character with terrain-following movement, gravity physics, and proper ground positioning.
 
-Model: /assets/models/characters/Colobus_LOD0.glb
-Animations: idle (Colobus_Idle_A.glb), run (Colobus_Run.glb), jump (Colobus_Jump.glb)
-Scale: 0.3
+## Available Assets
 
+### Colobus Character ✅
+- **Model**: `/assets/animations/characters/Colobus_Animations.glb` (combined model + animations)
+- **Animations**: idle, run, jump (automatic state switching)  
+- **Scale**: 0.5 (reduced from 0.3 for better visibility)
+- **Features**: 
+  - Bounding box positioning (feet on ground)
+  - Terrain height following
+  - Gravity and jumping physics
+  - Smooth animation transitions
 
-Defined in public/characters.json (array for future expansion).
+## Implementation in Code ✅
 
-Implementation in Code
+### Character Loading & Setup
+- **GLTFLoader**: Loads combined GLTF with embedded animations
+- **AnimationMixer**: Handles animation blending with 0.2s transitions
+- **Bounding Box**: Uses `Box3().setFromObject()` for proper ground positioning
+- **Ground Offset**: Calculates `characterGroundOffset` from model bounds
 
-Loading: In Game.ts, use GLTFLoader to load model/animations.
-Mixer: THREE.AnimationMixer for blending (fadeIn/fadeOut 0.2s).
-States: idle (default), run (WASD moving), jump (Space).
-Movement: Velocity/direction in updatePlayer; apply to position.y via terrain height.
-Camera: Follows behind character.
+### Animation States
+- **idle**: Default state when not moving
+- **run**: Triggered by WASD movement  
+- **jump**: Triggered by Space key with gravity physics
+- **Automatic Switching**: Based on movement and jumping state
+
+### Movement & Physics
+- **WASD Controls**: Directional movement with velocity
+- **Gravity**: -9.8 physics simulation
+- **Terrain Following**: Character Y position = `getTerrainHeight() + characterGroundOffset`
+- **Camera Following**: Smooth lerp-based camera tracking
+
+### Technical Implementation
+```typescript
+// Bounding box positioning
+const box = new THREE.Box3().setFromObject(this.character);
+this.characterGroundOffset = -box.min.y;
+
+// Terrain positioning  
+this.character.position.y = getTerrainHeight(x, z) + this.characterGroundOffset;
+```
 
 Expansion Steps
 
