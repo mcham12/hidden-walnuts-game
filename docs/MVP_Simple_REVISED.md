@@ -17,80 +17,88 @@
 6. **24-Hour Cycles** → World resets, leaderboard competition
 
 ### **Current Progress** ✅
-- ✅ **3D Forest Terrain** - Procedural with proper character positioning
+- ✅ **3D Forest Terrain** - Procedural with proper character positioning + CORS fixes
 - ✅ **Animated Character** - Colobus with idle/run/jump + bounding box positioning  
 - ✅ **Movement System** - WASD + camera following + gravity physics
-- ✅ **Backend Architecture** - Cloudflare Workers + Durable Objects (needs cleanup)
+- ✅ **Backend Architecture** - Cloudflare Workers + Durable Objects (simplified & production-ready)
 
 ---
 
-## 🧹 **MVP 1.9: Worker Code Cleanup** 🎯 **IMMEDIATE NEXT**
+## 🧹 **MVP 1.9: Worker Code Cleanup** ✅ **COMPLETED**
 
 **Objective**: Simplify over-engineered worker code to align with simplified game approach before implementing walnut mechanics.
 
-### **Current Worker Issues**
-- **Over-Engineered**: Enterprise logging, complex anti-cheat, unused routes
-- **Complexity Mismatch**: Complex backend vs simplified Game.ts frontend
-- **Confusing Codebase**: Unclear which code to use for walnut integration
-- **Outdated Architecture**: Built for complex ECS, needs simple approach
+### **Issues Resolved** ✅
+- ✅ **Over-Engineered Code**: Removed enterprise logging, complex anti-cheat, unused routes
+- ✅ **Complexity Mismatch**: Simplified backend to match simplified Game.ts frontend  
+- ✅ **Confusing Codebase**: Clear, focused code ready for walnut integration
+- ✅ **Outdated Architecture**: Updated to simple approach without ECS complexity
+- ✅ **Production Errors**: Fixed CORS/asset loading issues causing console errors
 
-### **Cleanup Plan** (2-3 days)
+### **Completed Work** (3 days)
 
-**Day 1: Remove Enterprise Complexity**
+**Day 1: Remove Enterprise Complexity** ✅
 ```bash
-# Delete over-engineered files
+# ✅ Deleted over-engineered files
 rm workers/Logger.ts workers/constants.ts
 
-# Simplify api.ts routing
-- Remove unused routes (/server-metrics, /rehide-test, etc.)
-- Keep core routes: /ws, /join, /hide, /leaderboard  
-- Replace Logger with simple console.log
-- Simplify CORS handling
+# ✅ Simplified api.ts routing
+- Removed unused routes (/server-metrics, /rehide-test, etc.)
+- Kept core routes: /ws, /join, /hide, /leaderboard  
+- Replaced Logger with simple console.log
+- Simplified CORS handling
 ```
 
-**Day 2: Simplify Durable Objects**
+**Day 2: Simplify Durable Objects** ✅
 ```typescript
-// ForestManager.ts - Keep core, remove complexity
-- Remove anti-cheat tracking
-- Remove complex error handling  
-- Remove metrics collection
-- Keep: WebSocket handling, basic world state
+// ✅ ForestManager.ts - 2,194 lines → 377 lines (83% reduction)
+- Removed anti-cheat tracking
+- Removed complex error handling  
+- Removed metrics collection
+- Kept: WebSocket handling, basic world state
 
-// WalnutRegistry.ts - Basic CRUD only
+// ✅ WalnutRegistry.ts - Basic CRUD only
 - Simple walnut storage/retrieval
-- Basic ownership tracking
-- Remove hot zones, analytics
+- Basic ownership tracking (3pts buried, 1pt bush)
+- Removed hot zones, analytics
 
-// SquirrelSession.ts - Minimal player state
+// ✅ SquirrelSession.ts - Minimal player state
 - Basic position tracking
 - Simple inventory (walnut count)
-- Remove complex authentication
+- Removed complex authentication
 
-// Leaderboard.ts - Simple scoring
-- Basic score storage/retrieval  
-- Remove time multipliers initially
+// ✅ Leaderboard.ts - Basic scoring
+- Basic score storage/retrieval with ranking
+- Removed time multipliers initially
 ```
 
-**Day 3: Test & Validate**
+**Day 3: Test & Validate + Production Fixes** ✅
 ```bash
-# Test simplified workers
+# ✅ Test simplified workers
 npm run dev:worker
 
-# Validate core functionality
+# ✅ Validated core functionality
 - WebSocket connection works
-- Basic Durable Object storage
-- Simple API endpoints respond
-- Ready for walnut integration
+- Basic Durable Object storage functional
+- Simple API endpoints respond correctly
+- Fixed production CORS/asset loading errors
+
+# ✅ Production fixes applied
+- Fixed _routes.json excluding .glb files
+- Added _headers file for proper CORS
+- Improved forest.ts model loading (80 → 2 requests)
+- Added fallback system for failed model loads
 ```
 
-### **Success Criteria**
+### **Success Criteria** ✅
 - ✅ Workers start without errors
 - ✅ WebSocket connects from client
 - ✅ Simple API routes functional (/join, /leaderboard)
 - ✅ Durable Objects store/retrieve basic data
 - ✅ Code is readable and matches simplified approach
+- ✅ Production deployment ready (no CORS/asset errors)
 
-**Estimated Time**: **2-3 days**
+**Completed Time**: **3 days** (August 28, 2025)
 
 ---
 
