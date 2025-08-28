@@ -20,11 +20,81 @@
 - ✅ **3D Forest Terrain** - Procedural with proper character positioning
 - ✅ **Animated Character** - Colobus with idle/run/jump + bounding box positioning  
 - ✅ **Movement System** - WASD + camera following + gravity physics
-- ✅ **Backend Architecture** - Cloudflare Workers + Durable Objects ready
+- ✅ **Backend Architecture** - Cloudflare Workers + Durable Objects (needs cleanup)
 
 ---
 
-## 🥜 **MVP 2: Core Walnut Mechanics** 🎯 **IMMEDIATE NEXT**
+## 🧹 **MVP 1.9: Worker Code Cleanup** 🎯 **IMMEDIATE NEXT**
+
+**Objective**: Simplify over-engineered worker code to align with simplified game approach before implementing walnut mechanics.
+
+### **Current Worker Issues**
+- **Over-Engineered**: Enterprise logging, complex anti-cheat, unused routes
+- **Complexity Mismatch**: Complex backend vs simplified Game.ts frontend
+- **Confusing Codebase**: Unclear which code to use for walnut integration
+- **Outdated Architecture**: Built for complex ECS, needs simple approach
+
+### **Cleanup Plan** (2-3 days)
+
+**Day 1: Remove Enterprise Complexity**
+```bash
+# Delete over-engineered files
+rm workers/Logger.ts workers/constants.ts
+
+# Simplify api.ts routing
+- Remove unused routes (/server-metrics, /rehide-test, etc.)
+- Keep core routes: /ws, /join, /hide, /leaderboard  
+- Replace Logger with simple console.log
+- Simplify CORS handling
+```
+
+**Day 2: Simplify Durable Objects**
+```typescript
+// ForestManager.ts - Keep core, remove complexity
+- Remove anti-cheat tracking
+- Remove complex error handling  
+- Remove metrics collection
+- Keep: WebSocket handling, basic world state
+
+// WalnutRegistry.ts - Basic CRUD only
+- Simple walnut storage/retrieval
+- Basic ownership tracking
+- Remove hot zones, analytics
+
+// SquirrelSession.ts - Minimal player state
+- Basic position tracking
+- Simple inventory (walnut count)
+- Remove complex authentication
+
+// Leaderboard.ts - Simple scoring
+- Basic score storage/retrieval  
+- Remove time multipliers initially
+```
+
+**Day 3: Test & Validate**
+```bash
+# Test simplified workers
+npm run dev:worker
+
+# Validate core functionality
+- WebSocket connection works
+- Basic Durable Object storage
+- Simple API endpoints respond
+- Ready for walnut integration
+```
+
+### **Success Criteria**
+- ✅ Workers start without errors
+- ✅ WebSocket connects from client
+- ✅ Simple API routes functional (/join, /leaderboard)
+- ✅ Durable Objects store/retrieve basic data
+- ✅ Code is readable and matches simplified approach
+
+**Estimated Time**: **2-3 days**
+
+---
+
+## 🥜 **MVP 2: Core Walnut Mechanics**
 
 **Objective**: Implement the actual walnut hiding/seeking gameplay that defines the game.
 
@@ -207,38 +277,46 @@ class Predator {
 | MVP | Focus | Time | Core Features |
 |-----|-------|------|--------------|
 | **✅ MVP 1.5** | **Animated Character** | **DONE** | Working Colobus with terrain + physics |
-| **🎯 MVP 2** | **Walnut Mechanics** | **1-2 weeks** | Hide/seek walnuts, scoring system |
+| **🎯 MVP 1.9** | **Worker Code Cleanup** | **2-3 days** | Simplify backend, remove complexity |
+| **MVP 2** | **Walnut Mechanics** | **1-2 weeks** | Hide/seek walnuts, scoring system |
 | **MVP 3** | **Competitive Multiplayer** | **1 week** | Multi-player, stealing, leaderboard |
 | **MVP 4** | **Persistent World** | **1 week** | 24-hour cycles, world persistence |
 | **MVP 5** | **Predators & Polish** | **1-2 weeks** | AI predators, power-ups, polish |
 
-**Total**: **4-6 weeks** to complete **Hidden Walnuts** core gameplay
+**Total**: **4.5-6.5 weeks** to complete **Hidden Walnuts** core gameplay
 
 ---
 
 ## 🚀 **Implementation Strategy**
 
-### **Phase 1: Core Gameplay (NEXT 2 WEEKS)**
+### **Phase 1: Backend Cleanup (THIS WEEK)**
+**Priority**: Clean foundation before walnut implementation
+1. **Remove Enterprise Code** - Logger, constants, unused routes
+2. **Simplify Durable Objects** - Basic CRUD operations only
+3. **Test WebSocket Connection** - Ensure client-worker communication
+4. **Validate Core APIs** - /join, /hide, /leaderboard endpoints
+
+### **Phase 2: Core Gameplay (NEXT 2 WEEKS)**
 **Priority**: Get walnut hiding/seeking working with animations
 1. **H Key** walnut hiding with "eat" animation
 2. **Mouse Click** walnut finding with "bounce" animation  
 3. **Basic Scoring** system with point values
-4. **Server Integration** for walnut persistence
+4. **Server Integration** for walnut persistence (using cleaned workers)
 
-### **Phase 2: Competition (WEEK 3)**
+### **Phase 3: Competition (WEEK 3)**
 **Priority**: Make it multiplayer competitive
 1. **Multiple Players** seeing each other
 2. **Walnut Stealing** mechanics
 3. **Real-time Leaderboard** 
 4. **Score Multipliers** based on time played
 
-### **Phase 3: Persistence (WEEK 4)**
+### **Phase 4: Persistence (WEEK 4)**
 **Priority**: 24-hour persistent world
 1. **Daily Reset** cycles
 2. **Persistent Walnuts** across sessions
 3. **World State Sync** for new players
 
-### **Phase 4: Unique Features (WEEKS 5-6)**
+### **Phase 5: Unique Features (WEEKS 5-6)**
 **Priority**: Predators and power-ups that make the game special
 1. **Predator AI** with defense mechanics
 2. **Power-up System**
