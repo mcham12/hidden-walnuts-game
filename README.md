@@ -11,41 +11,46 @@ A **simplified** multiplayer 3D game where squirrels search for hidden walnuts i
 
 ## 🏗️ **Simple Architecture Overview**
 
-### **Core Technologies**
-- **Frontend**: Vite + TypeScript + Three.js (simplified)
-- **Backend**: Cloudflare Workers + Durable Objects (unchanged)
-- **Architecture**: **Simple Game.ts class** (no ECS complexity)
-- **Networking**: **Basic WebSocket** with position sync
+### **Core Technologies** 
+- **Frontend**: Vite + TypeScript + Three.js → **Cloudflare Pages**
+- **Backend**: Cloudflare Workers + Durable Objects
+- **Architecture**: **Simple Game.ts class** (no ECS complexity)  
+- **Networking**: **WebSocket via Workers** for real-time sync
+- **Platform**: **100% Cloudflare** - Pages + Workers + Durable Objects
+
+📋 **[See CLOUDFLARE_ARCHITECTURE.md](docs/CLOUDFLARE_ARCHITECTURE.md)** for complete platform details
 
 ### **Simplified System Diagram**
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                 SIMPLE GAME CLIENT                      │
+│             CLOUDFLARE PAGES                           │
+│           (game.hiddenwalnuts.com)                     │
 ├─────────────────────────────────────────────────────────┤
 │  main.ts (47 lines)                                    │
 │  ├── Creates Game instance                             │
 │  ├── Initializes 3D scene                             │
-│  ├── Connects multiplayer                             │
+│  ├── Connects to Workers WebSocket                     │
 │  └── Handles errors                                   │
 ├─────────────────────────────────────────────────────────┤
-│  Game.ts (300 lines - ALL game logic)                  │
+│  Game.ts (250 lines - ALL game logic)                  │
 │  ├── Three.js scene setup                             │
-│  ├── Player movement (WASD)                           │ 
+│  ├── Animated character (Colobus)                     │
+│  ├── Terrain-following movement                       │
 │  ├── Camera following                                  │
-│  ├── Basic multiplayer sync                           │
 │  └── WebSocket communication                          │
 ├─────────────────────────────────────────────────────────┤
 │  World Generation                                       │
-│  ├── terrain.ts (3D terrain)                          │
+│  ├── terrain.ts (procedural terrain)                  │
 │  ├── forest.ts (trees, shrubs)                        │
-│  └── types.ts (basic types)                           │
+│  └── Asset loading (GLTF models)                      │
 └─────────────────────────────────────────────────────────┘
                               │
-                         WebSocket
+                    WebSocket Connection
                               │
 ┌─────────────────────────────────────────────────────────┐
-│            CLOUDFLARE WORKERS (unchanged)              │
+│            CLOUDFLARE WORKERS                          │
+│           (api.hiddenwalnuts.com)                      │
 ├─────────────────────────────────────────────────────────┤
 │  Durable Objects                                        │
 │  ├── ForestManager (World State)                       │
