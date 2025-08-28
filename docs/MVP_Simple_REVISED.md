@@ -1,267 +1,272 @@
-# 🎮 **REVISED**: Simple MVP Plan with Animated Characters
+# 🎮 **REVISED**: Simple MVP Plan - Core Walnut Gameplay Focus
 
-**🎯 NEW FOCUS**: Get your **amazing animated character assets** into the game **quickly** while maintaining the simplified architecture approach.
+**🎯 NEW FOCUS**: Build the **actual Hidden Walnuts game** - focus on walnut hiding/seeking mechanics and competitive multiplayer rather than character variety.
 
-You have **8 character types** with **full animation sets** - let's use them immediately!
-
----
-
-## 🦌 **Available Character Assets**
-
-### **Character Types** (8 total)
-- **Colobus** (monkey-like)
-- **Gecko** (lizard)  
-- **Herring** (fish)
-- **Inkfish** (squid)
-- **Muskrat** (rodent)
-- **Pudu** (small deer)
-- **Sparrow** (bird)
-- **Taipan** (snake)
-
-### **Animation Sets** (15+ animations each)
-- **Movement**: Run, Jump, Fly, Swim
-- **Actions**: Attack, Eat, Bounce, Roll, Sit
-- **States**: Idle_A, Idle_B, Idle_C, Fear, Hit, Death
-- **Interactive**: Clicked, Spin
-
-### **LOD Levels** (4 levels each)
-- **LOD0**: High detail (close up)
-- **LOD1**: Medium detail 
-- **LOD2**: Low detail
-- **LOD3**: Minimal detail (distant)
+**✅ Current Status**: Animated Colobus character with terrain + physics **COMPLETED** - ready for walnut gameplay!
 
 ---
 
-## 🚀 **MVP Simple 1.5: Animated Players** 🎯 **IMMEDIATE NEXT**
+## 🎯 **Game Vision Alignment**
 
-**Objective**: Replace basic capsule players with your **animated character assets** - fast implementation.
+### **Core Game Loop** (from GameVision.md)
+1. **Join Game** → Get 3 walnuts to hide
+2. **Hide Walnuts** → Press H to bury/bush walnuts  
+3. **Seek Walnuts** → Find others' hidden walnuts
+4. **Steal & Rehide** → Competitive walnut ownership
+5. **Score Points** → Different points for burial types
+6. **24-Hour Cycles** → World resets, leaderboard competition
 
-### **Quick Implementation Plan** (2-3 days)
+### **Current Progress** ✅
+- ✅ **3D Forest Terrain** - Procedural with proper character positioning
+- ✅ **Animated Character** - Colobus with idle/run/jump + bounding box positioning  
+- ✅ **Movement System** - WASD + camera following + gravity physics
+- ✅ **Backend Architecture** - Cloudflare Workers + Durable Objects ready
 
-**Step 1: Character Selection** (Day 1)
-- Add simple character picker UI before game starts
-- Let players choose from 8 character types
-- Store choice in sessionStorage
-- Default to random character if no choice
+---
 
-**Step 2: Animated Player Loading** (Day 1-2)  
-- Replace capsule geometry in `Game.ts` with GLTF loader
-- Load character model + animations based on selection
-- Implement basic animation states: Idle → Run → Idle
-- Use LOD0 for all players initially (optimize later)
+## 🥜 **MVP 2: Core Walnut Mechanics** 🎯 **IMMEDIATE NEXT**
 
-**Step 3: Animation State Machine** (Day 2-3)
-- Simple state machine: `idle`, `running`, `jumping`
-- Trigger `running` animation when WASD pressed
-- Return to `idle` when movement stops
-- Smooth animation blending with Three.js AnimationMixer
+**Objective**: Implement the actual walnut hiding/seeking gameplay that defines the game.
 
-**Step 4: Multiplayer Sync** (Day 3)
-- Send character type + animation state via WebSocket
-- Remote players show correct character and animations
-- Sync animation state changes across clients
+### **Week 1: Walnut Interaction System**
 
-### **Technical Approach (Simple)**
+**Walnut Hiding (H Key)**:
 ```typescript
-// In Game.ts - replace capsule with animated character
-class Game {
-  private animationMixer: THREE.AnimationMixer;
-  private currentAnimation: THREE.AnimationAction;
-  private animations = new Map<string, THREE.AnimationAction>();
-
-  async createPlayer(characterType: string) {
-    // Load character model + animations
-    const gltf = await this.loadCharacter(characterType);
+// In Game.ts
+private onHideWalnut() {
+  if (this.playerWalnuts > 0) {
+    // Play "Eat" animation (digging/burying)
+    this.setAction('eat');
     
-    // Setup animation mixer
-    this.animationMixer = new THREE.AnimationMixer(gltf.scene);
+    // Create walnut at player position
+    const walnut = this.createWalnut(this.character.position, 'buried');
     
-    // Load all animations
-    gltf.animations.forEach(clip => {
-      const action = this.animationMixer.clipAction(clip);
-      this.animations.set(clip.name, action);
-    });
+    // Send to server
+    this.sendWalnutHide(walnut);
     
-    // Start with idle
-    this.playAnimation('idle');
+    this.playerWalnuts--;
   }
+}
+```
 
-  playAnimation(name: string) {
-    const newAnimation = this.animations.get(name);
-    if (newAnimation && newAnimation !== this.currentAnimation) {
-      this.currentAnimation?.fadeOut(0.2);
-      newAnimation.reset().fadeIn(0.2).play();
-      this.currentAnimation = newAnimation;
+**Walnut Finding (Click Detection)**:
+```typescript
+// Raycasting for walnut interaction
+private onMouseClick(event: MouseEvent) {
+  const walnut = this.getWalnutAtPosition(mousePos);
+  if (walnut && this.isNearPlayer(walnut.position)) {
+    // Play "Bounce" animation (excited finding)
+    this.setAction('bounce');
+    
+    // Collect walnut
+    this.collectWalnut(walnut);
+    this.score += walnut.points;
+  }
+}
+```
+
+**Walnut Types & Scoring**:
+- **Buried Walnuts**: 3 points (harder to find)
+- **Bush Walnuts**: 1 point (easier to spot)
+- **Game Walnuts**: Bonus multiplier
+- **Visual Indicators**: Subtle terrain disturbances for buried walnuts
+
+**Estimated Time**: **5-7 days**
+
+### **Week 2: Basic Walnut Persistence**
+
+**Server Integration**:
+```typescript
+// WebSocket walnut messages
+interface WalnutMessage {
+  type: 'HIDE_WALNUT' | 'FIND_WALNUT';
+  walnutId: string;
+  position: Vector3;
+  walnutType: 'buried' | 'bush';
+  playerId: string;
+}
+```
+
+**Walnut State Management**:
+- **WalnutRegistry Durable Object** (already exists) integration
+- **Persistent Walnuts** remain after players leave
+- **Walnut Ownership** tracking for scoring
+- **Basic Anti-Cheat** server-side position validation
+
+**Estimated Time**: **3-5 days**
+
+---
+
+## 👥 **MVP 3: Competitive Multiplayer** 
+
+**Objective**: Make it actually competitive with multiple players hiding/seeking.
+
+### **Week 3: Multi-Player Walnut Competition**
+
+**Real-time Player Sync**:
+- **Multiple Players** see each others' characters moving
+- **Walnut Stealing** - find and collect others' hidden walnuts
+- **Animation Sync** - see other players' hide/seek animations
+- **Proximity Rules** - can't hide/find walnuts too close to others
+
+**Leaderboard System**:
+```typescript
+// Real-time scoring
+interface GameScore {
+  playerId: string;
+  characterType: 'colobus'; // expand later
+  score: number;
+  wallnutsHidden: number;
+  wallnutsFound: number;
+  timeMultiplier: number; // 1.1x to 2x based on time played
+}
+```
+
+**Competitive Mechanics**:
+- **Walnut Rehiding** - steal found walnuts and hide them again
+- **Score Multipliers** - time played bonus (1.1x to 2x)
+- **Fresh Player Boost** - catch-up mechanic for late joiners
+- **Real-time Leaderboard** updates
+
+**Estimated Time**: **5-7 days**
+
+---
+
+## 🌍 **MVP 4: Persistent 24-Hour World**
+
+**Objective**: Create the persistent world that resets every 24 hours.
+
+### **Week 4: World Persistence & Daily Cycles**
+
+**24-Hour World Cycles**:
+- **Daily Reset** - forest regenerates, walnuts respawn
+- **Persistent Progress** - player stats carry over
+- **100 Game Walnuts** placed randomly each cycle
+- **3 Walnuts per Player** when joining
+
+**Session Management**:
+- **Join Anytime** - players can enter mid-cycle  
+- **Persistent Walnuts** - remain hidden when players leave
+- **World State Sync** - new players see current walnut state
+- **Cycle Countdown** - UI showing time until reset
+
+**Backend Integration** (using existing Durable Objects):
+- **ForestManager** - world state and daily reset logic
+- **PlayerSession** - track player progress across sessions  
+- **WalnutRegistry** - persistent walnut locations
+- **Leaderboard** - 24-hour scoring cycles
+
+**Estimated Time**: **5-7 days**
+
+---
+
+## 🐺 **MVP 5: Predators & Game Polish**
+
+**Objective**: Add unique predator mechanics and final polish.
+
+### **Week 5-6: Predators & Power-ups**
+
+**Predator AI**:
+```typescript
+// Simple hawk/wolf behavior
+class Predator {
+  private targetPlayer: Player | null;
+  private huntCooldown: number;
+  
+  update() {
+    if (this.detectNearbyPlayers()) {
+      this.chasePlayer();
+      this.triggerPlayerFear(); // "Fear" animation
     }
   }
 }
 ```
 
-**Estimated Time**: **2-3 days** (very doable!)
+**Defense Mechanics**:
+- **Chatter Defense** - rapid key presses to scare predators
+- **Projectile Defense** - throw objects at predators  
+- **Group Defense** - predators avoid multiple players
+
+**Power-ups**:
+- **Scent Sniff** - reveal nearby buried walnuts
+- **Fast Dig** - hide/find walnuts quicker
+- **Decoy Nut** - fake walnut that gives no points
+
+**Game Polish**:
+- **Hot Zones** - visual indicators of recent activity
+- **Mini-Events** - "Nut Rush" every 4 hours
+- **UI Polish** - score display, walnut counter, timer
+- **Sound Effects** - digging, finding, predator sounds
+
+**Estimated Time**: **7-10 days**
 
 ---
 
-## 🦌 **MVP Simple 2: NPC Population** 🎯 **WEEK 2**
+## 📊 **Revised Timeline - Game-First Approach**
 
-**Objective**: Add **AI-controlled characters** roaming the forest using your animation sets.
+| MVP | Focus | Time | Core Features |
+|-----|-------|------|--------------|
+| **✅ MVP 1.5** | **Animated Character** | **DONE** | Working Colobus with terrain + physics |
+| **🎯 MVP 2** | **Walnut Mechanics** | **1-2 weeks** | Hide/seek walnuts, scoring system |
+| **MVP 3** | **Competitive Multiplayer** | **1 week** | Multi-player, stealing, leaderboard |
+| **MVP 4** | **Persistent World** | **1 week** | 24-hour cycles, world persistence |
+| **MVP 5** | **Predators & Polish** | **1-2 weeks** | AI predators, power-ups, polish |
 
-### **Simple NPC Implementation**
-
-**NPC Behavior** (Keep it simple):
-- **Wandering**: NPCs walk randomly through forest
-- **Idle States**: Occasionally stop and play idle animations (A/B/C)
-- **Character Variety**: Use different character types for NPCs
-- **Simple AI**: Basic waypoint system, no complex pathfinding
-
-**Animation Usage**:
-- **Walking**: Use `Run` animation at slow speed
-- **Stopping**: Cycle through `Idle_A`, `Idle_B`, `Idle_C`
-- **Interactions**: `Eat` animation near food sources
-- **Reactions**: `Fear` animation if player gets too close
-
-**Technical Approach**:
-```typescript
-class SimpleNPC {
-  private targetPosition: THREE.Vector3;
-  private moveSpeed = 1.0;
-  private idleTimer = 0;
-  private state: 'walking' | 'idle' = 'walking';
-
-  update(deltaTime: number) {
-    if (this.state === 'walking') {
-      this.moveTowardsTarget(deltaTime);
-      if (this.reachedTarget()) {
-        this.startIdling();
-      }
-    } else {
-      this.idleTimer += deltaTime;
-      if (this.idleTimer > 3.0) { // Idle for 3 seconds
-        this.pickNewTarget();
-      }
-    }
-  }
-}
-```
-
-**Population**: 5-10 NPCs wandering the forest for atmosphere.
-
-**Estimated Time**: **3-4 days**
+**Total**: **4-6 weeks** to complete **Hidden Walnuts** core gameplay
 
 ---
 
-## 🎮 **MVP Simple 3: Core Walnut Gameplay** 
+## 🚀 **Implementation Strategy**
 
-**Objective**: Add walnut hide/seek mechanics with **animated interactions**.
+### **Phase 1: Core Gameplay (NEXT 2 WEEKS)**
+**Priority**: Get walnut hiding/seeking working with animations
+1. **H Key** walnut hiding with "eat" animation
+2. **Mouse Click** walnut finding with "bounce" animation  
+3. **Basic Scoring** system with point values
+4. **Server Integration** for walnut persistence
 
-### **Walnut Interactions with Animations**
-- **Hiding Walnuts**: `Eat` animation when hiding (squirrel burying)
-- **Finding Walnuts**: `Bounce` animation when collecting
-- **Celebration**: `Jump` animation when scoring points
-- **Searching**: `Idle_B` animation when looking around
+### **Phase 2: Competition (WEEK 3)**
+**Priority**: Make it multiplayer competitive
+1. **Multiple Players** seeing each other
+2. **Walnut Stealing** mechanics
+3. **Real-time Leaderboard** 
+4. **Score Multipliers** based on time played
 
-### **Enhanced Player Actions**
-- **H Key**: Hide walnut (triggers `Eat` animation)
-- **Click Walnut**: Collect (triggers `Bounce` animation) 
-- **Score Points**: Brief `Jump` celebration
-- **Look Around**: Passive `Idle` state variations
+### **Phase 3: Persistence (WEEK 4)**
+**Priority**: 24-hour persistent world
+1. **Daily Reset** cycles
+2. **Persistent Walnuts** across sessions
+3. **World State Sync** for new players
 
-**Estimated Time**: **1-2 weeks**
-
----
-
-## 🏆 **MVP Simple 4: Character Progression**
-
-**Objective**: Make character choice meaningful and rewarding.
-
-### **Character Abilities** (Simple differences)
-- **Gecko**: Slightly faster movement (1.2x speed)
-- **Sparrow**: Can "fly" (jump higher/longer)
-- **Herring**: Better at finding water-area walnuts
-- **Pudu**: Quieter movement (harder for others to track)
-- **Colobus**: Better climbing (can reach tree walnuts)
-- **Others**: Unique idle animations and visual flair
-
-### **Unlockable Characters**
-- Start with 3 characters available
-- Unlock others by finding certain numbers of walnuts
-- Simple progression: 10 walnuts → unlock Gecko, etc.
-
-**Estimated Time**: **1 week**
+### **Phase 4: Unique Features (WEEKS 5-6)**
+**Priority**: Predators and power-ups that make the game special
+1. **Predator AI** with defense mechanics
+2. **Power-up System**
+3. **Final Polish** and balancing
 
 ---
 
-## 🎨 **MVP Simple 5: Animation Polish**
+## 🎨 **Character Variety: Future Enhancement**
 
-**Objective**: Use your **full animation library** for rich interactions.
+### **Season 2 Features** (After Core Game Complete)
+- **8 Character Types** with unique abilities
+- **Character Unlocks** based on walnut achievements
+- **NPC Population** for forest atmosphere
+- **Advanced Animations** using full animation library
 
-### **Expanded Animation Usage**
-- **Interaction Animations**: 
-  - `Attack` for competitive walnut stealing
-  - `Fear` when other players approach your hidden spots
-  - `Sit` for AFK/waiting states
-- **Environmental Reactions**:
-  - `Fly` animation for Sparrow when jumping
-  - `Swim` animation for Herring near water
-  - `Spin` animation for celebration
-- **Social Animations**:
-  - `Clicked` animation when other players interact
-  - Random `Bounce` and `Roll` animations for personality
-
-### **Performance Optimization**
-- **LOD System**: Use appropriate LOD levels based on distance
-- **Animation Culling**: Don't animate characters off-screen
-- **Batch Loading**: Load character assets efficiently
-
-**Estimated Time**: **1-2 weeks**
+### **Why Later?**
+- **Core Gameplay First** - walnut mechanics define the game
+- **One Character Perfect** - better than 8 characters with broken gameplay
+- **Asset Value** - amazing character assets deserve a working game to showcase them
+- **Player Retention** - gameplay keeps players, variety brings them back
 
 ---
 
-## 📊 **Revised Timeline**
+## 🎯 **Key Success Metrics**
 
-| MVP | Focus | Time | Characters/Animations |
-|-----|-------|------|----------------------|
-| **Simple 1.5** | **Animated Players** | **2-3 days** | Player selection, basic animations |
-| **Simple 2** | **NPC Population** | 3-4 days | AI characters with animations |
-| **Simple 3** | **Walnut Gameplay** | 1-2 weeks | Interaction animations |
-| **Simple 4** | **Character Progression** | 1 week | Character abilities, unlocks |
-| **Simple 5** | **Animation Polish** | 1-2 weeks | Full animation library usage |
+### **MVP 2 Success**: Players can hide and find walnuts with proper animations
+### **MVP 3 Success**: Multiple players competing for walnut scores  
+### **MVP 4 Success**: 24-hour persistent world with daily resets
+### **MVP 5 Success**: Complete Hidden Walnuts experience with predators
 
-**Total**: **4-6 weeks** to fully utilize your character assets
-
----
-
-## 🎯 **Implementation Strategy**
-
-### **Phase 1: Quick Win (THIS WEEK)**
-Focus on **MVP Simple 1.5** - get animated players working ASAP:
-1. Character selection screen (simple HTML)
-2. Replace capsule with one character type (Colobus)
-3. Basic idle ↔ run animation states
-4. Multiplayer sync of character choice
-
-### **Phase 2: Atmosphere (NEXT WEEK)** 
-Add **NPCs** to make the forest feel alive:
-1. 3-5 NPCs with simple wandering behavior
-2. Different character types for visual variety
-3. Basic animation states (walk/idle)
-
-### **Phase 3: Gameplay Enhancement**
-Integrate animations into core walnut mechanics.
-
----
-
-## 🚀 **Key Advantages**
-
-### **Your Assets Are Amazing**
-- **8 character types** = 8x visual variety
-- **15+ animations each** = Rich interaction possibilities  
-- **LOD levels** = Performance optimization built-in
-- **Professional quality** = AAA game feel
-
-### **Simple Integration**
-- **Keep Game.ts architecture** - just enhance player creation
-- **WebSocket backend unchanged** - just add character type field
-- **Three.js AnimationMixer** - standard animation handling
-- **Gradual enhancement** - can ship basic version quickly
-
-Would you like me to **start implementing MVP Simple 1.5** right now? We can get you playing as an animated character today!
+**Ready to start MVP 2 - Core Walnut Mechanics?** 🥜
