@@ -30,6 +30,7 @@ export async function createTerrain(): Promise<THREE.Mesh> {
   const indices: number[] = [];
   
   // Generate vertices with height
+  const colors: number[] = [];
   for (let z = 0; z <= segments; z++) {
     for (let x = 0; x <= segments; x++) {
       const xPos = (x / segments - 0.5) * size;
@@ -37,6 +38,12 @@ export async function createTerrain(): Promise<THREE.Mesh> {
       const yPos = getTerrainHeight(xPos, zPos);
       
       vertices.push(xPos, yPos, zPos);
+      
+      // Height-based color gradient: darker green for valleys, lighter for peaks
+      const heightRatio = Math.max(0, Math.min(1, (yPos - 1) / 3)); // Normalize height between 1-4
+      const color = new THREE.Color();
+      color.setHSL(0.3, 0.6, 0.2 + heightRatio * 0.4); // Green with brightness based on height
+      colors.push(color.r, color.g, color.b);
     }
   }
   
@@ -58,11 +65,12 @@ export async function createTerrain(): Promise<THREE.Mesh> {
   }
   
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   
   const material = new THREE.MeshBasicMaterial({ 
-    color: 0x3a5f3a, // Natural green
+    vertexColors: true,
     side: THREE.DoubleSide,
     wireframe: false
   });
