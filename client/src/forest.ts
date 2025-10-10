@@ -10,6 +10,9 @@ const BUSH_COUNT = 30;
 let treeModel: THREE.Group | null = null;
 let bushModel: THREE.Group | null = null;
 
+// Export bush positions for walnut hiding
+export const bushPositions: THREE.Vector3[] = [];
+
 export async function createForest(scene: THREE.Scene) {
   try {
     // Load models once
@@ -29,7 +32,7 @@ export async function createForest(scene: THREE.Scene) {
       scene.add(tree);
     }
 
-    // Create bushes using cloned model  
+    // Create bushes using cloned model
     for (let i = 0; i < BUSH_COUNT; i++) {
       const x = (Math.random() - 0.5) * 180;
       const z = (Math.random() - 0.5) * 180;
@@ -38,6 +41,9 @@ export async function createForest(scene: THREE.Scene) {
       bush.position.set(x, y, z);
       bush.scale.set(1, 1, 1);
       scene.add(bush);
+
+      // Store bush position for walnut hiding
+      bushPositions.push(new THREE.Vector3(x, y, z));
     }
     
     console.log('Forest created with heights applied');
@@ -85,13 +91,16 @@ function createFallbackForest(scene: THREE.Scene) {
     const x = (Math.random() - 0.5) * 180;
     const z = (Math.random() - 0.5) * 180;
     const y = getTerrainHeight(x, z);
-    
+
     const bush = new THREE.Mesh(
       new THREE.SphereGeometry(0.8, 8, 6),
       new THREE.MeshStandardMaterial({ color: 0x32CD32 })
     );
     bush.position.set(x, y + 0.4, z);
     scene.add(bush);
+
+    // Store bush position for walnut hiding
+    bushPositions.push(new THREE.Vector3(x, y, z));
   }
   
   console.log('Fallback forest created');

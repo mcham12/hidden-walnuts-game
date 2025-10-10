@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { createTerrain } from './terrain.js';
-import { createForest } from './forest.js';
+import { createForest, bushPositions } from './forest.js';
 import { getTerrainHeight } from './terrain.js';
 
 interface Character {
@@ -1316,32 +1316,30 @@ export class Game {
   }
 
   /**
-   * Create visual indicator for a ground walnut (visible on ground with grass)
+   * Create visual indicator for a bush walnut (hidden in foliage, partially visible)
    */
   private createBushWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // Add simple grass patch underneath
-    const grassGeometry = new THREE.ConeGeometry(0.4, 0.3, 6);
-    const grassMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4a7c2e, // Grass green
+    // Walnut geometry - partially transparent to show it's obscured by bush
+    const geometry = new THREE.SphereGeometry(0.15, 16, 16);
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x8B4513, // Brown walnut color
       roughness: 0.8,
-      flatShading: true
+      metalness: 0.1,
+      transparent: true,
+      opacity: 0.6 // Partially transparent - hidden in bush foliage
     });
-    const grass = new THREE.Mesh(grassGeometry, grassMaterial);
-    grass.position.y = 0.05;
-    grass.rotation.x = Math.PI; // Flip to be grass tuft
-    group.add(grass);
-
-    // Walnut geometry - sitting on grass
-    const walnut = this.createWalnutGeometry();
-    walnut.position.y = 0.15; // Sitting on top of grass
+    const walnut = new THREE.Mesh(geometry, material);
+    walnut.position.y = 0.4; // Slightly elevated (in bush)
+    walnut.castShadow = true;
+    walnut.receiveShadow = true;
     group.add(walnut);
 
-    // Add shimmer/glint effect
+    // Add shimmer/glint effect to help players spot it
     const glintGeometry = new THREE.SphereGeometry(0.18, 8, 8);
     const glintMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffff88,
+      color: 0x90EE90, // Light green shimmer (blends with bush)
       transparent: true,
       opacity: 0.3,
       blending: THREE.AdditiveBlending
@@ -1356,7 +1354,7 @@ export class Game {
       visible: false
     });
     const collisionMesh = new THREE.Mesh(collisionGeometry, collisionMaterial);
-    collisionMesh.position.y = 0.15;
+    collisionMesh.position.y = 0.4;
     group.add(collisionMesh);
 
     // Store glint for animation
@@ -1365,9 +1363,9 @@ export class Game {
 
     // Position the entire group
     group.position.copy(position);
-    group.userData.type = 'ground'; // Changed from 'bush' to 'ground'
+    group.userData.type = 'bush';
     group.userData.points = 1;
-    group.userData.clickPosition = new THREE.Vector3(position.x, position.y + 0.15, position.z);
+    group.userData.clickPosition = new THREE.Vector3(position.x, position.y + 0.4, position.z);
 
     return group;
   }
@@ -1461,14 +1459,25 @@ export class Game {
     const buriedLabel = this.createLabel('Buried Walnut (3 pts)', '#8B4513');
     this.walnutLabels.set('buried-1', buriedLabel);
 
-    // Spawn 1 ground walnut (renamed from bush - no actual bushes exist)
-    const groundPos = new THREE.Vector3(-5, getTerrainHeight(-5, -5), -5);
-    const ground = this.createBushWalnutVisual(groundPos);
-    ground.userData.id = 'ground-1'; // CRITICAL: Set id for click detection!
-    this.scene.add(ground);
-    this.walnuts.set('ground-1', ground);
-    const groundLabel = this.createLabel('Ground Walnut (1 pt)', '#D2691E');
-    this.walnutLabels.set('ground-1', groundLabel);
+    // Spawn 1 bush walnut - position near an actual bush
+    let bushPos: THREE.Vector3;
+    if (bushPositions.length > 0) {
+      // Pick a random bush and place walnut near it
+      const randomBush = bushPositions[Math.floor(Math.random() * bushPositions.length)];
+      bushPos = randomBush.clone();
+      bushPos.y = getTerrainHeight(bushPos.x, bushPos.z);
+      console.log(`🌿 Positioning bush walnut near bush at (${bushPos.x.toFixed(1)}, ${bushPos.z.toFixed(1)})`);
+    } else {
+      // Fallback if no bushes loaded yet
+      bushPos = new THREE.Vector3(-5, getTerrainHeight(-5, -5), -5);
+      console.warn('⚠️ No bush positions available, using fallback position');
+    }
+    const bush = this.createBushWalnutVisual(bushPos);
+    bush.userData.id = 'bush-1'; // CRITICAL: Set id for click detection!
+    this.scene.add(bush);
+    this.walnuts.set('bush-1', bush);
+    const bushLabel = this.createLabel('Bush Walnut (1 pt)', '#90EE90');
+    this.walnutLabels.set('bush-1', bushLabel);
 
     // Spawn 1 game walnut
     const gamePos = new THREE.Vector3(0, getTerrainHeight(0, 5), 5);
@@ -1536,7 +1545,7 @@ export class Game {
     const playerPos = this.character.position.clone();
     const terrainY = getTerrainHeight(playerPos.x, playerPos.z);
 
-    // Random choice: buried (70%) or ground (30%)
+    // Random choice: buried (70%) or bush (30%)
     const isBuried = Math.random() < 0.7;
     const walnutId = `player-${this.playerId}-${Date.now()}`;
 
@@ -1552,21 +1561,43 @@ export class Game {
       labelColor = '#8B4513';
       console.log('🌰 Buried walnut at:', position);
     } else {
-      // Create ground walnut - offset slightly from player
-      const offset = new THREE.Vector3(
-        (Math.random() - 0.5) * 2,
-        0,
-        (Math.random() - 0.5) * 2
-      );
-      const position = new THREE.Vector3(
-        playerPos.x + offset.x,
-        terrainY,
-        playerPos.z + offset.z
-      );
+      // Create bush walnut - find nearest bush
+      let position: THREE.Vector3;
+      if (bushPositions.length > 0) {
+        // Find nearest bush to player
+        let nearestBush = bushPositions[0];
+        let minDistance = playerPos.distanceTo(nearestBush);
+
+        for (const bushPos of bushPositions) {
+          const distance = playerPos.distanceTo(bushPos);
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearestBush = bushPos;
+          }
+        }
+
+        position = nearestBush.clone();
+        position.y = getTerrainHeight(position.x, position.z);
+        console.log(`🌿 Hiding walnut in bush at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}), distance: ${minDistance.toFixed(1)}`);
+      } else {
+        // Fallback if no bushes available
+        const offset = new THREE.Vector3(
+          (Math.random() - 0.5) * 2,
+          0,
+          (Math.random() - 0.5) * 2
+        );
+        position = new THREE.Vector3(
+          playerPos.x + offset.x,
+          terrainY,
+          playerPos.z + offset.z
+        );
+        console.warn('⚠️ No bushes available, using fallback position');
+      }
+
       walnutGroup = this.createBushWalnutVisual(position);
-      labelText = 'Your Ground Walnut (1 pt)';
-      labelColor = '#D2691E';
-      console.log('🌰 Hidden walnut on ground at:', position);
+      labelText = 'Your Bush Walnut (1 pt)';
+      labelColor = '#90EE90';
+      console.log('🌰 Hidden walnut in bush at:', position);
     }
 
     // Add to scene and registry
