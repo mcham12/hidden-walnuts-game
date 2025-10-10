@@ -2413,23 +2413,37 @@ export class Game {
    * Initialize quick chat and emote systems
    */
   private initChatAndEmotes(): void {
+    console.log('🎮 Initializing Quick Chat and Emotes...');
+
     const quickChatDiv = document.getElementById('quick-chat');
     const emotesDiv = document.getElementById('emotes');
-    const chatDisplay = document.getElementById('chat-message-display');
+
+    console.log('🔍 Quick chat div:', quickChatDiv);
+    console.log('🔍 Emotes div:', emotesDiv);
 
     // Show UI elements
     if (quickChatDiv) {
       quickChatDiv.classList.remove('hidden');
+      console.log('✅ Quick chat UI shown');
+    } else {
+      console.error('❌ Quick chat div not found!');
     }
+
     if (emotesDiv) {
       emotesDiv.classList.remove('hidden');
+      console.log('✅ Emotes UI shown');
+    } else {
+      console.error('❌ Emotes div not found!');
     }
 
     // Setup quick chat buttons
     const chatButtons = document.querySelectorAll('.chat-button');
-    chatButtons.forEach(button => {
+    console.log(`🔍 Found ${chatButtons.length} chat buttons`);
+    chatButtons.forEach((button, index) => {
       button.addEventListener('click', () => {
+        console.log(`🖱️ Chat button ${index} clicked!`);
         const message = (button as HTMLElement).getAttribute('data-message');
+        console.log('📝 Message:', message);
         if (message) {
           this.sendChatMessage(message);
         }
@@ -2438,9 +2452,12 @@ export class Game {
 
     // Setup emote buttons
     const emoteButtons = document.querySelectorAll('.emote-button');
-    emoteButtons.forEach(button => {
+    console.log(`🔍 Found ${emoteButtons.length} emote buttons`);
+    emoteButtons.forEach((button, index) => {
       button.addEventListener('click', () => {
+        console.log(`🖱️ Emote button ${index} clicked!`);
         const emote = (button as HTMLElement).getAttribute('data-emote');
+        console.log('😀 Emote:', emote);
         if (emote) {
           this.sendEmote(emote);
         }
@@ -2454,15 +2471,23 @@ export class Game {
    * Send a chat message (broadcasts to all players)
    */
   private sendChatMessage(message: string): void {
+    console.log('💬 sendChatMessage called with:', message);
+    console.log('🔌 Connection status - isConnected:', this.isConnected, 'websocket:', this.websocket);
+    console.log('🆔 Player ID:', this.playerId);
+    console.log('🎮 Character:', this.character);
+
     if (!this.isConnected || !this.websocket) {
       console.warn('⚠️ Not connected - cannot send chat message');
+      console.warn('⚠️ You need to connect to the server first!');
       return;
     }
 
     // Display locally above own character
+    console.log('📍 Showing chat above character...');
     this.showChatAboveCharacter(this.playerId, message, true);
 
     // Send to server to broadcast to all other players
+    console.log('📡 Sending to server...');
     this.sendMessage({
       type: 'chat_message',
       message: message,
@@ -2476,8 +2501,12 @@ export class Game {
    * Send an emote (triggers character animation, broadcasts to all players)
    */
   private sendEmote(emote: string): void {
+    console.log('👋 sendEmote called with:', emote);
+    console.log('🔌 Connection status - isConnected:', this.isConnected, 'websocket:', this.websocket);
+
     if (!this.isConnected || !this.websocket) {
       console.warn('⚠️ Not connected - cannot send emote');
+      console.warn('⚠️ You need to connect to the server first!');
       return;
     }
 
@@ -2488,9 +2517,11 @@ export class Game {
     }
 
     // Play emote animation locally
+    console.log('🎭 Playing emote animation...');
     this.playEmoteAnimation(emote);
 
     // Send to server to broadcast to all other players
+    console.log('📡 Sending emote to server...');
     this.sendMessage({
       type: 'player_emote',
       emote: emote,
