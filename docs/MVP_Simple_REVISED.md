@@ -1,177 +1,138 @@
-# 🎮 **REVISED**: Simple MVP Plan - Core Walnut Gameplay Focus
+# 🎮 Hidden Walnuts - MVP Development Plan
 
-**🎯 NEW FOCUS**: Build the **actual Hidden Walnuts game** - focus on walnut hiding/seeking mechanics and competitive multiplayer rather than character variety.
-
-**✅ Current Status**: Animated Colobus character with terrain + physics **COMPLETED** - ready for walnut gameplay!
+**Current Status**: Multiplayer foundation complete with smooth animations ✅
 
 ---
 
-## 🎯 **Game Vision Alignment**
-
-### **Core Game Loop** (from GameVision.md)
-1. **Join Game** → Get 3 walnuts to hide
-2. **Hide Walnuts** → Press H to bury/bush walnuts  
-3. **Seek Walnuts** → Find others' hidden walnuts
-4. **Steal & Rehide** → Competitive walnut ownership
-5. **Score Points** → Different points for burial types
-6. **24-Hour Cycles** → World resets, leaderboard competition
-
-### **Current Progress** ✅
-- ✅ **3D Forest Terrain** - Procedural with proper character positioning + CORS fixes
-- ✅ **Animated Character** - Colobus with idle/run/jump + bounding box positioning  
-- ✅ **Movement System** - WASD + camera following + gravity physics
-- ✅ **Backend Architecture** - Cloudflare Workers + Durable Objects (simplified & production-ready)
+## 📋 Table of Contents
+- [Completed Work](#completed-work)
+- [Current Work: MVP 2.0](#mvp-20-multiplayer-foundation)
+- [Upcoming MVPs](#upcoming-mvps)
+- [Timeline Summary](#timeline-summary)
 
 ---
 
-## 🧹 **MVP 1.9: Worker Code Cleanup** ✅ **COMPLETED**
+## ✅ Completed Work
 
-**Objective**: Simplify over-engineered worker code to align with simplified game approach before implementing walnut mechanics.
+### MVP 1.5: Animated Character System
+- 3D forest terrain with procedural generation
+- Colobus character with idle/walk/run/jump animations
+- WASD movement + camera following + physics
+- Smooth animation transitions and movement
 
-### **Issues Resolved** ✅
-- ✅ **Over-Engineered Code**: Removed enterprise logging, complex anti-cheat, unused routes
-- ✅ **Complexity Mismatch**: Simplified backend to match simplified Game.ts frontend  
-- ✅ **Confusing Codebase**: Clear, focused code ready for walnut integration
-- ✅ **Outdated Architecture**: Updated to simple approach without ECS complexity
-- ✅ **Production Errors**: Fixed CORS/asset loading issues causing console errors
+### MVP 1.9: Backend Simplification
+- Simplified Cloudflare Workers architecture
+- Basic Durable Objects (ForestManager, WalnutRegistry, Leaderboard)
+- WebSocket connections working
+- Production-ready with CORS fixes
 
-### **Completed Work** (3 days)
+---
 
-**Day 1: Remove Enterprise Complexity** ✅
-```bash
-# ✅ Deleted over-engineered files
-rm workers/Logger.ts workers/constants.ts
+## 🎯 MVP 2.0: Multiplayer Foundation
 
-# ✅ Simplified api.ts routing
-- Removed unused routes (/server-metrics, /rehide-test, etc.)
-- Kept core routes: /ws, /join, /hide, /leaderboard  
-- Replaced Logger with simple console.log
-- Simplified CORS handling
-```
+**Goal**: Multiple players can see each other moving in real-time
 
-**Day 2: Simplify Durable Objects** ✅
+**Status**: IN PROGRESS
+
+### Core Features
+✅ WebSocket connections
+✅ Basic player position sync
+✅ Smooth animation synchronization
+⏳ Player identification UI
+⏳ Loading states & error handling
+⏳ Connection recovery
+
+### NEW: Player Identification System
+**Player Name Tags** - Floating UI above each character
 ```typescript
-// ✅ ForestManager.ts - 2,194 lines → 377 lines (83% reduction)
-- Removed anti-cheat tracking
-- Removed complex error handling  
-- Removed metrics collection
-- Kept: WebSocket handling, basic world state
-
-// ✅ WalnutRegistry.ts - Basic CRUD only
-- Simple walnut storage/retrieval
-- Basic ownership tracking (3pts buried, 1pt bush)
-- Removed hot zones, analytics
-
-// ✅ SquirrelSession.ts - Minimal player state
-- Basic position tracking
-- Simple inventory (walnut count)
-- Removed complex authentication
-
-// ✅ Leaderboard.ts - Basic scoring
-- Basic score storage/retrieval with ranking
-- Removed time multipliers initially
+// Display name tag above player with unique icon/badge
+interface PlayerTag {
+  playerId: string;
+  displayName: string;  // "Player 1", "Player 2", or custom name
+  iconShape: 'circle' | 'square' | 'triangle';  // Unique visual marker
+  tagColor: string;     // Background color for tag (not character)
+}
 ```
 
-**Day 3: Test & Validate + Production Fixes** ✅
-```bash
-# ✅ Test simplified workers
-npm run dev:worker
+**UI Features**:
+- Floating name tag above character (always facing camera)
+- Small icon/shape next to name (circle, square, triangle, star)
+- Clean, minimal design (semi-transparent background)
+- Distance-based scaling (smaller when far away)
 
-# ✅ Validated core functionality
-- WebSocket connection works
-- Basic Durable Object storage functional
-- Simple API endpoints respond correctly
-- Fixed production CORS/asset loading errors
-
-# ✅ Production fixes applied
-- Fixed _routes.json excluding .glb files
-- Added _headers file for proper CORS
-- Improved forest.ts model loading (80 → 2 requests)
-- Added fallback system for failed model loads
-```
-
-### **Success Criteria** ✅
-- ✅ Workers start without errors
-- ✅ WebSocket connects from client
-- ✅ Simple API routes functional (/join, /leaderboard)
-- ✅ Durable Objects store/retrieve basic data
-- ✅ Code is readable and matches simplified approach
-- ✅ Production deployment ready (no CORS/asset errors)
-
-**Completed Time**: **3 days** (August 28, 2025)
+### NEW: Loading & Error States
+- **Loading Screen**: Progress bar while assets load
+- **Connection Status**: Visual indicator (connected/disconnected)
+- **Reconnection**: Automatic retry with user feedback
+- **Error Messages**: Clear notifications for network issues
 
 ---
 
-## 👥 **MVP 2.0: Simple Multiplayer** (CURRENT)
+## 🥜 MVP 3: Core Walnut Mechanics
 
-**Objective**: Get basic multiplayer working with the simple Game.ts architecture.
+**Goal**: Players can hide and find walnuts with proper game rules
 
-**Current Status**: Fixing WebSocket connections and player synchronization
+### Part 1: Walnut Interaction (Week 1)
 
-### **Core Features**
-- **WebSocket Connection** - Client connects to Cloudflare Workers
-- **Player Sync** - See other players moving in real-time
-- **Multiple Browsers** - Test with 2+ browser windows
-- **Simple Networking** - No complex client prediction, just basic position sync
-
-**Estimated Time**: **1-2 weeks**
-
----
-
-## 🥜 **MVP 3: Core Walnut Mechanics**
-
-**Objective**: Implement the actual walnut hiding/seeking gameplay that defines the game.
-
-### **Week 1: Walnut Interaction System**
-
-**Walnut Hiding (H Key)**:
+**Hiding Walnuts** - Press H key
 ```typescript
-// In Game.ts
 private onHideWalnut() {
   if (this.playerWalnuts > 0) {
-    // Play "Eat" animation (digging/burying)
-    this.setAction('eat');
-    
-    // Create walnut at player position
+    this.setAction('eat');  // Digging animation
     const walnut = this.createWalnut(this.character.position, 'buried');
-    
-    // Send to server
     this.sendWalnutHide(walnut);
-    
     this.playerWalnuts--;
   }
 }
 ```
 
-**Walnut Finding (Click Detection)**:
+**Finding Walnuts** - Click on walnut
 ```typescript
-// Raycasting for walnut interaction
 private onMouseClick(event: MouseEvent) {
   const walnut = this.getWalnutAtPosition(mousePos);
   if (walnut && this.isNearPlayer(walnut.position)) {
-    // Play "Bounce" animation (excited finding)
-    this.setAction('bounce');
-    
-    // Collect walnut
+    this.setAction('bounce');  // Excited animation
     this.collectWalnut(walnut);
     this.score += walnut.points;
   }
 }
 ```
 
-**Walnut Types & Scoring**:
-- **Buried Walnuts**: 3 points (harder to find)
-- **Bush Walnuts**: 1 point (easier to spot)
-- **Game Walnuts**: Bonus multiplier
-- **Visual Indicators**: Subtle terrain disturbances for buried walnuts
+**Walnut Types**:
+- **Buried**: 3 points (subtle terrain disturbance, harder to find)
+- **Bush**: 1 point (visible in bushes, easier to spot)
+- **Game Walnut**: Special bonus multiplier
 
-**Estimated Time**: **5-7 days**
+### Part 2: World Navigation (Week 1)
 
-### **Week 2: Basic Walnut Persistence**
+**Navigation Landmarks** - Help players orient themselves
+- Colored stone towers at cardinal directions (North, South, East, West)
+- Unique rock formations (arch, pillar, cluster)
+- Special trees with ribbons/markers
+- Spawn point beacon (always visible "home")
+
+**Grid Location System** - A1 to Z26 coordinate grid
+- Simple A1-style grid overlay on minimap
+- Location shown in corner of screen ("Current: M12")
+- Makes it easier to communicate locations
+
+**Minimap** - Corner of screen
+- Shows player positions (friendly dots)
+- Landmarks marked
+- Grid lines visible
+
+### Part 3: Basic HUD (Week 1)
+
+**Player Information Display**:
+- Walnut inventory count (e.g., "Walnuts: 3")
+- Current score
+- Controls reminder (togglable with F key)
+- Current location grid (e.g., "Location: M12")
+
+### Part 4: Walnut Persistence (Week 2)
 
 **Server Integration**:
 ```typescript
-// WebSocket walnut messages
 interface WalnutMessage {
   type: 'HIDE_WALNUT' | 'FIND_WALNUT';
   walnutId: string;
@@ -181,90 +142,199 @@ interface WalnutMessage {
 }
 ```
 
-**Walnut State Management**:
-- **WalnutRegistry Durable Object** (already exists) integration
-- **Persistent Walnuts** remain after players leave
-- **Walnut Ownership** tracking for scoring
-- **Basic Anti-Cheat** server-side position validation
+**Persistence Features**:
+- Walnuts remain after players leave
+- Server validates walnut positions (anti-cheat)
+- Walnut ownership tracking
+- WalnutRegistry Durable Object integration
 
-**Estimated Time**: **3-5 days**
+### NEW: Voiceover & Narration System
 
----
+**Narrator Voiceover** - Guide players through game
+- Welcome message: "Welcome to the Hidden Walnuts! You have 3 walnuts to hide..."
+- Tutorial tips: "Press H to hide a walnut..." "Click to collect walnuts..."
+- Achievement callouts: "First walnut hidden!" "10 walnuts found!"
+- Event announcements: "Nut Rush begins in 5 minutes!"
 
-## 👥 **MVP 4: Competitive Multiplayer** 
+**NPC Voiceover** - Ambient forest characters
+- Friendly squirrels: "Good hiding spot!" "Someone's been here..."
+- Wise owl: "The forest remembers..." "Patience brings rewards..."
+- Playful chipmunk: "Ooh, shiny!" "Bet you can't find mine!"
 
-**Objective**: Make it actually competitive with multiple players hiding/seeking.
+**Voice Actor Needs** - Record these lines
+1. **Narrator** (calm, guiding voice): ~50 lines
+   - Tutorial/onboarding
+   - Game state announcements
+   - Achievement unlocks
 
-### **Week 3: Multi-Player Walnut Competition**
+2. **Forest NPCs** (3-4 character voices): ~30 lines each
+   - Ambient comments
+   - Hints and tips
+   - Reaction to player actions
 
-**Real-time Player Sync**:
-- **Multiple Players** see each others' characters moving
-- **Walnut Stealing** - find and collect others' hidden walnuts
-- **Animation Sync** - see other players' hide/seek animations
-- **Proximity Rules** - can't hide/find walnuts too close to others
-
-**Leaderboard System**:
+**Technical Implementation**:
 ```typescript
-// Real-time scoring
-interface GameScore {
-  playerId: string;
-  characterType: 'colobus'; // expand later
-  score: number;
-  wallnutsHidden: number;
-  wallnutsFound: number;
-  timeMultiplier: number; // 1.1x to 2x based on time played
+class VoiceoverSystem {
+  playNarration(event: 'welcome' | 'tutorial' | 'achievement');
+  playNPCLine(npcType: 'squirrel' | 'owl' | 'chipmunk', context: string);
+  adjustVolume(distance: number);  // Quieter when far from NPCs
 }
 ```
 
-**Competitive Mechanics**:
-- **Walnut Rehiding** - steal found walnuts and hide them again
-- **Score Multipliers** - time played bonus (1.1x to 2x)
-- **Fresh Player Boost** - catch-up mechanic for late joiners
-- **Real-time Leaderboard** updates
+---
 
-**Estimated Time**: **5-7 days**
+## 🏆 MVP 3.5: Multiple Character Selection
+
+**Goal**: Players can choose from 2-3 different characters (visual variety only)
+
+### Simple Character Selection
+
+**Available Characters** (no unique abilities yet):
+- Colobus (already implemented)
+- 1-2 additional characters from character library
+- Same movement/physics for all
+- Same animations (idle/walk/run/jump)
+
+**Character Select Screen**:
+- Simple grid showing available characters
+- Click to preview character
+- Confirm selection before joining game
+
+**Why Now?**:
+- Character assets already exist
+- Low implementation effort
+- Increases player engagement
+- Players can express preference
+
+**What's Saved for Later**:
+- Unique character abilities
+- Character unlocks/progression
+- Full 8-character roster
+- Ability-based balancing
 
 ---
 
-## 🌍 **MVP 5: Persistent 24-Hour World**
+## 👥 MVP 4: Competitive Multiplayer
 
-**Objective**: Create the persistent world that resets every 24 hours.
+**Goal**: Full competitive multiplayer with leaderboards
 
-### **Week 4: World Persistence & Daily Cycles**
+### Competitive Features
 
-**24-Hour World Cycles**:
-- **Daily Reset** - forest regenerates, walnuts respawn
-- **Persistent Progress** - player stats carry over
-- **100 Game Walnuts** placed randomly each cycle
-- **3 Walnuts per Player** when joining
+**Walnut Stealing**:
+- Find other players' hidden walnuts
+- Collect them for points
+- Re-hide them in new locations
+
+**Real-time Leaderboard**:
+```typescript
+interface GameScore {
+  playerId: string;
+  displayName: string;
+  score: number;
+  walnuts Hidden: number;
+  walnutsFound: number;
+  timeMultiplier: number;  // 1.1x to 2x based on play time
+}
+```
+
+**Leaderboard UI**:
+- Top 10 players visible
+- Your current rank highlighted
+- Live updates as scores change
+- 24-hour cycle stats
+
+**Competition Balance**:
+- Proximity rules (can't hide/find too close to other players)
+- Fresh player boost (catch-up mechanic for late joiners)
+- Time multiplier rewards (longer play = higher multiplier)
+
+### NEW: Communication System
+
+**Quick Chat** - Predefined messages
+- "Nice find!"
+- "Over here!"
+- "Good hiding spot!"
+- "Want to team up?"
+
+**Emotes** - Character gestures
+- Wave
+- Point
+- Celebrate
+- Shrug
+
+### Tutorial & Onboarding
+
+**First-Time Player Guide**:
+- 5-step interactive tutorial
+- Shows controls (WASD, H, mouse)
+- Explains walnut hiding/finding
+- Teaches scoring system
+- Optional skip for experienced players
+
+**In-Game Hints**:
+- Context-sensitive tips
+- Appears when relevant (e.g., "Press H to hide" when near good spot)
+- Can be disabled in settings
+
+---
+
+## 🌍 MVP 5: Persistent 24-Hour World
+
+**Goal**: World resets every 24 hours with persistent player progress
+
+### World Persistence
+
+**24-Hour Cycle**:
+- Forest regenerates at reset
+- 100 game walnuts spawn randomly
+- Each player gets 3 walnuts on join
+- Leaderboard tracks cycle rankings
 
 **Session Management**:
-- **Join Anytime** - players can enter mid-cycle  
-- **Persistent Walnuts** - remain hidden when players leave
-- **World State Sync** - new players see current walnut state
-- **Cycle Countdown** - UI showing time until reset
+- Join anytime during cycle
+- Your walnuts remain when you leave
+- Rejoin to continue (same position)
+- Cycle countdown timer in UI
 
-**Backend Integration** (using existing Durable Objects):
-- **ForestManager** - world state and daily reset logic
-- **PlayerSession** - track player progress across sessions  
-- **WalnutRegistry** - persistent walnut locations
-- **Leaderboard** - 24-hour scoring cycles
+**Backend Integration**:
+- ForestManager: world state & reset logic
+- WalnutRegistry: persistent walnut locations
+- PlayerSession: track progress across sessions
+- Leaderboard: cycle-based rankings
 
-**Estimated Time**: **5-7 days**
+### NEW: Performance Optimization
+
+**LOD System** - Level of Detail
+- Distant objects use simpler models
+- Reduces polygon count for far terrain
+- Improves FPS in dense forest areas
+
+**Object Pooling**:
+- Reuse walnut/NPC objects instead of creating new
+- Reduces memory allocation/garbage collection
+- Smoother performance with many objects
+
+**Occlusion Culling**:
+- Don't render objects behind trees/terrain
+- Significant FPS boost in forest
+
+**Auto-Quality Adjustment**:
+- Detect low FPS
+- Automatically reduce quality settings
+- Maintain smooth gameplay
 
 ---
 
-## 🗑️ **MVP 6: Code Cleanup - Remove ECS Complexity**
+## 🗑️ MVP 6: Code Cleanup
 
-**Objective**: Delete all unused ECS/enterprise code that contradicts the simple architecture philosophy.
+**Goal**: Remove unused ECS/enterprise code
 
-**Priority**: **Maintenance** - Remove confusion and maintain simple architecture integrity.
+### Files to Delete
 
-### **Files to Delete** (Unused ECS Architecture)
 ```bash
-# Delete entire ECS system folders
+# Delete entire unused folders
 rm -rf client/src/ecs/
-rm -rf client/src/entities/ 
+rm -rf client/src/entities/
 rm -rf client/src/systems/
 rm -rf client/src/services/
 rm -rf client/src/core/
@@ -275,212 +345,270 @@ rm -rf client/src/test/
 rm client/src/GameComposition.ts
 rm client/src/ENTERPRISE_ARCHITECTURE.md
 rm client/src/ARCHITECTURE_README.md
-rm client/src/Game\ 2.ts
-
-# Keep simple files only
-# ✅ Game.ts (simple game class - 243 lines)
-# ✅ main.ts (simple bootstrap - 25 lines)  
-# ✅ terrain.ts (terrain generation)
-# ✅ forest.ts (forest generation)
-# ✅ style.css, vite-env.d.ts, types.ts
 ```
 
-### **Estimated Cleanup**
-- **Folders Deleted**: 8 complex folders (ecs/, entities/, systems/, services/, core/, rendering/, test/)
-- **Files Deleted**: ~25+ complex files
-- **Lines Removed**: ~7,000+ lines of unused complexity
-- **Result**: Clean 8-file simple architecture as intended
+### Keep Simple Architecture
 
-**Estimated Time**: **1-2 hours** (careful deletion to avoid breaking Game.ts)
+**Keep These Files**:
+- Game.ts (main game class)
+- main.ts (bootstrap)
+- terrain.ts (terrain generation)
+- forest.ts (forest generation)
+- style.css, vite-env.d.ts, types.ts
+
+**Result**:
+- ~8 files instead of ~30
+- ~500 lines instead of ~7,500
+- Clean, maintainable codebase
 
 ---
 
-## 🎨 **MVP 6.5: Advanced Animation Smoothness** (Future Enhancement)
+## 🎨 MVP 6.5: Advanced Animation Polish (Optional)
 
-**Objective**: Further refine animation and movement smoothness for AAA-quality feel.
+**Goal**: AAA-quality animation smoothness
 
-**Status**: Current implementation is functional with basic smoothness fixes applied. This MVP targets polish-level refinements.
+**Status**: Current smoothness is good enough for gameplay. This is optional polish.
 
-### **Current Smoothness Implementation** ✅
-- ✅ **Manual Delta Time** - Replaced THREE.Clock.getDelta() with performance.now()
-- ✅ **Capped Frame Time** - Max 1/30s to prevent spiral of death
-- ✅ **Seamless Animation Loops** - Configured LoopRepeat for walk/run/idle
-- ✅ **Smooth Camera** - Lerp factor 0.15 for camera follow
-- ✅ **Continuous Velocity** - Acceleration/deceleration physics (20/15 units/s²)
-- ✅ **Simplified Interpolation** - Removed complex extrapolation causing jitter
+### Current Implementation ✅
+- Manual delta time calculation
+- Capped frame time (prevents lag spikes)
+- Seamless animation loops
+- Smooth camera interpolation
+- Acceleration/deceleration physics
 
-### **Future Refinements** (Post-Core Gameplay)
+### Future Refinements (If Time Permits)
 
-**Advanced Interpolation Techniques**:
-```typescript
-// Hermite spline interpolation for smoother remote players
-private hermiteInterpolation(p0, p1, v0, v1, t) {
-  // Smoother than linear, accounts for velocity
-  return cubicHermite(p0, p1, v0, v1, t);
-}
-
-// Dead reckoning with error correction
-private deadReckoning(lastState, velocity, timeSinceUpdate) {
-  const predicted = lastState.position + velocity * timeSinceUpdate;
-  const errorCorrection = smoothCorrect(predicted, actualPosition);
-  return predicted + errorCorrection;
-}
-```
-
-**Frame Time Smoothing**:
-```typescript
-// Rolling average of last N frames for ultra-smooth delta
-private smoothedDelta() {
-  this.deltaHistory.push(rawDelta);
-  if (this.deltaHistory.length > 10) this.deltaHistory.shift();
-  return average(this.deltaHistory);
-}
-```
-
-**Input Buffering**:
-```typescript
-// Buffer inputs to prevent dropped frames during physics updates
-private inputBuffer: InputState[] = [];
-private processInputBuffer() {
-  // Process all buffered inputs in order
-  for (const input of this.inputBuffer) {
-    this.applyInput(input);
-  }
-}
-```
-
-**Adaptive Interpolation**:
-```typescript
-// Adjust interpolation delay based on network conditions
-private adaptiveDelay() {
-  const jitter = calculateJitter(this.lastPackets);
-  return baseDelay + (jitter * 2); // Adjust based on jitter
-}
-```
-
-**Estimated Time**: **2-3 days** (when core gameplay is solid)
-
-**Priority**: **Low** - Current smoothness is acceptable for gameplay testing. Refine after walnut mechanics proven fun.
+**Hermite Interpolation** - Smoother remote player movement
+**Dead Reckoning** - Predict position during network lag
+**Input Buffering** - Prevent dropped inputs during lag
+**Adaptive Delay** - Adjust interpolation based on network quality
 
 ---
 
-## 🐺 **MVP 7: Predators & Game Polish**
+## 🐺 MVP 7: Predators & Polish
 
-**Objective**: Add unique predator mechanics and final polish.
+**Goal**: Add predators, power-ups, and final game polish
 
-### **Week 5-6: Predators & Power-ups**
+### Predator System
 
-**Predator AI**:
+**Predator Types**:
+- Hawks (aerial, dive attacks)
+- Wolves (ground, chase players)
+- Spawns randomly, avoids safe zones
+
+**Predator Behavior**:
 ```typescript
-// Simple hawk/wolf behavior
 class Predator {
-  private targetPlayer: Player | null;
-  private huntCooldown: number;
-  
   update() {
     if (this.detectNearbyPlayers()) {
       this.chasePlayer();
-      this.triggerPlayerFear(); // "Fear" animation
+      this.triggerPlayerFear();  // "Fear" animation
     }
   }
 }
 ```
 
 **Defense Mechanics**:
-- **Chatter Defense** - rapid key presses to scare predators
-- **Projectile Defense** - throw objects at predators  
-- **Group Defense** - predators avoid multiple players
+- **Chatter Defense**: Rapid key presses to scare away
+- **Projectile Defense**: Throw objects at predators
+- **Group Defense**: Predators avoid multiple players together
 
-**Power-ups**:
-- **Scent Sniff** - reveal nearby buried walnuts
-- **Fast Dig** - hide/find walnuts quicker
-- **Decoy Nut** - fake walnut that gives no points
+### Power-up System
 
-**Game Polish**:
-- **Hot Zones** - visual indicators of recent activity
-- **Mini-Events** - "Nut Rush" every 4 hours
-- **UI Polish** - score display, walnut counter, timer
-- **Sound Effects** - digging, finding, predator sounds
+**Power-up Types**:
+- **Scent Sniff**: Reveals nearby buried walnuts (10 second duration)
+- **Fast Dig**: Hide/find walnuts 2x faster (20 seconds)
+- **Decoy Nut**: Fake walnut that gives no points (trap for others)
 
-**Estimated Time**: **7-10 days**
+**Spawn Mechanics**:
+- Random spawns every 5 minutes
+- Glowing effect to indicate location
+- First player to collect gets power-up
 
----
+### Game Polish
 
-## 📊 **Revised Timeline - Game-First Approach**
+**Visual Polish**:
+- Hot zones (glowing areas of recent activity)
+- Particle effects (digging, finding, power-ups)
+- Weather effects (rain, fog for atmosphere)
 
-| MVP | Focus | Time | Core Features |
-|-----|-------|------|--------------|
-| **✅ MVP 1.5** | **Animated Character** | **DONE** | Working Colobus with terrain + physics |
-| **✅ MVP 1.9** | **Worker Code Cleanup** | **DONE** | Simplify backend, remove complexity |
-| **🎯 MVP 2.0** | **Simple Multiplayer** | **1-2 weeks** | WebSocket, player sync, basic networking |
-| **MVP 3** | **Walnut Mechanics** | **1-2 weeks** | Hide/seek walnuts, scoring system |
-| **MVP 4** | **Competitive Multiplayer** | **1 week** | Multi-player, stealing, leaderboard |
-| **MVP 5** | **Persistent World** | **1 week** | 24-hour cycles, world persistence |
-| **MVP 6** | **Code Cleanup** | **1-2 hours** | Remove unused ECS complexity |
-| **MVP 7** | **Predators & Polish** | **1-2 weeks** | AI predators, power-ups, polish |
+**Audio Polish**:
+- Background forest ambience (birds, wind, streams)
+- Footstep sounds (different per terrain)
+- Digging/finding sound effects
+- Predator sounds (hawk screech, wolf howl)
+- Power-up collection sound
 
-**Total**: **4.5-6.5 weeks** to complete **Hidden Walnuts** core gameplay
+**UI Polish**:
+- Cycle countdown timer
+- Score animations (pop-up when gaining points)
+- Walnut counter with icon
+- Settings menu (audio volume, sensitivity)
 
----
+### NEW: Ambient NPCs
 
-## 🚀 **Implementation Strategy**
+**Non-Interactive NPCs** - Add life to forest
+- Birds flying overhead
+- Squirrels running on branches
+- Deer grazing in clearings
+- Butterflies near flowers
 
-### **Phase 1: Backend Cleanup (THIS WEEK)**
-**Priority**: Clean foundation before walnut implementation
-1. **Remove Enterprise Code** - Logger, constants, unused routes
-2. **Simplify Durable Objects** - Basic CRUD operations only
-3. **Test WebSocket Connection** - Ensure client-worker communication
-4. **Validate Core APIs** - /join, /hide, /leaderboard endpoints
+**Purpose**:
+- Make world feel alive
+- Atmospheric immersion
+- Not game-critical (purely visual)
 
-### **Phase 2: Core Gameplay (NEXT 2 WEEKS)**
-**Priority**: Get walnut hiding/seeking working with animations
-1. **H Key** walnut hiding with "eat" animation
-2. **Mouse Click** walnut finding with "bounce" animation  
-3. **Basic Scoring** system with point values
-4. **Server Integration** for walnut persistence (using cleaned workers)
-
-### **Phase 3: Competition (WEEK 3)**
-**Priority**: Make it multiplayer competitive
-1. **Multiple Players** seeing each other
-2. **Walnut Stealing** mechanics
-3. **Real-time Leaderboard** 
-4. **Score Multipliers** based on time played
-
-### **Phase 4: Persistence (WEEK 4)**
-**Priority**: 24-hour persistent world
-1. **Daily Reset** cycles
-2. **Persistent Walnuts** across sessions
-3. **World State Sync** for new players
-
-### **Phase 5: Unique Features (WEEKS 5-6)**
-**Priority**: Predators and power-ups that make the game special
-1. **Predator AI** with defense mechanics
-2. **Power-up System**
-3. **Final Polish** and balancing
+**Voiceover Integration**:
+- Ambient NPC comments
+- Narrator announces events
+- Predator warning callouts
 
 ---
 
-## 🎨 **Character Variety: Future Enhancement**
+## 🔐 MVP 8: Player Authentication
 
-### **Season 2 Features** (After Core Game Complete)
-- **8 Character Types** with unique abilities
-- **Character Unlocks** based on walnut achievements
-- **NPC Population** for forest atmosphere
-- **Advanced Animations** using full animation library
+**Goal**: Players can save progress and return later
 
-### **Why Later?**
-- **Core Gameplay First** - walnut mechanics define the game
-- **One Character Perfect** - better than 8 characters with broken gameplay
-- **Asset Value** - amazing character assets deserve a working game to showcase them
-- **Player Retention** - gameplay keeps players, variety brings them back
+**Why Last?**:
+- Core gameplay must be fun first
+- Can launch without it (anonymous play works)
+- Authentication adds complexity
+- Important for retention, not for validation
+
+### Simple Authentication
+
+**Guest Mode** (default):
+- Click "Play" to start immediately
+- Random display name ("Player 1234")
+- Progress saved to session only
+
+**Account Creation** (optional):
+- Simple username/password
+- Or magic link email (passwordless)
+- Progress persists across devices
+- Leaderboard shows persistent identity
+
+**Backend**:
+- Cloudflare D1 database for user storage
+- Or external service (Auth0, Firebase)
+- Secure password hashing
+- Session management
+
+**Features**:
+- Save character preference
+- Save total stats (all-time walnuts found)
+- Persistent leaderboard rank
+- Account recovery (email reset)
 
 ---
 
-## 🎯 **Key Success Metrics**
+## 📅 Timeline Summary
 
-### **MVP 2 Success**: Players can hide and find walnuts with proper animations
-### **MVP 3 Success**: Multiple players competing for walnut scores  
-### **MVP 4 Success**: 24-hour persistent world with daily resets
-### **MVP 5 Success**: Complete Hidden Walnuts experience with predators
+| MVP | Focus | Status |
+|-----|-------|--------|
+| 1.5 | Animated Character | ✅ Complete |
+| 1.9 | Backend Cleanup | ✅ Complete |
+| 2.0 | Multiplayer Foundation | 🎯 In Progress |
+| 3 | Walnut Mechanics + Navigation + Voiceover | Pending |
+| 3.5 | Multiple Characters | Pending |
+| 4 | Competitive Multiplayer + Tutorial | Pending |
+| 5 | Persistent World + Performance | Pending |
+| 6 | Code Cleanup | Pending |
+| 6.5 | Animation Polish | Optional |
+| 7 | Predators + NPCs + Polish | Pending |
+| 8 | Player Authentication | Pending |
 
-**Ready to start MVP 2 - Core Walnut Mechanics?** 🥜
+---
+
+## 🎯 Success Criteria
+
+### MVP 2.0 Success
+- [x] Players connect via WebSocket
+- [x] See other players moving smoothly
+- [ ] Player name tags visible
+- [ ] Connection recovery works
+
+### MVP 3 Success
+- [ ] Can hide walnuts with H key
+- [ ] Can find walnuts by clicking
+- [ ] Landmarks help navigation
+- [ ] Minimap shows position
+- [ ] Voiceover guides players
+
+### MVP 4 Success
+- [ ] Leaderboard tracks top players
+- [ ] Can steal others' walnuts
+- [ ] Tutorial teaches new players
+- [ ] Quick chat works
+
+### MVP 5 Success
+- [ ] 24-hour cycle resets world
+- [ ] 60 FPS maintained with many objects
+- [ ] Players can rejoin mid-cycle
+
+### MVP 7 Success
+- [ ] Predators add challenge
+- [ ] Power-ups are fun
+- [ ] Audio enhances immersion
+- [ ] Ambient NPCs add atmosphere
+
+### MVP 8 Success
+- [ ] Players can create accounts
+- [ ] Progress persists across sessions
+- [ ] Leaderboard shows persistent identities
+
+---
+
+## 🎬 Voice Actor Script Outline
+
+### Narrator Lines (~50 total)
+
+**Welcome/Tutorial** (10 lines):
+- "Welcome to the Hidden Walnuts forest!"
+- "You have 3 walnuts to hide. Choose your spots wisely."
+- "Press H near the ground to bury a walnut."
+- "Click on suspicious spots to find hidden walnuts."
+- "Buried walnuts are worth 3 points, bush walnuts worth 1."
+- [... more tutorial lines]
+
+**Achievements** (15 lines):
+- "First walnut hidden!"
+- "You've found 10 walnuts!"
+- "Top of the leaderboard!"
+- [... more achievement callouts]
+
+**Events** (15 lines):
+- "Nut Rush begins in 5 minutes!"
+- "The forest will reset in one hour."
+- "A predator has been spotted nearby..."
+- [... more event announcements]
+
+**Contextual Tips** (10 lines):
+- "This looks like a good hiding spot."
+- "Other players are nearby. Be careful!"
+- "You've been here before..."
+- [... more contextual hints]
+
+### NPC Lines (~30 per character)
+
+**Squirrel** (friendly, helpful):
+- "Good hiding spot!"
+- "I saw someone over by the big oak tree."
+- "Shhh! Someone's coming!"
+- [... more squirrel lines]
+
+**Owl** (wise, mysterious):
+- "The forest remembers all secrets..."
+- "Patience brings great rewards."
+- "Not all that glitters is a walnut..."
+- [... more owl lines]
+
+**Chipmunk** (playful, cheeky):
+- "Ooh, shiny! Is that yours?"
+- "Bet you can't find mine!"
+- "Hehe, too slow!"
+- [... more chipmunk lines]
+
+---
+
+**Next Step**: Complete MVP 2.0 multiplayer foundation 🚀
