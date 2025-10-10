@@ -4,7 +4,7 @@ A **simplified** multiplayer 3D game where squirrels search for hidden walnuts i
 
 ## 🎯 **Current Status - Simplified Architecture**
 
-- **Current Phase**: MVP Simple 1 ✅ **COMPLETED** - Terrain + Animated Character ✅ **WORKING**
+- **Current Phase**: MVP 3.5 ✅ **COMPLETED** - Multiple Character Selection with 3D Preview
 - **Architecture**: **Stripped down** from complex ECS to simple, focused game logic
 - **Files**: Reduced from **31 complex files** to **8 focused files**
 - **Focus**: **Simple, playable game** instead of enterprise patterns
