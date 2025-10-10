@@ -1,4 +1,5 @@
 // Simplified ForestManager - Basic WebSocket and world state management
+// Updated for MVP 3.5 - Multiple character support
 
 interface DurableObjectState {
   storage: DurableObjectStorage;
