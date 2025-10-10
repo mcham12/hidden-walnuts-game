@@ -74,6 +74,13 @@ export class Game {
   private lastFrameTime: number = 0;
   private MAX_DELTA_TIME = 1/30; // Cap at 30fps to prevent spiral of death
 
+  // MVP 3: Walnut system properties
+  private walnuts: Map<string, THREE.Group> = new Map(); // All walnuts in world
+  private playerWalnutCount: number = 3; // Player starts with 3 walnuts to hide
+  private playerScore: number = 0; // Player's current score
+  private raycaster: THREE.Raycaster = new THREE.Raycaster();
+  private mouse: THREE.Vector2 = new THREE.Vector2();
+
 
   async init(canvas: HTMLCanvasElement) {
     console.log('🚀 GAME INIT STARTED');
@@ -150,8 +157,11 @@ export class Game {
     // Load selected character
     await this.loadCharacter();
 
-    // Add landmark cube for navigation  
+    // Add landmark cube for navigation
     this.addLandmarkCube();
+
+    // MVP 3: Spawn initial walnuts for testing
+    this.spawnInitialWalnuts();
 
     // Setup multiplayer connection
     await this.setupMultiplayer();
@@ -298,14 +308,19 @@ export class Game {
   private setupEvents() {
     document.addEventListener('keydown', (e) => {
       this.keys.add(e.key.toLowerCase());
-      
+
       // Jump with space
       if (e.key === ' ' && !this.isJumping) {
         this.isJumping = true;
         this.velocity.y = this.jumpVelocity;
         this.setAction('jump');
       }
-      
+
+      // MVP 3: Hide walnut with H key
+      if (e.key === 'h' || e.key === 'H') {
+        this.hideWalnut();
+      }
+
       // Debug overlay toggle with F key
       if (e.key === 'f' || e.key === 'F') {
         const debugOverlay = document.getElementById('debug-overlay');
@@ -313,7 +328,7 @@ export class Game {
           debugOverlay.classList.toggle('hidden');
         }
       }
-      
+
       // Debug scene contents with I key (Info)
       if (e.key === 'i' || e.key === 'I') {
         console.log('🔍 Scene debug info:');
@@ -328,8 +343,13 @@ export class Game {
         });
       }
     });
-    
+
     document.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
+
+    // MVP 3: Mouse click for walnut finding
+    window.addEventListener('click', (event) => {
+      this.onMouseClick(event);
+    });
   }
 
   private onResize() {
@@ -398,6 +418,9 @@ export class Game {
 
     // Update remote player interpolation
     this.updateRemotePlayerInterpolation(delta);
+
+    // MVP 3: Animate walnuts
+    this.animateWalnuts(delta);
 
     this.renderer.render(this.scene, this.camera);
   };
@@ -1115,7 +1138,7 @@ export class Game {
     const updateDebug = () => {
       try {
         const playerPosSpan = document.getElementById('player-pos');
-        const playerCountSpan = document.getElementById('player-count'); 
+        const playerCountSpan = document.getElementById('player-count');
         const networkStatusSpan = document.getElementById('network-status');
         const playerIdSpan = document.getElementById('player-id');
 
@@ -1135,13 +1158,420 @@ export class Game {
         if (playerIdSpan) {
           playerIdSpan.textContent = this.playerId || 'None';
         }
+
+        // MVP 3: Update walnut HUD
+        this.updateWalnutHUD();
       } catch (error) {
         // Ignore debug update errors
       }
-      
+
       requestAnimationFrame(updateDebug);
     };
-    
+
     updateDebug();
+  }
+
+  /**
+   * MVP 3: Update walnut HUD display
+   */
+  private updateWalnutHUD(): void {
+    const walnutCountSpan = document.getElementById('walnut-count');
+    const playerScoreSpan = document.getElementById('player-score');
+
+    if (walnutCountSpan) {
+      walnutCountSpan.textContent = `${this.playerWalnutCount}`;
+    }
+
+    if (playerScoreSpan) {
+      playerScoreSpan.textContent = `${this.playerScore}`;
+    }
+  }
+
+  // MVP 3: Walnut visual system methods
+
+  /**
+   * Create a walnut 3D object with brown texture
+   */
+  private createWalnutGeometry(): THREE.Mesh {
+    const geometry = new THREE.SphereGeometry(0.15, 16, 16);
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x8B4513, // Brown color for walnut
+      roughness: 0.8,
+      metalness: 0.1
+    });
+    const walnut = new THREE.Mesh(geometry, material);
+    walnut.castShadow = true;
+    walnut.receiveShadow = true;
+    return walnut;
+  }
+
+  /**
+   * Create visual indicator for a buried walnut (mound of dirt)
+   */
+  private createBuriedWalnutVisual(position: THREE.Vector3): THREE.Group {
+    const group = new THREE.Group();
+
+    // Mound geometry - slightly raised terrain bump
+    const moundGeometry = new THREE.ConeGeometry(0.3, 0.15, 8);
+    const moundMaterial = new THREE.MeshStandardMaterial({
+      color: 0x4a3728, // Darker soil color
+      roughness: 0.9
+    });
+    const mound = new THREE.Mesh(moundGeometry, moundMaterial);
+    mound.rotation.x = Math.PI; // Flip to be a bump, not a spike
+    mound.position.y = 0.05; // Slightly raised
+    mound.receiveShadow = true;
+    group.add(mound);
+
+    // Add subtle dirt particles (will be animated later)
+    const particleGeometry = new THREE.SphereGeometry(0.02, 4, 4);
+    const particleMaterial = new THREE.MeshBasicMaterial({
+      color: 0x6b4423,
+      transparent: true,
+      opacity: 0.6
+    });
+
+    for (let i = 0; i < 3; i++) {
+      const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+      particle.position.set(
+        (Math.random() - 0.5) * 0.3,
+        0.1 + Math.random() * 0.05,
+        (Math.random() - 0.5) * 0.3
+      );
+      group.add(particle);
+    }
+
+    // Position the entire group
+    group.position.copy(position);
+    group.userData.type = 'buried';
+    group.userData.points = 3;
+
+    return group;
+  }
+
+  /**
+   * Create visual indicator for a bush walnut (visible in foliage)
+   */
+  private createBushWalnutVisual(position: THREE.Vector3): THREE.Group {
+    const group = new THREE.Group();
+
+    // Walnut geometry - partially visible
+    const walnut = this.createWalnutGeometry();
+    walnut.position.y = 0.2; // Raised slightly in bush
+    group.add(walnut);
+
+    // Add shimmer/glint effect
+    const glintGeometry = new THREE.SphereGeometry(0.18, 8, 8);
+    const glintMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffff88,
+      transparent: true,
+      opacity: 0.3,
+      blending: THREE.AdditiveBlending
+    });
+    const glint = new THREE.Mesh(glintGeometry, glintMaterial);
+    glint.position.copy(walnut.position);
+    group.add(glint);
+
+    // Store glint for animation
+    group.userData.glint = glint;
+    group.userData.glintPhase = Math.random() * Math.PI * 2;
+
+    // Position the entire group
+    group.position.copy(position);
+    group.userData.type = 'bush';
+    group.userData.points = 1;
+
+    return group;
+  }
+
+  /**
+   * Create visual indicator for a game walnut (golden bonus)
+   */
+  private createGameWalnutVisual(position: THREE.Vector3): THREE.Group {
+    const group = new THREE.Group();
+
+    // Golden walnut geometry
+    const geometry = new THREE.SphereGeometry(0.18, 16, 16);
+    const material = new THREE.MeshStandardMaterial({
+      color: 0xffd700, // Golden color
+      emissive: 0xffaa00,
+      emissiveIntensity: 0.5,
+      roughness: 0.3,
+      metalness: 0.7
+    });
+    const walnut = new THREE.Mesh(geometry, material);
+    walnut.castShadow = true;
+    walnut.position.y = 0.3; // Floating above ground
+    group.add(walnut);
+
+    // Add glow effect
+    const glowGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffff00,
+      transparent: true,
+      opacity: 0.4,
+      blending: THREE.AdditiveBlending
+    });
+    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+    glow.position.copy(walnut.position);
+    group.add(glow);
+
+    // Add sparkle particles
+    const sparkleGeometry = new THREE.SphereGeometry(0.03, 4, 4);
+    const sparkleMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.8
+    });
+
+    for (let i = 0; i < 6; i++) {
+      const sparkle = new THREE.Mesh(sparkleGeometry, sparkleMaterial);
+      const angle = (i / 6) * Math.PI * 2;
+      sparkle.position.set(
+        Math.cos(angle) * 0.3,
+        walnut.position.y,
+        Math.sin(angle) * 0.3
+      );
+      group.add(sparkle);
+    }
+
+    // Store references for animation
+    group.userData.walnut = walnut;
+    group.userData.glow = glow;
+    group.userData.animationPhase = Math.random() * Math.PI * 2;
+
+    // Position the entire group
+    group.position.copy(position);
+    group.userData.type = 'game';
+    group.userData.points = 5; // Bonus multiplier
+
+    return group;
+  }
+
+  /**
+   * Spawn initial walnuts in the world (for testing)
+   */
+  private spawnInitialWalnuts(): void {
+    console.log('🌰 Spawning initial test walnuts...');
+
+    // Spawn 1 buried walnut
+    const buriedPos = new THREE.Vector3(5, getTerrainHeight(5, 5), 5);
+    const buried = this.createBuriedWalnutVisual(buriedPos);
+    this.scene.add(buried);
+    this.walnuts.set('buried-1', buried);
+
+    // Spawn 1 bush walnut
+    const bushPos = new THREE.Vector3(-5, getTerrainHeight(-5, -5), -5);
+    const bush = this.createBushWalnutVisual(bushPos);
+    this.scene.add(bush);
+    this.walnuts.set('bush-1', bush);
+
+    // Spawn 1 game walnut
+    const gamePos = new THREE.Vector3(0, getTerrainHeight(0, 5), 5);
+    const game = this.createGameWalnutVisual(gamePos);
+    this.scene.add(game);
+    this.walnuts.set('game-1', game);
+
+    console.log(`✅ Spawned ${this.walnuts.size} initial walnuts`);
+  }
+
+  /**
+   * Animate walnuts (glints, pulses, particles)
+   */
+  private animateWalnuts(delta: number): void {
+    for (const [_id, walnutGroup] of this.walnuts) {
+      const type = walnutGroup.userData.type;
+
+      if (type === 'bush') {
+        // Animate glint effect
+        const glint = walnutGroup.userData.glint as THREE.Mesh;
+        if (glint) {
+          walnutGroup.userData.glintPhase += delta * 2;
+          const opacity = 0.2 + Math.sin(walnutGroup.userData.glintPhase) * 0.2;
+          (glint.material as THREE.MeshBasicMaterial).opacity = Math.max(0, opacity);
+        }
+      } else if (type === 'game') {
+        // Animate golden walnut (rotation + pulse)
+        const walnut = walnutGroup.userData.walnut as THREE.Mesh;
+        const glow = walnutGroup.userData.glow as THREE.Mesh;
+
+        if (walnut) {
+          walnutGroup.userData.animationPhase += delta;
+          walnut.rotation.y += delta * 2; // Rotate
+
+          // Pulse effect
+          const pulse = 1 + Math.sin(walnutGroup.userData.animationPhase * 2) * 0.1;
+          walnut.scale.set(pulse, pulse, pulse);
+
+          // Glow pulse
+          if (glow) {
+            const glowPulse = 0.3 + Math.sin(walnutGroup.userData.animationPhase * 3) * 0.15;
+            (glow.material as THREE.MeshBasicMaterial).opacity = glowPulse;
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * MVP 3: Hide a walnut at the player's current position
+   */
+  private hideWalnut(): void {
+    if (!this.character) return;
+
+    // Check if player has walnuts to hide
+    if (this.playerWalnutCount <= 0) {
+      console.log('🚫 No walnuts to hide!');
+      return;
+    }
+
+    // Get player position
+    const playerPos = this.character.position.clone();
+    const terrainY = getTerrainHeight(playerPos.x, playerPos.z);
+
+    // Random choice: buried (70%) or bush (30%)
+    const isBuried = Math.random() < 0.7;
+    const walnutId = `player-${this.playerId}-${Date.now()}`;
+
+    let walnutGroup: THREE.Group;
+    if (isBuried) {
+      // Create buried walnut
+      const position = new THREE.Vector3(playerPos.x, terrainY, playerPos.z);
+      walnutGroup = this.createBuriedWalnutVisual(position);
+      console.log('🌰 Buried walnut at:', position);
+    } else {
+      // Create bush walnut - offset slightly from player
+      const offset = new THREE.Vector3(
+        (Math.random() - 0.5) * 2,
+        0,
+        (Math.random() - 0.5) * 2
+      );
+      const position = new THREE.Vector3(
+        playerPos.x + offset.x,
+        terrainY,
+        playerPos.z + offset.z
+      );
+      walnutGroup = this.createBushWalnutVisual(position);
+      console.log('🌰 Hidden walnut in bush at:', position);
+    }
+
+    // Add to scene and registry
+    walnutGroup.userData.ownerId = this.playerId;
+    walnutGroup.userData.id = walnutId;
+    this.scene.add(walnutGroup);
+    this.walnuts.set(walnutId, walnutGroup);
+
+    // Decrement player walnut count
+    this.playerWalnutCount--;
+    console.log(`✅ Walnut hidden! Remaining: ${this.playerWalnutCount}`);
+
+    // TODO: Send to server for multiplayer sync
+  }
+
+  /**
+   * MVP 3: Remove a walnut from the world (when found)
+   */
+  private removeWalnut(walnutId: string): void {
+    const walnutGroup = this.walnuts.get(walnutId);
+    if (!walnutGroup) return;
+
+    // Clean up geometry and materials
+    walnutGroup.traverse((child: any) => {
+      if (child.isMesh) {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach((mat: any) => mat.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      }
+    });
+
+    this.scene.remove(walnutGroup);
+    this.walnuts.delete(walnutId);
+    console.log('🗑️ Removed walnut:', walnutId);
+  }
+
+  /**
+   * MVP 3: Handle mouse click for walnut finding
+   */
+  private onMouseClick(event: MouseEvent): void {
+    // Calculate mouse position in normalized device coordinates (-1 to +1)
+    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    // Update raycaster with camera and mouse position
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+
+    // Check for intersections with walnuts
+    const walnutObjects: THREE.Object3D[] = [];
+    for (const walnutGroup of this.walnuts.values()) {
+      walnutObjects.push(walnutGroup);
+    }
+
+    // Raycast against all walnut groups and their children
+    const intersects = this.raycaster.intersectObjects(walnutObjects, true);
+
+    if (intersects.length > 0) {
+      // Find the walnut group that was clicked
+      let clickedWalnut: THREE.Group | null = null;
+      let walnutId: string | null = null;
+
+      for (const intersect of intersects) {
+        // Traverse up to find the walnut group
+        let obj = intersect.object;
+        while (obj.parent) {
+          if (obj.parent.userData.id && obj.parent.userData.type) {
+            clickedWalnut = obj.parent as THREE.Group;
+            walnutId = obj.parent.userData.id;
+            break;
+          }
+          obj = obj.parent;
+        }
+        if (clickedWalnut) break;
+      }
+
+      if (clickedWalnut && walnutId) {
+        this.findWalnut(walnutId, clickedWalnut);
+      }
+    }
+  }
+
+  /**
+   * MVP 3: Find a walnut (player clicked on it)
+   */
+  private findWalnut(walnutId: string, walnutGroup: THREE.Group): void {
+    if (!this.character) return;
+
+    const walnutPos = walnutGroup.position;
+    const playerPos = this.character.position;
+
+    // Check if player is close enough (within 2 units for buried, 3 units for bush/game)
+    const distance = playerPos.distanceTo(walnutPos);
+    const maxDistance = walnutGroup.userData.type === 'buried' ? 2 : 3;
+
+    if (distance > maxDistance) {
+      console.log(`🚫 Too far away! Distance: ${distance.toFixed(1)}, need to be within ${maxDistance}`);
+      return;
+    }
+
+    // Award points based on walnut type
+    const points = walnutGroup.userData.points || 1;
+    this.playerScore += points;
+
+    // If it's a player-hidden walnut, give them back a walnut
+    if (walnutGroup.userData.ownerId === this.playerId) {
+      this.playerWalnutCount++;
+      console.log(`🎉 Found your own walnut! +${points} points, +1 walnut (${this.playerWalnutCount} total)`);
+    } else {
+      console.log(`🎉 Found a walnut! +${points} points (Score: ${this.playerScore})`);
+    }
+
+    // Remove the walnut from the world
+    this.removeWalnut(walnutId);
+
+    // TODO: Send to server for multiplayer sync
   }
 }
