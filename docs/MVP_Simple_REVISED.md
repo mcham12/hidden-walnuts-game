@@ -98,10 +98,51 @@ private onMouseClick(event: MouseEvent) {
 }
 ```
 
-**Walnut Types**:
-- **Buried**: 3 points (subtle terrain disturbance, harder to find)
-- **Bush**: 1 point (visible in bushes, easier to spot)
-- **Game Walnut**: Special bonus multiplier
+**Walnut Types & Visual Indicators**:
+
+**1. Buried Walnuts** (3 points - harder to find)
+- **Visual Clue**: Small mound of disturbed earth
+  - Slightly raised terrain bump (subtle, 0.1 units high)
+  - Darker soil texture where dug
+  - Particle effect: tiny dirt particles occasionally puff up
+  - Proximity hint: Cursor changes when hovering over area
+- **Finding**: Click on mound when within 2 units
+- **Difficulty**: Subtle - requires careful exploration
+
+**2. Bush Walnuts** (1 point - easier to spot)
+- **Visual Clue**: Walnut partially visible in bush foliage
+  - Brown walnut shell peeking through leaves
+  - Subtle glint/shimmer effect (catches light)
+  - Bush leaves slightly disturbed/parted
+  - Proximity hint: Cursor highlights when hovering
+- **Finding**: Click on visible walnut
+- **Difficulty**: Easier - visually obvious when near bush
+
+**3. Game Walnuts** (Special bonus multiplier)
+- **Visual Clue**: Golden/glowing walnut
+  - Bright golden color (stands out)
+  - Gentle pulsing glow effect
+  - Sparkle particles around it
+  - Visible from greater distance
+- **Finding**: Click to collect
+- **Difficulty**: Very easy - meant to be found quickly
+
+**Detection System**:
+```typescript
+// Raycasting for walnut detection
+interface WalnutDetection {
+  // Visual feedback when player looks at walnut area
+  cursorHighlight: boolean;      // Change cursor to "hand" icon
+  proximityGlow: boolean;         // Faint glow when within 3 units
+  soundCue: 'rustle' | 'none';   // Audio hint when very close
+}
+```
+
+**Proximity Indicators** (help players know they're close):
+- **Very Close** (< 1 unit): Walnut outline appears through terrain/bush
+- **Close** (< 3 units): Cursor changes to search icon
+- **Medium** (< 5 units): Subtle audio cue (leaves rustling for bush, dirt shifting for buried)
+- **Far** (> 5 units): No indicators (pure exploration)
 
 ### Part 2: World Navigation (Week 1)
 
