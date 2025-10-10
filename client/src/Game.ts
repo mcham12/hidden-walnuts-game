@@ -20,7 +20,6 @@ export class Game {
   private actions: { [key: string]: THREE.AnimationAction } = {};
   private currentAction: THREE.AnimationAction | null = null;
   private keys: Set<string> = new Set();
-  private clock = new THREE.Clock();
   private velocity = new THREE.Vector3();
   private actualVelocity = new THREE.Vector3(); // Actual physics velocity for network sync
   private direction = new THREE.Vector3();
@@ -881,7 +880,7 @@ export class Game {
     }
   }
 
-  private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, moveType?: string): void {
+  private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, _moveType?: string): void {
     const remotePlayer = this.remotePlayers.get(playerId);
     if (remotePlayer) {
       // ENTITY INTERPOLATION: Add new state to buffer for smooth interpolation
@@ -928,7 +927,7 @@ export class Game {
   }
 
   // INDUSTRY STANDARD: Simplified buffered interpolation for smooth multiplayer
-  private updateRemotePlayerInterpolation(deltaTime: number): void {
+  private updateRemotePlayerInterpolation(_deltaTime: number): void {
     const currentTime = Date.now();
     const renderTime = currentTime - this.INTERPOLATION_DELAY;
 
