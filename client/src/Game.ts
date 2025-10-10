@@ -117,6 +117,10 @@ export class Game {
   private leaderboardVisible: boolean = false;
   private leaderboardUpdateInterval: number = 0;
 
+  // MVP 4: Chat and Emotes
+  private playerChatLabels: Map<string, HTMLElement> = new Map(); // Chat labels for players
+  private emoteInProgress: boolean = false; // Prevent emote spam
+
 
   async init(canvas: HTMLCanvasElement) {
     console.log('🚀 GAME INIT STARTED');
@@ -905,7 +909,23 @@ export class Game {
       case 'heartbeat':
         // Heartbeat response - connection is alive
         break;
-        
+
+      case 'chat_message':
+        // Received chat message from another player
+        if (data.playerId && data.message && data.playerId !== this.playerId) {
+          console.log('💬 Chat from', data.playerId, ':', data.message);
+          this.showChatAboveCharacter(data.playerId, data.message, false);
+        }
+        break;
+
+      case 'player_emote':
+        // Received emote from another player
+        if (data.playerId && data.emote && data.playerId !== this.playerId) {
+          console.log('👋 Emote from', data.playerId, ':', data.emote);
+          this.playRemoteEmoteAnimation(data.playerId, data.emote);
+        }
+        break;
+
       default:
         console.warn('⚠️ Unknown message type:', data.type);
     }
@@ -1482,6 +1502,16 @@ export class Game {
       const label = this.walnutLabels.get(landmarkId);
       if (label) {
         this.updateLabelPosition(label, landmarkPos);
+      }
+    }
+
+    // Update chat labels above players
+    for (const [playerId, label] of this.playerChatLabels) {
+      const character = playerId === this.playerId ? this.character : this.remotePlayers.get(playerId);
+      if (character) {
+        const labelPos = character.position.clone();
+        labelPos.y += 2.5; // Position above character's head
+        this.updateLabelPosition(label, labelPos);
       }
     }
   }
@@ -2421,89 +2451,156 @@ export class Game {
   }
 
   /**
-   * Send a chat message
+   * Send a chat message (broadcasts to all players)
    */
   private sendChatMessage(message: string): void {
-    // Display locally
-    this.displayChatMessage(`You: ${message}`);
+    if (!this.isConnected || !this.websocket) {
+      console.warn('⚠️ Not connected - cannot send chat message');
+      return;
+    }
 
-    // TODO: Send to server via WebSocket for multiplayer sync
-    // this.websocket?.send(JSON.stringify({
-    //   type: 'chat',
-    //   message: message,
-    //   playerId: this.playerId
-    // }));
+    // Display locally above own character
+    this.showChatAboveCharacter(this.playerId, message, true);
+
+    // Send to server to broadcast to all other players
+    this.sendMessage({
+      type: 'chat_message',
+      message: message,
+      playerId: this.playerId
+    });
 
     console.log('💬 Chat message sent:', message);
   }
 
   /**
-   * Send an emote
+   * Send an emote (triggers character animation, broadcasts to all players)
    */
   private sendEmote(emote: string): void {
-    // Display locally
-    this.displayEmote(emote, this.character?.position);
+    if (!this.isConnected || !this.websocket) {
+      console.warn('⚠️ Not connected - cannot send emote');
+      return;
+    }
 
-    // TODO: Send to server via WebSocket for multiplayer sync
-    // this.websocket?.send(JSON.stringify({
-    //   type: 'emote',
-    //   emote: emote,
-    //   playerId: this.playerId,
-    //   position: this.character?.position
-    // }));
+    // Prevent emote spam
+    if (this.emoteInProgress) {
+      console.log('⏸️ Emote in progress, please wait...');
+      return;
+    }
+
+    // Play emote animation locally
+    this.playEmoteAnimation(emote);
+
+    // Send to server to broadcast to all other players
+    this.sendMessage({
+      type: 'player_emote',
+      emote: emote,
+      playerId: this.playerId
+    });
 
     console.log('👋 Emote sent:', emote);
   }
 
   /**
-   * Display a chat message with fade animation
+   * Show chat message above a character (floating text label)
    */
-  private displayChatMessage(message: string): void {
-    const chatDisplay = document.getElementById('chat-message-display');
-    if (!chatDisplay) return;
+  private showChatAboveCharacter(playerId: string, message: string, isLocalPlayer: boolean = false): void {
+    // Get character position
+    const character = isLocalPlayer ? this.character : this.remotePlayers.get(playerId);
+    if (!character) return;
 
-    // Set message
-    chatDisplay.textContent = message;
+    // Remove existing chat label if present
+    const existingLabel = this.playerChatLabels.get(playerId);
+    if (existingLabel && this.labelsContainer) {
+      this.labelsContainer.removeChild(existingLabel);
+      this.playerChatLabels.delete(playerId);
+    }
 
-    // Remove existing show class and force reflow to restart animation
-    chatDisplay.classList.remove('show');
-    void chatDisplay.offsetWidth; // Force reflow
+    // Create new chat label
+    const label = document.createElement('div');
+    label.className = 'landmark-label'; // Reuse same styling
+    label.textContent = message;
+    label.style.color = isLocalPlayer ? '#4CAF50' : '#FFF'; // Green for own messages
+    label.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    label.style.padding = '6px 12px';
+    label.style.borderRadius = '8px';
+    label.style.fontSize = '14px';
+    label.style.fontWeight = 'bold';
+    label.style.maxWidth = '200px';
+    label.style.wordWrap = 'break-word';
 
-    // Add show class to trigger animation
-    chatDisplay.classList.add('show');
+    if (this.labelsContainer) {
+      this.labelsContainer.appendChild(label);
+    }
 
-    // Remove show class after animation completes (3 seconds)
+    this.playerChatLabels.set(playerId, label);
+
+    // Auto-remove after 5 seconds
     setTimeout(() => {
-      chatDisplay.classList.remove('show');
-    }, 3000);
+      const label = this.playerChatLabels.get(playerId);
+      if (label && this.labelsContainer) {
+        this.labelsContainer.removeChild(label);
+        this.playerChatLabels.delete(playerId);
+      }
+    }, 5000);
   }
 
   /**
-   * Display an emote above a character
+   * Play an emote animation on local character
    */
-  private displayEmote(emote: string, position?: THREE.Vector3): void {
-    if (!position) return;
+  private playEmoteAnimation(emote: string): void {
+    if (!this.character || this.emoteInProgress) return;
 
-    // Create emote sprite/text above character
-    const emoteIcon = this.getEmoteIcon(emote);
+    this.emoteInProgress = true;
 
-    // For now, just log - we can add 3D text or sprites later
-    console.log(`${emoteIcon} emote displayed at position:`, position);
-
-    // TODO: Create a 3D sprite or text label that floats above the character
-    // and fades out after a few seconds
-  }
-
-  /**
-   * Get emoji icon for emote type
-   */
-  private getEmoteIcon(emote: string): string {
-    const emoteIcons: { [key: string]: string } = {
-      'wave': '👋',
-      'point': '👉',
-      'celebrate': '🎉',
-      'shrug': '🤷'
+    // Map emotes to animations (we'll use existing animations for now)
+    const emoteAnimationMap: { [key: string]: string } = {
+      'wave': 'idle',      // Could be a wave animation if we had it
+      'point': 'idle',     // Could be a point animation if we had it
+      'celebrate': 'jump', // Jump is celebratory!
+      'shrug': 'idle'      // Could be a shrug animation if we had it
     };
-    return emoteIcons[emote] || '❓';
+
+    const animationName = emoteAnimationMap[emote] || 'idle';
+    const previousAnimation = this.currentAnimationName;
+
+    // Play emote animation
+    this.setAction(animationName);
+
+    // Return to previous animation after 2 seconds
+    setTimeout(() => {
+      // Only return if player hasn't moved (still idle)
+      if (!this.keys.has('w') && !this.keys.has('a') && !this.keys.has('s') && !this.keys.has('d')) {
+        this.setAction('idle');
+      }
+      this.emoteInProgress = false;
+    }, 2000);
+
+    console.log(`✨ Playing emote animation: ${emote} (${animationName})`);
+  }
+
+  /**
+   * Play emote animation on remote player
+   */
+  private playRemoteEmoteAnimation(playerId: string, emote: string): void {
+    const remoteCharacter = this.remotePlayers.get(playerId);
+    const remoteActions = this.remotePlayerActions.get(playerId);
+    if (!remoteCharacter || !remoteActions) return;
+
+    // Map emotes to animations
+    const emoteAnimationMap: { [key: string]: string } = {
+      'wave': 'idle',
+      'point': 'idle',
+      'celebrate': 'jump',
+      'shrug': 'idle'
+    };
+
+    const animationName = emoteAnimationMap[emote] || 'idle';
+    const newAction = remoteActions[animationName];
+    if (!newAction) return;
+
+    // Play emote animation (will blend back to normal movement automatically)
+    newAction.reset().fadeIn(0.2).play();
+
+    console.log(`✨ Remote player ${playerId} emote: ${emote}`);
   }
 }
