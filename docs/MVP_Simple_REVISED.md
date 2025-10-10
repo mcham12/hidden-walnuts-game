@@ -189,11 +189,21 @@ class VoiceoverSystem {
 
 ### Simple Character Selection
 
-**Available Characters** (no unique abilities yet):
-- Colobus (already implemented)
-- 1-2 additional characters from character library
+**Available Characters** (8 total - no unique abilities yet):
+1. **Colobus** (monkey) ✅ Already implemented
+2. **Muskrat** (rodent) - Forest/walnut theme
+3. **Pudu** (small deer) - Forest dweller
+4. **Gecko** (lizard) - Agile climber
+5. **Sparrow** (bird) - Aerial character
+6. **Taipan** (snake) - Ground movement
+7. **Herring** (fish) - Aquatic (save for water mechanics)
+8. **Inkfish** (octopus) - Aquatic (save for water mechanics)
+
+**Initial MVP 3.5 Release** (land-based only):
+- Start with 3-4 land characters: Colobus, Muskrat, Pudu, Gecko
 - Same movement/physics for all
 - Same animations (idle/walk/run/jump)
+- Save aquatic characters (Herring, Inkfish) for water mechanics later
 
 **Character Select Screen**:
 - Simple grid showing available characters
