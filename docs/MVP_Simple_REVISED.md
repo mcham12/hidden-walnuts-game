@@ -189,38 +189,30 @@ interface WalnutMessage {
 - Walnut ownership tracking
 - WalnutRegistry Durable Object integration
 
-### NEW: Voiceover & Narration System
+### Part 5: Narrator Voiceover System (MVP 3 Foundation)
 
-**Narrator Voiceover** - Guide players through game
+**Narrator Only** - Guide players (no NPCs yet)
 - Welcome message: "Welcome to the Hidden Walnuts! You have 3 walnuts to hide..."
 - Tutorial tips: "Press H to hide a walnut..." "Click to collect walnuts..."
 - Achievement callouts: "First walnut hidden!" "10 walnuts found!"
-- Event announcements: "Nut Rush begins in 5 minutes!"
-
-**NPC Voiceover** - Ambient forest characters
-- Friendly squirrels: "Good hiding spot!" "Someone's been here..."
-- Wise owl: "The forest remembers..." "Patience brings rewards..."
-- Playful chipmunk: "Ooh, shiny!" "Bet you can't find mine!"
+- Event announcements: "New walnut available!"
 
 **Voice Actor Needs** - Record these lines
-1. **Narrator** (calm, guiding voice): ~50 lines
-   - Tutorial/onboarding
-   - Game state announcements
-   - Achievement unlocks
-
-2. **Forest NPCs** (3-4 character voices): ~30 lines each
-   - Ambient comments
-   - Hints and tips
-   - Reaction to player actions
+- **Narrator** (calm, guiding voice): ~50 lines
+  - Tutorial/onboarding
+  - Game state announcements
+  - Achievement unlocks
+  - Contextual tips
 
 **Technical Implementation**:
 ```typescript
 class VoiceoverSystem {
-  playNarration(event: 'welcome' | 'tutorial' | 'achievement');
-  playNPCLine(npcType: 'squirrel' | 'owl' | 'chipmunk', context: string);
-  adjustVolume(distance: number);  // Quieter when far from NPCs
+  playNarration(event: 'welcome' | 'tutorial' | 'achievement' | 'hint');
+  // Simple audio playback - no distance calculation needed yet
 }
 ```
+
+**Note**: NPC voiceovers (squirrel, owl, chipmunk) are saved for **MVP 7** when ambient NPCs are implemented
 
 ---
 
@@ -510,8 +502,11 @@ class Predator {
 - Not game-critical (purely visual)
 
 **Voiceover Integration**:
-- Ambient NPC comments
-- Narrator announces events
+- **NPC Voiceovers Added Here** - Squirrel, Owl, Chipmunk voices
+  - Position-based audio (quieter when far from NPC)
+  - Ambient comments as players pass by
+  - Contextual hints about nearby walnuts
+- Narrator event announcements (continues from MVP 3)
 - Predator warning callouts
 
 ---
@@ -559,8 +554,8 @@ class Predator {
 |-----|-------|--------|
 | 1.5 | Animated Character | ✅ Complete |
 | 1.9 | Backend Cleanup | ✅ Complete |
-| 2.0 | Multiplayer Foundation | 🎯 In Progress |
-| 3 | Walnut Mechanics + Navigation + Voiceover | Pending |
+| 2.0 | Multiplayer Foundation | ✅ Complete |
+| 3 | Walnut Mechanics + Navigation + Narrator | 🎯 Starting |
 | 3.5 | Multiple Characters | Pending |
 | 4 | Competitive Multiplayer + Tutorial | Pending |
 | 5 | Persistent World + Performance | Pending |
@@ -582,9 +577,10 @@ class Predator {
 ### MVP 3 Success
 - [ ] Can hide walnuts with H key
 - [ ] Can find walnuts by clicking
+- [ ] Walnut visual indicators work (mounds, glints, glow)
 - [ ] Landmarks help navigation
 - [ ] Minimap shows position
-- [ ] Voiceover guides players
+- [ ] Narrator voiceover guides players
 
 ### MVP 4 Success
 - [ ] Leaderboard tracks top players
@@ -612,7 +608,7 @@ class Predator {
 
 ## 🎬 Voice Actor Script Outline
 
-### Narrator Lines (~50 total)
+### Narrator Lines (~50 total) - **MVP 3**
 
 **Welcome/Tutorial** (10 lines):
 - "Welcome to the Hidden Walnuts forest!"
@@ -640,7 +636,7 @@ class Predator {
 - "You've been here before..."
 - [... more contextual hints]
 
-### NPC Lines (~30 per character)
+### NPC Lines (~30 per character) - **MVP 7** (when NPCs added)
 
 **Squirrel** (friendly, helpful):
 - "Good hiding spot!"
