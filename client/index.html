@@ -9,14 +9,89 @@
       canvas { display: block; width: 100vw; height: 100vh; }
       #character-select {
         position: absolute;
-        top: 10px;
-        left: 10px;
-        background: white;
-        padding: 10px;
-        border-radius: 5px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(255, 255, 255, 0.95);
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        font-family: 'Arial', sans-serif;
+        min-width: 500px;
+        z-index: 3000;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+      #character-preview-container {
+        width: 100%;
+        height: 250px;
+        background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+        border-radius: 8px;
+        border: 2px solid #8B4513;
+        overflow: hidden;
+        position: relative;
+      }
+      #character-preview-canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
       }
       #character-select.hidden {
         display: none;
+      }
+      #character-select h3 {
+        margin: 0 0 20px 0;
+        color: #2c5f2d;
+        font-size: 24px;
+        text-align: center;
+      }
+      #character-select select {
+        width: 100%;
+        padding: 10px;
+        font-size: 16px;
+        border: 2px solid #8B4513;
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+      }
+      #character-select select:focus {
+        outline: none;
+        border-color: #2c5f2d;
+      }
+      #char-description {
+        background: rgba(139, 69, 19, 0.1);
+        padding: 15px;
+        border-radius: 6px;
+        min-height: 60px;
+        font-size: 14px;
+        color: #333;
+        line-height: 1.5;
+      }
+      #char-description strong {
+        color: #8B4513;
+        display: block;
+        margin-bottom: 5px;
+      }
+      #start-btn {
+        width: 100%;
+        padding: 15px;
+        font-size: 18px;
+        font-weight: bold;
+        background: linear-gradient(135deg, #2c5f2d 0%, #4a8f4d 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+        box-shadow: 0 4px 12px rgba(44, 95, 45, 0.3);
+      }
+      #start-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(44, 95, 45, 0.4);
+      }
+      #start-btn:active {
+        transform: translateY(0);
       }
       #debug-overlay {
         position: absolute;
@@ -101,6 +176,9 @@
   <body>
     <div id="character-select">
       <h3>Select Your Character</h3>
+      <div id="character-preview-container">
+        <canvas id="character-preview-canvas"></canvas>
+      </div>
       <select id="char-select">
         <optgroup label="Mammals">
           <option value="colobus">Colobus Monkey</option>
@@ -119,7 +197,11 @@
           <option value="inkfish">Inkfish Squid</option>
         </optgroup>
       </select>
-      <button id="start-btn">Start</button>
+      <div id="char-description">
+        <strong>Colobus Monkey</strong>
+        Agile tree dweller with excellent mobility. Perfect for quick movements through the forest canopy.
+      </div>
+      <button id="start-btn">Start Game</button>
     </div>
     <div id="walnut-hud" class="hidden">
       <div>
