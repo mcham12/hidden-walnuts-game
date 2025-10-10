@@ -858,19 +858,20 @@ export class Game {
         console.log('👥 Existing players received:', data.players?.length || 0);
         if (Array.isArray(data.players)) {
           for (const player of data.players) {
-            console.log('👤 Processing existing player:', player.squirrelId, 'at position:', player.position);
+            console.log('👤 Processing existing player:', player.squirrelId, 'character:', player.characterId, 'at position:', player.position);
             if (this.validatePlayerData(player)) {
-              this.createRemotePlayer(player.squirrelId, player.position, player.rotationY);
+              this.createRemotePlayer(player.squirrelId, player.position, player.rotationY, player.characterId);
             } else {
               console.warn('⚠️ Invalid player data:', player);
             }
           }
         }
         break;
-        
+
       case 'player_joined':
         if (this.validatePlayerData(data) && data.squirrelId !== this.playerId) {
-          this.createRemotePlayer(data.squirrelId, data.position, data.rotationY);
+          console.log('👤 New player joined:', data.squirrelId, 'character:', data.characterId);
+          this.createRemotePlayer(data.squirrelId, data.position, data.rotationY, data.characterId);
         }
         break;
         
@@ -906,18 +907,22 @@ export class Game {
            typeof data.rotationY === 'number';
   }
 
-  private async createRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number): Promise<void> {
+  private async createRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, characterId?: string): Promise<void> {
     if (this.remotePlayers.has(playerId)) {
       // Player already exists, just update position
       this.updateRemotePlayer(playerId, position, rotationY, undefined, undefined, undefined);
       return;
     }
-    
+
     try {
       // INDUSTRY STANDARD: Use cached assets for remote players
-      const char = this.characters.find(c => c.id === this.selectedCharacterId);
+      // Use the remote player's character ID, or fall back to local player's character
+      const remoteCharacterId = characterId || this.selectedCharacterId;
+      console.log(`👤 Creating remote player ${playerId} with character: ${remoteCharacterId}`);
+
+      const char = this.characters.find(c => c.id === remoteCharacterId);
       if (!char) {
-        console.error('❌ Character config not found');
+        console.error('❌ Character config not found for:', remoteCharacterId);
         return;
       }
 
