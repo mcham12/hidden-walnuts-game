@@ -49,7 +49,6 @@ export class AnimationStateManager {
       this.currentState = newState;
       this.stateChangeTime = currentTime;
       
-      console.log(`Animation state changed: ${this.previousState} → ${this.currentState}`);
     }
 
     return this.currentState;

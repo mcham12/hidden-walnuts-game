@@ -157,10 +157,12 @@ export default class ForestManager {
     // Setup message handlers
     socket.onmessage = async (event) => {
       try {
+        console.log('📨 RAW WebSocket data received:', event.data);
         const message = JSON.parse(event.data as string);
+        console.log(`📨 SERVER DEBUG: Received message:`, message);
         await this.handlePlayerMessage(playerConnection, message);
       } catch (error) {
-        console.error('Error processing message:', error);
+        console.error('❌ Error processing WebSocket message:', error, 'Raw data:', event.data);
       }
     };
 
@@ -196,6 +198,7 @@ export default class ForestManager {
 
     switch (data.type) {
       case "player_update":
+        console.log(`🎭 SERVER DEBUG: Received player_update with animation: ${data.animation}`);
         if (data.position) {
           // Validate position is within world bounds
           const validatedPosition = this.validatePosition(data.position);
@@ -208,13 +211,19 @@ export default class ForestManager {
         // Save position
         await this.savePlayerPosition(playerConnection.squirrelId, playerConnection.position);
         
-        // Broadcast to others
+        // INDUSTRY STANDARD: Forward animation state with timing for multiplayer sync
+        console.log(`🚀 SERVER DEBUG: Forwarding animation '${data.animation}' with start time to other clients`);
         this.broadcastToOthers(playerConnection.squirrelId, {
           type: 'player_update',
           squirrelId: playerConnection.squirrelId,
           position: playerConnection.position,
           rotationY: playerConnection.rotationY,
-          characterId: playerConnection.characterId
+          characterId: playerConnection.characterId,
+          animation: data.animation, // Forward animation state from client
+          animationStartTime: data.animationStartTime, // TIME-BASED SYNC: Forward animation start time
+          velocity: data.velocity, // Forward velocity for extrapolation
+          moveType: data.moveType, // Forward movement type for animation sync
+          timestamp: data.timestamp // Forward client timestamp for latency compensation
         });
         break;
         

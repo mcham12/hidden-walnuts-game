@@ -173,6 +173,20 @@ export class SceneManager implements ISceneManager {
     const { createTerrain } = await import('./terrain');
     const terrain = await createTerrain();
     this.scene.add(terrain);
+    
+    // Add a bright landmark at (0,5,0) for multiplayer testing
+    const THREE = await import('three');
+    const landmarkGeometry = new THREE.BoxGeometry(2, 2, 2);
+    const landmarkMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xff0000, // Bright red
+      transparent: true,
+      opacity: 0.8
+    });
+    const landmark = new THREE.Mesh(landmarkGeometry, landmarkMaterial);
+    landmark.position.set(0, 5, 0);
+    landmark.name = 'multiplayer-landmark';
+    this.scene.add(landmark);
+    
     this.eventBus.emit('terrain.loaded');
   }
 
@@ -181,12 +195,10 @@ export class SceneManager implements ISceneManager {
     const { Logger, LogCategory } = await import('./core/Logger');
     try {
       const { createForest } = await import('./forest');
-      const forestObjects = await createForest();
+      await createForest(this.scene);
       
-      // Add all forest objects to the scene
-      forestObjects.forEach(obj => this.scene.add(obj));
-      
-      Logger.info(LogCategory.TERRAIN, `Added ${forestObjects.length} forest objects to scene`);
+      // Forest objects are added directly to scene in createForest
+      Logger.info(LogCategory.TERRAIN, 'Forest objects added to scene');
       this.eventBus.emit('forest.loaded');
     } catch (error) {
       Logger.error(LogCategory.TERRAIN, 'Failed to load forest objects', error);

@@ -3,7 +3,6 @@
 import { System } from '../ecs';
 import { EventBus, GameEvents } from '../core/EventBus';
 import { Logger, LogCategory } from '../core/Logger';
-import { WebSocketService } from '../services/WebSocketService';
 
 // MVP 7 Task 7: Client version for protocol compatibility
 const CLIENT_VERSION = '1.0.0';
@@ -65,7 +64,7 @@ enum ConnectionState {
 }
 
 export class NetworkSystem extends System {
-  private websocketService: WebSocketService | null = null;
+  private websocket: WebSocket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10; // Increased for better resilience
   private heartbeatInterval: any = null;
@@ -1270,4 +1269,5 @@ export class NetworkSystem extends System {
       Logger.warn(LogCategory.NETWORK, '⚠️ No updates in batch_update message');
     }
   }
+
 } 

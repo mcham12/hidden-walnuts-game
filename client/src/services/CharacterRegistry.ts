@@ -174,7 +174,7 @@ export class CharacterRegistry {
   }
 
   // Character color variants for multiplayer identification
-  static getCharacterColorVariant(characterId: string, playerId: string): string {
+  static getCharacterColorVariant(_characterId: string, playerId: string): string {
     // Generate consistent color based on player ID
     let hash = 0;
     for (let i = 0; i < playerId.length; i++) {

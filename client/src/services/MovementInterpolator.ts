@@ -22,7 +22,6 @@ export class MovementInterpolator {
 
   // Add or update a player's interpolation target
   setTarget(playerId: string, newTarget: InterpolationTarget): void {
-    const currentTime = performance.now();
     
     if (!this.states.has(playerId)) {
       // First time seeing this player - initialize state

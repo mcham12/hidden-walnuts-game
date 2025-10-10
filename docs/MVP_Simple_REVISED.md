@@ -102,7 +102,23 @@ npm run dev:worker
 
 ---
 
-## 🥜 **MVP 2: Core Walnut Mechanics**
+## 👥 **MVP 2.0: Simple Multiplayer** (CURRENT)
+
+**Objective**: Get basic multiplayer working with the simple Game.ts architecture.
+
+**Current Status**: Fixing WebSocket connections and player synchronization
+
+### **Core Features**
+- **WebSocket Connection** - Client connects to Cloudflare Workers
+- **Player Sync** - See other players moving in real-time
+- **Multiple Browsers** - Test with 2+ browser windows
+- **Simple Networking** - No complex client prediction, just basic position sync
+
+**Estimated Time**: **1-2 weeks**
+
+---
+
+## 🥜 **MVP 3: Core Walnut Mechanics**
 
 **Objective**: Implement the actual walnut hiding/seeking gameplay that defines the game.
 
@@ -175,7 +191,7 @@ interface WalnutMessage {
 
 ---
 
-## 👥 **MVP 3: Competitive Multiplayer** 
+## 👥 **MVP 4: Competitive Multiplayer** 
 
 **Objective**: Make it actually competitive with multiple players hiding/seeking.
 
@@ -210,7 +226,7 @@ interface GameScore {
 
 ---
 
-## 🌍 **MVP 4: Persistent 24-Hour World**
+## 🌍 **MVP 5: Persistent 24-Hour World**
 
 **Objective**: Create the persistent world that resets every 24 hours.
 
@@ -238,7 +254,117 @@ interface GameScore {
 
 ---
 
-## 🐺 **MVP 5: Predators & Game Polish**
+## 🗑️ **MVP 6: Code Cleanup - Remove ECS Complexity**
+
+**Objective**: Delete all unused ECS/enterprise code that contradicts the simple architecture philosophy.
+
+**Priority**: **Maintenance** - Remove confusion and maintain simple architecture integrity.
+
+### **Files to Delete** (Unused ECS Architecture)
+```bash
+# Delete entire ECS system folders
+rm -rf client/src/ecs/
+rm -rf client/src/entities/ 
+rm -rf client/src/systems/
+rm -rf client/src/services/
+rm -rf client/src/core/
+rm -rf client/src/rendering/
+rm -rf client/src/test/
+
+# Delete complex orchestration files
+rm client/src/GameComposition.ts
+rm client/src/ENTERPRISE_ARCHITECTURE.md
+rm client/src/ARCHITECTURE_README.md
+rm client/src/Game\ 2.ts
+
+# Keep simple files only
+# ✅ Game.ts (simple game class - 243 lines)
+# ✅ main.ts (simple bootstrap - 25 lines)  
+# ✅ terrain.ts (terrain generation)
+# ✅ forest.ts (forest generation)
+# ✅ style.css, vite-env.d.ts, types.ts
+```
+
+### **Estimated Cleanup**
+- **Folders Deleted**: 8 complex folders (ecs/, entities/, systems/, services/, core/, rendering/, test/)
+- **Files Deleted**: ~25+ complex files
+- **Lines Removed**: ~7,000+ lines of unused complexity
+- **Result**: Clean 8-file simple architecture as intended
+
+**Estimated Time**: **1-2 hours** (careful deletion to avoid breaking Game.ts)
+
+---
+
+## 🎨 **MVP 6.5: Advanced Animation Smoothness** (Future Enhancement)
+
+**Objective**: Further refine animation and movement smoothness for AAA-quality feel.
+
+**Status**: Current implementation is functional with basic smoothness fixes applied. This MVP targets polish-level refinements.
+
+### **Current Smoothness Implementation** ✅
+- ✅ **Manual Delta Time** - Replaced THREE.Clock.getDelta() with performance.now()
+- ✅ **Capped Frame Time** - Max 1/30s to prevent spiral of death
+- ✅ **Seamless Animation Loops** - Configured LoopRepeat for walk/run/idle
+- ✅ **Smooth Camera** - Lerp factor 0.15 for camera follow
+- ✅ **Continuous Velocity** - Acceleration/deceleration physics (20/15 units/s²)
+- ✅ **Simplified Interpolation** - Removed complex extrapolation causing jitter
+
+### **Future Refinements** (Post-Core Gameplay)
+
+**Advanced Interpolation Techniques**:
+```typescript
+// Hermite spline interpolation for smoother remote players
+private hermiteInterpolation(p0, p1, v0, v1, t) {
+  // Smoother than linear, accounts for velocity
+  return cubicHermite(p0, p1, v0, v1, t);
+}
+
+// Dead reckoning with error correction
+private deadReckoning(lastState, velocity, timeSinceUpdate) {
+  const predicted = lastState.position + velocity * timeSinceUpdate;
+  const errorCorrection = smoothCorrect(predicted, actualPosition);
+  return predicted + errorCorrection;
+}
+```
+
+**Frame Time Smoothing**:
+```typescript
+// Rolling average of last N frames for ultra-smooth delta
+private smoothedDelta() {
+  this.deltaHistory.push(rawDelta);
+  if (this.deltaHistory.length > 10) this.deltaHistory.shift();
+  return average(this.deltaHistory);
+}
+```
+
+**Input Buffering**:
+```typescript
+// Buffer inputs to prevent dropped frames during physics updates
+private inputBuffer: InputState[] = [];
+private processInputBuffer() {
+  // Process all buffered inputs in order
+  for (const input of this.inputBuffer) {
+    this.applyInput(input);
+  }
+}
+```
+
+**Adaptive Interpolation**:
+```typescript
+// Adjust interpolation delay based on network conditions
+private adaptiveDelay() {
+  const jitter = calculateJitter(this.lastPackets);
+  return baseDelay + (jitter * 2); // Adjust based on jitter
+}
+```
+
+**Estimated Time**: **2-3 days** (when core gameplay is solid)
+
+**Priority**: **Low** - Current smoothness is acceptable for gameplay testing. Refine after walnut mechanics proven fun.
+
+---
+
+## 🐺 **MVP 7: Predators & Game Polish**
 
 **Objective**: Add unique predator mechanics and final polish.
 
@@ -285,11 +411,13 @@ class Predator {
 | MVP | Focus | Time | Core Features |
 |-----|-------|------|--------------|
 | **✅ MVP 1.5** | **Animated Character** | **DONE** | Working Colobus with terrain + physics |
-| **🎯 MVP 1.9** | **Worker Code Cleanup** | **2-3 days** | Simplify backend, remove complexity |
-| **MVP 2** | **Walnut Mechanics** | **1-2 weeks** | Hide/seek walnuts, scoring system |
-| **MVP 3** | **Competitive Multiplayer** | **1 week** | Multi-player, stealing, leaderboard |
-| **MVP 4** | **Persistent World** | **1 week** | 24-hour cycles, world persistence |
-| **MVP 5** | **Predators & Polish** | **1-2 weeks** | AI predators, power-ups, polish |
+| **✅ MVP 1.9** | **Worker Code Cleanup** | **DONE** | Simplify backend, remove complexity |
+| **🎯 MVP 2.0** | **Simple Multiplayer** | **1-2 weeks** | WebSocket, player sync, basic networking |
+| **MVP 3** | **Walnut Mechanics** | **1-2 weeks** | Hide/seek walnuts, scoring system |
+| **MVP 4** | **Competitive Multiplayer** | **1 week** | Multi-player, stealing, leaderboard |
+| **MVP 5** | **Persistent World** | **1 week** | 24-hour cycles, world persistence |
+| **MVP 6** | **Code Cleanup** | **1-2 hours** | Remove unused ECS complexity |
+| **MVP 7** | **Predators & Polish** | **1-2 weeks** | AI predators, power-ups, polish |
 
 **Total**: **4.5-6.5 weeks** to complete **Hidden Walnuts** core gameplay
 

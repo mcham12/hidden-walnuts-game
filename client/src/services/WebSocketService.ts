@@ -20,8 +20,8 @@ export interface RemotePlayer {
 
 export class WebSocketService {
   private socket: WebSocket | null = null;
-  private reconnectInterval: number | null = null;
-  private heartbeatInterval: number | null = null;
+  private reconnectInterval: ReturnType<typeof setInterval> | null = null;
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private messageQueue: WebSocketMessage[] = [];
   
   // Connection state

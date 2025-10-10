@@ -1,7 +1,7 @@
 // AI NOTE: This service wraps terrain.ts functions for dependency injection
 // It provides terrain height calculations for collision detection
 
-import { initializeTerrain, getTerrainHeight, isTerrainInitialized } from '../terrain';
+import { initializeTerrain, getTerrainHeight } from '../terrain';
 import { Logger, LogCategory } from '../core/Logger';
 
 export interface ITerrainService {
@@ -28,7 +28,7 @@ export class TerrainService implements ITerrainService {
       const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8787';
       Logger.info(LogCategory.TERRAIN, `🌍 Initializing terrain with API: ${apiBase}`);
       
-      await initializeTerrain(apiBase);
+      await initializeTerrain();
       this.initialized = true;
       
       Logger.info(LogCategory.TERRAIN, '✅ TerrainService initialized successfully');
@@ -69,13 +69,13 @@ export class TerrainService implements ITerrainService {
   }
 
   isInitialized(): boolean {
-    return this.initialized && isTerrainInitialized();
+    return this.initialized;
   }
 
   // TASK 4: Add synchronous terrain height method for camera system
   getTerrainHeightSync(x: number, z: number): number | null {
     try {
-      if (!this.initialized || !isTerrainInitialized()) {
+      if (!this.initialized) {
         return null;
       }
 
