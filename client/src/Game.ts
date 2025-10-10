@@ -2535,9 +2535,16 @@ export class Game {
    * Show chat message above a character (floating text label)
    */
   private showChatAboveCharacter(playerId: string, message: string, isLocalPlayer: boolean = false): void {
+    console.log(`💬 showChatAboveCharacter - playerId: ${playerId}, message: ${message}, isLocal: ${isLocalPlayer}`);
+
     // Get character position
     const character = isLocalPlayer ? this.character : this.remotePlayers.get(playerId);
-    if (!character) return;
+    if (!character) {
+      console.warn(`⚠️ Character not found for player ${playerId}`);
+      return;
+    }
+
+    console.log(`✅ Character found at position:`, character.position);
 
     // Remove existing chat label if present
     const existingLabel = this.playerChatLabels.get(playerId);
@@ -2561,9 +2568,18 @@ export class Game {
 
     if (this.labelsContainer) {
       this.labelsContainer.appendChild(label);
+      console.log('✅ Label added to DOM');
+    } else {
+      console.error('❌ Labels container not found!');
     }
 
     this.playerChatLabels.set(playerId, label);
+
+    // IMPORTANT: Position the label immediately in screen space
+    const labelPos = character.position.clone();
+    labelPos.y += 2.5; // Position above character's head
+    this.updateLabelPosition(label, labelPos);
+    console.log('✅ Label positioned at:', labelPos);
 
     // Auto-remove after 5 seconds
     setTimeout(() => {
@@ -2571,6 +2587,7 @@ export class Game {
       if (label && this.labelsContainer) {
         this.labelsContainer.removeChild(label);
         this.playerChatLabels.delete(playerId);
+        console.log(`🗑️ Chat label removed for ${playerId}`);
       }
     }, 5000);
   }
@@ -2579,7 +2596,14 @@ export class Game {
    * Play an emote animation on local character
    */
   private playEmoteAnimation(emote: string): void {
-    if (!this.character || this.emoteInProgress) return;
+    console.log(`🎭 playEmoteAnimation called - emote: ${emote}`);
+    console.log(`🎮 Character:`, this.character);
+    console.log(`⏸️ Emote in progress:`, this.emoteInProgress);
+
+    if (!this.character || this.emoteInProgress) {
+      console.warn('⚠️ Cannot play emote - no character or emote in progress');
+      return;
+    }
 
     this.emoteInProgress = true;
 
@@ -2592,7 +2616,7 @@ export class Game {
     };
 
     const animationName = emoteAnimationMap[emote] || 'idle';
-    const previousAnimation = this.currentAnimationName;
+    console.log(`🎬 Playing animation: ${animationName}`);
 
     // Play emote animation
     this.setAction(animationName);
@@ -2604,6 +2628,7 @@ export class Game {
         this.setAction('idle');
       }
       this.emoteInProgress = false;
+      console.log('✅ Emote animation complete');
     }, 2000);
 
     console.log(`✨ Playing emote animation: ${emote} (${animationName})`);
@@ -2613,9 +2638,18 @@ export class Game {
    * Play emote animation on remote player
    */
   private playRemoteEmoteAnimation(playerId: string, emote: string): void {
+    console.log(`🎭 playRemoteEmoteAnimation - playerId: ${playerId}, emote: ${emote}`);
+
     const remoteCharacter = this.remotePlayers.get(playerId);
     const remoteActions = this.remotePlayerActions.get(playerId);
-    if (!remoteCharacter || !remoteActions) return;
+
+    console.log(`👤 Remote character:`, remoteCharacter);
+    console.log(`🎬 Remote actions:`, remoteActions);
+
+    if (!remoteCharacter || !remoteActions) {
+      console.warn(`⚠️ Cannot play remote emote - character or actions not found for ${playerId}`);
+      return;
+    }
 
     // Map emotes to animations
     const emoteAnimationMap: { [key: string]: string } = {
@@ -2627,11 +2661,18 @@ export class Game {
 
     const animationName = emoteAnimationMap[emote] || 'idle';
     const newAction = remoteActions[animationName];
-    if (!newAction) return;
+
+    console.log(`🎬 Animation to play: ${animationName}`);
+    console.log(`🎭 Action:`, newAction);
+
+    if (!newAction) {
+      console.warn(`⚠️ Animation ${animationName} not found for remote player`);
+      return;
+    }
 
     // Play emote animation (will blend back to normal movement automatically)
     newAction.reset().fadeIn(0.2).play();
 
-    console.log(`✨ Remote player ${playerId} emote: ${emote}`);
+    console.log(`✨ Remote player ${playerId} emote: ${emote} playing!`);
   }
 }
