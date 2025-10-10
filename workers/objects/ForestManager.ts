@@ -234,7 +234,57 @@ export default class ForestManager {
           serverTime: Date.now()
         });
         break;
-        
+
+      case "walnut_hidden":
+        console.log(`🌰 SERVER: Player ${playerConnection.squirrelId} hid walnut ${data.walnutId}`);
+        // Create new walnut in mapState
+        const newWalnut: Walnut = {
+          id: data.walnutId,
+          ownerId: data.ownerId,
+          origin: 'player',
+          hiddenIn: data.walnutType, // 'buried' or 'bush'
+          location: data.position,
+          found: false,
+          timestamp: data.timestamp || Date.now()
+        };
+        this.mapState.push(newWalnut);
+
+        // Persist updated mapState
+        await this.storage.put('mapState', this.mapState);
+
+        // Broadcast to all other players
+        this.broadcastToOthers(playerConnection.squirrelId, {
+          type: 'walnut_hidden',
+          walnutId: data.walnutId,
+          ownerId: data.ownerId,
+          walnutType: data.walnutType,
+          position: data.position,
+          points: data.points
+        });
+        break;
+
+      case "walnut_found":
+        console.log(`🔍 SERVER: Player ${playerConnection.squirrelId} found walnut ${data.walnutId}`);
+        // Mark walnut as found in mapState
+        const walnutIndex = this.mapState.findIndex(w => w.id === data.walnutId);
+        if (walnutIndex !== -1) {
+          this.mapState[walnutIndex].found = true;
+
+          // Persist updated mapState
+          await this.storage.put('mapState', this.mapState);
+
+          // Broadcast to all other players
+          this.broadcastToOthers(playerConnection.squirrelId, {
+            type: 'walnut_found',
+            walnutId: data.walnutId,
+            finderId: data.finderId,
+            points: data.points
+          });
+        } else {
+          console.warn(`⚠️ SERVER: Walnut ${data.walnutId} not found in mapState`);
+        }
+        break;
+
       default:
         // Broadcast other messages
         this.broadcastToOthers(playerConnection.squirrelId, data);
@@ -321,20 +371,42 @@ export default class ForestManager {
       await this.storage.put('forestObjects', this.forestObjects);
     }
 
-    // Load or create map state
+    // Load or create map state with initial game walnuts
     const storedMapState = await this.storage.get('mapState');
     if (storedMapState) {
       this.mapState = Array.isArray(storedMapState) ? storedMapState : [];
     } else {
-      this.mapState = [{
-        id: "test-walnut",
-        ownerId: "system",
-        origin: "game" as const,
-        hiddenIn: "buried" as const,
-        location: { x: 0, y: 0, z: 0 },
-        found: false,
-        timestamp: Date.now()
-      }];
+      // Create initial game walnuts - these belong to the system and spawn for testing
+      // Placed away from origin landmark tower (0, 10, 0)
+      this.mapState = [
+        {
+          id: "game-walnut-1",
+          ownerId: "system",
+          origin: "game" as const,
+          hiddenIn: "buried" as const,  // Will be rendered as 'game' type on client
+          location: { x: 15, y: 0, z: 15 },
+          found: false,
+          timestamp: Date.now()
+        },
+        {
+          id: "game-walnut-2",
+          ownerId: "system",
+          origin: "game" as const,
+          hiddenIn: "buried" as const,
+          location: { x: -12, y: 0, z: 18 },
+          found: false,
+          timestamp: Date.now()
+        },
+        {
+          id: "game-walnut-3",
+          ownerId: "system",
+          origin: "game" as const,
+          hiddenIn: "bush" as const,
+          location: { x: 20, y: 0, z: -10 },
+          found: false,
+          timestamp: Date.now()
+        }
+      ];
       await this.storage.put('mapState', this.mapState);
     }
   }

@@ -189,30 +189,23 @@ interface WalnutMessage {
 - Walnut ownership tracking
 - WalnutRegistry Durable Object integration
 
-### Part 5: Narrator Voiceover System (MVP 3 Foundation)
+### Part 5: Text-Based Tutorial System (MVP 3 Foundation)
 
-**Narrator Only** - Guide players (no NPCs yet)
+**Tutorial Messages** - Guide players with text overlays
 - Welcome message: "Welcome to the Hidden Walnuts! You have 3 walnuts to hide..."
 - Tutorial tips: "Press H to hide a walnut..." "Click to collect walnuts..."
 - Achievement callouts: "First walnut hidden!" "10 walnuts found!"
 - Event announcements: "New walnut available!"
 
-**Voice Actor Needs** - Record these lines
-- **Narrator** (calm, guiding voice): ~50 lines
-  - Tutorial/onboarding
-  - Game state announcements
-  - Achievement unlocks
-  - Contextual tips
-
 **Technical Implementation**:
 ```typescript
-class VoiceoverSystem {
-  playNarration(event: 'welcome' | 'tutorial' | 'achievement' | 'hint');
-  // Simple audio playback - no distance calculation needed yet
+class TutorialSystem {
+  showMessage(event: 'welcome' | 'tutorial' | 'achievement' | 'hint', text: string);
+  // Simple text overlay - temporary display with fade out
 }
 ```
 
-**Note**: NPC voiceovers (squirrel, owl, chipmunk) are saved for **MVP 7** when ambient NPCs are implemented
+**Note**: Voice acting for narrator and NPCs moved to **MVP 6.5** (optional polish)
 
 ---
 
@@ -406,11 +399,11 @@ rm client/src/ARCHITECTURE_README.md
 
 ---
 
-## 🎨 MVP 6.5: Advanced Animation Polish (Optional)
+## 🎨 MVP 6.5: Advanced Animation & Visual Polish (Optional)
 
-**Goal**: AAA-quality animation smoothness
+**Goal**: AAA-quality animation smoothness and visual refinements
 
-**Status**: Current smoothness is good enough for gameplay. This is optional polish.
+**Status**: Current implementation is good enough for gameplay. This is optional polish.
 
 ### Current Implementation ✅
 - Manual delta time calculation
@@ -421,10 +414,26 @@ rm client/src/ARCHITECTURE_README.md
 
 ### Future Refinements (If Time Permits)
 
-**Hermite Interpolation** - Smoother remote player movement
-**Dead Reckoning** - Predict position during network lag
-**Input Buffering** - Prevent dropped inputs during lag
-**Adaptive Delay** - Adjust interpolation based on network quality
+**Animation Improvements**:
+- **Hermite Interpolation** - Smoother remote player movement
+- **Dead Reckoning** - Predict position during network lag
+- **Input Buffering** - Prevent dropped inputs during lag
+- **Adaptive Delay** - Adjust interpolation based on network quality
+
+**Visual Improvements**:
+- **Buried Walnut Visual** - Replace flattened upside-down dirt cone with natural-looking dirt mound
+  - Current: Inverted cone geometry (functional but unpolished)
+  - Target: Rounded mound with texture detail and proper terrain blending
+
+**Audio Improvements**:
+- **Narrator Voiceover System** - Record and implement voice-acted tutorial and achievement callouts
+  - ~50 narrator lines (calm, guiding voice)
+  - Tutorial/onboarding, game state announcements, achievement unlocks, contextual tips
+  - Simple audio playback triggered by game events
+- **NPC Voiceovers** - Squirrel, Owl, Chipmunk character voices (added in MVP 7 with ambient NPCs)
+  - Position-based audio (quieter when far from NPC)
+  - Ambient comments as players pass by
+  - Contextual hints about nearby walnuts
 
 ---
 
@@ -511,6 +520,56 @@ class Predator {
 
 ---
 
+## 📱 MVP 7.5: Mobile/Touch Controls
+
+**Goal**: Make the game playable on iPhone/iPad without keyboard
+
+### Touch Control System
+
+**Virtual Joystick** - Left side of screen
+- Drag to move in any direction
+- Release to stop
+- Visual feedback (joystick circle + thumb indicator)
+
+**Action Buttons** - Right side of screen
+- **H Button**: Hide walnut (large button, bottom-right)
+- **Jump Button**: Space equivalent (if needed)
+- **Camera Control**: Two-finger drag to rotate camera (optional)
+
+**Touch Gestures**:
+- **Single Tap**: Click to find walnut / interact with objects
+- **Long Press**: Alternate hide action (if near bush)
+- **Pinch**: Zoom in/out (optional camera control)
+
+**UI Considerations**:
+- Buttons sized for touch (minimum 44x44pt for iOS)
+- Semi-transparent so they don't block gameplay
+- Position adjustable in settings (left-handed mode)
+- Auto-hide when not in use (fade out after 3s of no input)
+
+**Platform Detection**:
+```typescript
+// Detect mobile and show touch controls
+const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+if (isMobile) {
+  this.showTouchControls();
+}
+```
+
+**Technical Implementation**:
+- HTML5 touch events (touchstart, touchmove, touchend)
+- Virtual joystick library or custom implementation
+- Separate control layer (doesn't interfere with game canvas)
+- Responsive layout (adapts to portrait/landscape)
+
+**Why Important**:
+- Huge potential playerbase on mobile
+- Many players prefer casual mobile gaming
+- Touch controls are expected on iOS/Android
+- Increases accessibility and reach
+
+---
+
 ## 🔐 MVP 8: Player Authentication
 
 **Goal**: Players can save progress and return later
@@ -562,6 +621,7 @@ class Predator {
 | 6 | Code Cleanup | Pending |
 | 6.5 | Animation Polish | Optional |
 | 7 | Predators + NPCs + Polish | Pending |
+| 7.5 | Mobile/Touch Controls | Pending |
 | 8 | Player Authentication | Pending |
 
 ---
@@ -575,12 +635,15 @@ class Predator {
 - [ ] Connection recovery works
 
 ### MVP 3 Success
-- [ ] Can hide walnuts with H key
-- [ ] Can find walnuts by clicking
-- [ ] Walnut visual indicators work (mounds, glints, glow)
-- [ ] Landmarks help navigation
-- [ ] Minimap shows position
-- [ ] Narrator voiceover guides players
+- [x] Can hide walnuts with H key (context-based: bush vs buried)
+- [x] Can find walnuts by clicking
+- [x] Basic walnut visuals (mounds, glints, glow for game walnuts)
+- [x] Proximity indicators (cursor changes, visual glow within 3 units)
+- [x] Cardinal direction landmarks (N/S/E/W colored towers with labels)
+- [x] Bush/tree positions synchronized from server (multiplayer-ready)
+- [x] Minimap shows player position, other players, and landmarks
+- [ ] Grid location system (A1-Z26)
+- [ ] Text-based tutorial messages (voice acting in MVP 6.5)
 
 ### MVP 4 Success
 - [ ] Leaderboard tracks top players
