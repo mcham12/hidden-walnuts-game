@@ -243,8 +243,8 @@ export class Game {
 
       // Use model's actual bounding box for accurate ground positioning
       const box = new THREE.Box3().setFromObject(this.character);
-      // Add extra offset to prevent sinking (scale-adjusted)
-      this.characterGroundOffset = -box.min.y * char.scale + 0.1;
+      // Add extra offset to prevent sinking (scale-adjusted + larger safety margin)
+      this.characterGroundOffset = -box.min.y * char.scale + 0.3;
 
       this.setAction('idle');
       this.character.position.y = getTerrainHeight(this.character.position.x, this.character.position.z) + this.characterGroundOffset;
@@ -1297,10 +1297,20 @@ export class Game {
       group.add(particle);
     }
 
+    // Add invisible collision sphere for easier clicking
+    const collisionGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+    const collisionMaterial = new THREE.MeshBasicMaterial({
+      visible: false
+    });
+    const collisionMesh = new THREE.Mesh(collisionGeometry, collisionMaterial);
+    collisionMesh.position.y = 0.1;
+    group.add(collisionMesh);
+
     // Position the entire group
     group.position.copy(position);
     group.userData.type = 'buried';
     group.userData.points = 3;
+    group.userData.clickPosition = new THREE.Vector3(position.x, position.y + 0.1, position.z);
 
     return group;
   }
@@ -1328,6 +1338,15 @@ export class Game {
     glint.position.copy(walnut.position);
     group.add(glint);
 
+    // Add invisible collision sphere for easier clicking
+    const collisionGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+    const collisionMaterial = new THREE.MeshBasicMaterial({
+      visible: false
+    });
+    const collisionMesh = new THREE.Mesh(collisionGeometry, collisionMaterial);
+    collisionMesh.position.y = 0.2;
+    group.add(collisionMesh);
+
     // Store glint for animation
     group.userData.glint = glint;
     group.userData.glintPhase = Math.random() * Math.PI * 2;
@@ -1336,6 +1355,7 @@ export class Game {
     group.position.copy(position);
     group.userData.type = 'bush';
     group.userData.points = 1;
+    group.userData.clickPosition = new THREE.Vector3(position.x, position.y + 0.2, position.z);
 
     return group;
   }
@@ -1391,6 +1411,15 @@ export class Game {
       group.add(sparkle);
     }
 
+    // Add invisible collision sphere for easier clicking
+    const collisionGeometry = new THREE.SphereGeometry(0.6, 8, 8);
+    const collisionMaterial = new THREE.MeshBasicMaterial({
+      visible: false
+    });
+    const collisionMesh = new THREE.Mesh(collisionGeometry, collisionMaterial);
+    collisionMesh.position.y = 0.3;
+    group.add(collisionMesh);
+
     // Store references for animation
     group.userData.walnut = walnut;
     group.userData.glow = glow;
@@ -1400,6 +1429,7 @@ export class Game {
     group.position.copy(position);
     group.userData.type = 'game';
     group.userData.points = 5; // Bonus multiplier
+    group.userData.clickPosition = new THREE.Vector3(position.x, position.y + 0.3, position.z);
 
     return group;
   }
@@ -1415,20 +1445,22 @@ export class Game {
     const buried = this.createBuriedWalnutVisual(buriedPos);
     this.scene.add(buried);
     this.walnuts.set('buried-1', buried);
+    const buriedLabel = this.createLabel('Buried Walnut (3 pts)', '#8B4513');
+    this.walnutLabels.set('buried-1', buriedLabel);
 
     // Spawn 1 bush walnut
     const bushPos = new THREE.Vector3(-5, getTerrainHeight(-5, -5), -5);
     const bush = this.createBushWalnutVisual(bushPos);
     this.scene.add(bush);
     this.walnuts.set('bush-1', bush);
+    const bushLabel = this.createLabel('Bush Walnut (1 pt)', '#D2691E');
+    this.walnutLabels.set('bush-1', bushLabel);
 
     // Spawn 1 game walnut
     const gamePos = new THREE.Vector3(0, getTerrainHeight(0, 5), 5);
     const game = this.createGameWalnutVisual(gamePos);
     this.scene.add(game);
     this.walnuts.set('game-1', game);
-
-    // Add label for game walnut (bonus walnut)
     const gameLabel = this.createLabel('🌟 Bonus Walnut (5 pts)', '#FFD700');
     this.walnutLabels.set('game-1', gameLabel);
 
@@ -1494,10 +1526,15 @@ export class Game {
     const walnutId = `player-${this.playerId}-${Date.now()}`;
 
     let walnutGroup: THREE.Group;
+    let labelText: string;
+    let labelColor: string;
+
     if (isBuried) {
       // Create buried walnut
       const position = new THREE.Vector3(playerPos.x, terrainY, playerPos.z);
       walnutGroup = this.createBuriedWalnutVisual(position);
+      labelText = 'Your Buried Walnut (3 pts)';
+      labelColor = '#8B4513';
       console.log('🌰 Buried walnut at:', position);
     } else {
       // Create bush walnut - offset slightly from player
@@ -1512,6 +1549,8 @@ export class Game {
         playerPos.z + offset.z
       );
       walnutGroup = this.createBushWalnutVisual(position);
+      labelText = 'Your Bush Walnut (1 pt)';
+      labelColor = '#D2691E';
       console.log('🌰 Hidden walnut in bush at:', position);
     }
 
@@ -1520,6 +1559,10 @@ export class Game {
     walnutGroup.userData.id = walnutId;
     this.scene.add(walnutGroup);
     this.walnuts.set(walnutId, walnutGroup);
+
+    // Add label for player-hidden walnut
+    const label = this.createLabel(labelText, labelColor);
+    this.walnutLabels.set(walnutId, label);
 
     // Decrement player walnut count
     this.playerWalnutCount--;
@@ -1612,12 +1655,15 @@ export class Game {
   private findWalnut(walnutId: string, walnutGroup: THREE.Group): void {
     if (!this.character) return;
 
-    const walnutPos = walnutGroup.position;
+    // Use clickPosition if available, otherwise use group position
+    const walnutPos = walnutGroup.userData.clickPosition || walnutGroup.position;
     const playerPos = this.character.position;
 
-    // Check if player is close enough (within 2 units for buried, 3 units for bush/game)
+    // Check if player is close enough - increased distance for better UX
     const distance = playerPos.distanceTo(walnutPos);
-    const maxDistance = walnutGroup.userData.type === 'buried' ? 2 : 3;
+    const maxDistance = walnutGroup.userData.type === 'buried' ? 4 : 5;
+
+    console.log(`🔍 Click detected: type=${walnutGroup.userData.type}, distance=${distance.toFixed(1)}, max=${maxDistance}`);
 
     if (distance > maxDistance) {
       console.log(`🚫 Too far away! Distance: ${distance.toFixed(1)}, need to be within ${maxDistance}`);
