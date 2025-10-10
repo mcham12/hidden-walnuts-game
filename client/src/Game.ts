@@ -1561,7 +1561,7 @@ export class Game {
     const terrainY = getTerrainHeight(playerPos.x, playerPos.z);
 
     const walnutId = `player-${this.playerId}-${Date.now()}`;
-    const BUSH_PROXIMITY_THRESHOLD = 5; // Units - if within this distance, hide in bush
+    const BUSH_PROXIMITY_THRESHOLD = 2; // Units - player must be very close to bush to hide in it
 
     let walnutGroup: THREE.Group;
     let labelText: string;
