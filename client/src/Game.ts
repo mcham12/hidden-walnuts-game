@@ -1230,15 +1230,29 @@ export class Game {
   }
 
   /**
-   * Update all walnut labels
+   * Update all walnut labels - only show when player is nearby
    */
   private updateWalnutLabels(): void {
+    if (!this.character) return;
+
+    const playerPos = this.character.position;
+    const LABEL_VISIBILITY_DISTANCE = 10; // Only show labels within 10 units
+
     for (const [walnutId, walnutGroup] of this.walnuts) {
       const label = this.walnutLabels.get(walnutId);
       if (label && walnutGroup) {
-        const labelPos = walnutGroup.position.clone();
-        labelPos.y += 1; // Offset above walnut
-        this.updateLabelPosition(label, labelPos);
+        // Check distance to player
+        const distance = playerPos.distanceTo(walnutGroup.position);
+
+        if (distance <= LABEL_VISIBILITY_DISTANCE) {
+          // Close enough - show label
+          const labelPos = walnutGroup.position.clone();
+          labelPos.y += 1; // Offset above walnut
+          this.updateLabelPosition(label, labelPos);
+        } else {
+          // Too far - hide label
+          label.style.display = 'none';
+        }
       }
     }
   }
@@ -1531,6 +1545,7 @@ export class Game {
 
   /**
    * MVP 3: Hide a walnut at the player's current position
+   * Context-based: near bush = hide in bush, else = bury in ground
    */
   private hideWalnut(): void {
     if (!this.character) return;
@@ -1545,59 +1560,43 @@ export class Game {
     const playerPos = this.character.position.clone();
     const terrainY = getTerrainHeight(playerPos.x, playerPos.z);
 
-    // Random choice: buried (70%) or bush (30%)
-    const isBuried = Math.random() < 0.7;
     const walnutId = `player-${this.playerId}-${Date.now()}`;
+    const BUSH_PROXIMITY_THRESHOLD = 5; // Units - if within this distance, hide in bush
 
     let walnutGroup: THREE.Group;
     let labelText: string;
     let labelColor: string;
 
-    if (isBuried) {
-      // Create buried walnut
+    // CONTEXT-BASED HIDING: Check if player is near a bush
+    let nearestBush: THREE.Vector3 | null = null;
+    let minDistance = Infinity;
+
+    if (bushPositions.length > 0) {
+      for (const bushPos of bushPositions) {
+        const distance = playerPos.distanceTo(bushPos);
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestBush = bushPos;
+        }
+      }
+    }
+
+    // Decide: bush or buried based on proximity
+    if (nearestBush && minDistance <= BUSH_PROXIMITY_THRESHOLD) {
+      // HIDE IN BUSH - player is close enough to a bush
+      const position = nearestBush.clone();
+      position.y = getTerrainHeight(position.x, position.z);
+      walnutGroup = this.createBushWalnutVisual(position);
+      labelText = 'Your Bush Walnut (1 pt)';
+      labelColor = '#90EE90';
+      console.log(`🌿 Hidden in bush at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}), distance: ${minDistance.toFixed(1)} units`);
+    } else {
+      // BURY IN GROUND - no bush nearby
       const position = new THREE.Vector3(playerPos.x, terrainY, playerPos.z);
       walnutGroup = this.createBuriedWalnutVisual(position);
       labelText = 'Your Buried Walnut (3 pts)';
       labelColor = '#8B4513';
-      console.log('🌰 Buried walnut at:', position);
-    } else {
-      // Create bush walnut - find nearest bush
-      let position: THREE.Vector3;
-      if (bushPositions.length > 0) {
-        // Find nearest bush to player
-        let nearestBush = bushPositions[0];
-        let minDistance = playerPos.distanceTo(nearestBush);
-
-        for (const bushPos of bushPositions) {
-          const distance = playerPos.distanceTo(bushPos);
-          if (distance < minDistance) {
-            minDistance = distance;
-            nearestBush = bushPos;
-          }
-        }
-
-        position = nearestBush.clone();
-        position.y = getTerrainHeight(position.x, position.z);
-        console.log(`🌿 Hiding walnut in bush at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}), distance: ${minDistance.toFixed(1)}`);
-      } else {
-        // Fallback if no bushes available
-        const offset = new THREE.Vector3(
-          (Math.random() - 0.5) * 2,
-          0,
-          (Math.random() - 0.5) * 2
-        );
-        position = new THREE.Vector3(
-          playerPos.x + offset.x,
-          terrainY,
-          playerPos.z + offset.z
-        );
-        console.warn('⚠️ No bushes available, using fallback position');
-      }
-
-      walnutGroup = this.createBushWalnutVisual(position);
-      labelText = 'Your Bush Walnut (1 pt)';
-      labelColor = '#90EE90';
-      console.log('🌰 Hidden walnut in bush at:', position);
+      console.log(`🌰 Buried at player position (${position.x.toFixed(1)}, ${position.z.toFixed(1)}), nearest bush: ${minDistance.toFixed(1)} units away`);
     }
 
     // Add to scene and registry
@@ -1697,6 +1696,9 @@ export class Game {
 
   /**
    * MVP 3: Find a walnut (player clicked on it)
+   * Game mechanics:
+   * - Finding YOUR OWN walnut: No points, just get walnut back (prevents farming)
+   * - Finding OTHERS' walnuts: Get points + walnut to rehide (core loop)
    */
   private findWalnut(walnutId: string, walnutGroup: THREE.Group): void {
     if (!this.character) return;
@@ -1705,7 +1707,7 @@ export class Game {
     const walnutPos = walnutGroup.userData.clickPosition || walnutGroup.position;
     const playerPos = this.character.position;
 
-    // Check if player is close enough - increased distance for better UX
+    // Check if player is close enough
     const distance = playerPos.distanceTo(walnutPos);
     const maxDistance = walnutGroup.userData.type === 'buried' ? 4 : 5;
 
@@ -1716,16 +1718,18 @@ export class Game {
       return;
     }
 
-    // Award points based on walnut type
     const points = walnutGroup.userData.points || 1;
-    this.playerScore += points;
+    const isOwnWalnut = walnutGroup.userData.ownerId === this.playerId;
 
-    // If it's a player-hidden walnut, give them back a walnut
-    if (walnutGroup.userData.ownerId === this.playerId) {
+    if (isOwnWalnut) {
+      // FOUND YOUR OWN WALNUT - No points (prevents farming), just get walnut back
       this.playerWalnutCount++;
-      console.log(`🎉 Found your own walnut! +${points} points, +1 walnut (${this.playerWalnutCount} total)`);
+      console.log(`🔄 Picked up your own walnut! No points awarded. Walnuts: ${this.playerWalnutCount}`);
     } else {
-      console.log(`🎉 Found a walnut! +${points} points (Score: ${this.playerScore})`);
+      // FOUND SOMEONE ELSE'S WALNUT - Award points AND give walnut to rehide
+      this.playerScore += points;
+      this.playerWalnutCount++;
+      console.log(`🎉 Found another player's walnut! +${points} points (Score: ${this.playerScore}), +1 walnut (${this.playerWalnutCount} total)`);
     }
 
     // Remove the walnut from the world
