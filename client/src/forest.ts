@@ -13,7 +13,52 @@ let bushModel: THREE.Group | null = null;
 // Export bush positions for walnut hiding
 export const bushPositions: THREE.Vector3[] = [];
 
+// Export function to create forest from server data
+export async function createForestFromServer(
+  scene: THREE.Scene,
+  forestObjects: Array<{ type: 'tree' | 'shrub'; x: number; y: number; z: number; scale: number }>
+) {
+  try {
+    // Load models once
+    console.log('Loading forest models from server data...');
+    treeModel = await loadModel('/assets/models/environment/Tree_01.glb');
+    bushModel = await loadModel('/assets/models/environment/Bush_01.glb');
+    console.log('Forest models loaded successfully');
+
+    // Clear bush positions (in case of reload)
+    bushPositions.length = 0;
+
+    // Create forest objects from server data
+    for (const obj of forestObjects) {
+      const y = getTerrainHeight(obj.x, obj.z);
+
+      if (obj.type === 'tree') {
+        const tree = treeModel.clone();
+        tree.position.set(obj.x, y, obj.z);
+        tree.scale.set(obj.scale, obj.scale, obj.scale);
+        scene.add(tree);
+      } else if (obj.type === 'shrub') {
+        const bush = bushModel.clone();
+        bush.position.set(obj.x, y, obj.z);
+        bush.scale.set(obj.scale, obj.scale, obj.scale);
+        scene.add(bush);
+
+        // Store bush position for walnut hiding
+        bushPositions.push(new THREE.Vector3(obj.x, y, obj.z));
+      }
+    }
+
+    console.log(`✅ Forest created from server: ${forestObjects.filter(o => o.type === 'tree').length} trees, ${bushPositions.length} bushes`);
+  } catch (error) {
+    console.error('Failed to create forest from server:', error);
+    // Create simple fallback forest
+    createFallbackForest(scene);
+  }
+}
+
+// Legacy function for backwards compatibility - generates random forest (DO NOT USE)
 export async function createForest(scene: THREE.Scene) {
+  console.warn('⚠️ createForest() is deprecated - use createForestFromServer() with server data instead');
   try {
     // Load models once
     console.log('Loading forest models...');
@@ -45,7 +90,7 @@ export async function createForest(scene: THREE.Scene) {
       // Store bush position for walnut hiding
       bushPositions.push(new THREE.Vector3(x, y, z));
     }
-    
+
     console.log('Forest created with heights applied');
   } catch (error) {
     console.error('Failed to create forest:', error);

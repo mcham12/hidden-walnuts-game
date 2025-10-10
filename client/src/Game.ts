@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { createTerrain } from './terrain.js';
-import { createForest, bushPositions } from './forest.js';
+import { createForestFromServer, bushPositions } from './forest.js';
 import { getTerrainHeight } from './terrain.js';
 
 interface Character {
@@ -83,6 +83,36 @@ export class Game {
   private walnutLabels: Map<string, HTMLElement> = new Map(); // Labels for walnuts
   private labelsContainer: HTMLElement | null = null;
 
+  // MVP 3: Proximity indicator properties
+  private PROXIMITY_GLOW_DISTANCE = 3; // Show glow within 3 units
+  private PROXIMITY_CURSOR_DISTANCE = 5; // Change cursor within 5 units
+
+  // MVP 3: Navigation landmarks
+  private landmarks: Map<string, THREE.Vector3> = new Map(); // Landmark name -> position
+
+  // Forest synchronization
+  private forestCreated: boolean = false;
+
+  // MVP 3: Minimap
+  private minimapCanvas: HTMLCanvasElement | null = null;
+  private minimapContext: CanvasRenderingContext2D | null = null;
+  private MINIMAP_WORLD_SIZE = 100; // Show 100x100 world units on minimap
+  private MINIMAP_SIZE = 200; // Canvas size in pixels
+
+  // MVP 3: Tutorial system
+  private tutorialMessages: string[] = [
+    "Welcome to Hidden Walnuts! 🌰",
+    "Movement: Press W to move forward, A/D to rotate left/right, S to move backward.",
+    "You start with 3 walnuts to hide around the forest.",
+    "Press H to hide a walnut. Hide near a bush (1 pt) or bury in ground (3 pts).",
+    "Click on suspicious spots to find hidden walnuts!",
+    "Finding others' walnuts = points + walnut back. Finding your own = just walnut back.",
+    "Use the minimap (top-right) and landmarks to navigate the forest.",
+    "Good luck! Have fun hiding and finding walnuts! 🎮"
+  ];
+  private currentTutorialStep: number = 0;
+  private tutorialShown: boolean = false;
+
 
   async init(canvas: HTMLCanvasElement) {
     console.log('🚀 GAME INIT STARTED');
@@ -124,8 +154,7 @@ export class Game {
     console.log('Terrain added to scene. Scene children count:', this.scene.children.length);
     console.log('Scene children:', this.scene.children);
 
-    // Forest
-    await createForest(this.scene);
+    // Forest will be created from server data when we receive world_state
 
     // Load characters config with error handling
     try {
@@ -159,16 +188,22 @@ export class Game {
     // Load selected character
     await this.loadCharacter();
 
-    // Add landmark cube for navigation
+    // Add landmark cube for navigation (central landmark at origin)
     this.addLandmarkCube();
+
+    // MVP 3: Add cardinal direction landmarks (N, S, E, W)
+    this.addCardinalLandmarks();
 
     // MVP 3: Initialize labels container
     this.labelsContainer = document.getElementById('labels-container');
 
-    // MVP 3: Spawn initial walnuts for testing
-    this.spawnInitialWalnuts();
+    // MVP 3: Initialize minimap
+    this.initMinimap();
 
-    // Setup multiplayer connection
+    // MVP 3: Initialize tutorial system
+    this.initTutorial();
+
+    // Setup multiplayer connection (walnuts will be loaded from server)
     await this.setupMultiplayer();
 
     // Events
@@ -430,6 +465,12 @@ export class Game {
 
     // MVP 3: Update walnut labels
     this.updateWalnutLabels();
+
+    // MVP 3: Update proximity indicators
+    this.updateProximityIndicators();
+
+    // MVP 3: Update minimap
+    this.updateMinimap();
 
     this.renderer.render(this.scene, this.camera);
   };
@@ -751,7 +792,7 @@ export class Game {
     }
   }
 
-  private handleMessage(data: any): void {
+  private async handleMessage(data: any): Promise<void> {
     // Validate message structure
     if (!data || typeof data.type !== 'string') {
       console.warn('⚠️ Invalid message format:', data);
@@ -761,10 +802,58 @@ export class Game {
     switch (data.type) {
       case 'world_state':
         console.log('🌍 Received world state');
-        // World state contains terrainSeed, mapState, forestObjects
-        // For now, just log it - can be used for world sync later
+
+        // Create forest from server data (only once)
+        if (!this.forestCreated && Array.isArray(data.forestObjects)) {
+          console.log(`🌲 Creating forest from server: ${data.forestObjects.length} objects`);
+          await createForestFromServer(this.scene, data.forestObjects);
+          this.forestCreated = true;
+        }
+
+        // Load existing walnuts from server
+        if (Array.isArray(data.mapState)) {
+          console.log(`🌰 Loading ${data.mapState.length} existing walnuts from server`);
+          for (const walnut of data.mapState) {
+            if (!walnut.found) {
+              // Convert server Walnut format to client format
+              // Game walnuts (origin='game') should render as golden bonus walnuts
+              const walnutType = walnut.origin === 'game' ? 'game' : walnut.hiddenIn;
+              const points = walnut.origin === 'game' ? 5 : (walnut.hiddenIn === 'buried' ? 3 : 1);
+
+              this.createRemoteWalnut({
+                walnutId: walnut.id,
+                ownerId: walnut.ownerId,
+                walnutType: walnutType,
+                position: walnut.location,
+                points: points
+              });
+            }
+          }
+        }
         break;
-        
+
+      case 'walnut_hidden':
+        // Another player hid a walnut - create it locally
+        console.log('🌰 Walnut hidden by another player:', data.ownerId);
+        if (data.ownerId !== this.playerId) {
+          this.createRemoteWalnut({
+            walnutId: data.walnutId,
+            ownerId: data.ownerId,
+            walnutType: data.walnutType,
+            position: data.position,
+            points: data.points
+          });
+        }
+        break;
+
+      case 'walnut_found':
+        // Another player found a walnut - remove it locally
+        console.log('🔍 Walnut found by another player:', data.finderId);
+        if (data.walnutId && data.finderId !== this.playerId) {
+          this.removeWalnut(data.walnutId);
+        }
+        break;
+
       case 'existing_players':
         console.log('👥 Existing players received:', data.players?.length || 0);
         if (Array.isArray(data.players)) {
@@ -1054,15 +1143,93 @@ export class Game {
   private addLandmarkCube(): void {
     // Add a tall, visible red tower at origin for navigation reference
     const geometry = new THREE.BoxGeometry(2, 20, 2); // Wide and tall
-    const material = new THREE.MeshBasicMaterial({ 
+    const material = new THREE.MeshBasicMaterial({
       color: 0xff0000,
       transparent: false
     });
     const tower = new THREE.Mesh(geometry, material);
     tower.position.set(0, 10, 0); // Base at terrain level, extends up to 20
     this.scene.add(tower);
-    
+
     console.log('📍 Added landmark tower at (0, 10, 0) - 20 units tall');
+  }
+
+  /**
+   * MVP 3: Add colored landmark towers at cardinal directions (N, S, E, W)
+   * These help players navigate and communicate locations
+   */
+  private addCardinalLandmarks(): void {
+    const landmarkDistance = 40; // Distance from center
+    const landmarkHeight = 15; // Height of towers
+
+    // North (Blue)
+    this.createLandmark(
+      new THREE.Vector3(0, 0, landmarkDistance),
+      0x0000ff, // Blue
+      landmarkHeight,
+      'North'
+    );
+
+    // South (Green)
+    this.createLandmark(
+      new THREE.Vector3(0, 0, -landmarkDistance),
+      0x00ff00, // Green
+      landmarkHeight,
+      'South'
+    );
+
+    // East (Yellow)
+    this.createLandmark(
+      new THREE.Vector3(landmarkDistance, 0, 0),
+      0xffff00, // Yellow
+      landmarkHeight,
+      'East'
+    );
+
+    // West (Purple)
+    this.createLandmark(
+      new THREE.Vector3(-landmarkDistance, 0, 0),
+      0xff00ff, // Purple
+      landmarkHeight,
+      'West'
+    );
+
+    console.log('🧭 Added cardinal direction landmarks (N, S, E, W)');
+  }
+
+  /**
+   * Create a single landmark tower with label
+   */
+  private createLandmark(position: THREE.Vector3, color: number, height: number, name: string): void {
+    // Get terrain height
+    const terrainY = getTerrainHeight(position.x, position.z);
+
+    // Create tower
+    const geometry = new THREE.BoxGeometry(1.5, height, 1.5);
+    const material = new THREE.MeshStandardMaterial({
+      color: color,
+      emissive: color,
+      emissiveIntensity: 0.3
+    });
+    const tower = new THREE.Mesh(geometry, material);
+    const towerPosition = new THREE.Vector3(position.x, terrainY + height / 2, position.z);
+    tower.position.copy(towerPosition);
+    tower.castShadow = true;
+    tower.receiveShadow = true;
+    this.scene.add(tower);
+
+    // Store landmark position for label updates
+    const labelPosition = new THREE.Vector3(position.x, terrainY + height, position.z);
+    this.landmarks.set(`landmark-${name}`, labelPosition);
+
+    // Add floating label
+    if (this.labelsContainer) {
+      const label = this.createLabel(`${name}`, '#ffffff');
+      label.style.fontWeight = 'bold';
+      label.style.fontSize = '14px';
+      // Store label for landmark (we'll update its position every frame)
+      this.walnutLabels.set(`landmark-${name}`, label);
+    }
   }
 
   // INDUSTRY STANDARD: Asset caching methods with proper SkinnedMesh cloning
@@ -1186,6 +1353,7 @@ export class Game {
   private updateWalnutHUD(): void {
     const walnutCountSpan = document.getElementById('walnut-count');
     const playerScoreSpan = document.getElementById('player-score');
+    const gridLocationSpan = document.getElementById('grid-location');
 
     if (walnutCountSpan) {
       walnutCountSpan.textContent = `${this.playerWalnutCount}`;
@@ -1194,6 +1362,38 @@ export class Game {
     if (playerScoreSpan) {
       playerScoreSpan.textContent = `${this.playerScore}`;
     }
+
+    if (gridLocationSpan && this.character) {
+      gridLocationSpan.textContent = this.calculateGridLocation(this.character.position);
+    }
+  }
+
+  /**
+   * MVP 3: Calculate grid location (A1-Z26 format)
+   * World space is approximately -90 to +90 (180 units total)
+   * We divide into 26x26 grid (A-Z columns, 1-26 rows)
+   */
+  private calculateGridLocation(position: THREE.Vector3): string {
+    // World bounds (adjust based on your terrain size)
+    const WORLD_MIN = -90;
+    const WORLD_MAX = 90;
+    const WORLD_SIZE = WORLD_MAX - WORLD_MIN; // 180 units
+    const GRID_SIZE = 26;
+
+    // Calculate grid coordinates
+    // Column (A-Z) from X position
+    const xNormalized = (position.x - WORLD_MIN) / WORLD_SIZE; // 0 to 1
+    const col = Math.floor(xNormalized * GRID_SIZE); // 0 to 25
+    const colClamped = Math.max(0, Math.min(GRID_SIZE - 1, col));
+    const colLetter = String.fromCharCode(65 + colClamped); // 'A' to 'Z'
+
+    // Row (1-26) from Z position
+    const zNormalized = (position.z - WORLD_MIN) / WORLD_SIZE; // 0 to 1
+    const row = Math.floor(zNormalized * GRID_SIZE); // 0 to 25
+    const rowClamped = Math.max(0, Math.min(GRID_SIZE - 1, row));
+    const rowNumber = rowClamped + 1; // 1 to 26
+
+    return `${colLetter}${rowNumber}`;
   }
 
   // MVP 3: Label system for landmarks and walnuts
@@ -1231,6 +1431,7 @@ export class Game {
 
   /**
    * Update all walnut labels - only show when player is nearby
+   * Also updates landmark labels
    */
   private updateWalnutLabels(): void {
     if (!this.character) return;
@@ -1238,6 +1439,7 @@ export class Game {
     const playerPos = this.character.position;
     const LABEL_VISIBILITY_DISTANCE = 10; // Only show labels within 10 units
 
+    // Update walnut labels
     for (const [walnutId, walnutGroup] of this.walnuts) {
       const label = this.walnutLabels.get(walnutId);
       if (label && walnutGroup) {
@@ -1255,25 +1457,17 @@ export class Game {
         }
       }
     }
+
+    // Update landmark labels (always visible)
+    for (const [landmarkId, landmarkPos] of this.landmarks) {
+      const label = this.walnutLabels.get(landmarkId);
+      if (label) {
+        this.updateLabelPosition(label, landmarkPos);
+      }
+    }
   }
 
   // MVP 3: Walnut visual system methods
-
-  /**
-   * Create a walnut 3D object with brown texture
-   */
-  private createWalnutGeometry(): THREE.Mesh {
-    const geometry = new THREE.SphereGeometry(0.15, 16, 16);
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x8B4513, // Brown color for walnut
-      roughness: 0.8,
-      metalness: 0.1
-    });
-    const walnut = new THREE.Mesh(geometry, material);
-    walnut.castShadow = true;
-    walnut.receiveShadow = true;
-    return walnut;
-  }
 
   /**
    * Create visual indicator for a buried walnut (mound of dirt)
@@ -1459,53 +1653,6 @@ export class Game {
   }
 
   /**
-   * Spawn initial walnuts in the world (for testing)
-   */
-  private spawnInitialWalnuts(): void {
-    console.log('🌰 Spawning initial test walnuts...');
-
-    // Spawn 1 buried walnut
-    const buriedPos = new THREE.Vector3(5, getTerrainHeight(5, 5), 5);
-    const buried = this.createBuriedWalnutVisual(buriedPos);
-    buried.userData.id = 'buried-1'; // CRITICAL: Set id for click detection!
-    this.scene.add(buried);
-    this.walnuts.set('buried-1', buried);
-    const buriedLabel = this.createLabel('Buried Walnut (3 pts)', '#8B4513');
-    this.walnutLabels.set('buried-1', buriedLabel);
-
-    // Spawn 1 bush walnut - position near an actual bush
-    let bushPos: THREE.Vector3;
-    if (bushPositions.length > 0) {
-      // Pick a random bush and place walnut near it
-      const randomBush = bushPositions[Math.floor(Math.random() * bushPositions.length)];
-      bushPos = randomBush.clone();
-      bushPos.y = getTerrainHeight(bushPos.x, bushPos.z);
-      console.log(`🌿 Positioning bush walnut near bush at (${bushPos.x.toFixed(1)}, ${bushPos.z.toFixed(1)})`);
-    } else {
-      // Fallback if no bushes loaded yet
-      bushPos = new THREE.Vector3(-5, getTerrainHeight(-5, -5), -5);
-      console.warn('⚠️ No bush positions available, using fallback position');
-    }
-    const bush = this.createBushWalnutVisual(bushPos);
-    bush.userData.id = 'bush-1'; // CRITICAL: Set id for click detection!
-    this.scene.add(bush);
-    this.walnuts.set('bush-1', bush);
-    const bushLabel = this.createLabel('Bush Walnut (1 pt)', '#90EE90');
-    this.walnutLabels.set('bush-1', bushLabel);
-
-    // Spawn 1 game walnut
-    const gamePos = new THREE.Vector3(0, getTerrainHeight(0, 5), 5);
-    const game = this.createGameWalnutVisual(gamePos);
-    game.userData.id = 'game-1'; // CRITICAL: Set id for click detection!
-    this.scene.add(game);
-    this.walnuts.set('game-1', game);
-    const gameLabel = this.createLabel('🌟 Bonus Walnut (5 pts)', '#FFD700');
-    this.walnutLabels.set('game-1', gameLabel);
-
-    console.log(`✅ Spawned ${this.walnuts.size} initial walnuts`);
-  }
-
-  /**
    * Animate walnuts (glints, pulses, particles)
    */
   private animateWalnuts(delta: number): void {
@@ -1540,6 +1687,209 @@ export class Game {
           }
         }
       }
+    }
+  }
+
+  /**
+   * MVP 3: Initialize minimap
+   */
+  private initMinimap(): void {
+    this.minimapCanvas = document.getElementById('minimap-canvas') as HTMLCanvasElement;
+    if (this.minimapCanvas) {
+      this.minimapContext = this.minimapCanvas.getContext('2d');
+      console.log('✅ Minimap initialized');
+    } else {
+      console.warn('⚠️ Minimap canvas not found');
+    }
+  }
+
+  /**
+   * MVP 3: Update minimap display
+   */
+  private updateMinimap(): void {
+    if (!this.minimapContext || !this.minimapCanvas || !this.character) return;
+
+    const ctx = this.minimapContext;
+    const size = this.MINIMAP_SIZE;
+
+    // Clear minimap
+    ctx.clearRect(0, 0, size, size);
+
+    // Draw background
+    ctx.fillStyle = 'rgba(40, 40, 40, 0.9)';
+    ctx.fillRect(0, 0, size, size);
+
+    // Draw border
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, size, size);
+
+    // Draw grid lines (optional - shows 4x4 grid for easier navigation)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = 1;
+    const gridDivisions = 4;
+    for (let i = 1; i < gridDivisions; i++) {
+      const pos = (i / gridDivisions) * size;
+      // Vertical lines
+      ctx.beginPath();
+      ctx.moveTo(pos, 0);
+      ctx.lineTo(pos, size);
+      ctx.stroke();
+      // Horizontal lines
+      ctx.beginPath();
+      ctx.moveTo(0, pos);
+      ctx.lineTo(size, pos);
+      ctx.stroke();
+    }
+
+    // Helper function to convert world coords to minimap coords
+    const worldToMinimap = (worldX: number, worldZ: number) => {
+      const playerPos = this.character!.position;
+      // Relative to player position
+      const relX = worldX - playerPos.x;
+      const relZ = worldZ - playerPos.z;
+
+      // Scale to minimap
+      const scale = size / this.MINIMAP_WORLD_SIZE;
+      const minimapX = (relX * scale) + size / 2;
+      const minimapY = (relZ * scale) + size / 2;
+
+      return { x: minimapX, y: minimapY };
+    };
+
+    // Draw landmarks
+    for (const [landmarkId, landmarkPos] of this.landmarks) {
+      const pos = worldToMinimap(landmarkPos.x, landmarkPos.z);
+
+      // Only draw if within minimap bounds
+      if (pos.x >= 0 && pos.x <= size && pos.y >= 0 && pos.y <= size) {
+        // Get landmark color based on name
+        let color = '#ffffff';
+        if (landmarkId.includes('North')) color = '#0000ff';
+        else if (landmarkId.includes('South')) color = '#00ff00';
+        else if (landmarkId.includes('East')) color = '#ffff00';
+        else if (landmarkId.includes('West')) color = '#ff00ff';
+
+        ctx.fillStyle = color;
+        ctx.fillRect(pos.x - 3, pos.y - 3, 6, 6);
+      }
+    }
+
+    // Draw origin landmark (red tower at 0,0)
+    const originPos = worldToMinimap(0, 0);
+    if (originPos.x >= 0 && originPos.x <= size && originPos.y >= 0 && originPos.y <= size) {
+      ctx.fillStyle = '#ff0000';
+      ctx.fillRect(originPos.x - 4, originPos.y - 4, 8, 8);
+    }
+
+    // Draw remote players
+    for (const [_playerId, remotePlayer] of this.remotePlayers) {
+      const pos = worldToMinimap(remotePlayer.position.x, remotePlayer.position.z);
+
+      // Only draw if within minimap bounds
+      if (pos.x >= 0 && pos.x <= size && pos.y >= 0 && pos.y <= size) {
+        ctx.fillStyle = '#aaaaaa';
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Draw local player (always at center)
+    ctx.fillStyle = '#00ff00';
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw player direction indicator
+    ctx.strokeStyle = '#00ff00';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(size / 2, size / 2);
+    // Character starts at Math.PI (facing backward), adjust for minimap (top is north/+Z)
+    const angle = this.character.rotation.y;
+    // On minimap: top is +Z, so we use sin for X and cos for Y (reversed from before)
+    ctx.lineTo(
+      size / 2 + Math.sin(angle) * 10,
+      size / 2 + Math.cos(angle) * 10
+    );
+    ctx.stroke();
+  }
+
+  /**
+   * MVP 3: Update proximity indicators (cursor changes, glow effects)
+   */
+  private updateProximityIndicators(): void {
+    if (!this.character) return;
+
+    const playerPos = this.character.position;
+    let closestWalnut: { id: string; distance: number; group: THREE.Group } | null = null;
+    let minDistance = Infinity;
+
+    // Find closest walnut
+    for (const [walnutId, walnutGroup] of this.walnuts) {
+      const distance = playerPos.distanceTo(walnutGroup.position);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestWalnut = { id: walnutId, distance, group: walnutGroup };
+      }
+    }
+
+    // Update cursor based on proximity
+    if (closestWalnut && closestWalnut.distance <= this.PROXIMITY_CURSOR_DISTANCE) {
+      // Change cursor to pointer when close to walnut
+      document.body.style.cursor = 'pointer';
+
+      // Add proximity glow if very close
+      if (closestWalnut.distance <= this.PROXIMITY_GLOW_DISTANCE) {
+        this.addProximityGlow(closestWalnut.group);
+      } else {
+        this.removeProximityGlow(closestWalnut.group);
+      }
+    } else {
+      // Reset cursor when far from walnuts
+      document.body.style.cursor = 'default';
+
+      // Remove all proximity glows
+      for (const walnutGroup of this.walnuts.values()) {
+        this.removeProximityGlow(walnutGroup);
+      }
+    }
+  }
+
+  /**
+   * Add a proximity glow effect to a walnut
+   */
+  private addProximityGlow(walnutGroup: THREE.Group): void {
+    // Check if glow already exists
+    if (walnutGroup.userData.proximityGlow) return;
+
+    // Create a subtle glow sphere
+    const glowGeometry = new THREE.SphereGeometry(0.6, 16, 16);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.2,
+      blending: THREE.AdditiveBlending
+    });
+    const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+    glowMesh.position.copy(walnutGroup.userData.clickPosition || walnutGroup.position);
+
+    // Add to group
+    walnutGroup.add(glowMesh);
+    walnutGroup.userData.proximityGlow = glowMesh;
+  }
+
+  /**
+   * Remove proximity glow effect from a walnut
+   */
+  private removeProximityGlow(walnutGroup: THREE.Group): void {
+    const glow = walnutGroup.userData.proximityGlow;
+    if (glow) {
+      walnutGroup.remove(glow);
+      glow.geometry.dispose();
+      (glow.material as THREE.Material).dispose();
+      walnutGroup.userData.proximityGlow = null;
     }
   }
 
@@ -1613,7 +1963,20 @@ export class Game {
     this.playerWalnutCount--;
     console.log(`✅ Walnut hidden! Remaining: ${this.playerWalnutCount}`);
 
-    // TODO: Send to server for multiplayer sync
+    // MULTIPLAYER: Send to server for sync
+    this.sendMessage({
+      type: 'walnut_hidden',
+      walnutId: walnutId,
+      ownerId: this.playerId,
+      walnutType: walnutGroup.userData.type,
+      position: {
+        x: walnutGroup.position.x,
+        y: walnutGroup.position.y,
+        z: walnutGroup.position.z
+      },
+      points: walnutGroup.userData.points,
+      timestamp: Date.now()
+    });
   }
 
   /**
@@ -1735,6 +2098,165 @@ export class Game {
     // Remove the walnut from the world
     this.removeWalnut(walnutId);
 
-    // TODO: Send to server for multiplayer sync
+    // MULTIPLAYER: Send to server for sync
+    this.sendMessage({
+      type: 'walnut_found',
+      walnutId: walnutId,
+      finderId: this.playerId,
+      points: points,
+      timestamp: Date.now()
+    });
+  }
+
+  /**
+   * MULTIPLAYER: Create a walnut from network data (when another player hides one)
+   */
+  private createRemoteWalnut(data: {
+    walnutId: string;
+    ownerId: string;
+    walnutType: string;
+    position: { x: number; y: number; z: number };
+    points: number;
+  }): void {
+    // Don't create if already exists
+    if (this.walnuts.has(data.walnutId)) {
+      console.log(`⚠️ Walnut ${data.walnutId} already exists, skipping`);
+      return;
+    }
+
+    const position = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
+    let walnutGroup: THREE.Group;
+    let labelText: string;
+    let labelColor: string;
+
+    // Create appropriate visual based on type
+    switch (data.walnutType) {
+      case 'buried':
+        walnutGroup = this.createBuriedWalnutVisual(position);
+        labelText = data.ownerId === this.playerId ? 'Your Buried Walnut (3 pts)' : `Buried Walnut (3 pts)`;
+        labelColor = '#8B4513';
+        break;
+
+      case 'bush':
+        walnutGroup = this.createBushWalnutVisual(position);
+        labelText = data.ownerId === this.playerId ? 'Your Bush Walnut (1 pt)' : `Bush Walnut (1 pt)`;
+        labelColor = '#90EE90';
+        break;
+
+      case 'game':
+        walnutGroup = this.createGameWalnutVisual(position);
+        labelText = '🌟 Bonus Walnut (5 pts)';
+        labelColor = '#FFD700';
+        break;
+
+      default:
+        console.warn(`⚠️ Unknown walnut type: ${data.walnutType}`);
+        return;
+    }
+
+    // Add to scene and registry
+    walnutGroup.userData.id = data.walnutId;
+    walnutGroup.userData.ownerId = data.ownerId;
+    this.scene.add(walnutGroup);
+    this.walnuts.set(data.walnutId, walnutGroup);
+
+    // Add label
+    const label = this.createLabel(labelText, labelColor);
+    this.walnutLabels.set(data.walnutId, label);
+
+    console.log(`🌰 Created remote walnut: ${data.walnutId} (type: ${data.walnutType}, owner: ${data.ownerId})`);
+  }
+
+  // MVP 3: Tutorial system methods
+
+  /**
+   * Initialize the tutorial system
+   */
+  private initTutorial(): void {
+    // Set up the next button event listener
+    const nextButton = document.getElementById('tutorial-next');
+    if (nextButton) {
+      nextButton.addEventListener('click', () => {
+        this.nextTutorialStep();
+      });
+    }
+
+    // Set up the close button event listener
+    const closeButton = document.getElementById('tutorial-close');
+    if (closeButton) {
+      closeButton.addEventListener('click', () => {
+        this.closeTutorial();
+      });
+    }
+
+    // Show the tutorial after a short delay (allow game to fully load)
+    setTimeout(() => {
+      if (!this.tutorialShown) {
+        this.showTutorial();
+      }
+    }, 1000);
+  }
+
+  /**
+   * Show the tutorial overlay
+   */
+  private showTutorial(): void {
+    this.tutorialShown = true;
+    this.currentTutorialStep = 0;
+    this.displayTutorialMessage();
+  }
+
+  /**
+   * Display the current tutorial message
+   */
+  private displayTutorialMessage(): void {
+    const overlay = document.getElementById('tutorial-overlay');
+    const messageEl = document.getElementById('tutorial-message');
+    const nextButton = document.getElementById('tutorial-next') as HTMLButtonElement;
+
+    if (!overlay || !messageEl || !nextButton) return;
+
+    // Show overlay
+    overlay.classList.remove('hidden');
+
+    // Update message
+    messageEl.textContent = this.tutorialMessages[this.currentTutorialStep];
+
+    // Update button text
+    if (this.currentTutorialStep === this.tutorialMessages.length - 1) {
+      nextButton.textContent = 'Start Playing!';
+    } else {
+      nextButton.textContent = 'Next';
+    }
+  }
+
+  /**
+   * Go to the next tutorial step
+   */
+  private nextTutorialStep(): void {
+    this.currentTutorialStep++;
+
+    if (this.currentTutorialStep >= this.tutorialMessages.length) {
+      // Tutorial complete - hide overlay
+      this.closeTutorial();
+    } else {
+      // Show next message
+      this.displayTutorialMessage();
+    }
+  }
+
+  /**
+   * Close the tutorial (can be called anytime to skip)
+   */
+  private closeTutorial(): void {
+    console.log('🎓 Closing tutorial...');
+    const overlay = document.getElementById('tutorial-overlay');
+    if (overlay) {
+      console.log('✅ Tutorial overlay found, adding hidden class');
+      overlay.classList.add('hidden');
+      console.log('Tutorial overlay classes:', overlay.classList.toString());
+    } else {
+      console.error('❌ Tutorial overlay not found!');
+    }
   }
 }
