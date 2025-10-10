@@ -80,6 +80,8 @@ export class Game {
   private playerScore: number = 0; // Player's current score
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
   private mouse: THREE.Vector2 = new THREE.Vector2();
+  private walnutLabels: Map<string, HTMLElement> = new Map(); // Labels for walnuts
+  private labelsContainer: HTMLElement | null = null;
 
 
   async init(canvas: HTMLCanvasElement) {
@@ -160,6 +162,9 @@ export class Game {
     // Add landmark cube for navigation
     this.addLandmarkCube();
 
+    // MVP 3: Initialize labels container
+    this.labelsContainer = document.getElementById('labels-container');
+
     // MVP 3: Spawn initial walnuts for testing
     this.spawnInitialWalnuts();
 
@@ -238,7 +243,8 @@ export class Game {
 
       // Use model's actual bounding box for accurate ground positioning
       const box = new THREE.Box3().setFromObject(this.character);
-      this.characterGroundOffset = -box.min.y;
+      // Add extra offset to prevent sinking (scale-adjusted)
+      this.characterGroundOffset = -box.min.y * char.scale + 0.1;
 
       this.setAction('idle');
       this.character.position.y = getTerrainHeight(this.character.position.x, this.character.position.z) + this.characterGroundOffset;
@@ -421,6 +427,9 @@ export class Game {
 
     // MVP 3: Animate walnuts
     this.animateWalnuts(delta);
+
+    // MVP 3: Update walnut labels
+    this.updateWalnutLabels();
 
     this.renderer.render(this.scene, this.camera);
   };
@@ -1187,6 +1196,53 @@ export class Game {
     }
   }
 
+  // MVP 3: Label system for landmarks and walnuts
+
+  /**
+   * Create a label for a 3D object in world space
+   */
+  private createLabel(text: string, color: string = 'white'): HTMLElement {
+    const label = document.createElement('div');
+    label.className = 'landmark-label';
+    label.textContent = text;
+    label.style.color = color;
+    if (this.labelsContainer) {
+      this.labelsContainer.appendChild(label);
+    }
+    return label;
+  }
+
+  /**
+   * Update label position in screen space from 3D world position
+   */
+  private updateLabelPosition(label: HTMLElement, position: THREE.Vector3): void {
+    const vector = position.clone();
+    vector.project(this.camera);
+
+    const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (vector.y * -0.5 + 0.5) * window.innerHeight;
+
+    label.style.left = `${x}px`;
+    label.style.top = `${y}px`;
+
+    // Hide label if behind camera
+    label.style.display = vector.z > 1 ? 'none' : 'block';
+  }
+
+  /**
+   * Update all walnut labels
+   */
+  private updateWalnutLabels(): void {
+    for (const [walnutId, walnutGroup] of this.walnuts) {
+      const label = this.walnutLabels.get(walnutId);
+      if (label && walnutGroup) {
+        const labelPos = walnutGroup.position.clone();
+        labelPos.y += 1; // Offset above walnut
+        this.updateLabelPosition(label, labelPos);
+      }
+    }
+  }
+
   // MVP 3: Walnut visual system methods
 
   /**
@@ -1372,6 +1428,10 @@ export class Game {
     this.scene.add(game);
     this.walnuts.set('game-1', game);
 
+    // Add label for game walnut (bonus walnut)
+    const gameLabel = this.createLabel('🌟 Bonus Walnut (5 pts)', '#FFD700');
+    this.walnutLabels.set('game-1', gameLabel);
+
     console.log(`✅ Spawned ${this.walnuts.size} initial walnuts`);
   }
 
@@ -1488,6 +1548,13 @@ export class Game {
         }
       }
     });
+
+    // Remove label if it exists
+    const label = this.walnutLabels.get(walnutId);
+    if (label && this.labelsContainer) {
+      this.labelsContainer.removeChild(label);
+      this.walnutLabels.delete(walnutId);
+    }
 
     this.scene.remove(walnutGroup);
     this.walnuts.delete(walnutId);
