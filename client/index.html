@@ -171,6 +171,181 @@
       #tutorial-overlay.hidden {
         display: none !important;
       }
+      #leaderboard {
+        position: absolute;
+        top: 10px;
+        right: 220px;
+        width: 250px;
+        background: rgba(44, 95, 45, 0.95);
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        font-family: 'Arial', sans-serif;
+        font-size: 14px;
+        z-index: 1000;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      }
+      #leaderboard.hidden {
+        display: none;
+      }
+      #leaderboard h3 {
+        margin: 0 0 10px 0;
+        font-size: 18px;
+        text-align: center;
+        color: #FFD700;
+        border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+        padding-bottom: 8px;
+      }
+      #leaderboard-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      #leaderboard-list li {
+        padding: 8px;
+        margin: 4px 0;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.2s;
+      }
+      #leaderboard-list li:hover {
+        background: rgba(0, 0, 0, 0.3);
+      }
+      #leaderboard-list li.current-player {
+        background: rgba(255, 215, 0, 0.2);
+        border: 1px solid rgba(255, 215, 0, 0.5);
+      }
+      .leaderboard-rank {
+        font-weight: bold;
+        color: #FFD700;
+        min-width: 25px;
+      }
+      .leaderboard-name {
+        flex: 1;
+        margin: 0 8px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .leaderboard-score {
+        font-weight: bold;
+        color: #FFE4B5;
+      }
+      #leaderboard-toggle {
+        position: absolute;
+        top: 10px;
+        right: 475px;
+        background: rgba(44, 95, 45, 0.9);
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-family: 'Arial', sans-serif;
+        font-size: 14px;
+        font-weight: bold;
+        z-index: 1001;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        transition: all 0.2s;
+      }
+      #leaderboard-toggle:hover {
+        background: rgba(44, 95, 45, 1);
+        transform: translateY(-1px);
+      }
+      #leaderboard-toggle.hidden {
+        display: none;
+      }
+      #quick-chat {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 1000;
+      }
+      #quick-chat.hidden {
+        display: none;
+      }
+      .chat-button {
+        background: rgba(44, 95, 45, 0.9);
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-family: 'Arial', sans-serif;
+        font-size: 13px;
+        font-weight: bold;
+        transition: all 0.2s;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        min-width: 150px;
+        text-align: left;
+      }
+      .chat-button:hover {
+        background: rgba(44, 95, 45, 1);
+        transform: translateX(3px);
+      }
+      #emotes {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        display: flex;
+        gap: 8px;
+        z-index: 1000;
+      }
+      #emotes.hidden {
+        display: none;
+      }
+      .emote-button {
+        background: rgba(139, 69, 19, 0.9);
+        color: white;
+        border: none;
+        padding: 12px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 20px;
+        width: 50px;
+        height: 50px;
+        transition: all 0.2s;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .emote-button:hover {
+        background: rgba(139, 69, 19, 1);
+        transform: scale(1.1);
+      }
+      #chat-message-display {
+        position: absolute;
+        bottom: 200px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 10px 15px;
+        border-radius: 6px;
+        font-family: 'Arial', sans-serif;
+        font-size: 14px;
+        max-width: 300px;
+        display: none;
+        z-index: 1001;
+      }
+      #chat-message-display.show {
+        display: block;
+        animation: fadeIn 0.3s, fadeOut 0.3s 2.7s;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
     </style>
   </head>
   <body>
@@ -238,11 +413,35 @@
     <div id="minimap">
       <canvas id="minimap-canvas" width="200" height="200"></canvas>
     </div>
+    <button id="leaderboard-toggle" class="hidden">🏆 Leaderboard</button>
+    <div id="leaderboard" class="hidden">
+      <h3>🏆 Top Players</h3>
+      <ul id="leaderboard-list">
+        <li>
+          <span class="leaderboard-rank">#1</span>
+          <span class="leaderboard-name">Loading...</span>
+          <span class="leaderboard-score">-</span>
+        </li>
+      </ul>
+    </div>
     <div id="tutorial-overlay" class="hidden" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.85); color: white; padding: 30px 40px; border-radius: 12px; font-family: 'Arial', sans-serif; font-size: 18px; max-width: 500px; text-align: center; z-index: 2000; box-shadow: 0 8px 16px rgba(0,0,0,0.5);">
       <button id="tutorial-close" style="position: absolute; top: 10px; right: 10px; background: transparent; color: white; border: none; font-size: 24px; cursor: pointer; padding: 5px 10px; line-height: 1;">×</button>
       <div id="tutorial-message" style="margin-bottom: 20px; line-height: 1.6;"></div>
       <button id="tutorial-next" style="background: rgba(139, 69, 19, 0.9); color: white; border: none; padding: 12px 30px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.3s;">Next</button>
     </div>
+    <div id="quick-chat" class="hidden">
+      <button class="chat-button" data-message="Nice find!">💬 Nice find!</button>
+      <button class="chat-button" data-message="Over here!">📍 Over here!</button>
+      <button class="chat-button" data-message="Good hiding spot!">👍 Good hiding spot!</button>
+      <button class="chat-button" data-message="Want to team up?">🤝 Want to team up?</button>
+    </div>
+    <div id="emotes" class="hidden">
+      <button class="emote-button" data-emote="wave" title="Wave">👋</button>
+      <button class="emote-button" data-emote="point" title="Point">👉</button>
+      <button class="emote-button" data-emote="celebrate" title="Celebrate">🎉</button>
+      <button class="emote-button" data-emote="shrug" title="Shrug">🤷</button>
+    </div>
+    <div id="chat-message-display"></div>
     <canvas id="gameCanvas" class="hidden"></canvas>
     <script type="module" src="/src/main.ts"></script>
   </body>

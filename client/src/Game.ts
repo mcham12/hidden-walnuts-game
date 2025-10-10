@@ -113,6 +113,10 @@ export class Game {
   private currentTutorialStep: number = 0;
   private tutorialShown: boolean = false;
 
+  // MVP 4: Leaderboard system
+  private leaderboardVisible: boolean = false;
+  private leaderboardUpdateInterval: number = 0;
+
 
   async init(canvas: HTMLCanvasElement) {
     console.log('🚀 GAME INIT STARTED');
@@ -202,6 +206,12 @@ export class Game {
 
     // MVP 3: Initialize tutorial system
     this.initTutorial();
+
+    // MVP 4: Initialize leaderboard
+    this.initLeaderboard();
+
+    // MVP 4: Initialize quick chat and emotes
+    this.initChatAndEmotes();
 
     // Setup multiplayer connection (walnuts will be loaded from server)
     await this.setupMultiplayer();
@@ -726,6 +736,10 @@ export class Game {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = 0;
+    }
+    if (this.leaderboardUpdateInterval) {
+      clearInterval(this.leaderboardUpdateInterval);
+      this.leaderboardUpdateInterval = 0;
     }
   }
 
@@ -2263,5 +2277,233 @@ export class Game {
     } else {
       console.error('❌ Tutorial overlay not found!');
     }
+  }
+
+  // MVP 4: Leaderboard system methods
+
+  /**
+   * Initialize the leaderboard system
+   */
+  private initLeaderboard(): void {
+    const toggleButton = document.getElementById('leaderboard-toggle');
+    const leaderboardDiv = document.getElementById('leaderboard');
+
+    if (toggleButton && leaderboardDiv) {
+      // Show toggle button when game starts
+      toggleButton.classList.remove('hidden');
+
+      // Toggle leaderboard visibility
+      toggleButton.addEventListener('click', () => {
+        this.leaderboardVisible = !this.leaderboardVisible;
+        if (this.leaderboardVisible) {
+          leaderboardDiv.classList.remove('hidden');
+          this.updateLeaderboard(); // Update immediately when shown
+        } else {
+          leaderboardDiv.classList.add('hidden');
+        }
+      });
+
+      // Start periodic leaderboard updates (every 5 seconds)
+      this.leaderboardUpdateInterval = window.setInterval(() => {
+        if (this.leaderboardVisible) {
+          this.updateLeaderboard();
+        }
+      }, 5000);
+
+      // Initial update
+      this.updateLeaderboard();
+
+      console.log('✅ Leaderboard initialized');
+    } else {
+      console.warn('⚠️ Leaderboard elements not found');
+    }
+  }
+
+  /**
+   * Update the leaderboard display
+   */
+  private async updateLeaderboard(): Promise<void> {
+    try {
+      // For now, use mock data since server doesn't have leaderboard yet
+      // TODO: Fetch from server endpoint
+      const leaderboardData = this.getMockLeaderboardData();
+
+      const leaderboardList = document.getElementById('leaderboard-list');
+      if (!leaderboardList) return;
+
+      // Clear existing entries
+      leaderboardList.innerHTML = '';
+
+      // Add entries (top 10)
+      leaderboardData.slice(0, 10).forEach((entry, index) => {
+        const li = document.createElement('li');
+
+        // Highlight current player
+        if (entry.playerId === this.playerId) {
+          li.classList.add('current-player');
+        }
+
+        // Create entry HTML
+        li.innerHTML = `
+          <span class="leaderboard-rank">#${index + 1}</span>
+          <span class="leaderboard-name">${entry.displayName}</span>
+          <span class="leaderboard-score">${entry.score}</span>
+        `;
+
+        leaderboardList.appendChild(li);
+      });
+    } catch (error) {
+      console.error('❌ Failed to update leaderboard:', error);
+    }
+  }
+
+  /**
+   * Get mock leaderboard data (temporary until server implements leaderboard)
+   */
+  private getMockLeaderboardData(): Array<{ playerId: string; displayName: string; score: number }> {
+    // Create mock data including current player
+    const mockData = [
+      { playerId: this.playerId, displayName: 'You', score: this.playerScore }
+    ];
+
+    // Add some mock players for testing
+    for (let i = 0; i < 9; i++) {
+      mockData.push({
+        playerId: `player_${i}`,
+        displayName: `Player ${i + 1}`,
+        score: Math.floor(Math.random() * 50)
+      });
+    }
+
+    // Sort by score descending
+    return mockData.sort((a, b) => b.score - a.score);
+  }
+
+  /**
+   * Initialize quick chat and emote systems
+   */
+  private initChatAndEmotes(): void {
+    const quickChatDiv = document.getElementById('quick-chat');
+    const emotesDiv = document.getElementById('emotes');
+    const chatDisplay = document.getElementById('chat-message-display');
+
+    // Show UI elements
+    if (quickChatDiv) {
+      quickChatDiv.classList.remove('hidden');
+    }
+    if (emotesDiv) {
+      emotesDiv.classList.remove('hidden');
+    }
+
+    // Setup quick chat buttons
+    const chatButtons = document.querySelectorAll('.chat-button');
+    chatButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const message = (button as HTMLElement).getAttribute('data-message');
+        if (message) {
+          this.sendChatMessage(message);
+        }
+      });
+    });
+
+    // Setup emote buttons
+    const emoteButtons = document.querySelectorAll('.emote-button');
+    emoteButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const emote = (button as HTMLElement).getAttribute('data-emote');
+        if (emote) {
+          this.sendEmote(emote);
+        }
+      });
+    });
+
+    console.log('✅ Quick chat and emotes initialized');
+  }
+
+  /**
+   * Send a chat message
+   */
+  private sendChatMessage(message: string): void {
+    // Display locally
+    this.displayChatMessage(`You: ${message}`);
+
+    // TODO: Send to server via WebSocket for multiplayer sync
+    // this.websocket?.send(JSON.stringify({
+    //   type: 'chat',
+    //   message: message,
+    //   playerId: this.playerId
+    // }));
+
+    console.log('💬 Chat message sent:', message);
+  }
+
+  /**
+   * Send an emote
+   */
+  private sendEmote(emote: string): void {
+    // Display locally
+    this.displayEmote(emote, this.character?.position);
+
+    // TODO: Send to server via WebSocket for multiplayer sync
+    // this.websocket?.send(JSON.stringify({
+    //   type: 'emote',
+    //   emote: emote,
+    //   playerId: this.playerId,
+    //   position: this.character?.position
+    // }));
+
+    console.log('👋 Emote sent:', emote);
+  }
+
+  /**
+   * Display a chat message with fade animation
+   */
+  private displayChatMessage(message: string): void {
+    const chatDisplay = document.getElementById('chat-message-display');
+    if (!chatDisplay) return;
+
+    // Set message
+    chatDisplay.textContent = message;
+
+    // Remove existing show class and force reflow to restart animation
+    chatDisplay.classList.remove('show');
+    void chatDisplay.offsetWidth; // Force reflow
+
+    // Add show class to trigger animation
+    chatDisplay.classList.add('show');
+
+    // Remove show class after animation completes (3 seconds)
+    setTimeout(() => {
+      chatDisplay.classList.remove('show');
+    }, 3000);
+  }
+
+  /**
+   * Display an emote above a character
+   */
+  private displayEmote(emote: string, position?: THREE.Vector3): void {
+    if (!position) return;
+
+    // Create emote sprite/text above character
+    const emoteIcon = this.getEmoteIcon(emote);
+
+    // For now, just log - we can add 3D text or sprites later
+    console.log(`${emoteIcon} emote displayed at position:`, position);
+
+    // TODO: Create a 3D sprite or text label that floats above the character
+    // and fades out after a few seconds
+  }
+
+  /**
+   * Get emoji icon for emote type
+   */
+  private getEmoteIcon(emote: string): string {
+    const emoteIcons: { [key: string]: string } = {
+      'wave': '👋',
+      'point': '👉',
+      'celebrate': '🎉',
+      'shrug': '🤷'
+    };
+    return emoteIcons[emote] || '❓';
   }
 }
