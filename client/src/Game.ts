@@ -1316,14 +1316,26 @@ export class Game {
   }
 
   /**
-   * Create visual indicator for a bush walnut (visible in foliage)
+   * Create visual indicator for a ground walnut (visible on ground with grass)
    */
   private createBushWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // Walnut geometry - partially visible
+    // Add simple grass patch underneath
+    const grassGeometry = new THREE.ConeGeometry(0.4, 0.3, 6);
+    const grassMaterial = new THREE.MeshStandardMaterial({
+      color: 0x4a7c2e, // Grass green
+      roughness: 0.8,
+      flatShading: true
+    });
+    const grass = new THREE.Mesh(grassGeometry, grassMaterial);
+    grass.position.y = 0.05;
+    grass.rotation.x = Math.PI; // Flip to be grass tuft
+    group.add(grass);
+
+    // Walnut geometry - sitting on grass
     const walnut = this.createWalnutGeometry();
-    walnut.position.y = 0.2; // Raised slightly in bush
+    walnut.position.y = 0.15; // Sitting on top of grass
     group.add(walnut);
 
     // Add shimmer/glint effect
@@ -1344,7 +1356,7 @@ export class Game {
       visible: false
     });
     const collisionMesh = new THREE.Mesh(collisionGeometry, collisionMaterial);
-    collisionMesh.position.y = 0.2;
+    collisionMesh.position.y = 0.15;
     group.add(collisionMesh);
 
     // Store glint for animation
@@ -1353,9 +1365,9 @@ export class Game {
 
     // Position the entire group
     group.position.copy(position);
-    group.userData.type = 'bush';
+    group.userData.type = 'ground'; // Changed from 'bush' to 'ground'
     group.userData.points = 1;
-    group.userData.clickPosition = new THREE.Vector3(position.x, position.y + 0.2, position.z);
+    group.userData.clickPosition = new THREE.Vector3(position.x, position.y + 0.15, position.z);
 
     return group;
   }
@@ -1443,22 +1455,25 @@ export class Game {
     // Spawn 1 buried walnut
     const buriedPos = new THREE.Vector3(5, getTerrainHeight(5, 5), 5);
     const buried = this.createBuriedWalnutVisual(buriedPos);
+    buried.userData.id = 'buried-1'; // CRITICAL: Set id for click detection!
     this.scene.add(buried);
     this.walnuts.set('buried-1', buried);
     const buriedLabel = this.createLabel('Buried Walnut (3 pts)', '#8B4513');
     this.walnutLabels.set('buried-1', buriedLabel);
 
-    // Spawn 1 bush walnut
-    const bushPos = new THREE.Vector3(-5, getTerrainHeight(-5, -5), -5);
-    const bush = this.createBushWalnutVisual(bushPos);
-    this.scene.add(bush);
-    this.walnuts.set('bush-1', bush);
-    const bushLabel = this.createLabel('Bush Walnut (1 pt)', '#D2691E');
-    this.walnutLabels.set('bush-1', bushLabel);
+    // Spawn 1 ground walnut (renamed from bush - no actual bushes exist)
+    const groundPos = new THREE.Vector3(-5, getTerrainHeight(-5, -5), -5);
+    const ground = this.createBushWalnutVisual(groundPos);
+    ground.userData.id = 'ground-1'; // CRITICAL: Set id for click detection!
+    this.scene.add(ground);
+    this.walnuts.set('ground-1', ground);
+    const groundLabel = this.createLabel('Ground Walnut (1 pt)', '#D2691E');
+    this.walnutLabels.set('ground-1', groundLabel);
 
     // Spawn 1 game walnut
     const gamePos = new THREE.Vector3(0, getTerrainHeight(0, 5), 5);
     const game = this.createGameWalnutVisual(gamePos);
+    game.userData.id = 'game-1'; // CRITICAL: Set id for click detection!
     this.scene.add(game);
     this.walnuts.set('game-1', game);
     const gameLabel = this.createLabel('🌟 Bonus Walnut (5 pts)', '#FFD700');
@@ -1521,7 +1536,7 @@ export class Game {
     const playerPos = this.character.position.clone();
     const terrainY = getTerrainHeight(playerPos.x, playerPos.z);
 
-    // Random choice: buried (70%) or bush (30%)
+    // Random choice: buried (70%) or ground (30%)
     const isBuried = Math.random() < 0.7;
     const walnutId = `player-${this.playerId}-${Date.now()}`;
 
@@ -1537,7 +1552,7 @@ export class Game {
       labelColor = '#8B4513';
       console.log('🌰 Buried walnut at:', position);
     } else {
-      // Create bush walnut - offset slightly from player
+      // Create ground walnut - offset slightly from player
       const offset = new THREE.Vector3(
         (Math.random() - 0.5) * 2,
         0,
@@ -1549,9 +1564,9 @@ export class Game {
         playerPos.z + offset.z
       );
       walnutGroup = this.createBushWalnutVisual(position);
-      labelText = 'Your Bush Walnut (1 pt)';
+      labelText = 'Your Ground Walnut (1 pt)';
       labelColor = '#D2691E';
-      console.log('🌰 Hidden walnut in bush at:', position);
+      console.log('🌰 Hidden walnut on ground at:', position);
     }
 
     // Add to scene and registry
