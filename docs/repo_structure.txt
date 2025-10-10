@@ -1,0 +1,171 @@
+.
+├── .github
+│   └── workflows
+│       └── deploy-worker.yml
+├── .gitignore
+├── client
+│   ├── .env
+│   ├── .env.development
+│   ├── .env.preview
+│   ├── .env.production
+│   ├── .gitignore
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── public
+│   │   ├── _routes.json
+│   │   └── assets
+│   │       └── models
+│   │           └── test.txt
+│   ├── src
+│   │   ├── ARCHITECTURE_README.md
+│   │   ├── core
+│   │   │   ├── Container.ts
+│   │   │   ├── EventBus.ts
+│   │   │   ├── Logger.ts
+│   │   │   └── types.ts
+│   │   ├── ecs
+│   │   │   └── index.ts
+│   │   ├── ENTERPRISE_ARCHITECTURE.md
+│   │   ├── entities
+│   │   │   └── PlayerFactory.ts
+│   │   ├── forest.ts
+│   │   ├── GameComposition.ts
+│   │   ├── main.ts
+│   │   ├── rendering
+│   │   │   └── IRenderAdapter.ts
+│   │   ├── services
+│   │   │   └── TerrainService.ts
+│   │   ├── style.css
+│   │   ├── systems
+│   │   │   ├── AreaOfInterestSystem.ts
+│   │   │   ├── ClientPredictionSystem.ts
+│   │   │   ├── InputSystem.ts
+│   │   │   ├── InterpolationSystem.ts
+│   │   │   ├── MovementSystem.ts
+│   │   │   ├── NetworkCompressionSystem.ts
+│   │   │   ├── NetworkSystem.ts
+│   │   │   ├── NetworkTickSystem.ts
+│   │   │   ├── PlayerManager.ts
+│   │   │   └── RenderSystem.ts
+│   │   ├── terrain.ts
+│   │   ├── types.ts
+│   │   ├── validation
+│   │   └── vite-env.d.ts
+│   ├── test-multiplayer.html
+│   ├── tsconfig.json
+│   └── vite.config.ts
+├── docs
+│   ├── README.md
+│   ├── README_AI.md
+│   ├── conventions.md
+│   ├── GameVision.md
+│   ├── MVP_Plan_Hidden_Walnuts-2.md
+│   ├── PROJECT_STRUCTURE.md
+│   ├── repo_structure.txt
+│   └── mvp-7
+│       ├── README.md
+│       ├── COMPLETION_SUMMARY.md
+│       ├── MIGRATION_GUIDE.md
+│       ├── MIGRATION_COMPLETE.md
+│       └── tasks
+│           ├── 01-authentication
+│           │   ├── README.md
+│           │   ├── testing.md
+│           │   ├── implementation.md
+│           │   └── completion.md
+│           ├── 02-error-handling
+│           │   ├── README.md
+│           │   ├── testing.md
+│           │   ├── implementation.md
+│           │   └── completion.md
+│           ├── 03-visual-sync
+│           │   ├── README.md
+│           │   ├── testing.md
+│           │   ├── implementation.md
+│           │   └── completion.md
+│           ├── 04-api-consolidation
+│           │   ├── README.md
+│           │   ├── testing.md
+│           │   ├── implementation.md
+│           │   └── completion.md
+│           ├── 05-authoritative-server
+│           │   ├── README.md
+│           │   ├── testing.md
+│           │   ├── implementation.md
+│           │   └── completion.md
+│           ├── 06-websocket-lifecycle
+│           │   ├── README.md
+│           │   ├── testing.md
+│           │   ├── implementation.md
+│           │   └── completion.md
+│           ├── 07-core-events
+│           │   ├── README.md
+│           │   ├── testing.md
+│           │   ├── implementation.md
+│           │   └── completion.md
+│           ├── 08-client-prediction
+│           │   ├── README.md
+│           │   ├── testing.md
+│           │   ├── implementation.md
+│           │   └── completion.md
+│           ├── 09-interest-management
+│           │   ├── README.md
+│           │   ├── testing.md
+│           │   ├── implementation.md
+│           │   └── completion.md
+│           └── 10-testing-validation
+│               ├── README.md
+│               ├── testing.md
+│               ├── implementation.md
+│               └── completion.md
+├── hide-walnut.sh
+├── package-lock.json
+├── package.json
+├── public
+│   └── assets
+│       ├── models
+│       │   ├── Branch_01.glb
+│       │   ├── Bush_01.glb
+│       │   ├── Bush_02.glb
+│       │   ├── Bush_03.glb
+│       │   ├── Flowers_01.glb
+│       │   ├── Flowers_02.glb
+│       │   ├── Grass_01.glb
+│       │   ├── Grass_02.glb
+│       │   ├── Ground_01.glb
+│       │   ├── Ground_02.glb
+│       │   ├── Ground_03.glb
+│       │   ├── Mushroom_01.glb
+│       │   ├── Mushroom_02.glb
+│       │   ├── Rock_01.glb
+│       │   ├── Rock_02.glb
+│       │   ├── Rock_03.glb
+│       │   ├── Rock_04.glb
+│       │   ├── Rock_05.glb
+│       │   ├── squirrel.glb
+│       │   ├── Stump_01.glb
+│       │   ├── Tree_01.glb
+│       │   ├── Tree_02.glb
+│       │   ├── Tree_03.glb
+│       │   ├── Tree_04.glb
+│       │   └── Tree_05.glb
+│       └── textures
+├── README.md
+├── repo_structure.txt
+├── tsconfig.json
+├── workers
+│   ├── api.ts
+│   ├── constants.ts
+│   ├── Logger.ts
+│   ├── objects
+│   │   ├── ForestManager.ts
+│   │   ├── Leaderboard.ts
+│   │   ├── registry.ts
+│   │   ├── SquirrelSession.ts
+│   │   └── WalnutRegistry.ts
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── types.ts
+└── wrangler.toml 

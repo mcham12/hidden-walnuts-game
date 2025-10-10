@@ -18,6 +18,21 @@
       #character-select.hidden {
         display: none;
       }
+      #debug-overlay {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: monospace;
+        font-size: 12px;
+        z-index: 1000;
+      }
+      #debug-overlay.hidden {
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -27,6 +42,18 @@
         <option value="colobus">Colobus Monkey</option>
       </select>
       <button id="start-btn">Start</button>
+    </div>
+    <div id="debug-overlay" class="hidden">
+      <div>🎮 Position: <span id="player-pos">0, 0, 0</span></div>
+      <div>👥 Players: <span id="player-count">0</span></div>
+      <div>🌐 Network: <span id="network-status">Disconnected</span></div>
+      <div>🆔 ID: <span id="player-id">None</span></div>
+      <hr style="margin: 8px 0; border-color: #666;">
+      <div style="font-size: 10px; color: #ccc;">
+        Press F to show/hide debug<br>
+        WASD to move around<br>
+        Same spawn: (0, 2, 0)
+      </div>
     </div>
     <canvas id="gameCanvas" class="hidden"></canvas>
     <script type="module" src="/src/main.ts"></script>

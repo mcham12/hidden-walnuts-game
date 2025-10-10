@@ -3,7 +3,6 @@ import { Game } from './Game';
 async function main() {
   const selectDiv = document.getElementById('character-select') as HTMLDivElement;
   const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
-  const select = document.getElementById('char-select') as HTMLSelectElement;
   const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
 
   if (!canvas) {
@@ -18,7 +17,6 @@ async function main() {
     canvas.classList.remove('hidden');
 
     const game = new Game();
-    game.selectedCharacterId = select.value;
     await game.init(canvas);
     game.start();
   });

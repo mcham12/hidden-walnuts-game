@@ -24,6 +24,7 @@ interface PlayerConnection {
   position: { x: number; y: number; z: number };
   rotationY: number;
   lastActivity: number;
+  characterId: string;
 }
 
 interface Walnut {
@@ -87,6 +88,7 @@ export default class ForestManager {
 
       const url = new URL(request.url);
       const squirrelId = url.searchParams.get("squirrelId");
+      const characterId = url.searchParams.get("characterId") || "colobus";
       
       if (!squirrelId) {
         return new Response("Missing squirrelId", { status: 400 });
@@ -96,7 +98,7 @@ export default class ForestManager {
       const [client, server] = Object.values(webSocketPair);
       
       server.accept();
-      await this.setupPlayerConnection(squirrelId, server);
+      await this.setupPlayerConnection(squirrelId, characterId, server);
 
       return new Response(null, {
         status: 101,
@@ -137,7 +139,7 @@ export default class ForestManager {
   }
 
   // Simple player connection setup
-  private async setupPlayerConnection(squirrelId: string, socket: WebSocket): Promise<void> {
+  private async setupPlayerConnection(squirrelId: string, characterId: string, socket: WebSocket): Promise<void> {
     // Get or create player position
     const savedPosition = await this.loadPlayerPosition(squirrelId);
     
@@ -146,7 +148,8 @@ export default class ForestManager {
       socket,
       position: savedPosition || { x: 0, y: 2, z: 0 },
       rotationY: 0,
-      lastActivity: Date.now()
+      lastActivity: Date.now(),
+      characterId
     };
 
     this.activePlayers.set(squirrelId, playerConnection);
@@ -154,10 +157,12 @@ export default class ForestManager {
     // Setup message handlers
     socket.onmessage = async (event) => {
       try {
+        console.log('📨 RAW WebSocket data received:', event.data);
         const message = JSON.parse(event.data as string);
+        console.log(`📨 SERVER DEBUG: Received message:`, message);
         await this.handlePlayerMessage(playerConnection, message);
       } catch (error) {
-        console.error('Error processing message:', error);
+        console.error('❌ Error processing WebSocket message:', error, 'Raw data:', event.data);
       }
     };
 
@@ -182,7 +187,8 @@ export default class ForestManager {
       type: 'player_joined',
       squirrelId,
       position: playerConnection.position,
-      rotationY: playerConnection.rotationY
+      rotationY: playerConnection.rotationY,
+      characterId: playerConnection.characterId
     });
   }
 
@@ -192,8 +198,11 @@ export default class ForestManager {
 
     switch (data.type) {
       case "player_update":
+        console.log(`🎭 SERVER DEBUG: Received player_update with animation: ${data.animation}`);
         if (data.position) {
-          playerConnection.position = data.position;
+          // Validate position is within world bounds
+          const validatedPosition = this.validatePosition(data.position);
+          playerConnection.position = validatedPosition;
         }
         if (typeof data.rotationY === 'number') {
           playerConnection.rotationY = data.rotationY;
@@ -202,12 +211,19 @@ export default class ForestManager {
         // Save position
         await this.savePlayerPosition(playerConnection.squirrelId, playerConnection.position);
         
-        // Broadcast to others
+        // INDUSTRY STANDARD: Forward animation state with timing for multiplayer sync
+        console.log(`🚀 SERVER DEBUG: Forwarding animation '${data.animation}' with start time to other clients`);
         this.broadcastToOthers(playerConnection.squirrelId, {
           type: 'player_update',
           squirrelId: playerConnection.squirrelId,
           position: playerConnection.position,
-          rotationY: playerConnection.rotationY
+          rotationY: playerConnection.rotationY,
+          characterId: playerConnection.characterId,
+          animation: data.animation, // Forward animation state from client
+          animationStartTime: data.animationStartTime, // TIME-BASED SYNC: Forward animation start time
+          velocity: data.velocity, // Forward velocity for extrapolation
+          moveType: data.moveType, // Forward movement type for animation sync
+          timestamp: data.timestamp // Forward client timestamp for latency compensation
         });
         break;
         
@@ -245,7 +261,8 @@ export default class ForestManager {
       .map(player => ({
         squirrelId: player.squirrelId,
         position: player.position,
-        rotationY: player.rotationY
+        rotationY: player.rotationY,
+        characterId: player.characterId
       }));
 
     if (existingPlayers.length > 0) {
@@ -373,5 +390,55 @@ export default class ForestManager {
     } catch (error) {
       console.error(`Failed to save position for ${squirrelId}:`, error);
     }
+  }
+
+  // Validate and constrain position within world bounds
+  private validatePosition(position: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
+    const WORLD_SIZE = 200; // 200x200 world bounds
+    const WORLD_HALF = WORLD_SIZE / 2;
+    const MIN_Y = 0;
+    const MAX_Y = 50;
+
+    const validatedPosition = {
+      x: Math.max(-WORLD_HALF, Math.min(WORLD_HALF, position.x)),
+      y: Math.max(MIN_Y, Math.min(MAX_Y, position.y)),
+      z: Math.max(-WORLD_HALF, Math.min(WORLD_HALF, position.z))
+    };
+
+    // Check if position was corrected
+    const wasCorrected = (
+      Math.abs(validatedPosition.x - position.x) > 0.01 ||
+      Math.abs(validatedPosition.y - position.y) > 0.01 ||
+      Math.abs(validatedPosition.z - position.z) > 0.01
+    );
+
+    if (wasCorrected) {
+      console.log(`Position corrected from (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)}) to (${validatedPosition.x.toFixed(2)}, ${validatedPosition.y.toFixed(2)}, ${validatedPosition.z.toFixed(2)})`);
+    }
+
+    return validatedPosition;
+  }
+
+  // Validate movement speed (anti-cheat)
+  private validateMovementSpeed(
+    oldPosition: { x: number; y: number; z: number },
+    newPosition: { x: number; y: number; z: number },
+    deltaTime: number
+  ): boolean {
+    const MAX_SPEED = 20; // Maximum allowed speed in units per second
+    
+    const distance = Math.sqrt(
+      Math.pow(newPosition.x - oldPosition.x, 2) +
+      Math.pow(newPosition.z - oldPosition.z, 2)
+    );
+    
+    const speed = distance / (deltaTime / 1000); // Convert deltaTime to seconds
+    
+    if (speed > MAX_SPEED) {
+      console.warn(`Suspicious movement speed detected: ${speed.toFixed(2)} units/sec (max: ${MAX_SPEED})`);
+      return false;
+    }
+    
+    return true;
   }
 }
