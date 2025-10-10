@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Colobus Test</title>
+    <title>Hidden Walnuts</title>
     <style>
       body { margin: 0; padding: 0; overflow: hidden; }
       canvas { display: block; width: 100vw; height: 100vh; }
@@ -100,9 +100,24 @@
   </head>
   <body>
     <div id="character-select">
-      <h3>Select Character</h3>
+      <h3>Select Your Character</h3>
       <select id="char-select">
-        <option value="colobus">Colobus Monkey</option>
+        <optgroup label="Mammals">
+          <option value="colobus">Colobus Monkey</option>
+          <option value="muskrat">Muskrat</option>
+          <option value="pudu">Pudu Deer</option>
+        </optgroup>
+        <optgroup label="Reptiles">
+          <option value="gecko">Gecko</option>
+          <option value="taipan">Taipan Snake</option>
+        </optgroup>
+        <optgroup label="Birds">
+          <option value="sparrow">Sparrow</option>
+        </optgroup>
+        <optgroup label="Aquatic">
+          <option value="herring">Herring Fish</option>
+          <option value="inkfish">Inkfish Squid</option>
+        </optgroup>
       </select>
       <button id="start-btn">Start</button>
     </div>
