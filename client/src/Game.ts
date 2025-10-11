@@ -113,14 +113,20 @@ export class Game {
   private currentTutorialStep: number = 0;
   private tutorialShown: boolean = false;
 
+  // MVP 4: Leaderboard system
+  private leaderboardVisible: boolean = false;
+  private leaderboardUpdateInterval: number = 0;
+
+  // MVP 4: Chat and Emotes
+  private playerChatLabels: Map<string, HTMLElement> = new Map(); // Chat labels for players
+  private emoteInProgress: boolean = false; // Prevent emote spam (local player)
+  private remotePlayerEmotes: Map<string, boolean> = new Map(); // Track which remote players are emoting
+
 
   async init(canvas: HTMLCanvasElement) {
-    console.log('🚀 GAME INIT STARTED');
-    
     // Scene
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x87ceeb);
-    console.log('✅ Scene created with background color');
 
     // Camera
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -151,8 +157,6 @@ export class Game {
     // Terrain
     const terrain = await createTerrain();
     this.scene.add(terrain);
-    console.log('Terrain added to scene. Scene children count:', this.scene.children.length);
-    console.log('Scene children:', this.scene.children);
 
     // Forest will be created from server data when we receive world_state
 
@@ -163,7 +167,6 @@ export class Game {
         throw new Error(`Failed to fetch characters.json: ${response.status}`);
       }
       this.characters = await response.json();
-      console.log('Characters loaded:', this.characters);
     } catch (error) {
       console.error('Error loading characters.json:', error);
       // INDUSTRY STANDARD: Fallback matches characters.json structure exactly
@@ -181,9 +184,7 @@ export class Game {
     }
 
     // INDUSTRY STANDARD: Add basic sanity check before character loading
-    console.log('🧪 Adding sanity check cube');
     this.addSanityCheckCube();
-    console.log('📦 Scene children after sanity cube:', this.scene.children.length);
 
     // Load selected character
     await this.loadCharacter();
@@ -203,6 +204,12 @@ export class Game {
     // MVP 3: Initialize tutorial system
     this.initTutorial();
 
+    // MVP 4: Initialize leaderboard
+    this.initLeaderboard();
+
+    // MVP 4: Initialize quick chat and emotes
+    this.initChatAndEmotes();
+
     // Setup multiplayer connection (walnuts will be loaded from server)
     await this.setupMultiplayer();
 
@@ -211,12 +218,6 @@ export class Game {
 
     // Start debug overlay updates
     this.startDebugUpdates();
-
-    // Final debug output
-    console.log('🏁 GAME INIT COMPLETE');
-    console.log('📦 Final scene children count:', this.scene.children.length);
-    console.log('📦 Scene children:', this.scene.children.map(child => ({ type: child.type, name: child.name || 'unnamed', position: child.position })));
-    console.log('📷 Camera position:', this.camera.position);
 
     window.addEventListener('resize', this.onResize.bind(this));
   }
@@ -228,7 +229,6 @@ export class Game {
       return;
     }
 
-    console.log('🎮 Starting character load...');
     try {
       // INDUSTRY STANDARD: Use cached assets
       const characterModel = await this.loadCachedAsset(char.modelPath);
@@ -236,16 +236,13 @@ export class Game {
         console.error('❌ Failed to load character model');
         return;
       }
-      console.log('✅ Character model loaded successfully');
-      
+
       this.character = characterModel;
       this.character.scale.set(char.scale, char.scale, char.scale);
       this.character.position.set(0, 0, 0);
       this.character.rotation.y = Math.PI;
       this.character.castShadow = true;
       this.scene.add(this.character);
-      
-      console.log('✅ Character added to scene');
 
       // INDUSTRY STANDARD: Animation mixer on character model
       this.mixer = new THREE.AnimationMixer(this.character);
@@ -268,9 +265,7 @@ export class Game {
       });
 
       const animationResults = await Promise.all(animationPromises);
-      const successCount = animationResults.filter(r => r.success).length;
-      console.log(`✅ Loaded ${successCount}/${animationResults.length} animations`);
-      
+
       // Validate at least idle animation loaded
       if (!this.actions.idle) {
         console.error('❌ CRITICAL: Idle animation failed to load - character will not function properly');
@@ -315,6 +310,11 @@ export class Game {
   }
 
   private setRemotePlayerAction(playerId: string, animationName: string, animationStartTime?: number) {
+    // Don't override animation if remote player is emoting
+    if (this.remotePlayerEmotes.get(playerId)) {
+      return;
+    }
+
     const actions = this.remotePlayerActions.get(playerId);
     if (!actions) return;
 
@@ -372,16 +372,7 @@ export class Game {
 
       // Debug scene contents with I key (Info)
       if (e.key === 'i' || e.key === 'I') {
-        console.log('🔍 Scene debug info:');
-        console.log('- Scene children count:', this.scene.children.length);
-        console.log('- Remote players count:', this.remotePlayers.size);
-        console.log('- Local character position:', this.character?.position);
-        this.scene.children.forEach((child, i) => {
-          console.log(`- Child ${i}:`, child.type, child.position, 'visible:', child.visible);
-        });
-        this.remotePlayers.forEach((player, id) => {
-          console.log('- Remote player', id, 'position:', player.position, 'visible:', player.visible);
-        });
+        // Scene debug info available via debug overlay
       }
     });
 
@@ -405,8 +396,6 @@ export class Game {
 
   // Cleanup method for proper resource management
   public destroy(): void {
-    console.log('🧹 Cleaning up game resources...');
-    
     // Stop all intervals
     this.stopIntervals();
     
@@ -554,12 +543,15 @@ export class Game {
         this.isJumping = false;
         this.velocity.y = 0;
         // STANDARD: Use correct animation after landing
-        const isRunning = moving && this.keys.has('shift');
-        let animation = 'idle';
-        if (moving) {
-          animation = isRunning ? 'run' : 'walk';
+        // Don't override animation if emote is playing
+        if (!this.emoteInProgress) {
+          const isRunning = moving && this.keys.has('shift');
+          let animation = 'idle';
+          if (moving) {
+            animation = isRunning ? 'run' : 'walk';
+          }
+          this.setAction(animation);
         }
-        this.setAction(animation);
       }
     }
 
@@ -588,7 +580,9 @@ export class Game {
       }
 
       // Only change animation if different AND enough time has passed (hysteresis)
-      if (animation !== this.currentAnimationName &&
+      // AND if no emote is playing
+      if (!this.emoteInProgress &&
+          animation !== this.currentAnimationName &&
           (currentTime - this.lastAnimationChangeTime) >= this.animationChangeDelay) {
         this.setAction(animation);
         this.lastAnimationChangeTime = currentTime;
@@ -607,7 +601,6 @@ export class Game {
   private updateCamera() {
     // INDUSTRY STANDARD: Validate character exists before camera update
     if (!this.character) {
-      console.warn('⚠️ updateCamera called but character is null');
       return;
     }
 
@@ -634,18 +627,16 @@ export class Game {
 
   private async connectWebSocket(): Promise<void> {
     if (this.connectionAttempts >= this.maxConnectionAttempts) {
-      console.error('❌ Max connection attempts reached. Multiplayer disabled.');
+      console.warn('⚠️ Max connection attempts reached. Multiplayer disabled.');
       return;
     }
 
     this.connectionAttempts++;
-    
+
     // Get WebSocket URL - check environment or use default
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:50569';
-    const wsUrl = apiUrl.replace('http:', 'ws:').replace('https:', 'wss:') + 
+    const wsUrl = apiUrl.replace('http:', 'ws:').replace('https:', 'wss:') +
                   `/ws?squirrelId=${this.playerId}&characterId=${this.selectedCharacterId}`;
-    
-    console.log(`🔌 Connecting to WebSocket (attempt ${this.connectionAttempts}):`, wsUrl);
     
     try {
       this.websocket = new WebSocket(wsUrl);
@@ -653,14 +644,12 @@ export class Game {
       // Set connection timeout
       const connectionTimeout = setTimeout(() => {
         if (this.websocket && this.websocket.readyState === WebSocket.CONNECTING) {
-          console.warn('⏰ WebSocket connection timeout');
           this.websocket.close();
         }
       }, 5000);
-      
+
       this.websocket.onopen = () => {
         clearTimeout(connectionTimeout);
-        console.log('✅ WebSocket connected');
         this.isConnected = true;
         this.connectionAttempts = 0; // Reset on successful connection
         
@@ -686,13 +675,11 @@ export class Game {
       this.websocket.onclose = (event) => {
         clearTimeout(connectionTimeout);
         this.isConnected = false;
-        console.log('🔌 WebSocket disconnected:', event.code, event.reason);
-        
+
         this.stopIntervals();
-        
+
         // Attempt reconnection if not intentional close
         if (event.code !== 1000 && this.connectionAttempts < this.maxConnectionAttempts) {
-          console.log(`🔄 Reconnecting in 2 seconds... (attempt ${this.connectionAttempts + 1}/${this.maxConnectionAttempts})`);
           setTimeout(() => this.connectWebSocket(), 2000);
         }
       };
@@ -726,6 +713,10 @@ export class Game {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = 0;
+    }
+    if (this.leaderboardUpdateInterval) {
+      clearInterval(this.leaderboardUpdateInterval);
+      this.leaderboardUpdateInterval = 0;
     }
   }
 
@@ -766,7 +757,8 @@ export class Game {
 
     if (positionChanged || rotationChanged || animationChanged || moveTypeChanged) {
       // Always send complete transform state for reliability
-      this.sendMessage({
+      // BUT: Don't send animation updates if emote is in progress (emote has its own broadcast)
+      const messageData: any = {
         type: 'player_update',
         position: {
           x: Math.round(pos.x * 100) / 100,
@@ -774,11 +766,17 @@ export class Game {
           z: Math.round(pos.z * 100) / 100
         },
         rotationY: Math.round(rot * 100) / 100,
-        animation: this.currentAnimationName,
-        animationStartTime: this.animationStartTime,
         velocity: this.calculateActualVelocity(),
         timestamp: performance.now()
-      });
+      };
+
+      // Only include animation if no emote is playing (prevents emote override)
+      if (!this.emoteInProgress) {
+        messageData.animation = this.currentAnimationName;
+        messageData.animationStartTime = this.animationStartTime;
+      }
+
+      this.sendMessage(messageData);
 
       // Update last sent state
       this.lastPositionSent.x = pos.x;
@@ -801,18 +799,14 @@ export class Game {
 
     switch (data.type) {
       case 'world_state':
-        console.log('🌍 Received world state');
-
         // Create forest from server data (only once)
         if (!this.forestCreated && Array.isArray(data.forestObjects)) {
-          console.log(`🌲 Creating forest from server: ${data.forestObjects.length} objects`);
           await createForestFromServer(this.scene, data.forestObjects);
           this.forestCreated = true;
         }
 
         // Load existing walnuts from server
         if (Array.isArray(data.mapState)) {
-          console.log(`🌰 Loading ${data.mapState.length} existing walnuts from server`);
           for (const walnut of data.mapState) {
             if (!walnut.found) {
               // Convert server Walnut format to client format
@@ -834,7 +828,6 @@ export class Game {
 
       case 'walnut_hidden':
         // Another player hid a walnut - create it locally
-        console.log('🌰 Walnut hidden by another player:', data.ownerId);
         if (data.ownerId !== this.playerId) {
           this.createRemoteWalnut({
             walnutId: data.walnutId,
@@ -848,21 +841,16 @@ export class Game {
 
       case 'walnut_found':
         // Another player found a walnut - remove it locally
-        console.log('🔍 Walnut found by another player:', data.finderId);
         if (data.walnutId && data.finderId !== this.playerId) {
           this.removeWalnut(data.walnutId);
         }
         break;
 
       case 'existing_players':
-        console.log('👥 Existing players received:', data.players?.length || 0);
         if (Array.isArray(data.players)) {
           for (const player of data.players) {
-            console.log('👤 Processing existing player:', player.squirrelId, 'character:', player.characterId, 'at position:', player.position);
             if (this.validatePlayerData(player)) {
               this.createRemotePlayer(player.squirrelId, player.position, player.rotationY, player.characterId);
-            } else {
-              console.warn('⚠️ Invalid player data:', player);
             }
           }
         }
@@ -870,13 +858,11 @@ export class Game {
 
       case 'player_joined':
         if (this.validatePlayerData(data) && data.squirrelId !== this.playerId) {
-          console.log('👤 New player joined:', data.squirrelId, 'character:', data.characterId);
           this.createRemotePlayer(data.squirrelId, data.position, data.rotationY, data.characterId);
         }
         break;
-        
+
       case 'player_leave':  // Server sends "player_leave" not "player_left"
-        console.log('👋 Player left:', data.squirrelId);
         if (data.squirrelId && data.squirrelId !== this.playerId) {
           this.removeRemotePlayer(data.squirrelId);
         }
@@ -891,7 +877,21 @@ export class Game {
       case 'heartbeat':
         // Heartbeat response - connection is alive
         break;
-        
+
+      case 'chat_message':
+        // Received chat message from another player
+        if (data.playerId && data.message && data.playerId !== this.playerId) {
+          this.showChatAboveCharacter(data.playerId, data.message, false);
+        }
+        break;
+
+      case 'player_emote':
+        // Received emote from another player
+        if (data.playerId && data.emote && data.playerId !== this.playerId) {
+          this.playRemoteEmoteAnimation(data.playerId, data.emote);
+        }
+        break;
+
       default:
         console.warn('⚠️ Unknown message type:', data.type);
     }
@@ -918,7 +918,6 @@ export class Game {
       // INDUSTRY STANDARD: Use cached assets for remote players
       // Use the remote player's character ID, or fall back to local player's character
       const remoteCharacterId = characterId || this.selectedCharacterId;
-      console.log(`👤 Creating remote player ${playerId} with character: ${remoteCharacterId}`);
 
       const char = this.characters.find(c => c.id === remoteCharacterId);
       if (!char) {
@@ -997,10 +996,8 @@ export class Game {
       if (remoteActions['idle']) {
         remoteActions['idle'].play();
       }
-      
+
       this.scene.add(remoteCharacter);
-      
-      console.log('✅ Created remote player:', playerId);
     } catch (error) {
       console.error('❌ Failed to create remote player:', playerId, error);
     }
@@ -1125,8 +1122,6 @@ export class Game {
       
       // Clean up interpolation buffer
       this.remotePlayerBuffers.delete(playerId);
-      
-      console.log('🗑️ Removed remote player:', playerId);
     }
   }
 
@@ -1141,8 +1136,6 @@ export class Game {
     const cube = new THREE.Mesh(geometry, material);
     cube.position.set(3, 2, 3); // Offset from center
     this.scene.add(cube);
-    
-    console.log('🔧 Added sanity check cube at (3, 2, 3) - should be visible if rendering works');
   }
 
   private addLandmarkCube(): void {
@@ -1155,8 +1148,6 @@ export class Game {
     const tower = new THREE.Mesh(geometry, material);
     tower.position.set(0, 10, 0); // Base at terrain level, extends up to 20
     this.scene.add(tower);
-
-    console.log('📍 Added landmark tower at (0, 10, 0) - 20 units tall');
   }
 
   /**
@@ -1198,8 +1189,6 @@ export class Game {
       landmarkHeight,
       'West'
     );
-
-    console.log('🧭 Added cardinal direction landmarks (N, S, E, W)');
   }
 
   /**
@@ -1431,7 +1420,8 @@ export class Game {
     label.style.top = `${y}px`;
 
     // Hide label if behind camera
-    label.style.display = vector.z > 1 ? 'none' : 'block';
+    const isBehindCamera = vector.z > 1;
+    label.style.display = isBehindCamera ? 'none' : 'block';
   }
 
   /**
@@ -1468,6 +1458,16 @@ export class Game {
       const label = this.walnutLabels.get(landmarkId);
       if (label) {
         this.updateLabelPosition(label, landmarkPos);
+      }
+    }
+
+    // Update chat labels above players
+    for (const [playerId, label] of this.playerChatLabels) {
+      const character = playerId === this.playerId ? this.character : this.remotePlayers.get(playerId);
+      if (character) {
+        const labelPos = character.position.clone();
+        labelPos.y += 0.5; // Position just above character's head (0.5 units)
+        this.updateLabelPosition(label, labelPos);
       }
     }
   }
@@ -1702,9 +1702,6 @@ export class Game {
     this.minimapCanvas = document.getElementById('minimap-canvas') as HTMLCanvasElement;
     if (this.minimapCanvas) {
       this.minimapContext = this.minimapCanvas.getContext('2d');
-      console.log('✅ Minimap initialized');
-    } else {
-      console.warn('⚠️ Minimap canvas not found');
     }
   }
 
@@ -1907,7 +1904,6 @@ export class Game {
 
     // Check if player has walnuts to hide
     if (this.playerWalnutCount <= 0) {
-      console.log('🚫 No walnuts to hide!');
       return;
     }
 
@@ -1944,14 +1940,12 @@ export class Game {
       walnutGroup = this.createBushWalnutVisual(position);
       labelText = 'Your Bush Walnut (1 pt)';
       labelColor = '#90EE90';
-      console.log(`🌿 Hidden in bush at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}), distance: ${minDistance.toFixed(1)} units`);
     } else {
       // BURY IN GROUND - no bush nearby
       const position = new THREE.Vector3(playerPos.x, terrainY, playerPos.z);
       walnutGroup = this.createBuriedWalnutVisual(position);
       labelText = 'Your Buried Walnut (3 pts)';
       labelColor = '#8B4513';
-      console.log(`🌰 Buried at player position (${position.x.toFixed(1)}, ${position.z.toFixed(1)}), nearest bush: ${minDistance.toFixed(1)} units away`);
     }
 
     // Add to scene and registry
@@ -1966,7 +1960,6 @@ export class Game {
 
     // Decrement player walnut count
     this.playerWalnutCount--;
-    console.log(`✅ Walnut hidden! Remaining: ${this.playerWalnutCount}`);
 
     // MULTIPLAYER: Send to server for sync
     this.sendMessage({
@@ -2014,7 +2007,6 @@ export class Game {
 
     this.scene.remove(walnutGroup);
     this.walnuts.delete(walnutId);
-    console.log('🗑️ Removed walnut:', walnutId);
   }
 
   /**
@@ -2079,10 +2071,7 @@ export class Game {
     const distance = playerPos.distanceTo(walnutPos);
     const maxDistance = walnutGroup.userData.type === 'buried' ? 4 : 5;
 
-    console.log(`🔍 Click detected: type=${walnutGroup.userData.type}, distance=${distance.toFixed(1)}, max=${maxDistance}`);
-
     if (distance > maxDistance) {
-      console.log(`🚫 Too far away! Distance: ${distance.toFixed(1)}, need to be within ${maxDistance}`);
       return;
     }
 
@@ -2092,12 +2081,10 @@ export class Game {
     if (isOwnWalnut) {
       // FOUND YOUR OWN WALNUT - No points (prevents farming), just get walnut back
       this.playerWalnutCount++;
-      console.log(`🔄 Picked up your own walnut! No points awarded. Walnuts: ${this.playerWalnutCount}`);
     } else {
       // FOUND SOMEONE ELSE'S WALNUT - Award points AND give walnut to rehide
       this.playerScore += points;
       this.playerWalnutCount++;
-      console.log(`🎉 Found another player's walnut! +${points} points (Score: ${this.playerScore}), +1 walnut (${this.playerWalnutCount} total)`);
     }
 
     // Remove the walnut from the world
@@ -2125,7 +2112,6 @@ export class Game {
   }): void {
     // Don't create if already exists
     if (this.walnuts.has(data.walnutId)) {
-      console.log(`⚠️ Walnut ${data.walnutId} already exists, skipping`);
       return;
     }
 
@@ -2168,8 +2154,6 @@ export class Game {
     // Add label
     const label = this.createLabel(labelText, labelColor);
     this.walnutLabels.set(data.walnutId, label);
-
-    console.log(`🌰 Created remote walnut: ${data.walnutId} (type: ${data.walnutType}, owner: ${data.ownerId})`);
   }
 
   // MVP 3: Tutorial system methods
@@ -2254,14 +2238,338 @@ export class Game {
    * Close the tutorial (can be called anytime to skip)
    */
   private closeTutorial(): void {
-    console.log('🎓 Closing tutorial...');
     const overlay = document.getElementById('tutorial-overlay');
     if (overlay) {
-      console.log('✅ Tutorial overlay found, adding hidden class');
       overlay.classList.add('hidden');
-      console.log('Tutorial overlay classes:', overlay.classList.toString());
     } else {
       console.error('❌ Tutorial overlay not found!');
     }
+  }
+
+  // MVP 4: Leaderboard system methods
+
+  /**
+   * Initialize the leaderboard system
+   */
+  private initLeaderboard(): void {
+    const toggleButton = document.getElementById('leaderboard-toggle');
+    const leaderboardDiv = document.getElementById('leaderboard');
+
+    if (toggleButton && leaderboardDiv) {
+      // Show toggle button when game starts
+      toggleButton.classList.remove('hidden');
+
+      // Toggle leaderboard visibility
+      toggleButton.addEventListener('click', () => {
+        this.leaderboardVisible = !this.leaderboardVisible;
+        if (this.leaderboardVisible) {
+          leaderboardDiv.classList.remove('hidden');
+          this.updateLeaderboard(); // Update immediately when shown
+        } else {
+          leaderboardDiv.classList.add('hidden');
+        }
+      });
+
+      // Start periodic leaderboard updates (every 5 seconds)
+      this.leaderboardUpdateInterval = window.setInterval(() => {
+        if (this.leaderboardVisible) {
+          this.updateLeaderboard();
+        }
+      }, 5000);
+
+      // Initial update
+      this.updateLeaderboard();
+    }
+  }
+
+  /**
+   * Update the leaderboard display
+   */
+  private async updateLeaderboard(): Promise<void> {
+    try {
+      // For now, use mock data since server doesn't have leaderboard yet
+      // TODO: Fetch from server endpoint
+      const leaderboardData = this.getMockLeaderboardData();
+
+      const leaderboardList = document.getElementById('leaderboard-list');
+      if (!leaderboardList) return;
+
+      // Clear existing entries
+      leaderboardList.innerHTML = '';
+
+      // Add entries (top 10)
+      leaderboardData.slice(0, 10).forEach((entry, index) => {
+        const li = document.createElement('li');
+
+        // Highlight current player
+        if (entry.playerId === this.playerId) {
+          li.classList.add('current-player');
+        }
+
+        // Create entry HTML
+        li.innerHTML = `
+          <span class="leaderboard-rank">#${index + 1}</span>
+          <span class="leaderboard-name">${entry.displayName}</span>
+          <span class="leaderboard-score">${entry.score}</span>
+        `;
+
+        leaderboardList.appendChild(li);
+      });
+    } catch (error) {
+      console.error('❌ Failed to update leaderboard:', error);
+    }
+  }
+
+  /**
+   * Get mock leaderboard data (temporary until server implements leaderboard)
+   */
+  private getMockLeaderboardData(): Array<{ playerId: string; displayName: string; score: number }> {
+    // Create mock data including current player
+    const mockData = [
+      { playerId: this.playerId, displayName: 'You', score: this.playerScore }
+    ];
+
+    // Add some mock players for testing
+    for (let i = 0; i < 9; i++) {
+      mockData.push({
+        playerId: `player_${i}`,
+        displayName: `Player ${i + 1}`,
+        score: Math.floor(Math.random() * 50)
+      });
+    }
+
+    // Sort by score descending
+    return mockData.sort((a, b) => b.score - a.score);
+  }
+
+  /**
+   * Initialize quick chat and emote systems
+   */
+  private initChatAndEmotes(): void {
+    const quickChatDiv = document.getElementById('quick-chat');
+    const emotesDiv = document.getElementById('emotes');
+
+    // Show UI elements
+    if (quickChatDiv) {
+      quickChatDiv.classList.remove('hidden');
+    } else {
+      console.error('❌ Quick chat div not found!');
+    }
+
+    if (emotesDiv) {
+      emotesDiv.classList.remove('hidden');
+    } else {
+      console.error('❌ Emotes div not found!');
+    }
+
+    // Setup quick chat buttons
+    const chatButtons = document.querySelectorAll('.chat-button');
+    chatButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const message = (button as HTMLElement).getAttribute('data-message');
+        if (message) {
+          this.sendChatMessage(message);
+        }
+      });
+    });
+
+    // Setup emote buttons
+    const emoteButtons = document.querySelectorAll('.emote-button');
+    emoteButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const emote = (button as HTMLElement).getAttribute('data-emote');
+        if (emote) {
+          this.sendEmote(emote);
+        }
+      });
+    });
+  }
+
+  /**
+   * Send a chat message (broadcasts to all players)
+   */
+  private sendChatMessage(message: string): void {
+    if (!this.isConnected || !this.websocket) {
+      return;
+    }
+
+    // Display locally above own character
+    this.showChatAboveCharacter(this.playerId, message, true);
+
+    // Send to server to broadcast to all other players
+    this.sendMessage({
+      type: 'chat_message',
+      message: message,
+      playerId: this.playerId
+    });
+  }
+
+  /**
+   * Send an emote (triggers character animation, broadcasts to all players)
+   */
+  private sendEmote(emote: string): void {
+    if (!this.isConnected || !this.websocket) {
+      return;
+    }
+
+    // Prevent emote spam
+    if (this.emoteInProgress) {
+      return;
+    }
+
+    // Play emote animation locally
+    this.playEmoteAnimation(emote);
+
+    // Send to server to broadcast to all other players
+    this.sendMessage({
+      type: 'player_emote',
+      emote: emote,
+      playerId: this.playerId
+    });
+  }
+
+  /**
+   * Show chat message above a character (floating text label)
+   */
+  private showChatAboveCharacter(playerId: string, message: string, isLocalPlayer: boolean = false): void {
+    // Get character position
+    const character = isLocalPlayer ? this.character : this.remotePlayers.get(playerId);
+    if (!character) {
+      return;
+    }
+
+    // Remove existing chat label if present
+    const existingLabel = this.playerChatLabels.get(playerId);
+    if (existingLabel && this.labelsContainer) {
+      this.labelsContainer.removeChild(existingLabel);
+      this.playerChatLabels.delete(playerId);
+    }
+
+    // Create new chat label (don't use landmark-label class due to transform conflict)
+    const label = document.createElement('div');
+    label.textContent = message;
+    label.style.position = 'absolute';
+    label.style.color = isLocalPlayer ? '#4CAF50' : '#FFF'; // Green for own messages
+    label.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+    label.style.padding = '8px 14px';
+    label.style.borderRadius = '8px';
+    label.style.fontSize = '15px';
+    label.style.fontWeight = 'bold';
+    label.style.maxWidth = '250px';
+    label.style.wordWrap = 'break-word';
+    label.style.fontFamily = 'Arial, sans-serif';
+    label.style.pointerEvents = 'none';
+    label.style.whiteSpace = 'nowrap';
+    label.style.transform = 'translate(-50%, -120%)'; // Center and position above character
+    label.style.zIndex = '2000'; // Above everything else
+    label.style.boxShadow = '0 2px 8px rgba(0,0,0,0.4)';
+
+    if (this.labelsContainer) {
+      this.labelsContainer.appendChild(label);
+    } else {
+      console.error('❌ Labels container not found!');
+    }
+
+    this.playerChatLabels.set(playerId, label);
+
+    // IMPORTANT: Position the label immediately in screen space
+    const labelPos = character.position.clone();
+    labelPos.y += 0.5; // Position just above character's head (0.5 units, not 2.5!)
+    this.updateLabelPosition(label, labelPos);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+      const label = this.playerChatLabels.get(playerId);
+      if (label && this.labelsContainer) {
+        this.labelsContainer.removeChild(label);
+        this.playerChatLabels.delete(playerId);
+      }
+    }, 5000);
+  }
+
+  /**
+   * Play an emote animation on local character
+   */
+  private playEmoteAnimation(emote: string): void {
+    if (!this.character || this.emoteInProgress) {
+      return;
+    }
+
+    this.emoteInProgress = true;
+
+    // Map emotes to animations - only 3 emotes using 3 distinct animations
+    // Available animations: idle, walk, run, jump (idle excluded - not visible as emote)
+    const emoteAnimationMap: { [key: string]: string } = {
+      'wave': 'walk',      // Slow friendly wave
+      'point': 'run',      // Energetic pointing gesture
+      'celebrate': 'jump'  // Jump for joy!
+    };
+
+    const animationName = emoteAnimationMap[emote] || 'idle';
+
+    // Play emote animation
+    this.setAction(animationName);
+
+    // Return to previous animation after 2 seconds
+    setTimeout(() => {
+      // Only return if player hasn't moved (still idle)
+      if (!this.keys.has('w') && !this.keys.has('a') && !this.keys.has('s') && !this.keys.has('d')) {
+        this.setAction('idle');
+      }
+      this.emoteInProgress = false;
+    }, 2000);
+  }
+
+  /**
+   * Play emote animation on remote player
+   */
+  private playRemoteEmoteAnimation(playerId: string, emote: string): void {
+    const remoteCharacter = this.remotePlayers.get(playerId);
+    const remoteActions = this.remotePlayerActions.get(playerId);
+
+    if (!remoteCharacter || !remoteActions) {
+      return;
+    }
+
+    // Set emote flag to prevent network animation updates from overriding
+    this.remotePlayerEmotes.set(playerId, true);
+
+    // Map emotes to animations
+    const emoteAnimationMap: { [key: string]: string } = {
+      'wave': 'walk',      // Use walk as placeholder (visible movement)
+      'point': 'walk',     // Use walk as placeholder
+      'celebrate': 'jump', // Jump is perfect for celebrate!
+      'shrug': 'idle'      // Idle for shrug
+    };
+
+    const animationName = emoteAnimationMap[emote] || 'idle';
+    const newAction = remoteActions[animationName];
+
+    if (!newAction) {
+      this.remotePlayerEmotes.delete(playerId);
+      return;
+    }
+
+    // Stop all current animations first
+    Object.values(remoteActions).forEach(action => {
+      if (action.isRunning()) {
+        action.fadeOut(0.1);
+      }
+    });
+
+    // Play emote animation with continuous looping (NOT LoopOnce - that stops immediately!)
+    // The animation needs to loop for the full 2-second emote duration
+    newAction.reset().setLoop(THREE.LoopRepeat, Infinity).fadeIn(0.1).play();
+
+    // Return to idle after animation completes (2 seconds)
+    setTimeout(() => {
+      newAction.fadeOut(0.2);
+      const idleAction = remoteActions['idle'];
+      if (idleAction) {
+        idleAction.reset().fadeIn(0.2).play();
+      }
+      // Clear emote flag to allow network animation updates again
+      this.remotePlayerEmotes.delete(playerId);
+    }, 2000);
   }
 }

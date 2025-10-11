@@ -286,6 +286,26 @@ export default class ForestManager {
         }
         break;
 
+      case "chat_message":
+        console.log(`💬 SERVER: Chat from ${playerConnection.squirrelId}: ${data.message}`);
+        // Broadcast chat message to all other players
+        this.broadcastToOthers(playerConnection.squirrelId, {
+          type: 'chat_message',
+          playerId: data.playerId,
+          message: data.message
+        });
+        break;
+
+      case "player_emote":
+        console.log(`👋 SERVER: Emote from ${playerConnection.squirrelId}: ${data.emote}`);
+        // Broadcast emote to all other players
+        this.broadcastToOthers(playerConnection.squirrelId, {
+          type: 'player_emote',
+          playerId: data.playerId,
+          emote: data.emote
+        });
+        break;
+
       default:
         // Broadcast other messages
         this.broadcastToOthers(playerConnection.squirrelId, data);
