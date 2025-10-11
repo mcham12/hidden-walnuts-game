@@ -2619,12 +2619,12 @@ export class Game {
 
     this.emoteInProgress = true;
 
-    // Map emotes to animations (we'll use existing animations for now)
+    // Map emotes to animations (using existing animations)
     const emoteAnimationMap: { [key: string]: string } = {
-      'wave': 'idle',      // Could be a wave animation if we had it
-      'point': 'idle',     // Could be a point animation if we had it
-      'celebrate': 'jump', // Jump is celebratory!
-      'shrug': 'idle'      // Could be a shrug animation if we had it
+      'wave': 'walk',      // Walk animation for wave (visible movement)
+      'point': 'walk',     // Walk animation for point (visible movement)
+      'celebrate': 'jump', // Jump is perfect for celebrate!
+      'shrug': 'idle'      // Idle for shrug
     };
 
     const animationName = emoteAnimationMap[emote] || 'idle';
@@ -2665,10 +2665,10 @@ export class Game {
 
     // Map emotes to animations
     const emoteAnimationMap: { [key: string]: string } = {
-      'wave': 'idle',
-      'point': 'idle',
-      'celebrate': 'jump',
-      'shrug': 'idle'
+      'wave': 'walk',      // Use walk as placeholder (visible movement)
+      'point': 'walk',     // Use walk as placeholder
+      'celebrate': 'jump', // Jump is perfect for celebrate!
+      'shrug': 'idle'      // Idle for shrug
     };
 
     const animationName = emoteAnimationMap[emote] || 'idle';
@@ -2682,9 +2682,25 @@ export class Game {
       return;
     }
 
-    // Play emote animation (will blend back to normal movement automatically)
-    newAction.reset().fadeIn(0.2).play();
+    // Stop all current animations first
+    Object.values(remoteActions).forEach(action => {
+      if (action.isRunning()) {
+        action.fadeOut(0.1);
+      }
+    });
 
-    console.log(`✨ Remote player ${playerId} emote: ${emote} playing!`);
+    // Play emote animation forcefully
+    newAction.reset().setLoop(THREE.LoopOnce, 1).fadeIn(0.1).play();
+
+    // Return to idle after animation completes (2 seconds)
+    setTimeout(() => {
+      newAction.fadeOut(0.2);
+      const idleAction = remoteActions['idle'];
+      if (idleAction) {
+        idleAction.reset().fadeIn(0.2).play();
+      }
+    }, 2000);
+
+    console.log(`✨ Remote player ${playerId} emote: ${emote} (${animationName}) playing!`);
   }
 }
