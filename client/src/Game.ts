@@ -393,29 +393,6 @@ export class Game {
         console.log(`Audio ${isMuted ? 'muted' : 'unmuted'}`);
       }
 
-      // MVP 5: DEBUG - Spawn golden walnut with G key (for testing animations)
-      if (e.key === 'g' || e.key === 'G') {
-        if (this.character) {
-          const playerPos = this.character.position.clone();
-          const terrainY = getTerrainHeight(playerPos.x, playerPos.z);
-          const position = new THREE.Vector3(
-            playerPos.x + Math.random() * 4 - 2, // Random offset
-            terrainY,
-            playerPos.z + Math.random() * 4 - 2
-          );
-
-          this.createRemoteWalnut({
-            walnutId: `debug-golden-${Date.now()}`,
-            ownerId: 'debug',
-            walnutType: 'game',
-            position: position,
-            points: 5
-          });
-
-          console.log('🌟 Debug: Spawned golden walnut at', position);
-        }
-      }
-
       // Debug scene contents with I key (Info)
       if (e.key === 'i' || e.key === 'I') {
         // Scene debug info available via debug overlay
