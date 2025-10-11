@@ -80,6 +80,7 @@ export class Game {
   private walnuts: Map<string, THREE.Group> = new Map(); // All walnuts in world
   private playerWalnutCount: number = 3; // Player starts with 3 walnuts to hide
   private playerScore: number = 0; // Player's current score
+  private displayedScore: number = 0; // MVP 5: Animated score for tweening effect
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
   private mouse: THREE.Vector2 = new THREE.Vector2();
   private walnutLabels: Map<string, HTMLElement> = new Map(); // Labels for walnuts
@@ -475,6 +476,19 @@ export class Game {
 
     // MVP 3: Animate walnuts
     this.animateWalnuts(delta);
+
+    // MVP 5: Animate score counter with tweening
+    if (this.displayedScore !== this.playerScore) {
+      const diff = this.playerScore - this.displayedScore;
+      // Smooth lerp toward target score (faster for larger differences)
+      const tweenSpeed = Math.max(Math.abs(diff) * 5, 2); // Min speed of 2/sec
+      this.displayedScore += Math.sign(diff) * Math.min(Math.abs(diff), tweenSpeed * delta);
+
+      // Snap to target if very close
+      if (Math.abs(this.playerScore - this.displayedScore) < 0.1) {
+        this.displayedScore = this.playerScore;
+      }
+    }
 
     // MVP 3: Update walnut labels
     this.updateWalnutLabels();
@@ -1393,7 +1407,8 @@ export class Game {
     }
 
     if (playerScoreSpan) {
-      playerScoreSpan.textContent = `${this.playerScore}`;
+      // MVP 5: Display animated score with tweening
+      playerScoreSpan.textContent = `${Math.floor(this.displayedScore)}`;
     }
 
     if (gridLocationSpan && this.character) {
@@ -1515,21 +1530,37 @@ export class Game {
 
   /**
    * Create visual indicator for a buried walnut (mound of dirt)
+   * MVP 5: Improved to be more rounded and natural-looking
    */
   private createBuriedWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // Mound geometry - slightly raised terrain bump
-    const moundGeometry = new THREE.ConeGeometry(0.3, 0.15, 8);
+    // MVP 5: Rounded hemisphere mound (more natural than cone)
+    const moundGeometry = new THREE.SphereGeometry(0.35, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
     const moundMaterial = new THREE.MeshStandardMaterial({
       color: 0x4a3728, // Darker soil color
-      roughness: 0.9
+      roughness: 0.95,
+      metalness: 0.1
     });
     const mound = new THREE.Mesh(moundGeometry, moundMaterial);
-    mound.rotation.x = Math.PI; // Flip to be a bump, not a spike
-    mound.position.y = 0.05; // Slightly raised
+    mound.scale.set(1, 0.4, 1); // Flatten slightly for natural mound shape
+    mound.position.y = 0.02;
     mound.receiveShadow = true;
+    mound.castShadow = true;
     group.add(mound);
+
+    // Add a darker ring at base for depth
+    const ringGeometry = new THREE.RingGeometry(0.3, 0.4, 16);
+    const ringMaterial = new THREE.MeshStandardMaterial({
+      color: 0x3a2818,
+      roughness: 0.98,
+      side: THREE.DoubleSide
+    });
+    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.01;
+    ring.receiveShadow = true;
+    group.add(ring);
 
     // Add subtle dirt particles (will be animated later)
     const particleGeometry = new THREE.SphereGeometry(0.02, 4, 4);
@@ -1704,15 +1735,23 @@ export class Game {
       const type = walnutGroup.userData.type;
 
       if (type === 'bush') {
-        // Animate glint effect
+        // MVP 5: Enhanced glint effect with shimmer/sparkle
         const glint = walnutGroup.userData.glint as THREE.Mesh;
         if (glint) {
-          walnutGroup.userData.glintPhase += delta * 2;
-          const opacity = 0.2 + Math.sin(walnutGroup.userData.glintPhase) * 0.2;
+          walnutGroup.userData.glintPhase += delta * 3;
+
+          // Pulsing opacity with occasional bright sparkles
+          const baseOpacity = 0.25 + Math.sin(walnutGroup.userData.glintPhase) * 0.25;
+          const sparkle = Math.sin(walnutGroup.userData.glintPhase * 5) * 0.15;
+          const opacity = baseOpacity + Math.max(0, sparkle);
           (glint.material as THREE.MeshBasicMaterial).opacity = Math.max(0, opacity);
+
+          // Subtle scale pulse for shimmer effect
+          const scale = 1 + Math.sin(walnutGroup.userData.glintPhase * 1.5) * 0.1;
+          glint.scale.set(scale, scale, scale);
         }
       } else if (type === 'game') {
-        // Animate golden walnut (rotation + pulse)
+        // MVP 5: Enhanced golden walnut animation (rotation + pulse + glow)
         const walnut = walnutGroup.userData.walnut as THREE.Mesh;
         const glow = walnutGroup.userData.glow as THREE.Mesh;
 
@@ -1720,14 +1759,18 @@ export class Game {
           walnutGroup.userData.animationPhase += delta;
           walnut.rotation.y += delta * 2; // Rotate
 
-          // Pulse effect
-          const pulse = 1 + Math.sin(walnutGroup.userData.animationPhase * 2) * 0.1;
+          // Enhanced pulse effect
+          const pulse = 1 + Math.sin(walnutGroup.userData.animationPhase * 2) * 0.15;
           walnut.scale.set(pulse, pulse, pulse);
 
-          // Glow pulse
+          // Enhanced glow pulse with stronger effect
           if (glow) {
-            const glowPulse = 0.3 + Math.sin(walnutGroup.userData.animationPhase * 3) * 0.15;
+            const glowPulse = 0.4 + Math.sin(walnutGroup.userData.animationPhase * 3) * 0.25;
             (glow.material as THREE.MeshBasicMaterial).opacity = glowPulse;
+
+            // Scale the glow slightly for more dramatic effect
+            const glowScale = 1 + Math.sin(walnutGroup.userData.animationPhase * 2.5) * 0.2;
+            glow.scale.set(glowScale, glowScale, glowScale);
           }
         }
       }
@@ -2134,6 +2177,8 @@ export class Game {
       // MVP 5: Visual and audio feedback for scoring
       if (this.vfxManager && this.character) {
         this.vfxManager.spawnParticles('sparkle', walnutPos, 40);
+        // Add confetti particles for celebration
+        this.vfxManager.spawnParticles('confetti', walnutPos, points >= 3 ? 60 : 30);
         this.vfxManager.showScorePopup(points, walnutPos);
         this.vfxManager.playerGlow(this.character);
 
