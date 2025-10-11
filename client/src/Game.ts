@@ -2642,7 +2642,7 @@ export class Game {
       'wave': 'walk',      // Walk animation for wave (visible movement)
       'point': 'walk',     // Walk animation for point (visible movement)
       'celebrate': 'jump', // Jump is perfect for celebrate!
-      'shrug': 'idle'      // Idle for shrug
+      'shrug': 'jump'      // Jump for shrug (was idle - not visible!)
     };
 
     const animationName = emoteAnimationMap[emote] || 'idle';
@@ -2712,8 +2712,9 @@ export class Game {
       }
     });
 
-    // Play emote animation forcefully
-    newAction.reset().setLoop(THREE.LoopOnce, 1).fadeIn(0.1).play();
+    // Play emote animation with continuous looping (NOT LoopOnce - that stops immediately!)
+    // The animation needs to loop for the full 2-second emote duration
+    newAction.reset().setLoop(THREE.LoopRepeat, Infinity).fadeIn(0.1).play();
 
     // Return to idle after animation completes (2 seconds)
     setTimeout(() => {
