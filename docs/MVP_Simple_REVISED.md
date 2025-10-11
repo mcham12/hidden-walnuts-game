@@ -314,50 +314,103 @@ interface GameScore {
 
 ---
 
-## 🌍 MVP 5: Persistent 24-Hour World
+## ✨ MVP 5: Game Feel & Polish
 
-**Goal**: World resets every 24 hours with persistent player progress
+**Goal**: Make the existing gameplay feel AMAZING with audio, visual juice, and quality of life improvements
 
-### World Persistence
+**Philosophy**: Polish the core experience before adding complex systems
 
-**24-Hour Cycle**:
-- Forest regenerates at reset
-- 100 game walnuts spawn randomly
-- Each player gets 3 walnuts on join
-- Leaderboard tracks cycle rankings
+### Audio System 🔊
 
-**Session Management**:
-- Join anytime during cycle
-- Your walnuts remain when you leave
-- Rejoin to continue (same position)
-- Cycle countdown timer in UI
+**Sound Effects**:
+- **Walnut Actions**: Hide sound (digging), find sound (success chime)
+- **Movement**: Footstep sounds (grass, dirt, leaves)
+- **UI Feedback**: Button clicks, score pop sounds
+- **Ambient**: Forest background (birds chirping, wind rustling, distant streams)
 
-**Backend Integration**:
-- ForestManager: world state & reset logic
-- WalnutRegistry: persistent walnut locations
-- PlayerSession: track progress across sessions
-- Leaderboard: cycle-based rankings
+**Implementation**:
+```typescript
+class AudioManager {
+  playSound(type: 'hide' | 'find' | 'footstep' | 'ui' | 'ambient');
+  setVolume(category: 'sfx' | 'ambient' | 'master', level: number);
+  toggleMute(): void;
+}
+```
 
-### NEW: Performance Optimization
+**Audio Library Options**:
+- Howler.js (recommended - simple, powerful)
+- Web Audio API (native, more complex)
+- THREE.PositionalAudio (for 3D spatial audio)
 
-**LOD System** - Level of Detail
-- Distant objects use simpler models
-- Reduces polygon count for far terrain
-- Improves FPS in dense forest areas
+### Visual Juice ✨
 
-**Object Pooling**:
-- Reuse walnut/NPC objects instead of creating new
-- Reduces memory allocation/garbage collection
-- Smoother performance with many objects
+**Particle Effects**:
+- **Bury Walnut**: Dirt/soil particles spray up
+- **Find Walnut**: Sparkle burst effect
+- **Footsteps**: Dust/leaf particles on movement
+- **Score**: Confetti/stars on point gain
 
-**Occlusion Culling**:
-- Don't render objects behind trees/terrain
-- Significant FPS boost in forest
+**Score Feedback**:
+- Animated "+3 points!" text pop-up (flies up and fades)
+- Screen shake on big finds (subtle, satisfying)
+- Player glow effect when scoring
+- Score counter animates (number tween)
 
-**Auto-Quality Adjustment**:
-- Detect low FPS
-- Automatically reduce quality settings
-- Maintain smooth gameplay
+**Walnut Visual Improvements**:
+- Better buried walnut mound (rounded, natural-looking)
+- More obvious bush walnuts (better glint effect)
+- Enhanced golden walnut glow (pulsing animation)
+
+**Implementation**:
+```typescript
+class VFXManager {
+  spawnParticles(type: 'dirt' | 'sparkle' | 'dust', position: Vector3);
+  showScorePopup(points: number, position: Vector3);
+  screenShake(intensity: number, duration: number);
+  playerGlow(playerId: string, duration: number);
+}
+```
+
+### Quality of Life 🎮
+
+**Settings Menu**:
+- Audio volume sliders (SFX, Ambient, Master)
+- Mouse sensitivity control
+- Graphics quality toggle (if needed)
+- Debug overlay toggle (F key functionality)
+- Controls reference
+
+**Better Feedback**:
+- Clear error messages (network, loading, etc.)
+- Connection status indicator (connected/disconnected/reconnecting)
+- Loading progress bar with percentage
+- Toast notifications for events
+
+**Tutorial Improvements**:
+- Clearer first-time onboarding
+- Contextual hints that fade in/out
+- Skip tutorial option
+- Help menu (H key reference)
+
+### Bug Fixes & Stability 🐛
+
+**Multiplayer**:
+- Fix remaining sync edge cases
+- Improve animation transitions
+- Better handling of player disconnect/reconnect
+- Test with multiple simultaneous players
+
+**Interaction**:
+- Improve walnut click detection (larger hitboxes)
+- Better raycasting for buried walnuts
+- Proximity detection refinement
+- Click feedback (cursor change, highlight)
+
+**Performance**:
+- Profile current FPS in various scenarios
+- Optimize only if needed (measure first!)
+- Memory leak checks
+- Browser compatibility testing
 
 ---
 
@@ -607,6 +660,57 @@ if (isMobile) {
 
 ---
 
+## 🌍 MVP 9: Advanced Systems (Future)
+
+**Goal**: Enterprise-level features for long-term retention (ONLY after core gameplay is polished)
+
+**Warning**: DO NOT implement until MVPs 1-8 are complete and the game feels AMAZING to play!
+
+### 24-Hour World Cycle
+
+**Persistent World**:
+- Forest regenerates every 24 hours
+- 100 game walnuts spawn randomly at reset
+- Each player gets 3 walnuts on join
+- Leaderboard tracks cycle rankings
+
+**Session Management**:
+- Join anytime during cycle
+- Your walnuts remain when you leave
+- Rejoin to continue (same position)
+- Cycle countdown timer in UI
+
+**Backend Integration**:
+- ForestManager: world state & reset logic
+- WalnutRegistry: persistent walnut locations
+- PlayerSession: track progress across sessions
+- Leaderboard: cycle-based rankings
+
+### Performance Optimization (ONLY if needed)
+
+**LOD System** - Level of Detail
+- Distant objects use simpler models
+- Reduces polygon count for far terrain
+- Improves FPS in dense forest areas
+
+**Object Pooling**:
+- Reuse walnut/NPC objects instead of creating new
+- Reduces memory allocation/garbage collection
+- Smoother performance with many objects
+
+**Occlusion Culling**:
+- Don't render objects behind trees/terrain
+- Significant FPS boost in forest
+
+**Auto-Quality Adjustment**:
+- Detect low FPS
+- Automatically reduce quality settings
+- Maintain smooth gameplay
+
+**Important**: Only implement performance optimizations if you measure actual FPS problems. Profile first, optimize second!
+
+---
+
 ## 📅 Timeline Summary
 
 | MVP | Focus | Status |
@@ -614,15 +718,16 @@ if (isMobile) {
 | 1.5 | Animated Character | ✅ Complete |
 | 1.9 | Backend Cleanup | ✅ Complete |
 | 2.0 | Multiplayer Foundation | ✅ Complete |
-| 3 | Walnut Mechanics + Navigation + Narrator | 🎯 Starting |
-| 3.5 | Multiple Characters | Pending |
-| 4 | Competitive Multiplayer + Tutorial | Pending |
-| 5 | Persistent World + Performance | Pending |
+| 3 | Walnut Mechanics + Navigation | ✅ Complete |
+| 3.5 | Multiple Characters | ✅ Complete |
+| 4 | Competitive Multiplayer | ✅ Complete |
+| 5 | **Game Feel & Polish** | 🎯 **CURRENT** |
 | 6 | Code Cleanup | Pending |
-| 6.5 | Animation Polish | Optional |
+| 6.5 | Advanced Animation Polish | Optional |
 | 7 | Predators + NPCs + Polish | Pending |
 | 7.5 | Mobile/Touch Controls | Pending |
 | 8 | Player Authentication | Pending |
+| 9 | Advanced Systems (24hr Cycle + Performance) | Future |
 
 ---
 
@@ -646,15 +751,21 @@ if (isMobile) {
 - [ ] Text-based tutorial messages (voice acting in MVP 6.5)
 
 ### MVP 4 Success
-- [ ] Leaderboard tracks top players
-- [ ] Can steal others' walnuts
-- [ ] Tutorial teaches new players
-- [ ] Quick chat works
+- [x] Leaderboard tracks top players
+- [x] Can steal others' walnuts
+- [x] Quick chat works
+- [x] Emotes work
 
-### MVP 5 Success
-- [ ] 24-hour cycle resets world
-- [ ] 60 FPS maintained with many objects
-- [ ] Players can rejoin mid-cycle
+### MVP 5 Success (Game Feel & Polish)
+- [ ] Audio system with sound effects (hide, find, footsteps, ambient)
+- [ ] Particle effects (bury, find, footsteps, score)
+- [ ] Score pop-up animations
+- [ ] Settings menu with volume controls
+- [ ] Improved walnut visuals (better mound, bush glints, golden glow)
+- [ ] Better click detection and feedback
+- [ ] Connection status indicator
+- [ ] Loading progress bar
+- [ ] Game feels satisfying and polished
 
 ### MVP 7 Success
 - [ ] Predators add challenge
@@ -666,6 +777,12 @@ if (isMobile) {
 - [ ] Players can create accounts
 - [ ] Progress persists across sessions
 - [ ] Leaderboard shows persistent identities
+
+### MVP 9 Success (Advanced Systems)
+- [ ] 24-hour cycle resets world
+- [ ] 100 game walnuts spawn at reset
+- [ ] Players can rejoin mid-cycle
+- [ ] 60 FPS maintained with many objects (if performance optimization needed)
 
 ---
 
