@@ -124,12 +124,9 @@ export class Game {
 
 
   async init(canvas: HTMLCanvasElement) {
-    console.log('🚀 GAME INIT STARTED');
-    
     // Scene
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x87ceeb);
-    console.log('✅ Scene created with background color');
 
     // Camera
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -160,8 +157,6 @@ export class Game {
     // Terrain
     const terrain = await createTerrain();
     this.scene.add(terrain);
-    console.log('Terrain added to scene. Scene children count:', this.scene.children.length);
-    console.log('Scene children:', this.scene.children);
 
     // Forest will be created from server data when we receive world_state
 
@@ -172,7 +167,6 @@ export class Game {
         throw new Error(`Failed to fetch characters.json: ${response.status}`);
       }
       this.characters = await response.json();
-      console.log('Characters loaded:', this.characters);
     } catch (error) {
       console.error('Error loading characters.json:', error);
       // INDUSTRY STANDARD: Fallback matches characters.json structure exactly
@@ -190,9 +184,7 @@ export class Game {
     }
 
     // INDUSTRY STANDARD: Add basic sanity check before character loading
-    console.log('🧪 Adding sanity check cube');
     this.addSanityCheckCube();
-    console.log('📦 Scene children after sanity cube:', this.scene.children.length);
 
     // Load selected character
     await this.loadCharacter();
@@ -227,12 +219,6 @@ export class Game {
     // Start debug overlay updates
     this.startDebugUpdates();
 
-    // Final debug output
-    console.log('🏁 GAME INIT COMPLETE');
-    console.log('📦 Final scene children count:', this.scene.children.length);
-    console.log('📦 Scene children:', this.scene.children.map(child => ({ type: child.type, name: child.name || 'unnamed', position: child.position })));
-    console.log('📷 Camera position:', this.camera.position);
-
     window.addEventListener('resize', this.onResize.bind(this));
   }
 
@@ -243,7 +229,6 @@ export class Game {
       return;
     }
 
-    console.log('🎮 Starting character load...');
     try {
       // INDUSTRY STANDARD: Use cached assets
       const characterModel = await this.loadCachedAsset(char.modelPath);
@@ -251,16 +236,13 @@ export class Game {
         console.error('❌ Failed to load character model');
         return;
       }
-      console.log('✅ Character model loaded successfully');
-      
+
       this.character = characterModel;
       this.character.scale.set(char.scale, char.scale, char.scale);
       this.character.position.set(0, 0, 0);
       this.character.rotation.y = Math.PI;
       this.character.castShadow = true;
       this.scene.add(this.character);
-      
-      console.log('✅ Character added to scene');
 
       // INDUSTRY STANDARD: Animation mixer on character model
       this.mixer = new THREE.AnimationMixer(this.character);
@@ -283,9 +265,7 @@ export class Game {
       });
 
       const animationResults = await Promise.all(animationPromises);
-      const successCount = animationResults.filter(r => r.success).length;
-      console.log(`✅ Loaded ${successCount}/${animationResults.length} animations`);
-      
+
       // Validate at least idle animation loaded
       if (!this.actions.idle) {
         console.error('❌ CRITICAL: Idle animation failed to load - character will not function properly');
@@ -392,16 +372,7 @@ export class Game {
 
       // Debug scene contents with I key (Info)
       if (e.key === 'i' || e.key === 'I') {
-        console.log('🔍 Scene debug info:');
-        console.log('- Scene children count:', this.scene.children.length);
-        console.log('- Remote players count:', this.remotePlayers.size);
-        console.log('- Local character position:', this.character?.position);
-        this.scene.children.forEach((child, i) => {
-          console.log(`- Child ${i}:`, child.type, child.position, 'visible:', child.visible);
-        });
-        this.remotePlayers.forEach((player, id) => {
-          console.log('- Remote player', id, 'position:', player.position, 'visible:', player.visible);
-        });
+        // Scene debug info available via debug overlay
       }
     });
 
@@ -425,8 +396,6 @@ export class Game {
 
   // Cleanup method for proper resource management
   public destroy(): void {
-    console.log('🧹 Cleaning up game resources...');
-    
     // Stop all intervals
     this.stopIntervals();
     
@@ -632,7 +601,6 @@ export class Game {
   private updateCamera() {
     // INDUSTRY STANDARD: Validate character exists before camera update
     if (!this.character) {
-      console.warn('⚠️ updateCamera called but character is null');
       return;
     }
 
@@ -659,18 +627,16 @@ export class Game {
 
   private async connectWebSocket(): Promise<void> {
     if (this.connectionAttempts >= this.maxConnectionAttempts) {
-      console.error('❌ Max connection attempts reached. Multiplayer disabled.');
+      console.warn('⚠️ Max connection attempts reached. Multiplayer disabled.');
       return;
     }
 
     this.connectionAttempts++;
-    
+
     // Get WebSocket URL - check environment or use default
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:50569';
-    const wsUrl = apiUrl.replace('http:', 'ws:').replace('https:', 'wss:') + 
+    const wsUrl = apiUrl.replace('http:', 'ws:').replace('https:', 'wss:') +
                   `/ws?squirrelId=${this.playerId}&characterId=${this.selectedCharacterId}`;
-    
-    console.log(`🔌 Connecting to WebSocket (attempt ${this.connectionAttempts}):`, wsUrl);
     
     try {
       this.websocket = new WebSocket(wsUrl);
@@ -678,14 +644,12 @@ export class Game {
       // Set connection timeout
       const connectionTimeout = setTimeout(() => {
         if (this.websocket && this.websocket.readyState === WebSocket.CONNECTING) {
-          console.warn('⏰ WebSocket connection timeout');
           this.websocket.close();
         }
       }, 5000);
-      
+
       this.websocket.onopen = () => {
         clearTimeout(connectionTimeout);
-        console.log('✅ WebSocket connected');
         this.isConnected = true;
         this.connectionAttempts = 0; // Reset on successful connection
         
@@ -711,13 +675,11 @@ export class Game {
       this.websocket.onclose = (event) => {
         clearTimeout(connectionTimeout);
         this.isConnected = false;
-        console.log('🔌 WebSocket disconnected:', event.code, event.reason);
-        
+
         this.stopIntervals();
-        
+
         // Attempt reconnection if not intentional close
         if (event.code !== 1000 && this.connectionAttempts < this.maxConnectionAttempts) {
-          console.log(`🔄 Reconnecting in 2 seconds... (attempt ${this.connectionAttempts + 1}/${this.maxConnectionAttempts})`);
           setTimeout(() => this.connectWebSocket(), 2000);
         }
       };
@@ -837,18 +799,14 @@ export class Game {
 
     switch (data.type) {
       case 'world_state':
-        console.log('🌍 Received world state');
-
         // Create forest from server data (only once)
         if (!this.forestCreated && Array.isArray(data.forestObjects)) {
-          console.log(`🌲 Creating forest from server: ${data.forestObjects.length} objects`);
           await createForestFromServer(this.scene, data.forestObjects);
           this.forestCreated = true;
         }
 
         // Load existing walnuts from server
         if (Array.isArray(data.mapState)) {
-          console.log(`🌰 Loading ${data.mapState.length} existing walnuts from server`);
           for (const walnut of data.mapState) {
             if (!walnut.found) {
               // Convert server Walnut format to client format
@@ -870,7 +828,6 @@ export class Game {
 
       case 'walnut_hidden':
         // Another player hid a walnut - create it locally
-        console.log('🌰 Walnut hidden by another player:', data.ownerId);
         if (data.ownerId !== this.playerId) {
           this.createRemoteWalnut({
             walnutId: data.walnutId,
@@ -884,21 +841,16 @@ export class Game {
 
       case 'walnut_found':
         // Another player found a walnut - remove it locally
-        console.log('🔍 Walnut found by another player:', data.finderId);
         if (data.walnutId && data.finderId !== this.playerId) {
           this.removeWalnut(data.walnutId);
         }
         break;
 
       case 'existing_players':
-        console.log('👥 Existing players received:', data.players?.length || 0);
         if (Array.isArray(data.players)) {
           for (const player of data.players) {
-            console.log('👤 Processing existing player:', player.squirrelId, 'character:', player.characterId, 'at position:', player.position);
             if (this.validatePlayerData(player)) {
               this.createRemotePlayer(player.squirrelId, player.position, player.rotationY, player.characterId);
-            } else {
-              console.warn('⚠️ Invalid player data:', player);
             }
           }
         }
@@ -906,13 +858,11 @@ export class Game {
 
       case 'player_joined':
         if (this.validatePlayerData(data) && data.squirrelId !== this.playerId) {
-          console.log('👤 New player joined:', data.squirrelId, 'character:', data.characterId);
           this.createRemotePlayer(data.squirrelId, data.position, data.rotationY, data.characterId);
         }
         break;
-        
+
       case 'player_leave':  // Server sends "player_leave" not "player_left"
-        console.log('👋 Player left:', data.squirrelId);
         if (data.squirrelId && data.squirrelId !== this.playerId) {
           this.removeRemotePlayer(data.squirrelId);
         }
@@ -931,7 +881,6 @@ export class Game {
       case 'chat_message':
         // Received chat message from another player
         if (data.playerId && data.message && data.playerId !== this.playerId) {
-          console.log('💬 Chat from', data.playerId, ':', data.message);
           this.showChatAboveCharacter(data.playerId, data.message, false);
         }
         break;
@@ -939,7 +888,6 @@ export class Game {
       case 'player_emote':
         // Received emote from another player
         if (data.playerId && data.emote && data.playerId !== this.playerId) {
-          console.log('👋 Emote from', data.playerId, ':', data.emote);
           this.playRemoteEmoteAnimation(data.playerId, data.emote);
         }
         break;
@@ -970,7 +918,6 @@ export class Game {
       // INDUSTRY STANDARD: Use cached assets for remote players
       // Use the remote player's character ID, or fall back to local player's character
       const remoteCharacterId = characterId || this.selectedCharacterId;
-      console.log(`👤 Creating remote player ${playerId} with character: ${remoteCharacterId}`);
 
       const char = this.characters.find(c => c.id === remoteCharacterId);
       if (!char) {
@@ -1049,10 +996,8 @@ export class Game {
       if (remoteActions['idle']) {
         remoteActions['idle'].play();
       }
-      
+
       this.scene.add(remoteCharacter);
-      
-      console.log('✅ Created remote player:', playerId);
     } catch (error) {
       console.error('❌ Failed to create remote player:', playerId, error);
     }
@@ -1177,8 +1122,6 @@ export class Game {
       
       // Clean up interpolation buffer
       this.remotePlayerBuffers.delete(playerId);
-      
-      console.log('🗑️ Removed remote player:', playerId);
     }
   }
 
@@ -1193,8 +1136,6 @@ export class Game {
     const cube = new THREE.Mesh(geometry, material);
     cube.position.set(3, 2, 3); // Offset from center
     this.scene.add(cube);
-    
-    console.log('🔧 Added sanity check cube at (3, 2, 3) - should be visible if rendering works');
   }
 
   private addLandmarkCube(): void {
@@ -1207,8 +1148,6 @@ export class Game {
     const tower = new THREE.Mesh(geometry, material);
     tower.position.set(0, 10, 0); // Base at terrain level, extends up to 20
     this.scene.add(tower);
-
-    console.log('📍 Added landmark tower at (0, 10, 0) - 20 units tall');
   }
 
   /**
@@ -1250,8 +1189,6 @@ export class Game {
       landmarkHeight,
       'West'
     );
-
-    console.log('🧭 Added cardinal direction landmarks (N, S, E, W)');
   }
 
   /**
@@ -1485,11 +1422,6 @@ export class Game {
     // Hide label if behind camera
     const isBehindCamera = vector.z > 1;
     label.style.display = isBehindCamera ? 'none' : 'block';
-
-    // Debug logging for chat labels
-    if (label.textContent && (label.textContent.includes('Nice') || label.textContent.includes('Over') || label.textContent.includes('Good') || label.textContent.includes('Want'))) {
-      console.log(`📍 Label "${label.textContent}" position - screen: (${x.toFixed(0)}, ${y.toFixed(0)}), z: ${vector.z.toFixed(2)}, behind camera: ${isBehindCamera}, display: ${label.style.display}`);
-    }
   }
 
   /**
@@ -1770,9 +1702,6 @@ export class Game {
     this.minimapCanvas = document.getElementById('minimap-canvas') as HTMLCanvasElement;
     if (this.minimapCanvas) {
       this.minimapContext = this.minimapCanvas.getContext('2d');
-      console.log('✅ Minimap initialized');
-    } else {
-      console.warn('⚠️ Minimap canvas not found');
     }
   }
 
@@ -1975,7 +1904,6 @@ export class Game {
 
     // Check if player has walnuts to hide
     if (this.playerWalnutCount <= 0) {
-      console.log('🚫 No walnuts to hide!');
       return;
     }
 
@@ -2012,14 +1940,12 @@ export class Game {
       walnutGroup = this.createBushWalnutVisual(position);
       labelText = 'Your Bush Walnut (1 pt)';
       labelColor = '#90EE90';
-      console.log(`🌿 Hidden in bush at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}), distance: ${minDistance.toFixed(1)} units`);
     } else {
       // BURY IN GROUND - no bush nearby
       const position = new THREE.Vector3(playerPos.x, terrainY, playerPos.z);
       walnutGroup = this.createBuriedWalnutVisual(position);
       labelText = 'Your Buried Walnut (3 pts)';
       labelColor = '#8B4513';
-      console.log(`🌰 Buried at player position (${position.x.toFixed(1)}, ${position.z.toFixed(1)}), nearest bush: ${minDistance.toFixed(1)} units away`);
     }
 
     // Add to scene and registry
@@ -2034,7 +1960,6 @@ export class Game {
 
     // Decrement player walnut count
     this.playerWalnutCount--;
-    console.log(`✅ Walnut hidden! Remaining: ${this.playerWalnutCount}`);
 
     // MULTIPLAYER: Send to server for sync
     this.sendMessage({
@@ -2082,7 +2007,6 @@ export class Game {
 
     this.scene.remove(walnutGroup);
     this.walnuts.delete(walnutId);
-    console.log('🗑️ Removed walnut:', walnutId);
   }
 
   /**
@@ -2147,10 +2071,7 @@ export class Game {
     const distance = playerPos.distanceTo(walnutPos);
     const maxDistance = walnutGroup.userData.type === 'buried' ? 4 : 5;
 
-    console.log(`🔍 Click detected: type=${walnutGroup.userData.type}, distance=${distance.toFixed(1)}, max=${maxDistance}`);
-
     if (distance > maxDistance) {
-      console.log(`🚫 Too far away! Distance: ${distance.toFixed(1)}, need to be within ${maxDistance}`);
       return;
     }
 
@@ -2160,12 +2081,10 @@ export class Game {
     if (isOwnWalnut) {
       // FOUND YOUR OWN WALNUT - No points (prevents farming), just get walnut back
       this.playerWalnutCount++;
-      console.log(`🔄 Picked up your own walnut! No points awarded. Walnuts: ${this.playerWalnutCount}`);
     } else {
       // FOUND SOMEONE ELSE'S WALNUT - Award points AND give walnut to rehide
       this.playerScore += points;
       this.playerWalnutCount++;
-      console.log(`🎉 Found another player's walnut! +${points} points (Score: ${this.playerScore}), +1 walnut (${this.playerWalnutCount} total)`);
     }
 
     // Remove the walnut from the world
@@ -2193,7 +2112,6 @@ export class Game {
   }): void {
     // Don't create if already exists
     if (this.walnuts.has(data.walnutId)) {
-      console.log(`⚠️ Walnut ${data.walnutId} already exists, skipping`);
       return;
     }
 
@@ -2236,8 +2154,6 @@ export class Game {
     // Add label
     const label = this.createLabel(labelText, labelColor);
     this.walnutLabels.set(data.walnutId, label);
-
-    console.log(`🌰 Created remote walnut: ${data.walnutId} (type: ${data.walnutType}, owner: ${data.ownerId})`);
   }
 
   // MVP 3: Tutorial system methods
@@ -2322,12 +2238,9 @@ export class Game {
    * Close the tutorial (can be called anytime to skip)
    */
   private closeTutorial(): void {
-    console.log('🎓 Closing tutorial...');
     const overlay = document.getElementById('tutorial-overlay');
     if (overlay) {
-      console.log('✅ Tutorial overlay found, adding hidden class');
       overlay.classList.add('hidden');
-      console.log('Tutorial overlay classes:', overlay.classList.toString());
     } else {
       console.error('❌ Tutorial overlay not found!');
     }
@@ -2366,10 +2279,6 @@ export class Game {
 
       // Initial update
       this.updateLeaderboard();
-
-      console.log('✅ Leaderboard initialized');
-    } else {
-      console.warn('⚠️ Leaderboard elements not found');
     }
   }
 
@@ -2437,37 +2346,27 @@ export class Game {
    * Initialize quick chat and emote systems
    */
   private initChatAndEmotes(): void {
-    console.log('🎮 Initializing Quick Chat and Emotes...');
-
     const quickChatDiv = document.getElementById('quick-chat');
     const emotesDiv = document.getElementById('emotes');
-
-    console.log('🔍 Quick chat div:', quickChatDiv);
-    console.log('🔍 Emotes div:', emotesDiv);
 
     // Show UI elements
     if (quickChatDiv) {
       quickChatDiv.classList.remove('hidden');
-      console.log('✅ Quick chat UI shown');
     } else {
       console.error('❌ Quick chat div not found!');
     }
 
     if (emotesDiv) {
       emotesDiv.classList.remove('hidden');
-      console.log('✅ Emotes UI shown');
     } else {
       console.error('❌ Emotes div not found!');
     }
 
     // Setup quick chat buttons
     const chatButtons = document.querySelectorAll('.chat-button');
-    console.log(`🔍 Found ${chatButtons.length} chat buttons`);
-    chatButtons.forEach((button, index) => {
+    chatButtons.forEach((button) => {
       button.addEventListener('click', () => {
-        console.log(`🖱️ Chat button ${index} clicked!`);
         const message = (button as HTMLElement).getAttribute('data-message');
-        console.log('📝 Message:', message);
         if (message) {
           this.sendChatMessage(message);
         }
@@ -2476,99 +2375,68 @@ export class Game {
 
     // Setup emote buttons
     const emoteButtons = document.querySelectorAll('.emote-button');
-    console.log(`🔍 Found ${emoteButtons.length} emote buttons`);
-    emoteButtons.forEach((button, index) => {
+    emoteButtons.forEach((button) => {
       button.addEventListener('click', () => {
-        console.log(`🖱️ Emote button ${index} clicked!`);
         const emote = (button as HTMLElement).getAttribute('data-emote');
-        console.log('😀 Emote:', emote);
         if (emote) {
           this.sendEmote(emote);
         }
       });
     });
-
-    console.log('✅ Quick chat and emotes initialized');
   }
 
   /**
    * Send a chat message (broadcasts to all players)
    */
   private sendChatMessage(message: string): void {
-    console.log('💬 sendChatMessage called with:', message);
-    console.log('🔌 Connection status - isConnected:', this.isConnected, 'websocket:', this.websocket);
-    console.log('🆔 Player ID:', this.playerId);
-    console.log('🎮 Character:', this.character);
-
     if (!this.isConnected || !this.websocket) {
-      console.warn('⚠️ Not connected - cannot send chat message');
-      console.warn('⚠️ You need to connect to the server first!');
       return;
     }
 
     // Display locally above own character
-    console.log('📍 Showing chat above character...');
     this.showChatAboveCharacter(this.playerId, message, true);
 
     // Send to server to broadcast to all other players
-    console.log('📡 Sending to server...');
     this.sendMessage({
       type: 'chat_message',
       message: message,
       playerId: this.playerId
     });
-
-    console.log('💬 Chat message sent:', message);
   }
 
   /**
    * Send an emote (triggers character animation, broadcasts to all players)
    */
   private sendEmote(emote: string): void {
-    console.log('👋 sendEmote called with:', emote);
-    console.log('🔌 Connection status - isConnected:', this.isConnected, 'websocket:', this.websocket);
-
     if (!this.isConnected || !this.websocket) {
-      console.warn('⚠️ Not connected - cannot send emote');
-      console.warn('⚠️ You need to connect to the server first!');
       return;
     }
 
     // Prevent emote spam
     if (this.emoteInProgress) {
-      console.log('⏸️ Emote in progress, please wait...');
       return;
     }
 
     // Play emote animation locally
-    console.log('🎭 Playing emote animation...');
     this.playEmoteAnimation(emote);
 
     // Send to server to broadcast to all other players
-    console.log('📡 Sending emote to server...');
     this.sendMessage({
       type: 'player_emote',
       emote: emote,
       playerId: this.playerId
     });
-
-    console.log('👋 Emote sent:', emote);
   }
 
   /**
    * Show chat message above a character (floating text label)
    */
   private showChatAboveCharacter(playerId: string, message: string, isLocalPlayer: boolean = false): void {
-    console.log(`💬 showChatAboveCharacter - playerId: ${playerId}, message: ${message}, isLocal: ${isLocalPlayer}`);
-
     // Get character position
     const character = isLocalPlayer ? this.character : this.remotePlayers.get(playerId);
     if (!character) {
-      console.warn(`⚠️ Character not found for player ${playerId}`);
       return;
     }
-
-    console.log(`✅ Character found at position:`, character.position);
 
     // Remove existing chat label if present
     const existingLabel = this.playerChatLabels.get(playerId);
@@ -2598,7 +2466,6 @@ export class Game {
 
     if (this.labelsContainer) {
       this.labelsContainer.appendChild(label);
-      console.log('✅ Label added to DOM');
     } else {
       console.error('❌ Labels container not found!');
     }
@@ -2609,7 +2476,6 @@ export class Game {
     const labelPos = character.position.clone();
     labelPos.y += 0.5; // Position just above character's head (0.5 units, not 2.5!)
     this.updateLabelPosition(label, labelPos);
-    console.log('✅ Label positioned at:', labelPos);
 
     // Auto-remove after 5 seconds
     setTimeout(() => {
@@ -2617,7 +2483,6 @@ export class Game {
       if (label && this.labelsContainer) {
         this.labelsContainer.removeChild(label);
         this.playerChatLabels.delete(playerId);
-        console.log(`🗑️ Chat label removed for ${playerId}`);
       }
     }, 5000);
   }
@@ -2626,12 +2491,7 @@ export class Game {
    * Play an emote animation on local character
    */
   private playEmoteAnimation(emote: string): void {
-    console.log(`🎭 playEmoteAnimation called - emote: ${emote}`);
-    console.log(`🎮 Character:`, this.character);
-    console.log(`⏸️ Emote in progress:`, this.emoteInProgress);
-
     if (!this.character || this.emoteInProgress) {
-      console.warn('⚠️ Cannot play emote - no character or emote in progress');
       return;
     }
 
@@ -2646,7 +2506,6 @@ export class Game {
     };
 
     const animationName = emoteAnimationMap[emote] || 'idle';
-    console.log(`🎬 Playing animation: ${animationName}`);
 
     // Play emote animation
     this.setAction(animationName);
@@ -2658,32 +2517,22 @@ export class Game {
         this.setAction('idle');
       }
       this.emoteInProgress = false;
-      console.log('✅ Emote animation complete');
     }, 2000);
-
-    console.log(`✨ Playing emote animation: ${emote} (${animationName})`);
   }
 
   /**
    * Play emote animation on remote player
    */
   private playRemoteEmoteAnimation(playerId: string, emote: string): void {
-    console.log(`🎭 playRemoteEmoteAnimation - playerId: ${playerId}, emote: ${emote}`);
-
     const remoteCharacter = this.remotePlayers.get(playerId);
     const remoteActions = this.remotePlayerActions.get(playerId);
 
-    console.log(`👤 Remote character:`, remoteCharacter);
-    console.log(`🎬 Remote actions:`, remoteActions);
-
     if (!remoteCharacter || !remoteActions) {
-      console.warn(`⚠️ Cannot play remote emote - character or actions not found for ${playerId}`);
       return;
     }
 
     // Set emote flag to prevent network animation updates from overriding
     this.remotePlayerEmotes.set(playerId, true);
-    console.log(`🔒 Locked animations for ${playerId} during emote`);
 
     // Map emotes to animations
     const emoteAnimationMap: { [key: string]: string } = {
@@ -2696,11 +2545,7 @@ export class Game {
     const animationName = emoteAnimationMap[emote] || 'idle';
     const newAction = remoteActions[animationName];
 
-    console.log(`🎬 Animation to play: ${animationName}`);
-    console.log(`🎭 Action:`, newAction);
-
     if (!newAction) {
-      console.warn(`⚠️ Animation ${animationName} not found for remote player`);
       this.remotePlayerEmotes.delete(playerId);
       return;
     }
@@ -2725,9 +2570,6 @@ export class Game {
       }
       // Clear emote flag to allow network animation updates again
       this.remotePlayerEmotes.delete(playerId);
-      console.log(`🔓 Unlocked animations for ${playerId} after emote`);
     }, 2000);
-
-    console.log(`✨ Remote player ${playerId} emote: ${emote} (${animationName}) playing!`);
   }
 }
