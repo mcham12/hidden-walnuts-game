@@ -1465,7 +1465,13 @@ export class Game {
     label.style.top = `${y}px`;
 
     // Hide label if behind camera
-    label.style.display = vector.z > 1 ? 'none' : 'block';
+    const isBehindCamera = vector.z > 1;
+    label.style.display = isBehindCamera ? 'none' : 'block';
+
+    // Debug logging for chat labels
+    if (label.textContent && (label.textContent.includes('Nice') || label.textContent.includes('Over') || label.textContent.includes('Good') || label.textContent.includes('Want'))) {
+      console.log(`📍 Label "${label.textContent}" position - screen: (${x.toFixed(0)}, ${y.toFixed(0)}), z: ${vector.z.toFixed(2)}, behind camera: ${isBehindCamera}, display: ${label.style.display}`);
+    }
   }
 
   /**
@@ -2553,18 +2559,24 @@ export class Game {
       this.playerChatLabels.delete(playerId);
     }
 
-    // Create new chat label
+    // Create new chat label (don't use landmark-label class due to transform conflict)
     const label = document.createElement('div');
-    label.className = 'landmark-label'; // Reuse same styling
     label.textContent = message;
+    label.style.position = 'absolute';
     label.style.color = isLocalPlayer ? '#4CAF50' : '#FFF'; // Green for own messages
-    label.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-    label.style.padding = '6px 12px';
+    label.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+    label.style.padding = '8px 14px';
     label.style.borderRadius = '8px';
-    label.style.fontSize = '14px';
+    label.style.fontSize = '15px';
     label.style.fontWeight = 'bold';
-    label.style.maxWidth = '200px';
+    label.style.maxWidth = '250px';
     label.style.wordWrap = 'break-word';
+    label.style.fontFamily = 'Arial, sans-serif';
+    label.style.pointerEvents = 'none';
+    label.style.whiteSpace = 'nowrap';
+    label.style.transform = 'translate(-50%, -120%)'; // Center and position above character
+    label.style.zIndex = '2000'; // Above everything else
+    label.style.boxShadow = '0 2px 8px rgba(0,0,0,0.4)';
 
     if (this.labelsContainer) {
       this.labelsContainer.appendChild(label);
