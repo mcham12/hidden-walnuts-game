@@ -264,7 +264,7 @@ export class Game {
         }
       });
 
-      const animationResults = await Promise.all(animationPromises);
+      await Promise.all(animationPromises);
 
       // Validate at least idle animation loaded
       if (!this.actions.idle) {
