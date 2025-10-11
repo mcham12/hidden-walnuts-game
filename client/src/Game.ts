@@ -2637,13 +2637,12 @@ export class Game {
 
     this.emoteInProgress = true;
 
-    // Map emotes to animations - each emote gets unique animation for distinction
-    // Available animations: idle, walk, run, jump (4 animations for 4 emotes)
+    // Map emotes to animations - only 3 emotes using 3 distinct animations
+    // Available animations: idle, walk, run, jump (idle excluded - not visible as emote)
     const emoteAnimationMap: { [key: string]: string } = {
       'wave': 'walk',      // Slow friendly wave
       'point': 'run',      // Energetic pointing gesture
-      'celebrate': 'jump', // Jump for joy!
-      'shrug': 'idle'      // Subtle shrug (idle works when looping)
+      'celebrate': 'jump'  // Jump for joy!
     };
 
     const animationName = emoteAnimationMap[emote] || 'idle';
