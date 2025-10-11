@@ -865,12 +865,17 @@ export class Game {
 
         // Load existing walnuts from server
         if (Array.isArray(data.mapState)) {
+          console.log(`📦 Received ${data.mapState.length} walnuts from server`);
           for (const walnut of data.mapState) {
             if (!walnut.found) {
               // Convert server Walnut format to client format
               // Game walnuts (origin='game') should render as golden bonus walnuts
               const walnutType = walnut.origin === 'game' ? 'game' : walnut.hiddenIn;
               const points = walnut.origin === 'game' ? 5 : (walnut.hiddenIn === 'buried' ? 3 : 1);
+
+              if (walnut.origin === 'game') {
+                console.log(`🌟 Creating GOLDEN walnut: ${walnut.id} at`, walnut.location, `(${points} pts)`);
+              }
 
               this.createRemoteWalnut({
                 walnutId: walnut.id,
@@ -2251,6 +2256,7 @@ export class Game {
         break;
 
       case 'game':
+        console.log(`✨ Rendering GOLDEN walnut visual at`, position);
         walnutGroup = this.createGameWalnutVisual(position);
         labelText = '🌟 Bonus Walnut (5 pts)';
         labelColor = '#FFD700';
