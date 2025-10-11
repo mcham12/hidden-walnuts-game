@@ -119,7 +119,8 @@ export class Game {
 
   // MVP 4: Chat and Emotes
   private playerChatLabels: Map<string, HTMLElement> = new Map(); // Chat labels for players
-  private emoteInProgress: boolean = false; // Prevent emote spam
+  private emoteInProgress: boolean = false; // Prevent emote spam (local player)
+  private remotePlayerEmotes: Map<string, boolean> = new Map(); // Track which remote players are emoting
 
 
   async init(canvas: HTMLCanvasElement) {
@@ -329,6 +330,11 @@ export class Game {
   }
 
   private setRemotePlayerAction(playerId: string, animationName: string, animationStartTime?: number) {
+    // Don't override animation if remote player is emoting
+    if (this.remotePlayerEmotes.get(playerId)) {
+      return;
+    }
+
     const actions = this.remotePlayerActions.get(playerId);
     if (!actions) return;
 
@@ -2668,6 +2674,10 @@ export class Game {
       return;
     }
 
+    // Set emote flag to prevent network animation updates from overriding
+    this.remotePlayerEmotes.set(playerId, true);
+    console.log(`🔒 Locked animations for ${playerId} during emote`);
+
     // Map emotes to animations
     const emoteAnimationMap: { [key: string]: string } = {
       'wave': 'walk',      // Use walk as placeholder (visible movement)
@@ -2684,6 +2694,7 @@ export class Game {
 
     if (!newAction) {
       console.warn(`⚠️ Animation ${animationName} not found for remote player`);
+      this.remotePlayerEmotes.delete(playerId);
       return;
     }
 
@@ -2704,6 +2715,9 @@ export class Game {
       if (idleAction) {
         idleAction.reset().fadeIn(0.2).play();
       }
+      // Clear emote flag to allow network animation updates again
+      this.remotePlayerEmotes.delete(playerId);
+      console.log(`🔓 Unlocked animations for ${playerId} after emote`);
     }, 2000);
 
     console.log(`✨ Remote player ${playerId} emote: ${emote} (${animationName}) playing!`);
