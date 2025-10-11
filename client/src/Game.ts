@@ -1516,7 +1516,7 @@ export class Game {
       const character = playerId === this.playerId ? this.character : this.remotePlayers.get(playerId);
       if (character) {
         const labelPos = character.position.clone();
-        labelPos.y += 2.5; // Position above character's head
+        labelPos.y += 0.5; // Position just above character's head (0.5 units)
         this.updateLabelPosition(label, labelPos);
       }
     }
@@ -2589,7 +2589,7 @@ export class Game {
 
     // IMPORTANT: Position the label immediately in screen space
     const labelPos = character.position.clone();
-    labelPos.y += 2.5; // Position above character's head
+    labelPos.y += 0.5; // Position just above character's head (0.5 units, not 2.5!)
     this.updateLabelPosition(label, labelPos);
     console.log('✅ Label positioned at:', labelPos);
 
