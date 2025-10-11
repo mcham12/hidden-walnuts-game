@@ -346,6 +346,192 @@
         from { opacity: 1; }
         to { opacity: 0; }
       }
+      /* MVP 5: Settings Menu Styles */
+      #settings-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 2500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #settings-overlay.hidden {
+        display: none;
+      }
+      #settings-menu {
+        background: linear-gradient(135deg, #2c5f2d 0%, #4a8f4d 100%);
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 600px;
+        width: 90%;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+        font-family: 'Arial', sans-serif;
+        color: white;
+      }
+      #settings-menu h2 {
+        margin: 0 0 20px 0;
+        font-size: 28px;
+        text-align: center;
+        color: #FFD700;
+      }
+      .settings-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid rgba(255,255,255,0.3);
+      }
+      .settings-tab {
+        padding: 10px 20px;
+        background: rgba(0,0,0,0.2);
+        border: none;
+        border-radius: 8px 8px 0 0;
+        color: rgba(255,255,255,0.7);
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .settings-tab:hover {
+        background: rgba(0,0,0,0.3);
+        color: white;
+      }
+      .settings-tab.active {
+        background: rgba(255,255,255,0.2);
+        color: white;
+        border-bottom: 3px solid #FFD700;
+      }
+      .settings-content {
+        display: none;
+        padding: 20px;
+        background: rgba(0,0,0,0.2);
+        border-radius: 8px;
+        min-height: 300px;
+      }
+      .settings-content.active {
+        display: block;
+      }
+      .setting-group {
+        margin-bottom: 25px;
+      }
+      .setting-group label {
+        display: block;
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 8px;
+        color: #FFE4B5;
+      }
+      .setting-group input[type="range"] {
+        width: 100%;
+        height: 8px;
+        background: rgba(0,0,0,0.3);
+        border-radius: 4px;
+        outline: none;
+        cursor: pointer;
+      }
+      .setting-group input[type="range"]::-webkit-slider-thumb {
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        background: #FFD700;
+        border-radius: 50%;
+        cursor: pointer;
+      }
+      .setting-group input[type="range"]::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        background: #FFD700;
+        border-radius: 50%;
+        cursor: pointer;
+        border: none;
+      }
+      .slider-value {
+        display: inline-block;
+        min-width: 40px;
+        text-align: right;
+        font-weight: bold;
+        color: white;
+        margin-left: 10px;
+      }
+      .controls-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-top: 15px;
+      }
+      .control-item {
+        background: rgba(0,0,0,0.3);
+        padding: 12px;
+        border-radius: 6px;
+      }
+      .control-key {
+        display: inline-block;
+        background: rgba(255,215,0,0.3);
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-weight: bold;
+        color: #FFD700;
+        margin-right: 8px;
+        min-width: 50px;
+        text-align: center;
+      }
+      .settings-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+        justify-content: center;
+      }
+      .settings-button {
+        padding: 12px 30px;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .settings-button.primary {
+        background: rgba(255,215,0,0.9);
+        color: #2c5f2d;
+      }
+      .settings-button.primary:hover {
+        background: rgba(255,215,0,1);
+        transform: translateY(-2px);
+      }
+      .settings-button.secondary {
+        background: rgba(0,0,0,0.3);
+        color: white;
+      }
+      .settings-button.secondary:hover {
+        background: rgba(0,0,0,0.4);
+      }
+      #settings-toggle {
+        position: absolute;
+        top: 220px;
+        right: 10px;
+        background: rgba(44, 95, 45, 0.9);
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-family: 'Arial', sans-serif;
+        font-size: 14px;
+        font-weight: bold;
+        z-index: 1001;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        transition: all 0.2s;
+      }
+      #settings-toggle:hover {
+        background: rgba(44, 95, 45, 1);
+        transform: translateY(-1px);
+      }
+      #settings-toggle.hidden {
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -441,6 +627,91 @@
       <button class="emote-button" data-emote="celebrate" title="Celebrate">🎉</button>
     </div>
     <div id="chat-message-display"></div>
+    <!-- MVP 5: Settings Menu -->
+    <button id="settings-toggle" class="hidden">⚙️ Settings</button>
+    <div id="settings-overlay" class="hidden">
+      <div id="settings-menu">
+        <h2>⚙️ Settings</h2>
+        <div class="settings-tabs">
+          <button class="settings-tab active" data-tab="audio">🔊 Audio</button>
+          <button class="settings-tab" data-tab="controls">🎮 Controls</button>
+        </div>
+        <div id="audio-tab" class="settings-content active">
+          <div class="setting-group">
+            <label>
+              Master Volume
+              <span class="slider-value" id="master-volume-value">100%</span>
+            </label>
+            <input type="range" id="master-volume" min="0" max="100" value="100">
+          </div>
+          <div class="setting-group">
+            <label>
+              SFX Volume
+              <span class="slider-value" id="sfx-volume-value">70%</span>
+            </label>
+            <input type="range" id="sfx-volume" min="0" max="100" value="70">
+          </div>
+          <div class="setting-group">
+            <label>
+              Ambient Volume
+              <span class="slider-value" id="ambient-volume-value">50%</span>
+            </label>
+            <input type="range" id="ambient-volume" min="0" max="100" value="50">
+          </div>
+          <div class="setting-group">
+            <label style="display: flex; align-items: center; gap: 10px;">
+              <input type="checkbox" id="mute-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+              Mute All Audio
+            </label>
+            <p style="margin: 8px 0 0 0; font-size: 13px; color: #FFE4B5; opacity: 0.8;">
+              Shortcut: Press <strong>M</strong> key to toggle mute
+            </p>
+          </div>
+        </div>
+        <div id="controls-tab" class="settings-content">
+          <div class="setting-group">
+            <label>
+              Mouse Sensitivity
+              <span class="slider-value" id="sensitivity-value">100%</span>
+            </label>
+            <input type="range" id="mouse-sensitivity" min="25" max="200" value="100">
+          </div>
+          <div class="setting-group">
+            <label>Controls Reference</label>
+            <div class="controls-grid">
+              <div class="control-item">
+                <span class="control-key">W A S D</span> Move
+              </div>
+              <div class="control-item">
+                <span class="control-key">SPACE</span> Jump
+              </div>
+              <div class="control-item">
+                <span class="control-key">H</span> Hide Walnut
+              </div>
+              <div class="control-item">
+                <span class="control-key">CLICK</span> Find Walnut
+              </div>
+              <div class="control-item">
+                <span class="control-key">M</span> Toggle Mute
+              </div>
+              <div class="control-item">
+                <span class="control-key">F</span> Debug Info
+              </div>
+              <div class="control-item">
+                <span class="control-key">L</span> Leaderboard
+              </div>
+              <div class="control-item">
+                <span class="control-key">ESC</span> Settings
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="settings-buttons">
+          <button class="settings-button primary" id="settings-apply">Apply & Close</button>
+          <button class="settings-button secondary" id="settings-cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
     <canvas id="gameCanvas" class="hidden"></canvas>
     <script type="module" src="/src/main.ts"></script>
   </body>

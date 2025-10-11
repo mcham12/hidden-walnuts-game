@@ -29,6 +29,8 @@ export class Game {
   private acceleration = 20; // Units per second squared - how fast we accelerate
   private deceleration = 15; // Units per second squared - how fast we decelerate
   private rotationSpeed = Math.PI;
+  // @ts-ignore - MVP 5: Mouse sensitivity multiplier (0.25-2.0) - ready for future mouse controls
+  private mouseSensitivity = 1.0;
   private gravity = -9.8;
   private jumpVelocity = 5;
 
@@ -221,6 +223,9 @@ export class Game {
 
     // MVP 4: Initialize quick chat and emotes
     this.initChatAndEmotes();
+
+    // MVP 5: Initialize settings menu
+    this.initSettingsMenu();
 
     // Setup multiplayer connection (walnuts will be loaded from server)
     await this.setupMultiplayer();
@@ -2702,5 +2707,142 @@ export class Game {
       // Clear emote flag to allow network animation updates again
       this.remotePlayerEmotes.delete(playerId);
     }, 2000);
+  }
+
+  // MVP 5: Settings Menu System
+
+  /**
+   * Initialize the settings menu system
+   */
+  private initSettingsMenu(): void {
+    const settingsToggle = document.getElementById('settings-toggle') as HTMLButtonElement;
+    const settingsOverlay = document.getElementById('settings-overlay') as HTMLDivElement;
+    const settingsApply = document.getElementById('settings-apply') as HTMLButtonElement;
+    const settingsCancel = document.getElementById('settings-cancel') as HTMLButtonElement;
+
+    // Show settings toggle button when game starts
+    if (settingsToggle) {
+      settingsToggle.classList.remove('hidden');
+    }
+
+    // Tab switching
+    const tabs = document.querySelectorAll('.settings-tab');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        const tabButton = e.target as HTMLButtonElement;
+        const tabName = tabButton.getAttribute('data-tab');
+
+        // Remove active class from all tabs and content
+        document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.settings-content').forEach(c => c.classList.remove('active'));
+
+        // Add active class to clicked tab and corresponding content
+        tabButton.classList.add('active');
+        const content = document.getElementById(`${tabName}-tab`);
+        if (content) {
+          content.classList.add('active');
+        }
+
+        // Play UI sound
+        this.audioManager.playSound('ui', 'button_click');
+      });
+    });
+
+    // Volume sliders
+    const masterVolume = document.getElementById('master-volume') as HTMLInputElement;
+    const sfxVolume = document.getElementById('sfx-volume') as HTMLInputElement;
+    const ambientVolume = document.getElementById('ambient-volume') as HTMLInputElement;
+    const muteToggle = document.getElementById('mute-toggle') as HTMLInputElement;
+
+    // Update volume displays and AudioManager
+    const updateVolume = (type: 'master' | 'sfx' | 'ambient', value: number) => {
+      const percentage = Math.round(value);
+      const valueSpan = document.getElementById(`${type}-volume-value`);
+      if (valueSpan) {
+        valueSpan.textContent = `${percentage}%`;
+      }
+      this.audioManager.setVolume(type, value / 100);
+    };
+
+    if (masterVolume) {
+      masterVolume.addEventListener('input', (e) => {
+        updateVolume('master', parseFloat((e.target as HTMLInputElement).value));
+      });
+    }
+
+    if (sfxVolume) {
+      sfxVolume.addEventListener('input', (e) => {
+        updateVolume('sfx', parseFloat((e.target as HTMLInputElement).value));
+      });
+    }
+
+    if (ambientVolume) {
+      ambientVolume.addEventListener('input', (e) => {
+        updateVolume('ambient', parseFloat((e.target as HTMLInputElement).value));
+      });
+    }
+
+    // Mute toggle checkbox
+    if (muteToggle) {
+      muteToggle.addEventListener('change', (e) => {
+        const isMuted = (e.target as HTMLInputElement).checked;
+        this.audioManager.setMute(isMuted);
+      });
+    }
+
+    // Mouse sensitivity slider
+    const sensitivitySlider = document.getElementById('mouse-sensitivity') as HTMLInputElement;
+    if (sensitivitySlider) {
+      sensitivitySlider.addEventListener('input', (e) => {
+        const value = parseFloat((e.target as HTMLInputElement).value);
+        const valueSpan = document.getElementById('sensitivity-value');
+        if (valueSpan) {
+          valueSpan.textContent = `${Math.round(value)}%`;
+        }
+        // Apply sensitivity to controls (value is 25-200, convert to multiplier)
+        this.mouseSensitivity = value / 100;
+      });
+    }
+
+    // Show/hide settings menu
+    const showSettings = () => {
+      if (settingsOverlay) {
+        settingsOverlay.classList.remove('hidden');
+        this.audioManager.playSound('ui', 'button_click');
+      }
+    };
+
+    const hideSettings = () => {
+      if (settingsOverlay) {
+        settingsOverlay.classList.add('hidden');
+        this.audioManager.playSound('ui', 'button_click');
+      }
+    };
+
+    // Settings toggle button click
+    if (settingsToggle) {
+      settingsToggle.addEventListener('click', showSettings);
+    }
+
+    // Apply button
+    if (settingsApply) {
+      settingsApply.addEventListener('click', hideSettings);
+    }
+
+    // Cancel button
+    if (settingsCancel) {
+      settingsCancel.addEventListener('click', hideSettings);
+    }
+
+    // ESC key to toggle settings
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (settingsOverlay && !settingsOverlay.classList.contains('hidden')) {
+          hideSettings();
+        } else {
+          showSettings();
+        }
+      }
+    });
   }
 }
