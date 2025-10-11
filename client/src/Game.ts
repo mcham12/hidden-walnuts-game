@@ -795,7 +795,8 @@ export class Game {
 
     if (positionChanged || rotationChanged || animationChanged || moveTypeChanged) {
       // Always send complete transform state for reliability
-      this.sendMessage({
+      // BUT: Don't send animation updates if emote is in progress (emote has its own broadcast)
+      const messageData: any = {
         type: 'player_update',
         position: {
           x: Math.round(pos.x * 100) / 100,
@@ -803,11 +804,17 @@ export class Game {
           z: Math.round(pos.z * 100) / 100
         },
         rotationY: Math.round(rot * 100) / 100,
-        animation: this.currentAnimationName,
-        animationStartTime: this.animationStartTime,
         velocity: this.calculateActualVelocity(),
         timestamp: performance.now()
-      });
+      };
+
+      // Only include animation if no emote is playing (prevents emote override)
+      if (!this.emoteInProgress) {
+        messageData.animation = this.currentAnimationName;
+        messageData.animationStartTime = this.animationStartTime;
+      }
+
+      this.sendMessage(messageData);
 
       // Update last sent state
       this.lastPositionSent.x = pos.x;
