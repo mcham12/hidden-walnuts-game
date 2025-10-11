@@ -568,12 +568,15 @@ export class Game {
         this.isJumping = false;
         this.velocity.y = 0;
         // STANDARD: Use correct animation after landing
-        const isRunning = moving && this.keys.has('shift');
-        let animation = 'idle';
-        if (moving) {
-          animation = isRunning ? 'run' : 'walk';
+        // Don't override animation if emote is playing
+        if (!this.emoteInProgress) {
+          const isRunning = moving && this.keys.has('shift');
+          let animation = 'idle';
+          if (moving) {
+            animation = isRunning ? 'run' : 'walk';
+          }
+          this.setAction(animation);
         }
-        this.setAction(animation);
       }
     }
 
@@ -602,7 +605,9 @@ export class Game {
       }
 
       // Only change animation if different AND enough time has passed (hysteresis)
-      if (animation !== this.currentAnimationName &&
+      // AND if no emote is playing
+      if (!this.emoteInProgress &&
+          animation !== this.currentAnimationName &&
           (currentTime - this.lastAnimationChangeTime) >= this.animationChangeDelay) {
         this.setAction(animation);
         this.lastAnimationChangeTime = currentTime;
