@@ -3,6 +3,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { createTerrain } from './terrain.js';
 import { createForestFromServer, bushPositions } from './forest.js';
 import { getTerrainHeight } from './terrain.js';
+import { AudioManager } from './AudioManager.js';
+import { VFXManager } from './VFXManager.js';
 
 interface Character {
   id: string;
@@ -122,6 +124,12 @@ export class Game {
   private emoteInProgress: boolean = false; // Prevent emote spam (local player)
   private remotePlayerEmotes: Map<string, boolean> = new Map(); // Track which remote players are emoting
 
+  // MVP 5: Audio system
+  private audioManager: AudioManager = new AudioManager();
+
+  // MVP 5: Visual effects system
+  private vfxManager: VFXManager | null = null;
+
 
   async init(canvas: HTMLCanvasElement) {
     // Scene
@@ -197,6 +205,9 @@ export class Game {
 
     // MVP 3: Initialize labels container
     this.labelsContainer = document.getElementById('labels-container');
+
+    // MVP 5: Initialize VFX Manager
+    this.vfxManager = new VFXManager(this.scene, this.camera);
 
     // MVP 3: Initialize minimap
     this.initMinimap();
@@ -370,6 +381,12 @@ export class Game {
         }
       }
 
+      // MVP 5: Mute toggle with M key
+      if (e.key === 'm' || e.key === 'M') {
+        const isMuted = this.audioManager.toggleMute();
+        console.log(`Audio ${isMuted ? 'muted' : 'unmuted'}`);
+      }
+
       // Debug scene contents with I key (Info)
       if (e.key === 'i' || e.key === 'I') {
         // Scene debug info available via debug overlay
@@ -391,6 +408,8 @@ export class Game {
   }
 
   start() {
+    // MVP 5: Start ambient forest sounds
+    this.audioManager.playAmbient();
     this.animate();
   }
 
@@ -412,8 +431,13 @@ export class Game {
     this.remotePlayers.clear();
     this.remotePlayerMixers.clear();
     this.remotePlayerActions.clear();
-    
-    
+
+    // MVP 5: Cleanup audio and VFX
+    this.audioManager.dispose();
+    if (this.vfxManager) {
+      this.vfxManager.dispose();
+    }
+
     // Reset connection state
     this.isConnected = false;
     this.connectionAttempts = 0;
@@ -461,7 +485,22 @@ export class Game {
     // MVP 3: Update minimap
     this.updateMinimap();
 
-    this.renderer.render(this.scene, this.camera);
+    // MVP 5: Update VFX and apply screen shake
+    if (this.vfxManager) {
+      this.vfxManager.update(delta);
+
+      // Apply screen shake to camera
+      const shakeOffset = this.vfxManager.updateScreenShake();
+      const originalCameraPos = this.camera.position.clone();
+      this.camera.position.add(shakeOffset);
+
+      this.renderer.render(this.scene, this.camera);
+
+      // Restore camera position after render
+      this.camera.position.copy(originalCameraPos);
+    } else {
+      this.renderer.render(this.scene, this.camera);
+    }
   };
 
   private updatePlayer(delta: number) {
@@ -1961,6 +2000,12 @@ export class Game {
     // Decrement player walnut count
     this.playerWalnutCount--;
 
+    // MVP 5: Play hide sound effect and spawn particles
+    this.audioManager.playSound('hide');
+    if (this.vfxManager) {
+      this.vfxManager.spawnParticles('dirt', walnutGroup.position, 30);
+    }
+
     // MULTIPLAYER: Send to server for sync
     this.sendMessage({
       type: 'walnut_hidden',
@@ -2085,10 +2130,31 @@ export class Game {
       // FOUND SOMEONE ELSE'S WALNUT - Award points AND give walnut to rehide
       this.playerScore += points;
       this.playerWalnutCount++;
+
+      // MVP 5: Visual and audio feedback for scoring
+      if (this.vfxManager && this.character) {
+        this.vfxManager.spawnParticles('sparkle', walnutPos, 40);
+        this.vfxManager.showScorePopup(points, walnutPos);
+        this.vfxManager.playerGlow(this.character);
+
+        // Screen shake for big finds (3+ points)
+        if (points >= 3) {
+          this.vfxManager.screenShake(0.15, 0.4);
+        }
+      }
     }
 
     // Remove the walnut from the world
     this.removeWalnut(walnutId);
+
+    // MVP 5: Play find sound effect (bigger sound for 3+ points)
+    if (!isOwnWalnut && points >= 3) {
+      this.audioManager.playSound('find');
+      // Play bonus bling sound for big finds
+      setTimeout(() => this.audioManager.playSound('ui', 'score_pop'), 200);
+    } else {
+      this.audioManager.playSound('find');
+    }
 
     // MULTIPLAYER: Send to server for sync
     this.sendMessage({
@@ -2223,6 +2289,9 @@ export class Game {
    * Go to the next tutorial step
    */
   private nextTutorialStep(): void {
+    // MVP 5: Play UI sound for tutorial next
+    this.audioManager.playSound('ui', 'button_click');
+
     this.currentTutorialStep++;
 
     if (this.currentTutorialStep >= this.tutorialMessages.length) {
@@ -2238,6 +2307,9 @@ export class Game {
    * Close the tutorial (can be called anytime to skip)
    */
   private closeTutorial(): void {
+    // MVP 5: Play UI sound for tutorial close
+    this.audioManager.playSound('ui', 'button_click');
+
     const overlay = document.getElementById('tutorial-overlay');
     if (overlay) {
       overlay.classList.add('hidden');
@@ -2393,6 +2465,9 @@ export class Game {
       return;
     }
 
+    // MVP 5: Play chat send sound
+    this.audioManager.playSound('ui', 'chat_send');
+
     // Display locally above own character
     this.showChatAboveCharacter(this.playerId, message, true);
 
@@ -2417,6 +2492,9 @@ export class Game {
       return;
     }
 
+    // MVP 5: Play emote send sound
+    this.audioManager.playSound('ui', 'emote_send');
+
     // Play emote animation locally
     this.playEmoteAnimation(emote);
 
@@ -2436,6 +2514,11 @@ export class Game {
     const character = isLocalPlayer ? this.character : this.remotePlayers.get(playerId);
     if (!character) {
       return;
+    }
+
+    // MVP 5: Play chat receive sound for remote players
+    if (!isLocalPlayer) {
+      this.audioManager.playSound('ui', 'chat_receive');
     }
 
     // Remove existing chat label if present
@@ -2530,6 +2613,9 @@ export class Game {
     if (!remoteCharacter || !remoteActions) {
       return;
     }
+
+    // MVP 5: Play emote receive sound
+    this.audioManager.playSound('ui', 'emote_receive');
 
     // Set emote flag to prevent network animation updates from overriding
     this.remotePlayerEmotes.set(playerId, true);

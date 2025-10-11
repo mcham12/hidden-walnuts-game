@@ -1,4 +1,5 @@
 import { Game } from './Game';
+import { AudioManager } from './AudioManager';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
@@ -152,6 +153,9 @@ async function main() {
   const charDescription = document.getElementById('char-description') as HTMLDivElement;
   const walnutHud = document.getElementById('walnut-hud') as HTMLDivElement;
 
+  // MVP 5: Create audio manager for UI sounds
+  const audioManager = new AudioManager();
+
   if (!canvas) {
     console.error('Canvas not found');
     return;
@@ -178,6 +182,9 @@ async function main() {
     const selectedId = charSelect.value;
     const charInfo = CHARACTER_DESCRIPTIONS[selectedId];
 
+    // MVP 5: Play UI sound for character selection
+    audioManager.playSound('ui', 'button_click');
+
     // Update description
     if (charInfo && charDescription) {
       charDescription.innerHTML = `<strong>${charInfo.name}</strong>${charInfo.description}`;
@@ -196,6 +203,9 @@ async function main() {
   charSelect.addEventListener('change', updateCharacter);
 
   startBtn.addEventListener('click', async () => {
+    // MVP 5: Play UI sound for start button
+    audioManager.playSound('ui', 'button_click');
+
     // Get selected character
     const selectedCharacterId = charSelect.value;
     console.log('🎮 Selected character:', selectedCharacterId);
