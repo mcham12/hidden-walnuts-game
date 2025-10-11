@@ -397,39 +397,53 @@ export default class ForestManager {
     if (storedMapState) {
       this.mapState = Array.isArray(storedMapState) ? storedMapState : [];
     } else {
-      // Create initial game walnuts - these belong to the system and spawn for testing
-      // Placed away from origin landmark tower (0, 10, 0)
-      this.mapState = [
-        {
-          id: "game-walnut-1",
-          ownerId: "system",
-          origin: "game" as const,
-          hiddenIn: "buried" as const,  // Will be rendered as 'game' type on client
-          location: { x: 15, y: 0, z: 15 },
-          found: false,
-          timestamp: Date.now()
-        },
-        {
-          id: "game-walnut-2",
-          ownerId: "system",
-          origin: "game" as const,
-          hiddenIn: "buried" as const,
-          location: { x: -12, y: 0, z: 18 },
-          found: false,
-          timestamp: Date.now()
-        },
-        {
-          id: "game-walnut-3",
-          ownerId: "system",
-          origin: "game" as const,
-          hiddenIn: "bush" as const,
-          location: { x: 20, y: 0, z: -10 },
-          found: false,
-          timestamp: Date.now()
-        }
-      ];
-      await this.storage.put('mapState', this.mapState);
+      this.mapState = [];
     }
+
+    // Always ensure golden walnuts exist (re-add if found/missing)
+    const goldenWalnutIds = ['game-walnut-1', 'game-walnut-2', 'game-walnut-3'];
+    const existingGoldenIds = this.mapState.filter(w => w.origin === 'game').map(w => w.id);
+
+    // Define golden walnut locations
+    const goldenWalnuts: Walnut[] = [
+      {
+        id: "game-walnut-1",
+        ownerId: "system",
+        origin: "game" as const,
+        hiddenIn: "buried" as const,
+        location: { x: 15, y: 0, z: 15 },
+        found: false,
+        timestamp: Date.now()
+      },
+      {
+        id: "game-walnut-2",
+        ownerId: "system",
+        origin: "game" as const,
+        hiddenIn: "buried" as const,
+        location: { x: -12, y: 0, z: 18 },
+        found: false,
+        timestamp: Date.now()
+      },
+      {
+        id: "game-walnut-3",
+        ownerId: "system",
+        origin: "game" as const,
+        hiddenIn: "bush" as const,
+        location: { x: 20, y: 0, z: -10 },
+        found: false,
+        timestamp: Date.now()
+      }
+    ];
+
+    // Add missing golden walnuts
+    for (const goldenWalnut of goldenWalnuts) {
+      if (!existingGoldenIds.includes(goldenWalnut.id)) {
+        console.log(`🌟 SERVER: Adding missing golden walnut: ${goldenWalnut.id}`);
+        this.mapState.push(goldenWalnut);
+      }
+    }
+
+    await this.storage.put('mapState', this.mapState);
   }
 
   // Simple forest object generation
