@@ -165,6 +165,72 @@
     }
   },
   {
+    "id": "bear",
+    "name": "Bear",
+    "modelPath": "/assets/models/characters/Bear_LOD0.glb",
+    "animations": {
+      "idle": "/assets/models/characters/Animations/Single/Bear_Idle_A.glb",
+      "idle_b": "/assets/models/characters/Animations/Single/Bear_Idle_B.glb",
+      "idle_c": "/assets/models/characters/Animations/Single/Bear_Idle_C.glb",
+      "walk": "/assets/models/characters/Animations/Single/Bear_Walk.glb",
+      "run": "/assets/models/characters/Animations/Single/Bear_Run.glb",
+      "jump": "/assets/models/characters/Animations/Single/Bear_Jump.glb",
+      "eat": "/assets/models/characters/Animations/Single/Bear_Eat.glb",
+      "bounce": "/assets/models/characters/Animations/Single/Bear_Bounce.glb",
+      "spin": "/assets/models/characters/Animations/Single/Bear_Spin.glb",
+      "clicked": "/assets/models/characters/Animations/Single/Bear_Clicked.glb",
+      "sit": "/assets/models/characters/Animations/Single/Bear_Sit.glb",
+      "roll": "/assets/models/characters/Animations/Single/Bear_Roll.glb",
+      "attack": "/assets/models/characters/Animations/Single/Bear_Attack.glb",
+      "hit": "/assets/models/characters/Animations/Single/Bear_Hit.glb",
+      "fear": "/assets/models/characters/Animations/Single/Bear_Fear.glb",
+      "death": "/assets/models/characters/Animations/Single/Bear_Death.glb",
+      "fly": "/assets/models/characters/Animations/Single/Bear_Fly.glb",
+      "swim": "/assets/models/characters/Animations/Single/Bear_Swim.glb"
+    },
+    "scale": 0.3,
+    "category": "mammal",
+    "description": "Powerful forest guardian with impressive strength and presence. Full expressive animation set.",
+    "emoteAnimations": {
+      "wave": "bounce",
+      "point": "clicked",
+      "celebrate": "spin"
+    }
+  },
+  {
+    "id": "skunk",
+    "name": "Skunk",
+    "modelPath": "/assets/models/characters/Skunk_LOD0.glb",
+    "animations": {
+      "idle": "/assets/models/characters/Animations/Single/Skunk_Idle_A.glb",
+      "idle_b": "/assets/models/characters/Animations/Single/Skunk_Idle_B.glb",
+      "idle_c": "/assets/models/characters/Animations/Single/Skunk_Idle_C.glb",
+      "walk": "/assets/models/characters/Animations/Single/Skunk_Walk.glb",
+      "run": "/assets/models/characters/Animations/Single/Skunk_Run.glb",
+      "jump": "/assets/models/characters/Animations/Single/Skunk_Jump.glb",
+      "eat": "/assets/models/characters/Animations/Single/Skunk_Eat.glb",
+      "bounce": "/assets/models/characters/Animations/Single/Skunk_Bounce.glb",
+      "spin": "/assets/models/characters/Animations/Single/Skunk_Spin.glb",
+      "clicked": "/assets/models/characters/Animations/Single/Skunk_Clicked.glb",
+      "sit": "/assets/models/characters/Animations/Single/Skunk_Sit.glb",
+      "roll": "/assets/models/characters/Animations/Single/Skunk_Roll.glb",
+      "attack": "/assets/models/characters/Animations/Single/Skunk_Attack.glb",
+      "hit": "/assets/models/characters/Animations/Single/Skunk_Hit.glb",
+      "fear": "/assets/models/characters/Animations/Single/Skunk_Fear.glb",
+      "death": "/assets/models/characters/Animations/Single/Skunk_Death.glb",
+      "fly": "/assets/models/characters/Animations/Single/Skunk_Fly.glb",
+      "swim": "/assets/models/characters/Animations/Single/Skunk_Swim.glb"
+    },
+    "scale": 0.3,
+    "category": "mammal",
+    "description": "Charismatic woodland creature with distinctive markings. Complete expressive animation repertoire.",
+    "emoteAnimations": {
+      "wave": "bounce",
+      "point": "clicked",
+      "celebrate": "spin"
+    }
+  },
+  {
     "id": "turkey",
     "name": "Turkey",
     "modelPath": "/assets/models/characters/Turkey_LOD0.glb",
