@@ -3161,13 +3161,21 @@ export class Game {
 
     // Play emote animation as one-shot if it exists
     if (this.actions[animationName]) {
-      this.playOneShotAnimation(animationName, 2000);
-    }
+      // Get the actual animation duration from the clip
+      const action = this.actions[animationName];
+      const animDuration = action.getClip().duration * 1000; // Convert to ms
 
-    // Return emote flag after animation completes
-    setTimeout(() => {
+      // Play the animation (will auto-return to idle after its actual duration)
+      this.playOneShotAnimation(animationName); // No hardcoded delay!
+
+      // Clear emote flag after the actual animation duration
+      setTimeout(() => {
+        this.emoteInProgress = false;
+      }, animDuration);
+    } else {
+      // Animation not found, clear flag immediately
       this.emoteInProgress = false;
-    }, 2000);
+    }
   }
 
   /**
@@ -3219,11 +3227,16 @@ export class Game {
       }
     });
 
-    // Play emote animation with continuous looping (NOT LoopOnce - that stops immediately!)
-    // The animation needs to loop for the full 2-second emote duration
+    // Get animation duration for proper timing
+    const animDuration = newAction.getClip().duration * 1000; // Convert to ms
+    // Use a minimum duration of 1.5 seconds for short animations (makes them more visible)
+    const emoteDisplayDuration = Math.max(animDuration * 1.5, 1500);
+
+    // Play emote animation with continuous looping
+    // Looping ensures short animations don't look choppy by repeating them
     newAction.reset().setLoop(THREE.LoopRepeat, Infinity).fadeIn(0.1).play();
 
-    // Return to idle after animation completes (2 seconds)
+    // Return to idle after animation display duration
     setTimeout(() => {
       newAction.fadeOut(0.2);
       const idleAction = remoteActions['idle'];
@@ -3232,7 +3245,7 @@ export class Game {
       }
       // Clear emote flag to allow network animation updates again
       this.remotePlayerEmotes.delete(playerId);
-    }, 2000);
+    }, emoteDisplayDuration);
   }
 
   // MVP 5: Settings Menu System
