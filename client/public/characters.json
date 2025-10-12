@@ -231,6 +231,72 @@
     }
   },
   {
+    "id": "badger",
+    "name": "Badger",
+    "modelPath": "/assets/models/characters/Badger_LOD0.glb",
+    "animations": {
+      "idle": "/assets/models/characters/Animations/Single/Badger_Idle_A.glb",
+      "idle_b": "/assets/models/characters/Animations/Single/Badger_Idle_B.glb",
+      "idle_c": "/assets/models/characters/Animations/Single/Badger_Idle_C.glb",
+      "walk": "/assets/models/characters/Animations/Single/Badger_Walk.glb",
+      "run": "/assets/models/characters/Animations/Single/Badger_Run.glb",
+      "jump": "/assets/models/characters/Animations/Single/Badger_Jump.glb",
+      "eat": "/assets/models/characters/Animations/Single/Badger_Eat.glb",
+      "bounce": "/assets/models/characters/Animations/Single/Badger_Bounce.glb",
+      "spin": "/assets/models/characters/Animations/Single/Badger_Spin.glb",
+      "clicked": "/assets/models/characters/Animations/Single/Badger_Clicked.glb",
+      "sit": "/assets/models/characters/Animations/Single/Badger_Sit.glb",
+      "roll": "/assets/models/characters/Animations/Single/Badger_Roll.glb",
+      "attack": "/assets/models/characters/Animations/Single/Badger_Attack.glb",
+      "hit": "/assets/models/characters/Animations/Single/Badger_Hit.glb",
+      "fear": "/assets/models/characters/Animations/Single/Badger_Fear.glb",
+      "death": "/assets/models/characters/Animations/Single/Badger_Death.glb",
+      "fly": "/assets/models/characters/Animations/Single/Badger_Fly.glb",
+      "swim": "/assets/models/characters/Animations/Single/Badger_Swim.glb"
+    },
+    "scale": 0.3,
+    "category": "mammal",
+    "description": "Tenacious burrower with fierce determination. Full expressive animation set.",
+    "emoteAnimations": {
+      "wave": "bounce",
+      "point": "clicked",
+      "celebrate": "spin"
+    }
+  },
+  {
+    "id": "chipmunk",
+    "name": "Chipmunk",
+    "modelPath": "/assets/models/characters/Chipmunk_LOD0.glb",
+    "animations": {
+      "idle": "/assets/models/characters/Animations/Single/Chipmunk_Idle_A.glb",
+      "idle_b": "/assets/models/characters/Animations/Single/Chipmunk_Idle_B.glb",
+      "idle_c": "/assets/models/characters/Animations/Single/Chipmunk_Idle_C.glb",
+      "walk": "/assets/models/characters/Animations/Single/Chipmunk_Walk.glb",
+      "run": "/assets/models/characters/Animations/Single/Chipmunk_Run.glb",
+      "jump": "/assets/models/characters/Animations/Single/Chipmunk_Jump.glb",
+      "eat": "/assets/models/characters/Animations/Single/Chipmunk_Eat.glb",
+      "bounce": "/assets/models/characters/Animations/Single/Chipmunk_Bounce.glb",
+      "spin": "/assets/models/characters/Animations/Single/Chipmunk_Spin.glb",
+      "clicked": "/assets/models/characters/Animations/Single/Chipmunk_Clicked.glb",
+      "sit": "/assets/models/characters/Animations/Single/Chipmunk_Sit.glb",
+      "roll": "/assets/models/characters/Animations/Single/Chipmunk_Roll.glb",
+      "attack": "/assets/models/characters/Animations/Single/Chipmunk_Attack.glb",
+      "hit": "/assets/models/characters/Animations/Single/Chipmunk_Hit.glb",
+      "fear": "/assets/models/characters/Animations/Single/Chipmunk_Fear.glb",
+      "death": "/assets/models/characters/Animations/Single/Chipmunk_Death.glb",
+      "fly": "/assets/models/characters/Animations/Single/Chipmunk_Fly.glb",
+      "swim": "/assets/models/characters/Animations/Single/Chipmunk_Swim.glb"
+    },
+    "scale": 0.3,
+    "category": "mammal",
+    "description": "Energetic hoarder with adorable cheek pouches. Complete expressive animation repertoire.",
+    "emoteAnimations": {
+      "wave": "bounce",
+      "point": "clicked",
+      "celebrate": "spin"
+    }
+  },
+  {
     "id": "turkey",
     "name": "Turkey",
     "modelPath": "/assets/models/characters/Turkey_LOD0.glb",
