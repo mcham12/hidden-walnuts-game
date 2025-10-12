@@ -33,6 +33,39 @@
     }
   },
   {
+    "id": "lynx",
+    "name": "Lynx",
+    "modelPath": "/assets/models/characters/Lynx_LOD0.glb",
+    "animations": {
+      "idle": "/assets/models/characters/Animations/Single/Lynx_Idle_A.glb",
+      "idle_b": "/assets/models/characters/Animations/Single/Lynx_Idle_B.glb",
+      "idle_c": "/assets/models/characters/Animations/Single/Lynx_Idle_C.glb",
+      "walk": "/assets/models/characters/Animations/Single/Lynx_Walk.glb",
+      "run": "/assets/models/characters/Animations/Single/Lynx_Run.glb",
+      "jump": "/assets/models/characters/Animations/Single/Lynx_Jump.glb",
+      "eat": "/assets/models/characters/Animations/Single/Lynx_Eat.glb",
+      "bounce": "/assets/models/characters/Animations/Single/Lynx_Bounce.glb",
+      "spin": "/assets/models/characters/Animations/Single/Lynx_Spin.glb",
+      "clicked": "/assets/models/characters/Animations/Single/Lynx_Clicked.glb",
+      "sit": "/assets/models/characters/Animations/Single/Lynx_Sit.glb",
+      "roll": "/assets/models/characters/Animations/Single/Lynx_Roll.glb",
+      "attack": "/assets/models/characters/Animations/Single/Lynx_Attack.glb",
+      "hit": "/assets/models/characters/Animations/Single/Lynx_Hit.glb",
+      "fear": "/assets/models/characters/Animations/Single/Lynx_Fear.glb",
+      "death": "/assets/models/characters/Animations/Single/Lynx_Death.glb",
+      "fly": "/assets/models/characters/Animations/Single/Lynx_Fly.glb",
+      "swim": "/assets/models/characters/Animations/Single/Lynx_Swim.glb"
+    },
+    "scale": 0.3,
+    "category": "mammal",
+    "description": "Stealthy wildcat with powerful hunting instincts. Features the complete expressive animation set.",
+    "emoteAnimations": {
+      "wave": "bounce",
+      "point": "clicked",
+      "celebrate": "spin"
+    }
+  },
+  {
     "id": "colobus",
     "name": "Colobus Monkey",
     "modelPath": "/assets/models/characters/Colobus_LOD0.glb",
