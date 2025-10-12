@@ -1,21 +1,55 @@
 [
   {
+    "id": "squirrel",
+    "name": "Squirrel",
+    "modelPath": "/assets/models/characters/Squirrel_LOD0.glb",
+    "animations": {
+      "idle": "/assets/models/characters/Animations/Single/Squirrel_Idle_A.glb",
+      "idle_b": "/assets/models/characters/Animations/Single/Squirrel_Idle_B.glb",
+      "idle_c": "/assets/models/characters/Animations/Single/Squirrel_Idle_C.glb",
+      "walk": "/assets/models/characters/Animations/Single/Squirrel_Walk.glb",
+      "run": "/assets/models/characters/Animations/Single/Squirrel_Run.glb",
+      "jump": "/assets/models/characters/Animations/Single/Squirrel_Jump.glb",
+      "eat": "/assets/models/characters/Animations/Single/Squirrel_Eat.glb",
+      "bounce": "/assets/models/characters/Animations/Single/Squirrel_Bounce.glb",
+      "spin": "/assets/models/characters/Animations/Single/Squirrel_Spin.glb",
+      "clicked": "/assets/models/characters/Animations/Single/Squirrel_Clicked.glb",
+      "sit": "/assets/models/characters/Animations/Single/Squirrel_Sit.glb",
+      "roll": "/assets/models/characters/Animations/Single/Squirrel_Roll.glb",
+      "attack": "/assets/models/characters/Animations/Single/Squirrel_Attack.glb",
+      "hit": "/assets/models/characters/Animations/Single/Squirrel_Hit.glb",
+      "fear": "/assets/models/characters/Animations/Single/Squirrel_Fear.glb",
+      "death": "/assets/models/characters/Animations/Single/Squirrel_Death.glb",
+      "fly": "/assets/models/characters/Animations/Single/Squirrel_Fly.glb",
+      "swim": "/assets/models/characters/Animations/Single/Squirrel_Swim.glb"
+    },
+    "scale": 0.3,
+    "category": "mammal",
+    "description": "Agile forest dweller perfect for hiding walnuts! Features the most expressive animations.",
+    "emoteAnimations": {
+      "wave": "bounce",
+      "point": "clicked",
+      "celebrate": "spin"
+    }
+  },
+  {
     "id": "colobus",
-    "name": "Colobus Monkey", 
+    "name": "Colobus Monkey",
     "modelPath": "/assets/models/characters/Colobus_LOD0.glb",
     "animations": {
       "idle": "/assets/animations/characters/Single/Colobus_Idle_A.glb",
-      "walk": "/assets/animations/characters/Single/Colobus_Walk.glb", 
+      "walk": "/assets/animations/characters/Single/Colobus_Walk.glb",
       "run": "/assets/animations/characters/Single/Colobus_Run.glb",
       "jump": "/assets/animations/characters/Single/Colobus_Jump.glb"
     },
     "scale": 0.3,
-    "category": "mammal"
+    "category": "mammal",
+    "description": "Agile tree dweller with excellent mobility."
   },
   {
     "id": "muskrat",
     "name": "Muskrat",
-    "modelPath": "/assets/models/characters/Muskrat_LOD0.glb", 
+    "modelPath": "/assets/models/characters/Muskrat_LOD0.glb",
     "animations": {
       "idle": "/assets/animations/characters/Single/Muskrat_Idle_A.glb",
       "walk": "/assets/animations/characters/Single/Muskrat_Walk.glb",
@@ -23,20 +57,22 @@
       "jump": "/assets/animations/characters/Single/Muskrat_Jump.glb"
     },
     "scale": 0.3,
-    "category": "mammal"
+    "category": "mammal",
+    "description": "Semi-aquatic rodent, great swimmer."
   },
   {
-    "id": "pudu", 
+    "id": "pudu",
     "name": "Pudu Deer",
     "modelPath": "/assets/models/characters/Pudu_LOD0.glb",
     "animations": {
       "idle": "/assets/animations/characters/Single/Pudu_Idle_A.glb",
       "walk": "/assets/animations/characters/Single/Pudu_Walk.glb",
-      "run": "/assets/animations/characters/Single/Pudu_Run.glb", 
+      "run": "/assets/animations/characters/Single/Pudu_Run.glb",
       "jump": "/assets/animations/characters/Single/Pudu_Jump.glb"
     },
     "scale": 0.3,
-    "category": "mammal"
+    "category": "mammal",
+    "description": "World's smallest deer, quick and nimble."
   },
   {
     "id": "gecko",
@@ -49,11 +85,12 @@
       "jump": "/assets/animations/characters/Single/Gecko_Jump.glb"
     },
     "scale": 0.3,
-    "category": "reptile"
+    "category": "reptile",
+    "description": "Wall-climbing lizard with adhesive toe pads."
   },
   {
     "id": "taipan",
-    "name": "Taipan Snake", 
+    "name": "Taipan Snake",
     "modelPath": "/assets/models/characters/Taipan_LOD0.glb",
     "animations": {
       "idle": "/assets/animations/characters/Single/Taipan_Idle_A.glb",
@@ -61,7 +98,8 @@
       "run": "/assets/animations/characters/Single/Taipan_Run.glb"
     },
     "scale": 0.3,
-    "category": "reptile"
+    "category": "reptile",
+    "description": "Sleek serpent, master of stealth."
   },
   {
     "id": "sparrow",
@@ -69,12 +107,13 @@
     "modelPath": "/assets/models/characters/Sparrow_LOD0.glb",
     "animations": {
       "idle": "/assets/animations/characters/Single/Sparrow_Idle_A.glb",
-      "walk": "/assets/animations/characters/Single/Sparrow_Walk.glb", 
+      "walk": "/assets/animations/characters/Single/Sparrow_Walk.glb",
       "run": "/assets/animations/characters/Single/Sparrow_Run.glb",
       "jump": "/assets/animations/characters/Single/Sparrow_Jump.glb"
     },
     "scale": 0.3,
-    "category": "bird"
+    "category": "bird",
+    "description": "Small songbird, excellent at aerial maneuvers."
   },
   {
     "id": "herring",
@@ -85,8 +124,9 @@
       "walk": "/assets/animations/characters/Single/Herring_Swim.glb",
       "run": "/assets/animations/characters/Single/Herring_Swim.glb"
     },
-    "scale": 0.3, 
-    "category": "aquatic"
+    "scale": 0.3,
+    "category": "aquatic",
+    "description": "Silvery schooling fish."
   },
   {
     "id": "inkfish",
@@ -94,10 +134,11 @@
     "modelPath": "/assets/models/characters/Inkfish_LOD0.glb",
     "animations": {
       "idle": "/assets/animations/characters/Single/Inkfish_Idle_A.glb",
-      "walk": "/assets/animations/characters/Single/Inkfish_Swim.glb", 
+      "walk": "/assets/animations/characters/Single/Inkfish_Swim.glb",
       "run": "/assets/animations/characters/Single/Inkfish_Swim.glb"
     },
     "scale": 0.3,
-    "category": "aquatic"
+    "category": "aquatic",
+    "description": "Intelligent cephalopod with color-changing abilities."
   }
 ]

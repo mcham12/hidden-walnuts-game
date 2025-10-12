@@ -9,9 +9,13 @@ import { ToastManager } from './ToastManager.js';
 
 interface Character {
   id: string;
+  name: string;
   modelPath: string;
   animations: { [key: string]: string };
   scale: number;
+  category: string;
+  description?: string;
+  emoteAnimations?: { [emoteId: string]: string }; // Maps emote IDs to animation names
 }
 
 export class Game {
@@ -42,7 +46,7 @@ export class Game {
   private static animationCache = new Map<string, THREE.AnimationClip>();
   private isJumping = false;
   private characters: Character[] = [];
-  public selectedCharacterId = 'colobus';
+  public selectedCharacterId = 'squirrel';
   private characterGroundOffset = 0; // Offset from character pivot to feet
   
   // Multiplayer properties
@@ -85,6 +89,12 @@ export class Game {
   // INDUSTRY STANDARD: Animation state machine with hysteresis (prevents rapid state oscillation)
   private lastAnimationChangeTime: number = 0;
   private animationChangeDelay: number = 0.1; // Minimum 100ms between animation changes
+
+  // MVP 5: Enhanced character animations (Squirrel-first)
+  private lastIdleVariationTime: number = 0;
+  private idleVariationInterval: number = 10000; // 10 seconds between idle variations
+  private availableIdleAnimations: string[] = ['idle', 'idle_b', 'idle_c'];
+  private isPlayingOneShotAnimation: boolean = false;
 
   // INDUSTRY STANDARD: Manual delta time calculation to avoid Clock.getDelta() issues
   private lastFrameTime: number = 0;
@@ -201,15 +211,18 @@ export class Game {
         console.error('Error loading characters.json:', error);
         // INDUSTRY STANDARD: Fallback matches characters.json structure exactly
         this.characters = [{
-          id: 'colobus',
-          modelPath: '/assets/models/characters/Colobus_LOD0.glb',
+          id: 'squirrel',
+          name: 'Squirrel',
+          modelPath: '/assets/models/characters/Squirrel_LOD0.glb',
           animations: {
-            "idle": "/assets/animations/characters/Single/Colobus_Idle_A.glb",
-            "walk": "/assets/animations/characters/Single/Colobus_Walk.glb",
-            "run": "/assets/animations/characters/Single/Colobus_Run.glb",
-            "jump": "/assets/animations/characters/Single/Colobus_Jump.glb"
+            "idle": "/assets/models/characters/Animations/Single/Squirrel_Idle_A.glb",
+            "walk": "/assets/models/characters/Animations/Single/Squirrel_Walk.glb",
+            "run": "/assets/models/characters/Animations/Single/Squirrel_Run.glb",
+            "jump": "/assets/models/characters/Animations/Single/Squirrel_Jump.glb"
           },
-          scale: 0.3
+          scale: 0.3,
+          category: 'mammal',
+          description: 'Agile forest dweller'
         }];
       }
 
@@ -505,6 +518,48 @@ export class Game {
     this.currentAnimationName = name;
     this.animationStateChanged = true;
     this.animationStartTime = performance.now();
+  }
+
+  /**
+   * MVP 5: Play a one-shot animation (like eating, spinning) that returns to idle when finished
+   * @param name Animation name to play
+   * @param returnToIdleDelay Optional delay before returning to idle (default: auto-detect from animation duration)
+   */
+  private playOneShotAnimation(name: string, returnToIdleDelay?: number): void {
+    const newAction = this.actions[name];
+    if (!newAction) {
+      console.warn(`Animation "${name}" not found, cannot play one-shot animation`);
+      return;
+    }
+
+    // Mark that we're playing a one-shot animation (prevents idle variation from interrupting)
+    this.isPlayingOneShotAnimation = true;
+
+    // Stop current animation
+    if (this.currentAction) {
+      this.currentAction.stop();
+    }
+
+    // Configure animation to play once and stop
+    newAction.reset();
+    newAction.setLoop(THREE.LoopOnce, 1);
+    newAction.clampWhenFinished = true;
+    newAction.play();
+
+    this.currentAction = newAction;
+    this.currentAnimationName = name;
+
+    // Calculate when to return to idle
+    const duration = returnToIdleDelay ?? newAction.getClip().duration * 1000; // Convert to ms
+
+    // Return to idle after animation completes
+    setTimeout(() => {
+      this.isPlayingOneShotAnimation = false;
+      // Only return to idle if we're still playing this animation (prevent race conditions)
+      if (this.currentAnimationName === name) {
+        this.setAction('idle');
+      }
+    }, duration);
   }
 
   private setRemotePlayerAction(playerId: string, animationName: string, animationStartTime?: number) {
@@ -829,12 +884,35 @@ export class Game {
       }
 
       // Only change animation if different AND enough time has passed (hysteresis)
-      // AND if no emote is playing
+      // AND if no emote is playing AND if not playing a one-shot animation
       if (!this.emoteInProgress &&
+          !this.isPlayingOneShotAnimation &&
           animation !== this.currentAnimationName &&
           (currentTime - this.lastAnimationChangeTime) >= this.animationChangeDelay) {
         this.setAction(animation);
         this.lastAnimationChangeTime = currentTime;
+      }
+
+      // MVP 5: Idle variation system (Squirrel-first feature)
+      // Randomly cycle between idle animations when character is standing still
+      if (animation === 'idle' &&
+          this.currentAnimationName === 'idle' &&
+          !this.emoteInProgress &&
+          !this.isPlayingOneShotAnimation) {
+        const timeSinceLastVariation = performance.now() - this.lastIdleVariationTime;
+        if (timeSinceLastVariation >= this.idleVariationInterval) {
+          // Filter idle animations that exist in the current character
+          const availableIdles = this.availableIdleAnimations.filter(anim => this.actions[anim]);
+          if (availableIdles.length > 0) {
+            // Pick a random idle animation (including the current one for variety)
+            const randomIdle = availableIdles[Math.floor(Math.random() * availableIdles.length)];
+            if (randomIdle !== 'idle' && this.actions[randomIdle]) {
+              // Play the idle variation as a one-shot that returns to 'idle'
+              this.playOneShotAnimation(randomIdle);
+              this.lastIdleVariationTime = performance.now();
+            }
+          }
+        }
       }
     }
   }
@@ -1256,6 +1334,9 @@ export class Game {
 
       remoteCharacter.scale.set(char.scale, char.scale, char.scale);
       remoteCharacter.castShadow = true;
+
+      // Store character ID in userData for emote animation mapping
+      remoteCharacter.userData.characterId = remoteCharacterId;
 
       // INDUSTRY STANDARD: Use cached animations for remote players
       const remoteMixer = new THREE.AnimationMixer(remoteCharacter);
@@ -2624,6 +2705,11 @@ export class Game {
       this.audioManager.playSound('find');
     }
 
+    // MVP 5: Play eating animation (Squirrel-first feature)
+    if (this.actions['eat']) {
+      this.playOneShotAnimation('eat');
+    }
+
     // MULTIPLAYER: Send to server for sync
     this.sendMessage({
       type: 'walnut_found',
@@ -3046,7 +3132,8 @@ export class Game {
   }
 
   /**
-   * Play an emote animation on local character
+   * MVP 5: Play an emote animation on local character
+   * Uses character-specific emoteAnimations mapping (Squirrel-first feature)
    */
   private playEmoteAnimation(emote: string): void {
     if (!this.character || this.emoteInProgress) {
@@ -3055,31 +3142,37 @@ export class Game {
 
     this.emoteInProgress = true;
 
-    // Map emotes to animations - only 3 emotes using 3 distinct animations
-    // Available animations: idle, walk, run, jump (idle excluded - not visible as emote)
-    const emoteAnimationMap: { [key: string]: string } = {
-      'wave': 'walk',      // Slow friendly wave
-      'point': 'run',      // Energetic pointing gesture
-      'celebrate': 'jump'  // Jump for joy!
-    };
+    // Get current character config
+    const char = this.characters.find(c => c.id === this.selectedCharacterId);
 
-    const animationName = emoteAnimationMap[emote] || 'idle';
+    // Use character-specific emote animation mapping if available
+    let animationName = 'idle'; // Fallback
+    if (char?.emoteAnimations && char.emoteAnimations[emote]) {
+      animationName = char.emoteAnimations[emote];
+    } else {
+      // Fallback mapping for legacy characters without emoteAnimations
+      const fallbackMap: { [key: string]: string } = {
+        'wave': 'walk',
+        'point': 'run',
+        'celebrate': 'jump'
+      };
+      animationName = fallbackMap[emote] || 'idle';
+    }
 
-    // Play emote animation
-    this.setAction(animationName);
+    // Play emote animation as one-shot if it exists
+    if (this.actions[animationName]) {
+      this.playOneShotAnimation(animationName, 2000);
+    }
 
-    // Return to previous animation after 2 seconds
+    // Return emote flag after animation completes
     setTimeout(() => {
-      // Only return if player hasn't moved (still idle)
-      if (!this.keys.has('w') && !this.keys.has('a') && !this.keys.has('s') && !this.keys.has('d')) {
-        this.setAction('idle');
-      }
       this.emoteInProgress = false;
     }, 2000);
   }
 
   /**
-   * Play emote animation on remote player
+   * MVP 5: Play emote animation on remote player
+   * Uses character-specific emoteAnimations mapping (Squirrel-first feature)
    */
   private playRemoteEmoteAnimation(playerId: string, emote: string): void {
     const remoteCharacter = this.remotePlayers.get(playerId);
@@ -3095,15 +3188,23 @@ export class Game {
     // Set emote flag to prevent network animation updates from overriding
     this.remotePlayerEmotes.set(playerId, true);
 
-    // Map emotes to animations
-    const emoteAnimationMap: { [key: string]: string } = {
-      'wave': 'walk',      // Use walk as placeholder (visible movement)
-      'point': 'walk',     // Use walk as placeholder
-      'celebrate': 'jump', // Jump is perfect for celebrate!
-      'shrug': 'idle'      // Idle for shrug
-    };
+    // Get remote player's character config
+    const characterId = remoteCharacter.userData.characterId || this.selectedCharacterId;
+    const char = this.characters.find(c => c.id === characterId);
 
-    const animationName = emoteAnimationMap[emote] || 'idle';
+    // Use character-specific emote animation mapping if available
+    let animationName = 'idle'; // Fallback
+    if (char?.emoteAnimations && char.emoteAnimations[emote]) {
+      animationName = char.emoteAnimations[emote];
+    } else {
+      // Fallback mapping for legacy characters without emoteAnimations
+      const fallbackMap: { [key: string]: string } = {
+        'wave': 'walk',
+        'point': 'run',
+        'celebrate': 'jump'
+      };
+      animationName = fallbackMap[emote] || 'idle';
+    }
     const newAction = remoteActions[animationName];
 
     if (!newAction) {

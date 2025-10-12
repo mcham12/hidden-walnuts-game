@@ -3,41 +3,112 @@ import { AudioManager } from './AudioManager';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-// Character descriptions for the selection screen
-const CHARACTER_DESCRIPTIONS: Record<string, { name: string; description: string }> = {
-  colobus: {
-    name: 'Colobus Monkey',
-    description: 'Agile tree dweller with excellent mobility. Perfect for quick movements through the forest canopy.'
-  },
-  muskrat: {
-    name: 'Muskrat',
-    description: 'Aquatic rodent skilled at navigating both land and water. Balanced speed and versatility.'
-  },
-  pudu: {
-    name: 'Pudu Deer',
-    description: 'Small forest deer with keen senses. Quiet and graceful, excellent for stealthy walnut hiding.'
-  },
-  gecko: {
-    name: 'Gecko',
-    description: 'Nimble reptile with impressive climbing abilities. Small size makes hiding walnuts easier.'
-  },
-  taipan: {
-    name: 'Taipan Snake',
-    description: 'Swift serpent that moves silently through grass. Low profile ideal for sneaky gameplay.'
-  },
-  sparrow: {
-    name: 'Sparrow',
-    description: 'Quick-flying bird with aerial advantage. Fast movement speed for covering large areas.'
-  },
-  herring: {
-    name: 'Herring Fish',
-    description: 'Streamlined swimmer built for speed. Best suited for water-adjacent hiding spots.'
-  },
-  inkfish: {
-    name: 'Inkfish Squid',
-    description: 'Mysterious cephalopod with unique movement. Unpredictable and fun to play.'
+// Character interface matching characters.json structure
+interface Character {
+  id: string;
+  name: string;
+  modelPath: string;
+  animations: { [key: string]: string };
+  scale: number;
+  category: string;
+  description?: string;
+  emoteAnimations?: { [emoteId: string]: string };
+}
+
+// Character descriptions for the selection screen (dynamically loaded from characters.json)
+let CHARACTER_DESCRIPTIONS: Record<string, { name: string; description: string; category: string }> = {};
+let CHARACTERS: Character[] = [];
+
+/**
+ * Load characters from characters.json and populate dropdown
+ */
+async function loadCharactersAndPopulateDropdown(charSelect: HTMLSelectElement): Promise<void> {
+  try {
+    console.log('🎭 Loading characters.json...');
+    const response = await fetch('/characters.json');
+    if (!response.ok) {
+      throw new Error(`Failed to fetch characters.json: ${response.status}`);
+    }
+    CHARACTERS = await response.json();
+    console.log('✅ Loaded', CHARACTERS.length, 'characters');
+
+    // Populate CHARACTER_DESCRIPTIONS
+    CHARACTERS.forEach(char => {
+      CHARACTER_DESCRIPTIONS[char.id] = {
+        name: char.name,
+        description: char.description || '',
+        category: char.category
+      };
+    });
+
+    // Clear existing options
+    charSelect.innerHTML = '';
+
+    // Group characters by category
+    const categories: Record<string, Character[]> = {};
+    CHARACTERS.forEach(char => {
+      if (!categories[char.category]) {
+        categories[char.category] = [];
+      }
+      categories[char.category].push(char);
+    });
+
+    // Add optgroups and options
+    const categoryOrder = ['mammal', 'reptile', 'bird', 'aquatic'];
+    const categoryLabels: Record<string, string> = {
+      'mammal': 'Mammals',
+      'reptile': 'Reptiles',
+      'bird': 'Birds',
+      'aquatic': 'Aquatic'
+    };
+
+    categoryOrder.forEach(category => {
+      if (categories[category] && categories[category].length > 0) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = categoryLabels[category] || category;
+
+        categories[category].forEach(char => {
+          const option = document.createElement('option');
+          option.value = char.id;
+          option.textContent = char.name;
+          optgroup.appendChild(option);
+        });
+
+        charSelect.appendChild(optgroup);
+      }
+    });
+
+    // Set default selection to first character (Squirrel)
+    if (CHARACTERS.length > 0) {
+      charSelect.value = CHARACTERS[0].id;
+    }
+
+    console.log('✅ Character dropdown populated with', CHARACTERS.length, 'characters');
+  } catch (error) {
+    console.error('❌ Failed to load characters.json:', error);
+    // Fallback to hardcoded Squirrel
+    CHARACTERS = [{
+      id: 'squirrel',
+      name: 'Squirrel',
+      modelPath: '/assets/models/characters/Squirrel_LOD0.glb',
+      animations: {
+        idle: '/assets/models/characters/Animations/Single/Squirrel_Idle_A.glb',
+        walk: '/assets/models/characters/Animations/Single/Squirrel_Walk.glb',
+        run: '/assets/models/characters/Animations/Single/Squirrel_Run.glb',
+        jump: '/assets/models/characters/Animations/Single/Squirrel_Jump.glb'
+      },
+      scale: 0.3,
+      category: 'mammal',
+      description: 'Agile forest dweller'
+    }];
+    CHARACTER_DESCRIPTIONS['squirrel'] = {
+      name: 'Squirrel',
+      description: 'Agile forest dweller',
+      category: 'mammal'
+    };
+    charSelect.innerHTML = '<option value="squirrel">Squirrel</option>';
   }
-};
+}
 
 // Character preview system
 class CharacterPreview {
@@ -87,9 +158,14 @@ class CharacterPreview {
     }
 
     try {
-      // Capitalize first letter for model path
-      const capitalizedId = characterId.charAt(0).toUpperCase() + characterId.slice(1);
-      const modelPath = `/assets/models/characters/${capitalizedId}_LOD0.glb`;
+      // Find character in loaded characters data
+      const char = CHARACTERS.find(c => c.id === characterId);
+      if (!char) {
+        console.error('❌ Character not found:', characterId);
+        return;
+      }
+
+      const modelPath = char.modelPath;
       console.log('🎨 Loading preview model:', modelPath);
 
       const gltf = await this.loader.loadAsync(modelPath);
@@ -163,6 +239,9 @@ async function main() {
 
   canvas.classList.add('hidden');
 
+  // MVP 5: Load characters.json and populate dropdown
+  await loadCharactersAndPopulateDropdown(charSelect);
+
   // Initialize character preview
   let characterPreview: CharacterPreview | null = null;
   if (previewCanvas) {
@@ -170,7 +249,7 @@ async function main() {
     characterPreview = new CharacterPreview(previewCanvas);
     characterPreview.startAnimation();
 
-    // Load initial character
+    // Load initial character (Squirrel by default)
     console.log('🎨 Loading initial character:', charSelect.value);
     await characterPreview.loadCharacter(charSelect.value);
   } else {
@@ -187,7 +266,7 @@ async function main() {
 
     // Update description
     if (charInfo && charDescription) {
-      charDescription.innerHTML = `<strong>${charInfo.name}</strong>${charInfo.description}`;
+      charDescription.innerHTML = `<strong>${charInfo.name}</strong> ${charInfo.description}`;
     }
 
     // Update preview
