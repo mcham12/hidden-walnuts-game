@@ -96,6 +96,10 @@ export class Game {
   private availableIdleAnimations: string[] = ['idle', 'idle_b', 'idle_c'];
   private isPlayingOneShotAnimation: boolean = false;
 
+  // MVP 5: Footstep particle effects
+  private lastFootstepTime: number = 0;
+  private footstepInterval: number = 300; // 300ms between footsteps
+
   // INDUSTRY STANDARD: Manual delta time calculation to avoid Clock.getDelta() issues
   private lastFrameTime: number = 0;
   private MAX_DELTA_TIME = 1/30; // Cap at 30fps to prevent spiral of death
@@ -867,6 +871,19 @@ export class Game {
     this.actualVelocity.x = this.velocity.x;
     this.actualVelocity.y = this.velocity.y;
     this.actualVelocity.z = this.velocity.z;
+
+    // MVP 5: Spawn footstep dust particles when moving on ground
+    const horizontalSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
+    if (!this.isJumping && horizontalSpeed > 0.5 && this.vfxManager) {
+      const currentTime = performance.now();
+      if (currentTime - this.lastFootstepTime >= this.footstepInterval) {
+        // Spawn dust particles at character's feet
+        const footPosition = this.character.position.clone();
+        footPosition.y = getTerrainHeight(footPosition.x, footPosition.z) + 0.05;
+        this.vfxManager.spawnParticles('dust', footPosition, 8); // Small dust puffs
+        this.lastFootstepTime = currentTime;
+      }
+    }
 
     // STANDARD: Use raycasting for precise ground detection (prevents sinking)
     this.snapToGround();

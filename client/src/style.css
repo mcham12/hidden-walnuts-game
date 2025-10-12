@@ -56,3 +56,46 @@ canvas {
   font-size: 24px;
   z-index: 1000;
 }
+
+/* MVP 5: Score Popup Animations */
+#score-popups {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 500;
+}
+
+.score-popup {
+  position: absolute;
+  font-size: 32px;
+  font-weight: bold;
+  color: #ffd700;
+  text-shadow:
+    2px 2px 4px rgba(0, 0, 0, 0.8),
+    0 0 10px rgba(255, 215, 0, 0.5);
+  animation: scoreFloat 1.5s ease-out forwards;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+@keyframes scoreFloat {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  20% {
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -150px) scale(1);
+  }
+}
+
+.score-popup.fade-out {
+  opacity: 0;
+  transition: opacity 0.5s ease-out;
+}
