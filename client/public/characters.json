@@ -99,6 +99,72 @@
     }
   },
   {
+    "id": "hare",
+    "name": "Hare",
+    "modelPath": "/assets/models/characters/Hare_LOD0.glb",
+    "animations": {
+      "idle": "/assets/models/characters/Animations/Single/Hare_Idle_A.glb",
+      "idle_b": "/assets/models/characters/Animations/Single/Hare_Idle_B.glb",
+      "idle_c": "/assets/models/characters/Animations/Single/Hare_Idle_C.glb",
+      "walk": "/assets/models/characters/Animations/Single/Hare_Walk.glb",
+      "run": "/assets/models/characters/Animations/Single/Hare_Run.glb",
+      "jump": "/assets/models/characters/Animations/Single/Hare_Jump.glb",
+      "eat": "/assets/models/characters/Animations/Single/Hare_Eat.glb",
+      "bounce": "/assets/models/characters/Animations/Single/Hare_Bounce.glb",
+      "spin": "/assets/models/characters/Animations/Single/Hare_Spin.glb",
+      "clicked": "/assets/models/characters/Animations/Single/Hare_Clicked.glb",
+      "sit": "/assets/models/characters/Animations/Single/Hare_Sit.glb",
+      "roll": "/assets/models/characters/Animations/Single/Hare_Roll.glb",
+      "attack": "/assets/models/characters/Animations/Single/Hare_Attack.glb",
+      "hit": "/assets/models/characters/Animations/Single/Hare_Hit.glb",
+      "fear": "/assets/models/characters/Animations/Single/Hare_Fear.glb",
+      "death": "/assets/models/characters/Animations/Single/Hare_Death.glb",
+      "fly": "/assets/models/characters/Animations/Single/Hare_Fly.glb",
+      "swim": "/assets/models/characters/Animations/Single/Hare_Swim.glb"
+    },
+    "scale": 0.3,
+    "category": "mammal",
+    "description": "Swift and nimble speedster built for quick escapes. Full expressive animation repertoire.",
+    "emoteAnimations": {
+      "wave": "bounce",
+      "point": "clicked",
+      "celebrate": "spin"
+    }
+  },
+  {
+    "id": "moose",
+    "name": "Moose",
+    "modelPath": "/assets/models/characters/Moose_LOD0.glb",
+    "animations": {
+      "idle": "/assets/models/characters/Animations/Single/Moose_Idle_A.glb",
+      "idle_b": "/assets/models/characters/Animations/Single/Moose_Idle_B.glb",
+      "idle_c": "/assets/models/characters/Animations/Single/Moose_Idle_C.glb",
+      "walk": "/assets/models/characters/Animations/Single/Moose_Walk.glb",
+      "run": "/assets/models/characters/Animations/Single/Moose_Run.glb",
+      "jump": "/assets/models/characters/Animations/Single/Moose_Jump.glb",
+      "eat": "/assets/models/characters/Animations/Single/Moose_Eat.glb",
+      "bounce": "/assets/models/characters/Animations/Single/Moose_Bounce.glb",
+      "spin": "/assets/models/characters/Animations/Single/Moose_Spin.glb",
+      "clicked": "/assets/models/characters/Animations/Single/Moose_Clicked.glb",
+      "sit": "/assets/models/characters/Animations/Single/Moose_Sit.glb",
+      "roll": "/assets/models/characters/Animations/Single/Moose_Roll.glb",
+      "attack": "/assets/models/characters/Animations/Single/Moose_Attack.glb",
+      "hit": "/assets/models/characters/Animations/Single/Moose_Hit.glb",
+      "fear": "/assets/models/characters/Animations/Single/Moose_Fear.glb",
+      "death": "/assets/models/characters/Animations/Single/Moose_Death.glb",
+      "fly": "/assets/models/characters/Animations/Single/Moose_Fly.glb",
+      "swim": "/assets/models/characters/Animations/Single/Moose_Swim.glb"
+    },
+    "scale": 0.3,
+    "category": "mammal",
+    "description": "Majestic forest giant with surprising agility. Complete expressive animation set.",
+    "emoteAnimations": {
+      "wave": "bounce",
+      "point": "clicked",
+      "celebrate": "spin"
+    }
+  },
+  {
     "id": "colobus",
     "name": "Colobus Monkey",
     "modelPath": "/assets/models/characters/Colobus_LOD0.glb",
