@@ -165,6 +165,72 @@
     }
   },
   {
+    "id": "turkey",
+    "name": "Turkey",
+    "modelPath": "/assets/models/characters/Turkey_LOD0.glb",
+    "animations": {
+      "idle": "/assets/models/characters/Animations/Single/Turkey_Idle_A.glb",
+      "idle_b": "/assets/models/characters/Animations/Single/Turkey_Idle_B.glb",
+      "idle_c": "/assets/models/characters/Animations/Single/Turkey_Idle_C.glb",
+      "walk": "/assets/models/characters/Animations/Single/Turkey_Walk.glb",
+      "run": "/assets/models/characters/Animations/Single/Turkey_Run.glb",
+      "jump": "/assets/models/characters/Animations/Single/Turkey_Jump.glb",
+      "eat": "/assets/models/characters/Animations/Single/Turkey_Eat.glb",
+      "bounce": "/assets/models/characters/Animations/Single/Turkey_Bounce.glb",
+      "spin": "/assets/models/characters/Animations/Single/Turkey_Spin.glb",
+      "clicked": "/assets/models/characters/Animations/Single/Turkey_Clicked.glb",
+      "sit": "/assets/models/characters/Animations/Single/Turkey_Sit.glb",
+      "roll": "/assets/models/characters/Animations/Single/Turkey_Roll.glb",
+      "attack": "/assets/models/characters/Animations/Single/Turkey_Attack.glb",
+      "hit": "/assets/models/characters/Animations/Single/Turkey_Hit.glb",
+      "fear": "/assets/models/characters/Animations/Single/Turkey_Fear.glb",
+      "death": "/assets/models/characters/Animations/Single/Turkey_Death.glb",
+      "fly": "/assets/models/characters/Animations/Single/Turkey_Fly.glb",
+      "swim": "/assets/models/characters/Animations/Single/Turkey_Swim.glb"
+    },
+    "scale": 0.3,
+    "category": "bird",
+    "description": "Proud woodland bird with surprising flying prowess. Full expressive animation set.",
+    "emoteAnimations": {
+      "wave": "bounce",
+      "point": "clicked",
+      "celebrate": "spin"
+    }
+  },
+  {
+    "id": "mallard",
+    "name": "Mallard",
+    "modelPath": "/assets/models/characters/Mallard_LOD0.glb",
+    "animations": {
+      "idle": "/assets/models/characters/Animations/Single/Mallard_Idle_A.glb",
+      "idle_b": "/assets/models/characters/Animations/Single/Mallard_Idle_B.glb",
+      "idle_c": "/assets/models/characters/Animations/Single/Mallard_Idle_C.glb",
+      "walk": "/assets/models/characters/Animations/Single/Mallard_Walk.glb",
+      "run": "/assets/models/characters/Animations/Single/Mallard_Run.glb",
+      "jump": "/assets/models/characters/Animations/Single/Mallard_Jump.glb",
+      "eat": "/assets/models/characters/Animations/Single/Mallard_Eat.glb",
+      "bounce": "/assets/models/characters/Animations/Single/Mallard_Bounce.glb",
+      "spin": "/assets/models/characters/Animations/Single/Mallard_Spin.glb",
+      "clicked": "/assets/models/characters/Animations/Single/Mallard_Clicked.glb",
+      "sit": "/assets/models/characters/Animations/Single/Mallard_Sit.glb",
+      "roll": "/assets/models/characters/Animations/Single/Mallard_Roll.glb",
+      "attack": "/assets/models/characters/Animations/Single/Mallard_Attack.glb",
+      "hit": "/assets/models/characters/Animations/Single/Mallard_Hit.glb",
+      "fear": "/assets/models/characters/Animations/Single/Mallard_Fear.glb",
+      "death": "/assets/models/characters/Animations/Single/Mallard_Death.glb",
+      "fly": "/assets/models/characters/Animations/Single/Mallard_Fly.glb",
+      "swim": "/assets/models/characters/Animations/Single/Mallard_Swim.glb"
+    },
+    "scale": 0.3,
+    "category": "bird",
+    "description": "Graceful waterfowl equally at home on land or water. Complete expressive animations.",
+    "emoteAnimations": {
+      "wave": "bounce",
+      "point": "clicked",
+      "celebrate": "spin"
+    }
+  },
+  {
     "id": "colobus",
     "name": "Colobus Monkey",
     "modelPath": "/assets/models/characters/Colobus_LOD0.glb",
