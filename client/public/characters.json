@@ -66,6 +66,39 @@
     }
   },
   {
+    "id": "goat",
+    "name": "Goat",
+    "modelPath": "/assets/models/characters/Goat_LOD0.glb",
+    "animations": {
+      "idle": "/assets/models/characters/Animations/Single/Goat_Idle_A.glb",
+      "idle_b": "/assets/models/characters/Animations/Single/Goat_Idle_B.glb",
+      "idle_c": "/assets/models/characters/Animations/Single/Goat_Idle_C.glb",
+      "walk": "/assets/models/characters/Animations/Single/Goat_Walk.glb",
+      "run": "/assets/models/characters/Animations/Single/Goat_Run.glb",
+      "jump": "/assets/models/characters/Animations/Single/Goat_Jump.glb",
+      "eat": "/assets/models/characters/Animations/Single/Goat_Eat.glb",
+      "bounce": "/assets/models/characters/Animations/Single/Goat_Bounce.glb",
+      "spin": "/assets/models/characters/Animations/Single/Goat_Spin.glb",
+      "clicked": "/assets/models/characters/Animations/Single/Goat_Clicked.glb",
+      "sit": "/assets/models/characters/Animations/Single/Goat_Sit.glb",
+      "roll": "/assets/models/characters/Animations/Single/Goat_Roll.glb",
+      "attack": "/assets/models/characters/Animations/Single/Goat_Attack.glb",
+      "hit": "/assets/models/characters/Animations/Single/Goat_Hit.glb",
+      "fear": "/assets/models/characters/Animations/Single/Goat_Fear.glb",
+      "death": "/assets/models/characters/Animations/Single/Goat_Death.glb",
+      "fly": "/assets/models/characters/Animations/Single/Goat_Fly.glb",
+      "swim": "/assets/models/characters/Animations/Single/Goat_Swim.glb"
+    },
+    "scale": 0.3,
+    "category": "mammal",
+    "description": "Sure-footed climber with boundless energy. Complete expressive animation set for maximum personality.",
+    "emoteAnimations": {
+      "wave": "bounce",
+      "point": "clicked",
+      "celebrate": "spin"
+    }
+  },
+  {
     "id": "colobus",
     "name": "Colobus Monkey",
     "modelPath": "/assets/models/characters/Colobus_LOD0.glb",
