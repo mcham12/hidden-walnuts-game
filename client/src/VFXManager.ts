@@ -155,12 +155,12 @@ export class VFXManager {
 
       // Update positions based on velocities and gravity
       for (let i = 0; i < positions.length; i += 3) {
-        positions[i] += velocities[i * 3] * delta;
-        positions[i + 1] += velocities[i * 3 + 1] * delta;
-        positions[i + 2] += velocities[i * 3 + 2] * delta;
+        positions[i] += velocities[i] * delta;
+        positions[i + 1] += velocities[i + 1] * delta;
+        positions[i + 2] += velocities[i + 2] * delta;
 
         // Apply gravity
-        velocities[i * 3 + 1] -= 9.8 * delta;
+        velocities[i + 1] -= 9.8 * delta;
       }
 
       geometry.attributes.position.needsUpdate = true;

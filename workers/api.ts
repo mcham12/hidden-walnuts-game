@@ -103,7 +103,11 @@ export default {
         return await leaderboard.fetch(request);
       }
 
-
+      // Handle /admin/reset-mapstate route
+      if (pathname === "/admin/reset-mapstate") {
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        return await forest.fetch(request);
+      }
 
 
 

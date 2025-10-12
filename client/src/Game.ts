@@ -5,6 +5,7 @@ import { createForestFromServer, bushPositions } from './forest.js';
 import { getTerrainHeight } from './terrain.js';
 import { AudioManager } from './AudioManager.js';
 import { VFXManager } from './VFXManager.js';
+import { ToastManager } from './ToastManager.js';
 
 interface Character {
   id: string;
@@ -48,6 +49,17 @@ export class Game {
   private websocket: WebSocket | null = null;
   private playerId: string = '';
   private remotePlayers: Map<string, THREE.Group> = new Map();
+  private connectionStatusElement: HTMLElement | null = null;
+
+  // MVP 5: Loading progress tracking
+  private loadingProgressBar: HTMLElement | null = null;
+  private loadingPercentage: HTMLElement | null = null;
+  private loadingText: HTMLElement | null = null;
+  private loadingScreen: HTMLElement | null = null;
+  private totalAssetsToLoad: number = 0;
+  private assetsLoaded: number = 0;
+  private loadingStartTime: number = 0;
+
   // Entity interpolation with velocity-based extrapolation - industry standard for smooth multiplayer
   private remotePlayerBuffers: Map<string, Array<{ position: THREE.Vector3; quaternion: THREE.Quaternion; velocity?: THREE.Vector3; timestamp: number }>> = new Map();
   private INTERPOLATION_DELAY = 50; // 50ms - 1x the update interval (lower latency)
@@ -133,110 +145,276 @@ export class Game {
   // MVP 5: Visual effects system
   private vfxManager: VFXManager | null = null;
 
+  // MVP 5: Toast notification system
+  private toastManager: ToastManager = new ToastManager();
+
 
   async init(canvas: HTMLCanvasElement) {
-    // Scene
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x87ceeb);
-
-    // Camera
-    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    this.camera.position.set(0, 10, 10); // Set initial camera position
-
-    // Renderer
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.shadowMap.enabled = true;
-
-    // Lights
-    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-    this.scene.add(ambient);
-
-    const directional = new THREE.DirectionalLight(0xffffff, 0.8);
-    directional.position.set(50, 100, 50);
-    directional.castShadow = true;
-    directional.shadow.mapSize.width = 2048;
-    directional.shadow.mapSize.height = 2048;
-    directional.shadow.camera.near = 0.5;
-    directional.shadow.camera.far = 500;
-    directional.shadow.camera.left = -100;
-    directional.shadow.camera.right = 100;
-    directional.shadow.camera.top = 100;
-    directional.shadow.camera.bottom = -100;
-    this.scene.add(directional);
-
-    // Terrain
-    const terrain = await createTerrain();
-    this.scene.add(terrain);
-
-    // Forest will be created from server data when we receive world_state
-
-    // Load characters config with error handling
     try {
-      const response = await fetch('/characters.json');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch characters.json: ${response.status}`);
+      // MVP 5: Initialize loading progress UI
+      this.initLoadingProgress();
+
+      // Scene
+      this.scene = new THREE.Scene();
+      this.scene.background = new THREE.Color(0x87ceeb);
+
+      // Camera
+      this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      this.camera.position.set(0, 10, 10); // Set initial camera position
+
+      // Renderer
+      this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.renderer.shadowMap.enabled = true;
+
+      // Lights
+      const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+      this.scene.add(ambient);
+
+      const directional = new THREE.DirectionalLight(0xffffff, 0.8);
+      directional.position.set(50, 100, 50);
+      directional.castShadow = true;
+      directional.shadow.mapSize.width = 2048;
+      directional.shadow.mapSize.height = 2048;
+      directional.shadow.camera.near = 0.5;
+      directional.shadow.camera.far = 500;
+      directional.shadow.camera.left = -100;
+      directional.shadow.camera.right = 100;
+      directional.shadow.camera.top = 100;
+      directional.shadow.camera.bottom = -100;
+      this.scene.add(directional);
+
+      // Terrain
+      const terrain = await createTerrain();
+      this.scene.add(terrain);
+
+      // Forest will be created from server data when we receive world_state
+
+      // Load characters config with error handling
+      try {
+        const response = await fetch('/characters.json');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch characters.json: ${response.status}`);
+        }
+        this.characters = await response.json();
+      } catch (error) {
+        console.error('Error loading characters.json:', error);
+        // INDUSTRY STANDARD: Fallback matches characters.json structure exactly
+        this.characters = [{
+          id: 'colobus',
+          modelPath: '/assets/models/characters/Colobus_LOD0.glb',
+          animations: {
+            "idle": "/assets/animations/characters/Single/Colobus_Idle_A.glb",
+            "walk": "/assets/animations/characters/Single/Colobus_Walk.glb",
+            "run": "/assets/animations/characters/Single/Colobus_Run.glb",
+            "jump": "/assets/animations/characters/Single/Colobus_Jump.glb"
+          },
+          scale: 0.3
+        }];
       }
-      this.characters = await response.json();
+
+      // INDUSTRY STANDARD: Add basic sanity check before character loading
+      this.addSanityCheckCube();
+
+      // MVP 5: Calculate total assets to load (1 model + N animations)
+      const selectedChar = this.characters.find(c => c.id === this.selectedCharacterId);
+      if (selectedChar) {
+        const animationCount = Object.keys(selectedChar.animations).length;
+        this.totalAssetsToLoad = 1 + animationCount; // 1 model + N animations
+        console.log(`📦 Total assets to load: ${this.totalAssetsToLoad} (1 model + ${animationCount} animations)`);
+      }
+
+      // Load selected character
+      await this.loadCharacter();
+
+      // Add landmark cube for navigation (central landmark at origin)
+      this.addLandmarkCube();
+
+      // MVP 3: Add cardinal direction landmarks (N, S, E, W)
+      this.addCardinalLandmarks();
+
+      // MVP 3: Initialize labels container
+      this.labelsContainer = document.getElementById('labels-container');
+
+      // MVP 5: Initialize VFX Manager
+      this.vfxManager = new VFXManager(this.scene, this.camera);
+
+      // MVP 3: Initialize minimap
+      this.initMinimap();
+
+      // MVP 5: Initialize connection status indicator
+      this.initConnectionStatus();
+
+      // MVP 3: Initialize tutorial system
+      this.initTutorial();
+
+      // MVP 4: Initialize leaderboard
+      this.initLeaderboard();
+
+      // MVP 4: Initialize quick chat and emotes
+      this.initChatAndEmotes();
+
+      // MVP 5: Initialize settings menu
+      this.initSettingsMenu();
+
+      // Setup multiplayer connection (walnuts will be loaded from server)
+      await this.setupMultiplayer();
+
+      // Events
+      this.setupEvents();
+
+      // Start debug overlay updates
+      this.startDebugUpdates();
+
+      window.addEventListener('resize', this.onResize.bind(this));
     } catch (error) {
-      console.error('Error loading characters.json:', error);
-      // INDUSTRY STANDARD: Fallback matches characters.json structure exactly
-      this.characters = [{
-        id: 'colobus',
-        modelPath: '/assets/models/characters/Colobus_LOD0.glb',
-        animations: {
-          "idle": "/assets/animations/characters/Single/Colobus_Idle_A.glb",
-          "walk": "/assets/animations/characters/Single/Colobus_Walk.glb",
-          "run": "/assets/animations/characters/Single/Colobus_Run.glb", 
-          "jump": "/assets/animations/characters/Single/Colobus_Jump.glb"
-        },
-        scale: 0.3
-      }];
+      console.error('❌ Error during initialization:', error);
+      // Show error to user
+      if (this.toastManager) {
+        this.toastManager.error('Failed to initialize game. Please refresh.');
+      }
+    } finally {
+      // ALWAYS hide loading screen, even if there was an error
+      this.hideLoadingScreen();
+    }
+  }
+
+  /**
+   * MVP 5: Initialize loading progress UI
+   */
+  private initLoadingProgress(): void {
+    this.loadingScreen = document.getElementById('loading-screen');
+    this.loadingProgressBar = document.getElementById('loading-progress-bar');
+    this.loadingPercentage = document.getElementById('loading-percentage');
+    this.loadingText = document.getElementById('loading-text');
+    this.loadingStartTime = Date.now();
+
+    // Show the loading screen
+    if (this.loadingScreen) {
+      this.loadingScreen.classList.remove('hidden');
     }
 
-    // INDUSTRY STANDARD: Add basic sanity check before character loading
-    this.addSanityCheckCube();
+    // Start a fake progress animation to ensure smooth visual feedback
+    this.animateFakeProgress();
+  }
 
-    // Load selected character
-    await this.loadCharacter();
+  /**
+   * MVP 5: Animate progress bar smoothly regardless of actual loading
+   */
+  private animateFakeProgress(): void {
+    let currentProgress = 0;
+    const interval = setInterval(() => {
+      if (currentProgress < 90) {
+        // Gradually increase to 90%, then wait for actual completion
+        currentProgress += Math.random() * 15;
+        currentProgress = Math.min(90, currentProgress);
 
-    // Add landmark cube for navigation (central landmark at origin)
-    this.addLandmarkCube();
+        if (this.loadingProgressBar) {
+          this.loadingProgressBar.style.width = `${currentProgress}%`;
+        }
+        if (this.loadingPercentage) {
+          this.loadingPercentage.textContent = `${Math.floor(currentProgress)}%`;
+        }
+      } else {
+        clearInterval(interval);
+      }
+    }, 100);
+  }
 
-    // MVP 3: Add cardinal direction landmarks (N, S, E, W)
-    this.addCardinalLandmarks();
+  /**
+   * MVP 5: Update loading progress
+   */
+  private updateLoadingProgress(message?: string): void {
+    if (this.totalAssetsToLoad === 0) {
+      console.warn('Cannot update progress: totalAssetsToLoad is 0');
+      return;
+    }
 
-    // MVP 3: Initialize labels container
-    this.labelsContainer = document.getElementById('labels-container');
+    this.assetsLoaded++;
+    const percentage = Math.min(100, Math.floor((this.assetsLoaded / this.totalAssetsToLoad) * 100));
 
-    // MVP 5: Initialize VFX Manager
-    this.vfxManager = new VFXManager(this.scene, this.camera);
+    if (this.loadingProgressBar) {
+      this.loadingProgressBar.style.width = `${percentage}%`;
+    }
 
-    // MVP 3: Initialize minimap
-    this.initMinimap();
+    if (this.loadingPercentage) {
+      this.loadingPercentage.textContent = `${percentage}%`;
+    }
 
-    // MVP 3: Initialize tutorial system
-    this.initTutorial();
+    if (this.loadingText && message) {
+      this.loadingText.textContent = message;
+    }
 
-    // MVP 4: Initialize leaderboard
-    this.initLeaderboard();
+    console.log(`📦 Loading progress: ${this.assetsLoaded}/${this.totalAssetsToLoad} (${percentage}%)`);
+  }
 
-    // MVP 4: Initialize quick chat and emotes
-    this.initChatAndEmotes();
+  /**
+   * MVP 5: Hide loading screen and show game
+   */
+  private hideLoadingScreen(): void {
+    // Ensure progress bar shows 100% before hiding
+    if (this.loadingProgressBar) {
+      this.loadingProgressBar.style.width = '100%';
+    }
+    if (this.loadingPercentage) {
+      this.loadingPercentage.textContent = '100%';
+    }
+    if (this.loadingText) {
+      this.loadingText.textContent = 'Ready!';
+    }
 
-    // MVP 5: Initialize settings menu
-    this.initSettingsMenu();
+    const elapsed = Date.now() - this.loadingStartTime;
+    const minDisplayTime = 800; // Minimum 800ms display time
 
-    // Setup multiplayer connection (walnuts will be loaded from server)
-    await this.setupMultiplayer();
+    if (elapsed < minDisplayTime) {
+      // Ensure loading screen is visible for minimum time
+      setTimeout(() => {
+        if (this.loadingScreen) {
+          this.loadingScreen.classList.add('hidden');
+        }
+        console.log('✅ Loading complete - game ready!');
+      }, minDisplayTime - elapsed);
+    } else {
+      if (this.loadingScreen) {
+        this.loadingScreen.classList.add('hidden');
+      }
+      console.log('✅ Loading complete - game ready!');
+    }
+  }
 
-    // Events
-    this.setupEvents();
+  /**
+   * DIAGNOSTIC: Inspect model for morph targets/blendshapes
+   */
+  private inspectMorphTargets(model: THREE.Object3D, characterId: string): void {
+    console.log(`\n🔍 Inspecting morph targets for ${characterId}:`);
+    let hasMorphTargets = false;
 
-    // Start debug overlay updates
-    this.startDebugUpdates();
+    model.traverse((child: any) => {
+      if (child.isMesh) {
+        const mesh = child as THREE.Mesh;
 
-    window.addEventListener('resize', this.onResize.bind(this));
+        // Check if mesh has morph targets
+        if (mesh.morphTargetDictionary && mesh.morphTargetInfluences) {
+          const morphTargetNames = Object.keys(mesh.morphTargetDictionary);
+
+          if (morphTargetNames.length > 0) {
+            hasMorphTargets = true;
+            console.log(`  ✅ Mesh "${child.name || 'Unnamed'}" has ${morphTargetNames.length} morph targets:`);
+            morphTargetNames.forEach((name, index) => {
+              console.log(`    [${index}] ${name}`);
+            });
+          }
+        }
+      }
+    });
+
+    if (!hasMorphTargets) {
+      console.log(`  ❌ No morph targets found in ${characterId} model`);
+      console.log(`  ℹ️  This model does not support blendshape-based facial expressions`);
+    } else {
+      console.log(`  ✅ ${characterId} supports blendshape facial expressions!`);
+    }
+    console.log('');
   }
 
   private async loadCharacter() {
@@ -247,8 +425,8 @@ export class Game {
     }
 
     try {
-      // INDUSTRY STANDARD: Use cached assets
-      const characterModel = await this.loadCachedAsset(char.modelPath);
+      // INDUSTRY STANDARD: Use cached assets with progress tracking
+      const characterModel = await this.loadCachedAsset(char.modelPath, true);
       if (!characterModel) {
         console.error('❌ Failed to load character model');
         return;
@@ -261,13 +439,16 @@ export class Game {
       this.character.castShadow = true;
       this.scene.add(this.character);
 
+      // DIAGNOSTIC: Check for morph targets/blendshapes for facial expressions
+      this.inspectMorphTargets(this.character, this.selectedCharacterId);
+
       // INDUSTRY STANDARD: Animation mixer on character model
       this.mixer = new THREE.AnimationMixer(this.character);
 
       // INDUSTRY STANDARD: Parallel animation loading with caching and validation
       const animationPromises = Object.entries(char.animations).map(async ([name, path]) => {
         try {
-          const clip = await this.loadCachedAnimation(path);
+          const clip = await this.loadCachedAnimation(path, true, name);
           if (clip) {
             this.actions[name] = this.mixer!.clipAction(clip);
             return { name, success: true };
@@ -393,6 +574,11 @@ export class Game {
         console.log(`Audio ${isMuted ? 'muted' : 'unmuted'}`);
       }
 
+      // Debug: Teleport to nearest golden walnut with G key
+      if (e.key === 'g' || e.key === 'G') {
+        this.teleportToNearestGoldenWalnut();
+      }
+
       // Debug scene contents with I key (Info)
       if (e.key === 'i' || e.key === 'I') {
         // Scene debug info available via debug overlay
@@ -404,6 +590,11 @@ export class Game {
     // MVP 3: Mouse click for walnut finding
     window.addEventListener('click', (event) => {
       this.onMouseClick(event);
+    });
+
+    // MVP 5: Mouse hover for cursor highlighting
+    window.addEventListener('mousemove', (event) => {
+      this.onMouseMove(event);
     });
   }
 
@@ -710,7 +901,13 @@ export class Game {
         clearTimeout(connectionTimeout);
         this.isConnected = true;
         this.connectionAttempts = 0; // Reset on successful connection
-        
+
+        // MVP 5: Update connection status
+        this.updateConnectionStatus('connected');
+
+        // MVP 5: Show connection toast
+        this.toastManager.success('Connected to server');
+
         // Start position updates and heartbeat
         this.startPositionUpdates();
         this.startHeartbeat();
@@ -728,6 +925,9 @@ export class Game {
       this.websocket.onerror = (error) => {
         clearTimeout(connectionTimeout);
         console.error('❌ WebSocket error:', error);
+
+        // MVP 5: Show error toast
+        this.toastManager.error('Connection error occurred');
       };
       
       this.websocket.onclose = (event) => {
@@ -738,7 +938,19 @@ export class Game {
 
         // Attempt reconnection if not intentional close
         if (event.code !== 1000 && this.connectionAttempts < this.maxConnectionAttempts) {
+          // MVP 5: Update connection status to reconnecting
+          this.updateConnectionStatus('reconnecting');
+
+          // MVP 5: Show reconnection toast
+          this.toastManager.warning('Connection lost, reconnecting...');
+
           setTimeout(() => this.connectWebSocket(), 2000);
+        } else {
+          // MVP 5: Update connection status to disconnected
+          this.updateConnectionStatus('disconnected');
+
+          // MVP 5: Show disconnection toast
+          this.toastManager.error('Disconnected from server');
         }
       };
       
@@ -746,7 +958,12 @@ export class Game {
       console.error('❌ Failed to create WebSocket:', error);
       // Retry connection
       if (this.connectionAttempts < this.maxConnectionAttempts) {
+        // MVP 5: Update connection status to reconnecting
+        this.updateConnectionStatus('reconnecting');
         setTimeout(() => this.connectWebSocket(), 2000);
+      } else {
+        // MVP 5: Update connection status to disconnected
+        this.updateConnectionStatus('disconnected');
       }
     }
   }
@@ -866,15 +1083,31 @@ export class Game {
         // Load existing walnuts from server
         if (Array.isArray(data.mapState)) {
           console.log(`📦 Received ${data.mapState.length} walnuts from server`);
+
+          // DEBUG: Count walnuts by type
+          const goldenWalnuts = data.mapState.filter((w: any) => w.origin === 'game');
+          const foundWalnuts = data.mapState.filter((w: any) => w.found === true);
+          console.log(`🔍 DEBUG: ${goldenWalnuts.length} golden walnuts (origin=game), ${foundWalnuts.length} already found`);
+
+          if (goldenWalnuts.length > 0) {
+            console.log(`🔍 DEBUG: Golden walnut details:`, goldenWalnuts);
+            goldenWalnuts.forEach((gw: any) => {
+              console.log(`  Golden ${gw.id}: found=${gw.found}`);
+            });
+          }
+
           for (const walnut of data.mapState) {
-            if (!walnut.found) {
+            // ALWAYS create golden walnuts (they respawn), only check found status for player walnuts
+            const isGoldenWalnut = walnut.origin === 'game';
+
+            if (isGoldenWalnut || !walnut.found) {
               // Convert server Walnut format to client format
               // Game walnuts (origin='game') should render as golden bonus walnuts
-              const walnutType = walnut.origin === 'game' ? 'game' : walnut.hiddenIn;
-              const points = walnut.origin === 'game' ? 5 : (walnut.hiddenIn === 'buried' ? 3 : 1);
+              const walnutType = isGoldenWalnut ? 'game' : walnut.hiddenIn;
+              const points = isGoldenWalnut ? 5 : (walnut.hiddenIn === 'buried' ? 3 : 1);
 
-              if (walnut.origin === 'game') {
-                console.log(`🌟 Creating GOLDEN walnut: ${walnut.id} at`, walnut.location, `(${points} pts)`);
+              if (isGoldenWalnut) {
+                console.log(`🌟 Creating GOLDEN walnut: ${walnut.id} at`, walnut.location, `(${points} pts, found=${walnut.found})`);
               }
 
               this.createRemoteWalnut({
@@ -922,18 +1155,30 @@ export class Game {
       case 'player_joined':
         if (this.validatePlayerData(data) && data.squirrelId !== this.playerId) {
           this.createRemotePlayer(data.squirrelId, data.position, data.rotationY, data.characterId);
+
+          // MVP 5: Show player joined toast
+          const characterName = data.characterId ? data.characterId.charAt(0).toUpperCase() + data.characterId.slice(1) : 'Player';
+          this.toastManager.info(`${characterName} joined the game`);
         }
         break;
 
       case 'player_leave':  // Server sends "player_leave" not "player_left"
         if (data.squirrelId && data.squirrelId !== this.playerId) {
+          // Get character info before removing
+          const remotePlayer = this.remotePlayers.get(data.squirrelId);
+          const characterId = remotePlayer?.userData?.characterId || 'Player';
+          const characterName = characterId.charAt(0).toUpperCase() + characterId.slice(1);
+
           this.removeRemotePlayer(data.squirrelId);
+
+          // MVP 5: Show player left toast
+          this.toastManager.info(`${characterName} left the game`);
         }
         break;
         
       case 'player_update':  // Server sends position updates as "player_update"
         if (this.validatePlayerData(data) && data.squirrelId !== this.playerId) {
-          this.updateRemotePlayer(data.squirrelId, data.position, data.rotationY, data.animation, data.velocity, data.animationStartTime, data.moveType);
+          this.updateRemotePlayer(data.squirrelId, data.position, data.rotationY, data.animation, data.velocity, data.animationStartTime, data.moveType, data.characterId);
         }
         break;
 
@@ -1066,7 +1311,7 @@ export class Game {
     }
   }
 
-  private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, _moveType?: string): void {
+  private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, _moveType?: string, characterId?: string): void {
     const remotePlayer = this.remotePlayers.get(playerId);
     if (remotePlayer) {
       // ENTITY INTERPOLATION: Add new state to buffer for smooth interpolation
@@ -1107,8 +1352,8 @@ export class Game {
         this.setRemotePlayerAction(playerId, animation, animationStartTime);
       }
     } else {
-      // Player doesn't exist yet, create them
-      this.createRemotePlayer(playerId, position, rotationY);
+      // Player doesn't exist yet, create them with their characterId
+      this.createRemotePlayer(playerId, position, rotationY, characterId);
     }
   }
 
@@ -1290,15 +1535,21 @@ export class Game {
   }
 
   // INDUSTRY STANDARD: Asset caching methods with proper SkinnedMesh cloning
-  private async loadCachedAsset(modelPath: string): Promise<THREE.Group | null> {
+  private async loadCachedAsset(modelPath: string, trackProgress: boolean = false): Promise<THREE.Group | null> {
     if (Game.assetCache.has(modelPath)) {
       const cachedModel = Game.assetCache.get(modelPath)!;
+      if (trackProgress) {
+        this.updateLoadingProgress('Loading character model...');
+      }
       return this.cloneGLTF(cachedModel); // Proper GLTF cloning for SkinnedMesh
     }
 
     try {
       const gltf = await Game.gltfLoader.loadAsync(modelPath);
       Game.assetCache.set(modelPath, gltf.scene); // Store original scene
+      if (trackProgress) {
+        this.updateLoadingProgress('Loading character model...');
+      }
       return this.cloneGLTF(gltf.scene); // Return proper clone
     } catch (error) {
       console.error(`❌ Failed to load model ${modelPath}:`, error);
@@ -1346,8 +1597,11 @@ export class Game {
     return clonedScene as THREE.Group;
   }
 
-  private async loadCachedAnimation(animPath: string): Promise<THREE.AnimationClip | null> {
+  private async loadCachedAnimation(animPath: string, trackProgress: boolean = false, animName?: string): Promise<THREE.AnimationClip | null> {
     if (Game.animationCache.has(animPath)) {
+      if (trackProgress) {
+        this.updateLoadingProgress(animName ? `Loading ${animName} animation...` : 'Loading animation...');
+      }
       return Game.animationCache.get(animPath)!;
     }
 
@@ -1356,6 +1610,9 @@ export class Game {
       if (gltf.animations && gltf.animations.length > 0) {
         const clip = gltf.animations[0];
         Game.animationCache.set(animPath, clip);
+        if (trackProgress) {
+          this.updateLoadingProgress(animName ? `Loading ${animName} animation...` : 'Loading animation...');
+        }
         return clip;
       } else {
         console.warn(`⚠️ No animations found in ${animPath}`);
@@ -1590,8 +1847,8 @@ export class Game {
       group.add(particle);
     }
 
-    // Add invisible collision sphere for easier clicking
-    const collisionGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+    // Add invisible collision sphere for easier clicking (MVP 5: Increased from 0.5 to 0.8 for better UX)
+    const collisionGeometry = new THREE.SphereGeometry(0.8, 8, 8);
     const collisionMaterial = new THREE.MeshBasicMaterial({
       visible: false
     });
@@ -1641,8 +1898,8 @@ export class Game {
     glint.position.copy(walnut.position);
     group.add(glint);
 
-    // Add invisible collision sphere for easier clicking
-    const collisionGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+    // Add invisible collision sphere for easier clicking (MVP 5: Increased from 0.5 to 0.8 for better UX)
+    const collisionGeometry = new THREE.SphereGeometry(0.8, 8, 8);
     const collisionMaterial = new THREE.MeshBasicMaterial({
       visible: false
     });
@@ -1669,70 +1926,72 @@ export class Game {
   private createGameWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // Golden walnut geometry
-    const geometry = new THREE.SphereGeometry(0.18, 16, 16);
-    const material = new THREE.MeshStandardMaterial({
-      color: 0xffd700, // Golden color
-      emissive: 0xffaa00,
-      emissiveIntensity: 0.5,
-      roughness: 0.3,
-      metalness: 0.7
+    // Walnut-shaped geometry (ellipsoid - slightly elongated sphere)
+    const geometry = new THREE.SphereGeometry(0.25, 16, 12);
+    geometry.scale(1, 1.3, 1); // Stretch vertically to make walnut shape
+
+    // Rich golden-amber color (not bright yellow)
+    const material = new THREE.MeshBasicMaterial({
+      color: 0xDAA520, // Goldenrod - more natural golden walnut color
     });
     const walnut = new THREE.Mesh(geometry, material);
-    walnut.castShadow = true;
-    walnut.position.y = 0.3; // Floating above ground
+    walnut.position.y = 0.25; // Half-buried in ground like a real walnut
     group.add(walnut);
 
-    // Add glow effect
-    const glowGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+    // Subtle golden aura/glow around it
+    const glowGeometry = new THREE.SphereGeometry(0.35, 12, 10);
+    glowGeometry.scale(1, 1.3, 1);
     const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffff00,
+      color: 0xFFD700,
       transparent: true,
-      opacity: 0.4,
+      opacity: 0.3,
       blending: THREE.AdditiveBlending
     });
     const glow = new THREE.Mesh(glowGeometry, glowMaterial);
     glow.position.copy(walnut.position);
     group.add(glow);
 
-    // Add sparkle particles
-    const sparkleGeometry = new THREE.SphereGeometry(0.03, 4, 4);
+    // Small sparkles orbiting around it (to show it's special)
+    const sparkleGeometry = new THREE.SphereGeometry(0.04, 6, 6);
     const sparkleMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
+      color: 0xFFFFAA,
       transparent: true,
       opacity: 0.8
     });
 
-    for (let i = 0; i < 6; i++) {
+    const sparkles: THREE.Mesh[] = [];
+    for (let i = 0; i < 5; i++) {
       const sparkle = new THREE.Mesh(sparkleGeometry, sparkleMaterial);
-      const angle = (i / 6) * Math.PI * 2;
+      const angle = (i / 5) * Math.PI * 2;
       sparkle.position.set(
-        Math.cos(angle) * 0.3,
-        walnut.position.y,
-        Math.sin(angle) * 0.3
+        Math.cos(angle) * 0.4,
+        0.25 + Math.sin(angle * 2) * 0.15,
+        Math.sin(angle) * 0.4
       );
       group.add(sparkle);
+      sparkles.push(sparkle);
     }
 
-    // Add invisible collision sphere for easier clicking
-    const collisionGeometry = new THREE.SphereGeometry(0.6, 8, 8);
+    // Invisible collision sphere for clicking (MVP 5: Increased from 0.6 to 1.0 for better UX)
+    const collisionGeometry = new THREE.SphereGeometry(1.0, 8, 8);
     const collisionMaterial = new THREE.MeshBasicMaterial({
       visible: false
     });
     const collisionMesh = new THREE.Mesh(collisionGeometry, collisionMaterial);
-    collisionMesh.position.y = 0.3;
+    collisionMesh.position.y = 0.25;
     group.add(collisionMesh);
 
     // Store references for animation
     group.userData.walnut = walnut;
     group.userData.glow = glow;
+    group.userData.sparkles = sparkles;
     group.userData.animationPhase = Math.random() * Math.PI * 2;
 
     // Position the entire group
     group.position.copy(position);
     group.userData.type = 'game';
     group.userData.points = 5; // Bonus multiplier
-    group.userData.clickPosition = new THREE.Vector3(position.x, position.y + 0.3, position.z);
+    group.userData.clickPosition = new THREE.Vector3(position.x, position.y + 0.25, position.z);
 
     return group;
   }
@@ -1761,26 +2020,33 @@ export class Game {
           glint.scale.set(scale, scale, scale);
         }
       } else if (type === 'game') {
-        // MVP 5: Enhanced golden walnut animation (rotation + pulse + glow)
+        // MVP 5: Enhanced golden walnut animation (rotation + pulse + glow + orbiting sparkles)
         const walnut = walnutGroup.userData.walnut as THREE.Mesh;
         const glow = walnutGroup.userData.glow as THREE.Mesh;
+        const sparkles = walnutGroup.userData.sparkles as THREE.Mesh[];
 
         if (walnut) {
           walnutGroup.userData.animationPhase += delta;
-          walnut.rotation.y += delta * 2; // Rotate
+          walnut.rotation.y += delta * 1.5; // Slow rotation
 
-          // Enhanced pulse effect
-          const pulse = 1 + Math.sin(walnutGroup.userData.animationPhase * 2) * 0.15;
+          // Gentle pulse effect
+          const pulse = 1 + Math.sin(walnutGroup.userData.animationPhase * 2) * 0.1;
           walnut.scale.set(pulse, pulse, pulse);
 
-          // Enhanced glow pulse with stronger effect
+          // Glow pulse
           if (glow) {
-            const glowPulse = 0.4 + Math.sin(walnutGroup.userData.animationPhase * 3) * 0.25;
+            const glowPulse = 0.3 + Math.sin(walnutGroup.userData.animationPhase * 2.5) * 0.15;
             (glow.material as THREE.MeshBasicMaterial).opacity = glowPulse;
+          }
 
-            // Scale the glow slightly for more dramatic effect
-            const glowScale = 1 + Math.sin(walnutGroup.userData.animationPhase * 2.5) * 0.2;
-            glow.scale.set(glowScale, glowScale, glowScale);
+          // Orbit sparkles around the walnut
+          if (sparkles && sparkles.length > 0) {
+            for (let i = 0; i < sparkles.length; i++) {
+              const angle = (i / sparkles.length) * Math.PI * 2 + walnutGroup.userData.animationPhase;
+              sparkles[i].position.x = Math.cos(angle) * 0.4;
+              sparkles[i].position.z = Math.sin(angle) * 0.4;
+              sparkles[i].position.y = 0.25 + Math.sin(angle * 3) * 0.1;
+            }
           }
         }
       }
@@ -1794,6 +2060,54 @@ export class Game {
     this.minimapCanvas = document.getElementById('minimap-canvas') as HTMLCanvasElement;
     if (this.minimapCanvas) {
       this.minimapContext = this.minimapCanvas.getContext('2d');
+    }
+  }
+
+  /**
+   * MVP 5: Initialize connection status indicator
+   */
+  private initConnectionStatus(): void {
+    // Create connection status element
+    this.connectionStatusElement = document.createElement('div');
+    this.connectionStatusElement.id = 'connection-status';
+    this.connectionStatusElement.style.position = 'fixed';
+    this.connectionStatusElement.style.top = '10px';
+    this.connectionStatusElement.style.left = '10px';
+    this.connectionStatusElement.style.padding = '8px 12px';
+    this.connectionStatusElement.style.borderRadius = '8px';
+    this.connectionStatusElement.style.fontSize = '14px';
+    this.connectionStatusElement.style.fontWeight = 'bold';
+    this.connectionStatusElement.style.zIndex = '1000';
+    this.connectionStatusElement.style.transition = 'all 0.3s ease';
+    this.connectionStatusElement.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+    document.body.appendChild(this.connectionStatusElement);
+
+    // Set initial status
+    this.updateConnectionStatus('disconnected');
+  }
+
+  /**
+   * MVP 5: Update connection status indicator
+   */
+  private updateConnectionStatus(status: 'connected' | 'disconnected' | 'reconnecting'): void {
+    if (!this.connectionStatusElement) return;
+
+    switch (status) {
+      case 'connected':
+        this.connectionStatusElement.textContent = '● Connected';
+        this.connectionStatusElement.style.backgroundColor = '#4CAF50';
+        this.connectionStatusElement.style.color = '#ffffff';
+        break;
+      case 'disconnected':
+        this.connectionStatusElement.textContent = '● Disconnected';
+        this.connectionStatusElement.style.backgroundColor = '#f44336';
+        this.connectionStatusElement.style.color = '#ffffff';
+        break;
+      case 'reconnecting':
+        this.connectionStatusElement.textContent = '⟳ Reconnecting...';
+        this.connectionStatusElement.style.backgroundColor = '#FF9800';
+        this.connectionStatusElement.style.color = '#ffffff';
+        break;
     }
   }
 
@@ -2076,6 +2390,44 @@ export class Game {
   }
 
   /**
+   * Debug: Teleport to nearest golden walnut for testing
+   */
+  private teleportToNearestGoldenWalnut(): void {
+    if (!this.character) return;
+
+    console.log(`🔍 DEBUG TELEPORT: Total walnuts in map: ${this.walnuts.size}`);
+
+    // Debug: list all walnuts and their types
+    for (const [id, walnutGroup] of this.walnuts) {
+      console.log(`  - ${id}: type=${walnutGroup.userData.type}, pos=(${walnutGroup.position.x.toFixed(1)}, ${walnutGroup.position.z.toFixed(1)})`);
+    }
+
+    let nearestGoldenWalnut: THREE.Group | null = null;
+    let minDistance = Infinity;
+
+    // Find nearest golden walnut
+    for (const [_id, walnutGroup] of this.walnuts) {
+      if (walnutGroup.userData.type === 'game') {
+        const distance = this.character.position.distanceTo(walnutGroup.position);
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestGoldenWalnut = walnutGroup;
+        }
+      }
+    }
+
+    if (nearestGoldenWalnut) {
+      // Teleport player near the golden walnut (5 units away so they can see it)
+      const offset = new THREE.Vector3(5, 0, 5);
+      this.character.position.copy(nearestGoldenWalnut.position).add(offset);
+      this.character.position.y = 2; // Keep player at proper height
+      console.log(`🔮 Teleported to golden walnut at ${nearestGoldenWalnut.position.x.toFixed(1)}, ${nearestGoldenWalnut.position.z.toFixed(1)}`);
+    } else {
+      console.log('⚠️ No golden walnuts found in walnut map');
+    }
+  }
+
+  /**
    * MVP 3: Remove a walnut from the world (when found)
    */
   private removeWalnut(walnutId: string): void {
@@ -2105,6 +2457,56 @@ export class Game {
 
     this.scene.remove(walnutGroup);
     this.walnuts.delete(walnutId);
+  }
+
+  /**
+   * MVP 5: Handle mouse move for cursor highlighting
+   */
+  private onMouseMove(event: MouseEvent): void {
+    // Calculate mouse position in normalized device coordinates (-1 to +1)
+    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    // Update raycaster with camera and mouse position
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+
+    // Check for intersections with walnuts
+    const walnutObjects: THREE.Object3D[] = [];
+    for (const walnutGroup of this.walnuts.values()) {
+      walnutObjects.push(walnutGroup);
+    }
+
+    // Raycast against all walnut groups and their children
+    const intersects = this.raycaster.intersectObjects(walnutObjects, true);
+
+    // Check if hovering over a walnut that's within interaction range
+    let hoveringWalnut = false;
+    if (intersects.length > 0) {
+      // Find the walnut group that's being hovered
+      for (const intersect of intersects) {
+        let obj = intersect.object;
+        while (obj.parent) {
+          if (obj.parent.userData.id && obj.parent.userData.type) {
+            const walnutGroup = obj.parent as THREE.Group;
+            const walnutPos = walnutGroup.userData.clickPosition || walnutGroup.position;
+            const playerPos = this.character.position;
+            const distance = playerPos.distanceTo(walnutPos);
+            const maxDistance = walnutGroup.userData.type === 'buried' ? 4 : 5;
+
+            // Only show pointer cursor if within interaction range
+            if (distance <= maxDistance) {
+              hoveringWalnut = true;
+            }
+            break;
+          }
+          obj = obj.parent;
+        }
+        if (hoveringWalnut) break;
+      }
+    }
+
+    // Update cursor style
+    document.body.style.cursor = hoveringWalnut ? 'pointer' : 'default';
   }
 
   /**
@@ -2179,6 +2581,14 @@ export class Game {
     if (isOwnWalnut) {
       // FOUND YOUR OWN WALNUT - No points (prevents farming), just get walnut back
       this.playerWalnutCount++;
+
+      // MVP 5: Subtle visual feedback for retrieving your own walnut
+      if (this.vfxManager) {
+        this.vfxManager.spawnParticles('sparkle', walnutPos, 20); // Fewer sparkles than finding others'
+      }
+
+      // MVP 5: Toast notification for finding your own walnut
+      this.toastManager.info('Found your walnut');
     } else {
       // FOUND SOMEONE ELSE'S WALNUT - Award points AND give walnut to rehide
       this.playerScore += points;
@@ -2197,6 +2607,9 @@ export class Game {
           this.vfxManager.screenShake(0.15, 0.4);
         }
       }
+
+      // MVP 5: Toast notification for scoring
+      this.toastManager.success(`+${points} points!`);
     }
 
     // Remove the walnut from the world
@@ -2257,6 +2670,10 @@ export class Game {
 
       case 'game':
         console.log(`✨ Rendering GOLDEN walnut visual at`, position);
+        // Adjust position to terrain level (walnut will be half-buried)
+        const terrainHeight = getTerrainHeight(position.x, position.z);
+        position.y = terrainHeight;
+        console.log(`🔧 Golden walnut at terrain level: ${terrainHeight.toFixed(2)}`);
         walnutGroup = this.createGameWalnutVisual(position);
         labelText = '🌟 Bonus Walnut (5 pts)';
         labelColor = '#FFD700';
@@ -2272,6 +2689,8 @@ export class Game {
     walnutGroup.userData.ownerId = data.ownerId;
     this.scene.add(walnutGroup);
     this.walnuts.set(data.walnutId, walnutGroup);
+
+    console.log(`✅ Added walnut to scene: ${data.walnutId}, type: ${data.walnutType}, position:`, walnutGroup.position, 'total walnuts:', this.walnuts.size);
 
     // Add label
     const label = this.createLabel(labelText, labelColor);

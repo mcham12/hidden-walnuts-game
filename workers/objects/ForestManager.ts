@@ -130,10 +130,24 @@ export default class ForestManager {
       });
     }
 
-    // Leaderboard endpoint  
+    // Leaderboard endpoint
     if (path.endsWith("/leaderboard")) {
       const leaderboard = this.env.LEADERBOARD.get(this.env.LEADERBOARD.idFromName("global"));
       return await leaderboard.fetch(request);
+    }
+
+    // Admin endpoint to reset mapState (forces golden walnuts to respawn)
+    if (path === "/admin/reset-mapstate" && request.method === "POST") {
+      await this.storage.delete('mapState');
+      this.mapState = []; // Also clear in-memory state
+      this.isInitialized = false; // Force re-initialization on next connection
+      console.log('🔄 Admin: mapState cleared (storage and memory), will reinitialize with golden walnuts');
+      return new Response(JSON.stringify({
+        message: "mapState reset - golden walnuts will respawn on next connection"
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
     }
 
     return new Response("Not Found", { status: 404 });
@@ -316,7 +330,22 @@ export default class ForestManager {
   // Simple world state initialization
   private async sendWorldState(socket: WebSocket): Promise<void> {
     await this.initializeWorld();
-    
+
+    // AGGRESSIVE FIX: Always filter out test-walnut before sending
+    const filteredMapState = this.mapState.filter(w => w.id !== 'test-walnut');
+    if (filteredMapState.length !== this.mapState.length) {
+      console.log(`🧹 FILTERED OUT test-walnut before sending (was in mapState despite filter)`);
+      this.mapState = filteredMapState;
+      await this.storage.put('mapState', this.mapState);
+    }
+
+    // DEBUG: Log what we're sending
+    const goldenWalnuts = this.mapState.filter(w => w.origin === 'game');
+    console.log(`📤 SERVER: Sending world_state with ${this.mapState.length} total walnuts, ${goldenWalnuts.length} golden walnuts`);
+    goldenWalnuts.forEach(gw => {
+      console.log(`  - ${gw.id} at (${gw.location.x}, ${gw.location.y}, ${gw.location.z})`);
+    });
+
     this.sendMessage(socket, {
       type: "world_state",
       terrainSeed: this.terrainSeed,
@@ -373,7 +402,17 @@ export default class ForestManager {
   }
 
   // Simple world initialization
+  private isInitialized: boolean = false;
+
   private async initializeWorld(): Promise<void> {
+    // Only initialize once per DO instance
+    if (this.isInitialized) {
+      console.log('⏭️ SERVER: World already initialized, skipping');
+      return;
+    }
+
+    console.log('🌍 SERVER: Initializing world...');
+
     // Load or create terrain seed
     const storedSeed = await this.storage.get('terrainSeed');
     if (storedSeed !== null && typeof storedSeed === 'number') {
@@ -394,17 +433,31 @@ export default class ForestManager {
 
     // Load or create map state with initial game walnuts
     const storedMapState = await this.storage.get('mapState');
-    if (storedMapState) {
-      this.mapState = Array.isArray(storedMapState) ? storedMapState : [];
+    console.log(`📦 SERVER: Loaded mapState from storage, count: ${storedMapState ? (Array.isArray(storedMapState) ? storedMapState.length : 'not array') : 'null'}`);
+
+    if (storedMapState && Array.isArray(storedMapState)) {
+      this.mapState = storedMapState;
+      // Debug: Log what we loaded
+      const gameWalnuts = this.mapState.filter(w => w.origin === 'game' || w.id === 'test-walnut');
+      if (gameWalnuts.length > 0) {
+        console.log(`🐛 SERVER DEBUG: Found ${gameWalnuts.length} game walnuts in storage:`);
+        gameWalnuts.forEach(w => {
+          console.log(`  - ${w.id} (origin: ${w.origin}, found: ${w.found})`);
+        });
+      }
     } else {
       this.mapState = [];
     }
+    console.log(`📦 SERVER: Current mapState count: ${this.mapState.length}`);
 
-    // Always ensure golden walnuts exist (re-add if found/missing)
-    const goldenWalnutIds = ['game-walnut-1', 'game-walnut-2', 'game-walnut-3'];
-    const existingGoldenIds = this.mapState.filter(w => w.origin === 'game').map(w => w.id);
+    // ALWAYS ensure golden walnuts exist (remove old ones, add fresh ones)
+    // Remove ANY existing golden walnuts (found or not found) AND the old test walnut
+    const beforeFilter = this.mapState.length;
+    this.mapState = this.mapState.filter(w => w.origin !== 'game' && w.id !== 'test-walnut');
+    const afterFilter = this.mapState.length;
+    console.log(`🧹 SERVER: Removed ${beforeFilter - afterFilter} game walnuts, ${afterFilter} player walnuts remaining`);
 
-    // Define golden walnut locations
+    // Define fresh golden walnut locations
     const goldenWalnuts: Walnut[] = [
       {
         id: "game-walnut-1",
@@ -435,15 +488,18 @@ export default class ForestManager {
       }
     ];
 
-    // Add missing golden walnuts
+    // Add all golden walnuts fresh
     for (const goldenWalnut of goldenWalnuts) {
-      if (!existingGoldenIds.includes(goldenWalnut.id)) {
-        console.log(`🌟 SERVER: Adding missing golden walnut: ${goldenWalnut.id}`);
-        this.mapState.push(goldenWalnut);
-      }
+      console.log(`🌟 SERVER: Adding fresh golden walnut: ${goldenWalnut.id}`);
+      this.mapState.push(goldenWalnut);
     }
 
+    console.log(`✅ SERVER: Total walnuts after adding golden: ${this.mapState.length} (3 golden + ${this.mapState.length - 3} player)`);
+
     await this.storage.put('mapState', this.mapState);
+
+    this.isInitialized = true;
+    console.log('✅ SERVER: World initialization complete');
   }
 
   // Simple forest object generation

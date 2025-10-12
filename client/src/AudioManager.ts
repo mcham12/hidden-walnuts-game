@@ -103,11 +103,12 @@ export class AudioManager {
     });
 
     // Ambient forest sounds (placeholder - none available yet)
-    this.loadSound('ambient_forest', {
-      src: ['/sounds/forest_ambient.mp3'],
-      volume: 0.3,
-      loop: true,
-    });
+    // TODO: Uncomment when we have a real ambient sound file
+    // this.loadSound('ambient_forest', {
+    //   src: ['/sounds/forest_ambient.mp3'],
+    //   volume: 0.3,
+    //   loop: true,
+    // });
 
     console.log('AudioManager: Sound library initialized with WAV files');
   }
@@ -192,6 +193,9 @@ export class AudioManager {
       ambient.volume(effectiveVolume);
       ambient.play();
       this.ambientSound = ambient;
+    } else if (!ambient) {
+      // Ambient sound not loaded yet (waiting for actual audio file)
+      console.log('AudioManager: Ambient sound not available yet');
     }
   }
 
