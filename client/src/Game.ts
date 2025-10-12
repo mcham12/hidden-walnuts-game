@@ -98,7 +98,7 @@ export class Game {
 
   // MVP 5: Footstep particle effects
   private lastFootstepTime: number = 0;
-  private footstepInterval: number = 300; // 300ms between footsteps
+  private footstepInterval: number = 500; // 500ms between footsteps (more subtle)
 
   // INDUSTRY STANDARD: Manual delta time calculation to avoid Clock.getDelta() issues
   private lastFrameTime: number = 0;
@@ -872,15 +872,15 @@ export class Game {
     this.actualVelocity.y = this.velocity.y;
     this.actualVelocity.z = this.velocity.z;
 
-    // MVP 5: Spawn footstep dust particles when moving on ground
+    // MVP 5: Spawn footstep dust particles when moving on ground (subtle)
     const horizontalSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
-    if (!this.isJumping && horizontalSpeed > 0.5 && this.vfxManager) {
+    if (!this.isJumping && horizontalSpeed > 1.0 && this.vfxManager) {
       const currentTime = performance.now();
       if (currentTime - this.lastFootstepTime >= this.footstepInterval) {
-        // Spawn dust particles at character's feet
+        // Spawn subtle dust particles at character's feet
         const footPosition = this.character.position.clone();
         footPosition.y = getTerrainHeight(footPosition.x, footPosition.z) + 0.05;
-        this.vfxManager.spawnParticles('dust', footPosition, 8); // Small dust puffs
+        this.vfxManager.spawnParticles('dust', footPosition, 3); // Very subtle (3 particles)
         this.lastFootstepTime = currentTime;
       }
     }
@@ -2411,6 +2411,9 @@ export class Game {
       return;
     }
 
+    // MVP 5: Play hide sound effect IMMEDIATELY (before heavy VFX work)
+    this.audioManager.playSound('hide');
+
     // Get player position
     const playerPos = this.character.position.clone();
     const terrainY = getTerrainHeight(playerPos.x, playerPos.z);
@@ -2465,8 +2468,7 @@ export class Game {
     // Decrement player walnut count
     this.playerWalnutCount--;
 
-    // MVP 5: Play hide sound effect and spawn particles
-    this.audioManager.playSound('hide');
+    // MVP 5: Spawn dirt particles (sound already played at start for instant feedback)
     if (this.vfxManager) {
       this.vfxManager.spawnParticles('dirt', walnutGroup.position, 30);
     }
@@ -2676,6 +2678,15 @@ export class Game {
     const points = walnutGroup.userData.points || 1;
     const isOwnWalnut = walnutGroup.userData.ownerId === this.playerId;
 
+    // MVP 5: Play find sound effect IMMEDIATELY (before heavy VFX work)
+    if (!isOwnWalnut && points >= 3) {
+      this.audioManager.playSound('find');
+      // Play bonus bling sound for big finds
+      setTimeout(() => this.audioManager.playSound('ui', 'score_pop'), 200);
+    } else {
+      this.audioManager.playSound('find');
+    }
+
     if (isOwnWalnut) {
       // FOUND YOUR OWN WALNUT - No points (prevents farming), just get walnut back
       this.playerWalnutCount++;
@@ -2692,7 +2703,7 @@ export class Game {
       this.playerScore += points;
       this.playerWalnutCount++;
 
-      // MVP 5: Visual and audio feedback for scoring
+      // MVP 5: Visual feedback for scoring (audio already played for instant response)
       if (this.vfxManager && this.character) {
         this.vfxManager.spawnParticles('sparkle', walnutPos, 40);
         // Add confetti particles for celebration
@@ -2712,15 +2723,6 @@ export class Game {
 
     // Remove the walnut from the world
     this.removeWalnut(walnutId);
-
-    // MVP 5: Play find sound effect (bigger sound for 3+ points)
-    if (!isOwnWalnut && points >= 3) {
-      this.audioManager.playSound('find');
-      // Play bonus bling sound for big finds
-      setTimeout(() => this.audioManager.playSound('ui', 'score_pop'), 200);
-    } else {
-      this.audioManager.playSound('find');
-    }
 
     // MVP 5: Play eating animation (Squirrel-first feature)
     if (this.actions['eat']) {
