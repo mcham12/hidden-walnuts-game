@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { getTerrainHeight } from './terrain.js';
+import { CollisionSystem } from './CollisionSystem.js';
 
 const loader = new GLTFLoader();
 const TREE_COUNT = 50;
@@ -16,7 +17,8 @@ export const bushPositions: THREE.Vector3[] = [];
 // Export function to create forest from server data
 export async function createForestFromServer(
   scene: THREE.Scene,
-  forestObjects: Array<{ type: 'tree' | 'shrub'; x: number; y: number; z: number; scale: number }>
+  forestObjects: Array<{ type: 'tree' | 'shrub'; x: number; y: number; z: number; scale: number }>,
+  collisionSystem?: CollisionSystem
 ) {
   try {
     // Load models once
@@ -29,6 +31,7 @@ export async function createForestFromServer(
     bushPositions.length = 0;
 
     // Create forest objects from server data
+    let treeCount = 0;
     for (const obj of forestObjects) {
       const y = getTerrainHeight(obj.x, obj.z);
 
@@ -37,6 +40,20 @@ export async function createForestFromServer(
         tree.position.set(obj.x, y, obj.z);
         tree.scale.set(obj.scale, obj.scale, obj.scale);
         scene.add(tree);
+
+        // MVP 5.5: Add collision for tree
+        if (collisionSystem) {
+          // Trunk radius roughly 0.3 units at base scale, height roughly 5 units
+          const collisionRadius = 0.3 * obj.scale;
+          const collisionHeight = 5 * obj.scale;
+          collisionSystem.addTreeCollider(
+            `forest_tree_${treeCount}`,
+            new THREE.Vector3(obj.x, y, obj.z),
+            collisionRadius,
+            collisionHeight
+          );
+        }
+        treeCount++;
       } else if (obj.type === 'shrub') {
         const bush = bushModel.clone();
         bush.position.set(obj.x, y, obj.z);
@@ -45,8 +62,12 @@ export async function createForestFromServer(
 
         // Store bush position for walnut hiding
         bushPositions.push(new THREE.Vector3(obj.x, y, obj.z));
+
+        // Note: Bushes are passable, no collision needed
       }
     }
+
+    console.log(`🔒 Added collision for ${treeCount} forest trees`);
 
     console.log(`✅ Forest created from server: ${forestObjects.filter(o => o.type === 'tree').length} trees, ${bushPositions.length} bushes`);
   } catch (error) {

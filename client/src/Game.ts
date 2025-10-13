@@ -1232,7 +1232,8 @@ export class Game {
       case 'world_state':
         // Create forest from server data (only once)
         if (!this.forestCreated && Array.isArray(data.forestObjects)) {
-          await createForestFromServer(this.scene, data.forestObjects);
+          // MVP 5.5: Pass collision system to add tree collisions
+          await createForestFromServer(this.scene, data.forestObjects, this.collisionSystem || undefined);
           this.forestCreated = true;
         }
 
