@@ -1743,11 +1743,11 @@ export class Game {
     const texture = new THREE.CanvasTexture(canvas);
     texture.needsUpdate = true;
 
-    // Create sprite material
+    // Create sprite material (depthTest enabled so labels are occluded by trees)
     const material = new THREE.SpriteMaterial({
       map: texture,
       transparent: true,
-      depthTest: false,
+      depthTest: true,
       depthWrite: false
     });
 

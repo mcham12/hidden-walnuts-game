@@ -420,6 +420,141 @@ class VFXManager {
 
 ---
 
+## 🎯 MVP 5.5: Physics & Collision Detection
+
+**Goal**: Add collision detection so players can't walk through trees and obstacles
+
+**Why Now?**:
+- **Game feel is broken without it**: Walking through solid objects destroys immersion
+- **Before NPCs (MVP 6.7)**: NPCs will need obstacle avoidance and pathfinding
+- **Before Predators (MVP 7)**: Chase mechanics require collision
+- **Before Code Cleanup (MVP 6)**: Don't clean up code then add more systems
+
+### Core Collision System
+
+**Player vs Landmark Trees**:
+- Landmark trees are HUGE (10x scale, East is 17.5x) - should be solid obstacles
+- Use simple cylinder colliders around tree trunks
+- Player bounces/slides around trees smoothly
+
+**Player vs Regular Forest Trees**:
+- Regular trees from ForestManager also need collision
+- Smaller cylinder colliders (scale with tree size)
+- Bushes might be passable or have smaller collision
+
+**Player vs Terrain**:
+- Already have terrain height detection (getTerrainHeight)
+- Add steep slope detection (prevent climbing cliffs)
+- Optional: Add rocks/boulders as solid obstacles
+
+**Player vs Other Players** (Optional):
+- Light collision (can push through slightly)
+- Prevents players stacking exactly on top of each other
+- Soft collision feels better than hard blocking
+
+### Technical Implementation
+
+**Collision Library Options**:
+```typescript
+// Option 1: cannon-es (full physics engine)
+// PRO: Complete physics, realistic collisions
+// CON: Heavier, more complex
+
+// Option 2: Three.js Raycasting (manual collision)
+// PRO: Lightweight, full control
+// CON: More code to write
+
+// Option 3: rapier (Rust-based, very fast)
+// PRO: Excellent performance
+// CON: WebAssembly dependency
+```
+
+**Recommended: Start with Three.js Raycasting**
+```typescript
+class CollisionSystem {
+  private colliders: THREE.Mesh[] = [];
+
+  // Add collider for each landmark/tree
+  addCollider(position: Vector3, radius: number, height: number) {
+    const geometry = new THREE.CylinderGeometry(radius, radius, height);
+    const collider = new THREE.Mesh(geometry);
+    collider.position.copy(position);
+    collider.visible = false; // Invisible collision geometry
+    this.colliders.push(collider);
+  }
+
+  // Check if player movement would hit a collider
+  checkCollision(from: Vector3, to: Vector3): boolean {
+    const direction = to.clone().sub(from).normalize();
+    const raycaster = new THREE.Raycaster(from, direction);
+    const intersects = raycaster.intersectObjects(this.colliders);
+    return intersects.length > 0 && intersects[0].distance < from.distanceTo(to);
+  }
+
+  // Slide player around obstacle
+  resolveCollision(from: Vector3, to: Vector3): Vector3 {
+    // If collision detected, calculate slide vector
+    // Return adjusted position that slides around obstacle
+  }
+}
+```
+
+### Visual Feedback
+
+**Debug Visualization** (for development):
+- Show collision cylinders (wireframe)
+- Highlight active collisions (red when blocked)
+- Toggle with debug overlay (F key)
+
+**Player Feedback**:
+- Subtle "bump" sound when hitting tree
+- Brief camera shake on hard collision
+- Movement feels smooth (no jarring stops)
+
+### Performance Considerations
+
+**Spatial Partitioning**:
+- Only check collisions for nearby objects
+- Use grid-based partitioning (divide world into chunks)
+- Don't check collisions with trees 50+ units away
+
+**Optimization**:
+```typescript
+// Only check collisions within player's local area
+const COLLISION_CHECK_RADIUS = 20; // units
+
+checkNearbyCollisions(playerPos: Vector3) {
+  const nearbyColliders = this.colliders.filter(c =>
+    c.position.distanceTo(playerPos) < COLLISION_CHECK_RADIUS
+  );
+  // Only raycast against nearby colliders
+}
+```
+
+### Success Criteria
+
+- [ ] Cannot walk through landmark trees
+- [ ] Cannot walk through regular forest trees
+- [ ] Smooth sliding movement around obstacles (no jarring stops)
+- [ ] Performance remains smooth (60 FPS with many trees)
+- [ ] Debug visualization available for testing
+- [ ] Optional: Subtle audio/visual feedback on collision
+
+### What's Saved for Later
+
+**Advanced Physics** (not needed now):
+- Full rigid body physics
+- Character controller with acceleration/momentum
+- Jumping with gravity
+- Climbing mechanics
+
+**Complex Collision Shapes** (keep it simple):
+- Per-triangle mesh collision
+- Convex hull colliders
+- Heightmap terrain collision (we have height function already)
+
+---
+
 ## 🗑️ MVP 6: Code Cleanup
 
 **Goal**: Remove unused ECS/enterprise code
@@ -1007,6 +1142,7 @@ if (isMobile) {
 | 3.5 | Multiple Characters | ✅ Complete |
 | 4 | Competitive Multiplayer | ✅ Complete |
 | 5 | **Game Feel & Polish** | 🎯 **CURRENT** |
+| 5.5 | **Physics & Collision Detection** 🆕 | **Critical!** |
 | 6 | Code Cleanup | Pending |
 | 6.5 | **Player Authentication** ⬆️ | **Moved Up!** |
 | 6.7 | **NPC Characters & World Life** ⬆️🆕 | **Moved Up!** |
