@@ -23,7 +23,7 @@
       "fly": "/assets/models/characters/Animations/Single/Squirrel_Fly.glb",
       "swim": "/assets/models/characters/Animations/Single/Squirrel_Swim.glb"
     },
-    "scale": 0.3,
+    "scale": 0.5,
     "category": "mammal",
     "description": "Agile forest dweller perfect for hiding walnuts! Features the most expressive animations.",
     "emoteAnimations": {
@@ -56,7 +56,7 @@
       "fly": "/assets/models/characters/Animations/Single/Lynx_Fly.glb",
       "swim": "/assets/models/characters/Animations/Single/Lynx_Swim.glb"
     },
-    "scale": 0.3,
+    "scale": 0.5,
     "category": "mammal",
     "description": "Stealthy wildcat with powerful hunting instincts. Features the complete expressive animation set.",
     "emoteAnimations": {
@@ -89,7 +89,7 @@
       "fly": "/assets/models/characters/Animations/Single/Goat_Fly.glb",
       "swim": "/assets/models/characters/Animations/Single/Goat_Swim.glb"
     },
-    "scale": 0.3,
+    "scale": 0.5,
     "category": "mammal",
     "description": "Sure-footed climber with boundless energy. Complete expressive animation set for maximum personality.",
     "emoteAnimations": {
@@ -122,7 +122,7 @@
       "fly": "/assets/models/characters/Animations/Single/Hare_Fly.glb",
       "swim": "/assets/models/characters/Animations/Single/Hare_Swim.glb"
     },
-    "scale": 0.3,
+    "scale": 0.5,
     "category": "mammal",
     "description": "Swift and nimble speedster built for quick escapes. Full expressive animation repertoire.",
     "emoteAnimations": {
@@ -155,7 +155,7 @@
       "fly": "/assets/models/characters/Animations/Single/Moose_Fly.glb",
       "swim": "/assets/models/characters/Animations/Single/Moose_Swim.glb"
     },
-    "scale": 0.3,
+    "scale": 0.5,
     "category": "mammal",
     "description": "Majestic forest giant with surprising agility. Complete expressive animation set.",
     "emoteAnimations": {
@@ -188,7 +188,7 @@
       "fly": "/assets/models/characters/Animations/Single/Bear_Fly.glb",
       "swim": "/assets/models/characters/Animations/Single/Bear_Swim.glb"
     },
-    "scale": 0.3,
+    "scale": 0.5,
     "category": "mammal",
     "description": "Powerful forest guardian with impressive strength and presence. Full expressive animation set.",
     "emoteAnimations": {
@@ -221,7 +221,7 @@
       "fly": "/assets/models/characters/Animations/Single/Skunk_Fly.glb",
       "swim": "/assets/models/characters/Animations/Single/Skunk_Swim.glb"
     },
-    "scale": 0.3,
+    "scale": 0.5,
     "category": "mammal",
     "description": "Charismatic woodland creature with distinctive markings. Complete expressive animation repertoire.",
     "emoteAnimations": {
@@ -254,7 +254,7 @@
       "fly": "/assets/models/characters/Animations/Single/Badger_Fly.glb",
       "swim": "/assets/models/characters/Animations/Single/Badger_Swim.glb"
     },
-    "scale": 0.3,
+    "scale": 0.5,
     "category": "mammal",
     "description": "Tenacious burrower with fierce determination. Full expressive animation set.",
     "emoteAnimations": {
@@ -287,7 +287,7 @@
       "fly": "/assets/models/characters/Animations/Single/Chipmunk_Fly.glb",
       "swim": "/assets/models/characters/Animations/Single/Chipmunk_Swim.glb"
     },
-    "scale": 0.3,
+    "scale": 0.5,
     "category": "mammal",
     "description": "Energetic hoarder with adorable cheek pouches. Complete expressive animation repertoire.",
     "emoteAnimations": {
@@ -320,7 +320,7 @@
       "fly": "/assets/models/characters/Animations/Single/Turkey_Fly.glb",
       "swim": "/assets/models/characters/Animations/Single/Turkey_Swim.glb"
     },
-    "scale": 0.3,
+    "scale": 0.5,
     "category": "bird",
     "description": "Proud woodland bird with surprising flying prowess. Full expressive animation set.",
     "emoteAnimations": {
@@ -353,7 +353,7 @@
       "fly": "/assets/models/characters/Animations/Single/Mallard_Fly.glb",
       "swim": "/assets/models/characters/Animations/Single/Mallard_Swim.glb"
     },
-    "scale": 0.3,
+    "scale": 0.5,
     "category": "bird",
     "description": "Graceful waterfowl equally at home on land or water. Complete expressive animations.",
     "emoteAnimations": {

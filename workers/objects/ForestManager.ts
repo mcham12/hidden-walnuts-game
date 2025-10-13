@@ -150,6 +150,35 @@ export default class ForestManager {
       });
     }
 
+    // Admin endpoint to reset forest (forces regeneration with landmark exclusions)
+    if (path === "/admin/reset-forest" && request.method === "POST") {
+      await this.storage.delete('forestObjects');
+      this.forestObjects = []; // Clear in-memory state
+      this.isInitialized = false; // Force re-initialization on next connection
+      console.log('🔄 Admin: forestObjects cleared, will regenerate with landmark exclusions');
+      return new Response(JSON.stringify({
+        message: "Forest reset - will regenerate with landmark exclusions on next connection"
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
+    // Admin endpoint to reset player positions
+    if (path === "/admin/reset-positions" && request.method === "POST") {
+      const playerKeys = await this.storage.list({ prefix: 'player:' });
+      for (const key of playerKeys.keys()) {
+        await this.storage.delete(key);
+      }
+      console.log('🔄 Admin: All player positions cleared');
+      return new Response(JSON.stringify({
+        message: "Player positions reset - players will spawn at default position on next connection"
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
     return new Response("Not Found", { status: 404 });
   }
 
@@ -161,8 +190,8 @@ export default class ForestManager {
     const playerConnection: PlayerConnection = {
       squirrelId,
       socket,
-      position: savedPosition || { x: 0, y: 2, z: 0 },
-      rotationY: 0,
+      position: savedPosition || { x: 0, y: 2, z: 10 },
+      rotationY: Math.PI, // Face north (-Z direction)
       lastActivity: Date.now(),
       characterId
     };
@@ -505,31 +534,80 @@ export default class ForestManager {
   // Simple forest object generation
   private generateForestObjects(): ForestObject[] {
     const objects: ForestObject[] = [];
-    
-    // Generate 20 trees
-    for (let i = 0; i < 20; i++) {
+
+    // Landmark positions to exclude (these use special tree models)
+    const landmarks = [
+      { x: 0, z: 0, name: 'Origin' },    // Uses Dead_straight_tree.glb
+      { x: 0, z: -40, name: 'North' },   // Uses bottle_tree.glb
+      { x: 0, z: 40, name: 'South' },    // Uses Big_pine.glb
+      { x: 40, z: 0, name: 'East' },     // Uses Straight_sphere_tree.glb
+      { x: -40, z: 0, name: 'West' }     // Uses W_branch_tree.glb
+    ];
+
+    const LANDMARK_EXCLUSION_RADIUS = 25; // Don't place Tree_01.glb within 25 units of landmarks
+
+    // Helper function to check if position is too close to any landmark
+    const isTooCloseToLandmark = (x: number, z: number): boolean => {
+      for (const landmark of landmarks) {
+        const distance = Math.sqrt(Math.pow(x - landmark.x, 2) + Math.pow(z - landmark.z, 2));
+        if (distance < LANDMARK_EXCLUSION_RADIUS) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // Generate 20 trees (with landmark exclusion)
+    let attempts = 0;
+    const maxAttempts = 200; // Prevent infinite loop
+    for (let i = 0; i < 20 && attempts < maxAttempts; attempts++) {
+      const x = (Math.random() - 0.5) * 100;
+      const z = (Math.random() - 0.5) * 100;
+
+      // Skip if too close to any landmark
+      if (isTooCloseToLandmark(x, z)) {
+        continue;
+      }
+
       objects.push({
         id: `tree-${Date.now()}-${i}`,
         type: "tree",
-        x: (Math.random() - 0.5) * 100,
+        x,
         y: 0,
-        z: (Math.random() - 0.5) * 100,
+        z,
         scale: 0.8 + Math.random() * 0.4
       });
+      i++;
     }
-    
-    // Generate 30 shrubs
-    for (let i = 0; i < 30; i++) {
+
+    // Generate 30 shrubs (with landmark exclusion)
+    attempts = 0;
+    for (let i = 0; i < 30 && attempts < maxAttempts; attempts++) {
+      const x = (Math.random() - 0.5) * 100;
+      const z = (Math.random() - 0.5) * 100;
+
+      // Skip if too close to any landmark
+      if (isTooCloseToLandmark(x, z)) {
+        continue;
+      }
+
       objects.push({
         id: `shrub-${Date.now()}-${i}`,
         type: "shrub",
-        x: (Math.random() - 0.5) * 100,
+        x,
         y: 0,
-        z: (Math.random() - 0.5) * 100,
+        z,
         scale: 0.7 + Math.random() * 0.3
       });
+      i++;
     }
-    
+
+    const treeCount = objects.filter(o => o.type === 'tree').length;
+    const shrubCount = objects.filter(o => o.type === 'shrub').length;
+    console.log(`✅ Generated ${treeCount} trees (Tree_01.glb) and ${shrubCount} shrubs`);
+    console.log(`   Excluded 25-unit radius around 5 landmark positions`);
+    console.log(`   Landmark trees use DIFFERENT models: Big_pine, bottle_tree, Dead_straight_tree, etc.`);
+
     return objects;
   }
 

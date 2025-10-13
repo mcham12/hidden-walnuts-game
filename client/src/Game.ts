@@ -6,6 +6,7 @@ import { getTerrainHeight } from './terrain.js';
 import { AudioManager } from './AudioManager.js';
 import { VFXManager } from './VFXManager.js';
 import { ToastManager } from './ToastManager.js';
+import { SettingsManager } from './SettingsManager.js';
 
 interface Character {
   id: string;
@@ -104,6 +105,13 @@ export class Game {
   private lastFrameTime: number = 0;
   private MAX_DELTA_TIME = 1/30; // Cap at 30fps to prevent spiral of death
 
+  // MVP 5: Performance tracking for debug overlay
+  private fps: number = 60;
+  private frameCount: number = 0;
+  private lastFpsUpdate: number = 0;
+  private networkLatency: number = 0;
+  private lastPingSent: number = 0;
+
   // MVP 3: Walnut system properties
   private walnuts: Map<string, THREE.Group> = new Map(); // All walnuts in world
   private playerWalnutCount: number = 3; // Player starts with 3 walnuts to hide
@@ -124,10 +132,10 @@ export class Game {
   // Forest synchronization
   private forestCreated: boolean = false;
 
-  // MVP 3: Minimap
+  // MVP 3: Minimap - Static north-up design for better landmark navigation
   private minimapCanvas: HTMLCanvasElement | null = null;
   private minimapContext: CanvasRenderingContext2D | null = null;
-  private MINIMAP_WORLD_SIZE = 100; // Show 100x100 world units on minimap
+  private MINIMAP_WORLD_SIZE = 200; // Show 200x200 world units (covers all landmarks at ±80)
   private MINIMAP_SIZE = 200; // Canvas size in pixels
 
   // MVP 3: Tutorial system
@@ -153,8 +161,8 @@ export class Game {
   private emoteInProgress: boolean = false; // Prevent emote spam (local player)
   private remotePlayerEmotes: Map<string, boolean> = new Map(); // Track which remote players are emoting
 
-  // MVP 5: Audio system
-  private audioManager: AudioManager = new AudioManager();
+  // MVP 5: Audio system (passed from main to reuse loaded sounds)
+  private audioManager!: AudioManager;
 
   // MVP 5: Visual effects system
   private vfxManager: VFXManager | null = null;
@@ -163,8 +171,19 @@ export class Game {
   private toastManager: ToastManager = new ToastManager();
 
 
-  async init(canvas: HTMLCanvasElement) {
+  async init(canvas: HTMLCanvasElement, audioManager: AudioManager, settingsManager: SettingsManager) {
     try {
+      // MVP 5: Set audio manager (reuse from main.ts with preloaded sounds)
+      this.audioManager = audioManager;
+
+      // MVP 5: Apply initial mouse sensitivity from settings
+      this.mouseSensitivity = settingsManager.getMouseSensitivity();
+
+      // Listen for settings changes
+      window.addEventListener('settingsChanged', ((e: CustomEvent) => {
+        this.mouseSensitivity = e.detail.mouseSensitivity;
+      }) as EventListener);
+
       // MVP 5: Initialize loading progress UI
       this.initLoadingProgress();
 
@@ -244,14 +263,11 @@ export class Game {
       // Load selected character
       await this.loadCharacter();
 
-      // Add landmark cube for navigation (central landmark at origin)
-      this.addLandmarkCube();
-
-      // MVP 3: Add cardinal direction landmarks (N, S, E, W)
-      this.addCardinalLandmarks();
-
       // MVP 3: Initialize labels container
       this.labelsContainer = document.getElementById('labels-container');
+
+      // Add landmark trees
+      await this.addLandmarks();
 
       // MVP 5: Initialize VFX Manager
       this.vfxManager = new VFXManager(this.scene, this.camera);
@@ -711,6 +727,14 @@ export class Game {
     // INDUSTRY STANDARD: Cap delta to prevent spiral of death on lag spikes
     delta = Math.min(delta, this.MAX_DELTA_TIME);
 
+    // MVP 5: Calculate FPS for debug overlay (update every second)
+    this.frameCount++;
+    if (currentTime - this.lastFpsUpdate >= 1.0) {
+      this.fps = this.frameCount / (currentTime - this.lastFpsUpdate);
+      this.frameCount = 0;
+      this.lastFpsUpdate = currentTime;
+    }
+
     // Update player physics
     if (this.character) {
       this.updatePlayer(delta);
@@ -1071,8 +1095,10 @@ export class Game {
 
   private startHeartbeat(): void {
     this.heartbeatInterval = window.setInterval(() => {
-      this.sendMessage({ type: 'heartbeat' });
-    }, 30000); // Heartbeat every 30 seconds
+      // MVP 5: Send ping with timestamp for latency measurement
+      this.lastPingSent = performance.now();
+      this.sendMessage({ type: 'ping', timestamp: this.lastPingSent });
+    }, 5000); // Ping every 5 seconds for better latency tracking
   }
 
   private stopIntervals(): void {
@@ -1240,7 +1266,7 @@ export class Game {
       case 'existing_players':
         if (Array.isArray(data.players)) {
           for (const player of data.players) {
-            if (this.validatePlayerData(player)) {
+            if (this.validatePlayerData(player) && player.squirrelId !== this.playerId) {
               this.createRemotePlayer(player.squirrelId, player.position, player.rotationY, player.characterId);
             }
           }
@@ -1292,6 +1318,14 @@ export class Game {
         // Received emote from another player
         if (data.playerId && data.emote && data.playerId !== this.playerId) {
           this.playRemoteEmoteAnimation(data.playerId, data.emote);
+        }
+        break;
+
+      case 'pong':
+        // MVP 5: Calculate network latency from ping/pong
+        if (data.timestamp && this.lastPingSent > 0) {
+          const now = performance.now();
+          this.networkLatency = now - this.lastPingSent;
         }
         break;
 
@@ -1544,92 +1578,185 @@ export class Game {
     this.scene.add(cube);
   }
 
-  private addLandmarkCube(): void {
-    // Add a tall, visible red tower at origin for navigation reference
-    const geometry = new THREE.BoxGeometry(2, 20, 2); // Wide and tall
-    const material = new THREE.MeshBasicMaterial({
-      color: 0xff0000,
-      transparent: false
-    });
-    const tower = new THREE.Mesh(geometry, material);
-    tower.position.set(0, 10, 0); // Base at terrain level, extends up to 20
-    this.scene.add(tower);
+  /**
+   * Add landmark trees for navigation
+   */
+  private async addLandmarks(): Promise<void> {
+    console.log('🏁 Adding landmark trees...');
+
+    // Origin landmark at (0, 0)
+    await this.createLandmark(0, 0, '/assets/models/environment/Dead_straight_tree.glb', 'Origin');
+
+    // North landmark at (0, -80)
+    await this.createLandmark(0, -80, '/assets/models/environment/bottle_tree.glb', 'North');
+
+    // South landmark at (0, 80)
+    await this.createLandmark(0, 80, '/assets/models/environment/Big_pine.glb', 'South');
+
+    // East landmark at (80, 0) - 1.75x bigger
+    await this.createLandmark(80, 0, '/assets/models/environment/Straight_sphere_tree.glb', 'East', 17.5);
+
+    // West landmark at (-80, 0)
+    await this.createLandmark(-80, 0, '/assets/models/environment/W_branch_tree.glb', 'West');
+
+    console.log('✅ Landmarks added');
   }
 
   /**
-   * MVP 3: Add colored landmark towers at cardinal directions (N, S, E, W)
-   * These help players navigate and communicate locations
+   * Create a single landmark tree
    */
-  private addCardinalLandmarks(): void {
-    const landmarkDistance = 40; // Distance from center
-    const landmarkHeight = 15; // Height of towers
+  private async createLandmark(
+    x: number,
+    z: number,
+    modelPath: string,
+    name: string,
+    scale: number = 10
+  ): Promise<void> {
+    try {
+      // Load the tree model
+      const loadedModel = await this.loadCachedAsset(modelPath, false);
+      if (!loadedModel) {
+        console.error(`❌ Failed to load landmark: ${modelPath}`);
+        return;
+      }
 
-    // North (Blue)
-    this.createLandmark(
-      new THREE.Vector3(0, 0, landmarkDistance),
-      0x0000ff, // Blue
-      landmarkHeight,
-      'North'
-    );
+      // Debug: Count meshes and find the one closest to origin
+      let meshCount = 0;
+      let closestMesh: THREE.Mesh | null = null;
+      let closestDistance = Infinity;
 
-    // South (Green)
-    this.createLandmark(
-      new THREE.Vector3(0, 0, -landmarkDistance),
-      0x00ff00, // Green
-      landmarkHeight,
-      'South'
-    );
+      loadedModel.traverse((child: any) => {
+        if (child instanceof THREE.Mesh) {
+          meshCount++;
+          const worldPos = new THREE.Vector3();
+          child.getWorldPosition(worldPos);
+          const distance = worldPos.length();
+          console.log(`   🔍 Found mesh in ${name}: ${child.name || 'unnamed'} at local pos (${worldPos.x.toFixed(2)}, ${worldPos.y.toFixed(2)}, ${worldPos.z.toFixed(2)}), distance from origin: ${distance.toFixed(2)}`);
 
-    // East (Yellow)
-    this.createLandmark(
-      new THREE.Vector3(landmarkDistance, 0, 0),
-      0xffff00, // Yellow
-      landmarkHeight,
-      'East'
-    );
+          // Keep track of mesh closest to origin
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            closestMesh = child;
+          }
+        }
+      });
+      console.log(`   📊 Total meshes in ${name} (${modelPath}): ${meshCount}, using closest to origin`);
 
-    // West (Purple)
-    this.createLandmark(
-      new THREE.Vector3(-landmarkDistance, 0, 0),
-      0xff00ff, // Purple
-      landmarkHeight,
-      'West'
-    );
-  }
+      if (!closestMesh) {
+        console.error(`❌ No mesh found in landmark: ${modelPath}`);
+        return;
+      }
 
-  /**
-   * Create a single landmark tower with label
-   */
-  private createLandmark(position: THREE.Vector3, color: number, height: number, name: string): void {
-    // Get terrain height
-    const terrainY = getTerrainHeight(position.x, position.z);
+      // Create new group with only the closest mesh
+      const tree = new THREE.Group();
+      const meshClone = closestMesh.clone();
 
-    // Create tower
-    const geometry = new THREE.BoxGeometry(1.5, height, 1.5);
-    const material = new THREE.MeshStandardMaterial({
-      color: color,
-      emissive: color,
-      emissiveIntensity: 0.3
-    });
-    const tower = new THREE.Mesh(geometry, material);
-    const towerPosition = new THREE.Vector3(position.x, terrainY + height / 2, position.z);
-    tower.position.copy(towerPosition);
-    tower.castShadow = true;
-    tower.receiveShadow = true;
-    this.scene.add(tower);
+      // Reset mesh local position to origin so it's centered in the group
+      meshClone.position.set(0, 0, 0);
+      tree.add(meshClone);
 
-    // Store landmark position for label updates
-    const labelPosition = new THREE.Vector3(position.x, terrainY + height, position.z);
-    this.landmarks.set(`landmark-${name}`, labelPosition);
+      // Scale the tree (default 10x for landmarks)
+      tree.scale.setScalar(scale);
 
-    // Add floating label
-    if (this.labelsContainer) {
-      const label = this.createLabel(`${name}`, '#ffffff');
-      label.style.fontWeight = 'bold';
-      label.style.fontSize = '14px';
-      // Store label for landmark (we'll update its position every frame)
-      this.walnutLabels.set(`landmark-${name}`, label);
+      // Get terrain height at this position
+      const terrainY = getTerrainHeight(x, z);
+
+      // Position the tree on the terrain
+      tree.position.set(x, terrainY, z);
+      tree.castShadow = true;
+      tree.receiveShadow = true;
+
+      this.scene.add(tree);
+      console.log(`   ✅ ${name} landmark at (${x}, ${terrainY.toFixed(2)}, ${z}) - model: ${modelPath}`);
+
+      // Register landmark in map for minimap display
+      this.landmarks.set(name, new THREE.Vector3(x, terrainY, z));
+
+      // Add floating text label above the landmark (2x higher)
+      this.createLandmarkLabel(name, x, terrainY + 30, z);
+    } catch (error) {
+      console.error(`❌ Error creating landmark ${name}:`, error);
     }
+  }
+
+  /**
+   * Create a floating text label above a landmark (sprite-based, cartoony style)
+   */
+  private createLandmarkLabel(text: string, x: number, y: number, z: number): void {
+    // Extract just the first letter
+    const label = text.charAt(0);
+
+    // Choose color based on landmark (matching minimap)
+    let bgColor = '#FFD700'; // Gold for Origin
+    if (text === 'North') bgColor = '#4CAF50'; // Green
+    else if (text === 'South') bgColor = '#2196F3'; // Blue
+    else if (text === 'East') bgColor = '#FF9800'; // Orange
+    else if (text === 'West') bgColor = '#9C27B0'; // Purple
+
+    // Create canvas for text
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d')!;
+    canvas.width = 128;
+    canvas.height = 128;
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = 55;
+
+    // Clear canvas (transparent background)
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw drop shadow (cartoony style)
+    context.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    context.beginPath();
+    context.arc(centerX + 3, centerY + 3, radius, 0, Math.PI * 2);
+    context.fill();
+
+    // Draw colored circle background
+    context.fillStyle = bgColor;
+    context.beginPath();
+    context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    context.fill();
+
+    // Draw thick black outline (comic style)
+    context.strokeStyle = '#000000';
+    context.lineWidth = 6;
+    context.beginPath();
+    context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    context.stroke();
+
+    // Draw letter with thick outline (cartoon style)
+    context.font = 'bold 70px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+
+    // Letter outline (black stroke)
+    context.strokeStyle = '#000000';
+    context.lineWidth = 8;
+    context.strokeText(label, centerX, centerY);
+
+    // Letter fill (white)
+    context.fillStyle = '#ffffff';
+    context.fillText(label, centerX, centerY);
+
+    // Create texture from canvas
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+
+    // Create sprite material
+    const material = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false
+    });
+
+    // Create sprite (billboard - always faces camera)
+    const sprite = new THREE.Sprite(material);
+    sprite.position.set(x, y, z);
+    sprite.scale.set(6, 6, 1); // Smaller, more subtle
+
+    this.scene.add(sprite);
   }
 
   // INDUSTRY STANDARD: Asset caching methods with proper SkinnedMesh cloning
@@ -1729,6 +1856,9 @@ export class Game {
         const playerCountSpan = document.getElementById('player-count');
         const networkStatusSpan = document.getElementById('network-status');
         const playerIdSpan = document.getElementById('player-id');
+        const fpsSpan = document.getElementById('debug-fps');
+        const memorySpan = document.getElementById('debug-memory');
+        const latencySpan = document.getElementById('debug-latency');
 
         if (this.character && playerPosSpan) {
           const pos = this.character.position;
@@ -1745,6 +1875,26 @@ export class Game {
 
         if (playerIdSpan) {
           playerIdSpan.textContent = this.playerId || 'None';
+        }
+
+        // MVP 5: Enhanced debug info
+        if (fpsSpan) {
+          fpsSpan.textContent = `${Math.round(this.fps)}`;
+        }
+
+        if (memorySpan) {
+          // @ts-ignore - performance.memory is available in Chrome/Edge
+          if (performance.memory) {
+            // @ts-ignore
+            const usedMB = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(1);
+            memorySpan.textContent = `${usedMB} MB`;
+          } else {
+            memorySpan.textContent = 'N/A';
+          }
+        }
+
+        if (latencySpan) {
+          latencySpan.textContent = `${Math.round(this.networkLatency)} ms`;
         }
 
         // MVP 3: Update walnut HUD
@@ -2210,7 +2360,8 @@ export class Game {
   }
 
   /**
-   * MVP 3: Update minimap display
+   * MVP 3: Update minimap display - Static north-up orientation
+   * North is always at the top, player moves around the map
    */
   private updateMinimap(): void {
     if (!this.minimapContext || !this.minimapCanvas || !this.character) return;
@@ -2222,70 +2373,86 @@ export class Game {
     ctx.clearRect(0, 0, size, size);
 
     // Draw background
-    ctx.fillStyle = 'rgba(40, 40, 40, 0.9)';
+    ctx.fillStyle = 'rgba(34, 34, 34, 0.95)';
     ctx.fillRect(0, 0, size, size);
 
     // Draw border
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.lineWidth = 2;
-    ctx.strokeRect(0, 0, size, size);
+    ctx.strokeRect(1, 1, size - 2, size - 2);
 
-    // Draw grid lines (optional - shows 4x4 grid for easier navigation)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.lineWidth = 1;
-    const gridDivisions = 4;
-    for (let i = 1; i < gridDivisions; i++) {
-      const pos = (i / gridDivisions) * size;
-      // Vertical lines
-      ctx.beginPath();
-      ctx.moveTo(pos, 0);
-      ctx.lineTo(pos, size);
-      ctx.stroke();
-      // Horizontal lines
-      ctx.beginPath();
-      ctx.moveTo(0, pos);
-      ctx.lineTo(size, pos);
-      ctx.stroke();
-    }
-
-    // Helper function to convert world coords to minimap coords
+    // Helper function: Convert world coords to minimap coords (static north-up)
     const worldToMinimap = (worldX: number, worldZ: number) => {
-      const playerPos = this.character!.position;
-      // Relative to player position
-      const relX = worldX - playerPos.x;
-      const relZ = worldZ - playerPos.z;
-
-      // Scale to minimap
+      // World center (0, 0) maps to canvas center
+      // Scale: MINIMAP_WORLD_SIZE world units = MINIMAP_SIZE pixels
       const scale = size / this.MINIMAP_WORLD_SIZE;
-      const minimapX = (relX * scale) + size / 2;
-      const minimapY = (relZ * scale) + size / 2;
+
+      // Convert world coordinates to minimap pixel coordinates
+      // X: -100 to +100 world → 0 to 200 pixels
+      // Z: -100 to +100 world → 0 to 200 pixels
+      // NOTE: -Z is north (top of screen), +Z is south (bottom)
+      const minimapX = (worldX + this.MINIMAP_WORLD_SIZE / 2) * scale;
+      const minimapY = (worldZ + this.MINIMAP_WORLD_SIZE / 2) * scale;
 
       return { x: minimapX, y: minimapY };
     };
 
-    // Draw landmarks
+    // Draw crosshair at world origin
+    const origin = worldToMinimap(0, 0);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(origin.x - 5, origin.y);
+    ctx.lineTo(origin.x + 5, origin.y);
+    ctx.moveTo(origin.x, origin.y - 5);
+    ctx.lineTo(origin.x, origin.y + 5);
+    ctx.stroke();
+
+    // Draw landmark trees
     for (const [landmarkId, landmarkPos] of this.landmarks) {
       const pos = worldToMinimap(landmarkPos.x, landmarkPos.z);
 
-      // Only draw if within minimap bounds
-      if (pos.x >= 0 && pos.x <= size && pos.y >= 0 && pos.y <= size) {
-        // Get landmark color based on name
-        let color = '#ffffff';
-        if (landmarkId.includes('North')) color = '#0000ff';
-        else if (landmarkId.includes('South')) color = '#00ff00';
-        else if (landmarkId.includes('East')) color = '#ffff00';
-        else if (landmarkId.includes('West')) color = '#ff00ff';
+      // Only draw if within bounds
+      if (pos.x < 0 || pos.x > size || pos.y < 0 || pos.y > size) continue;
 
-        ctx.fillStyle = color;
-        ctx.fillRect(pos.x - 3, pos.y - 3, 6, 6);
+      // Determine landmark label and color
+      let label = '?';
+      let color = '#ffffff';
+
+      if (landmarkId.includes('Origin')) {
+        label = 'O';
+        color = '#FFD700'; // Gold for origin
+      } else if (landmarkId.includes('North')) {
+        label = 'N';
+        color = '#4CAF50'; // Green for north
+      } else if (landmarkId.includes('South')) {
+        label = 'S';
+        color = '#2196F3'; // Blue for south
+      } else if (landmarkId.includes('East')) {
+        label = 'E';
+        color = '#FF9800'; // Orange for east
+      } else if (landmarkId.includes('West')) {
+        label = 'W';
+        color = '#9C27B0'; // Purple for west
       }
-    }
 
-    // Draw origin landmark (red tower at 0,0)
-    const originPos = worldToMinimap(0, 0);
-    if (originPos.x >= 0 && originPos.x <= size && originPos.y >= 0 && originPos.y <= size) {
-      ctx.fillStyle = '#ff0000';
-      ctx.fillRect(originPos.x - 4, originPos.y - 4, 8, 8);
+      // Draw landmark circle
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw border
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Draw label
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 14px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, pos.x, pos.y);
     }
 
     // Draw remote players
@@ -2294,32 +2461,52 @@ export class Game {
 
       // Only draw if within minimap bounds
       if (pos.x >= 0 && pos.x <= size && pos.y >= 0 && pos.y <= size) {
-        ctx.fillStyle = '#aaaaaa';
+        ctx.fillStyle = '#888888';
         ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+        ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
         ctx.fill();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
     }
 
-    // Draw local player (always at center)
+    // Draw local player
+    const playerPos = worldToMinimap(this.character.position.x, this.character.position.z);
+
+    // Player dot
     ctx.fillStyle = '#00ff00';
     ctx.beginPath();
-    ctx.arc(size / 2, size / 2, 5, 0, Math.PI * 2);
+    ctx.arc(playerPos.x, playerPos.y, 6, 0, Math.PI * 2);
     ctx.fill();
 
-    // Draw player direction indicator
+    // Player border
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Draw player direction indicator (arrow showing rotation)
+    // Player rotation: 0 = facing +Z (south), Math.PI = facing -Z (north)
+    // Canvas: rotation 0 = up (north), PI = down (south), -PI/2 = right (east), PI/2 = left (west)
+    ctx.save();
+    ctx.translate(playerPos.x, playerPos.y);
+    ctx.rotate(Math.PI - this.character.rotation.y); // Correct mapping for static north-up minimap
+
+    // Draw direction arrow
     ctx.strokeStyle = '#00ff00';
+    ctx.fillStyle = '#00ff00';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(size / 2, size / 2);
-    // Character starts at Math.PI (facing backward), adjust for minimap (top is north/+Z)
-    const angle = this.character.rotation.y;
-    // On minimap: top is +Z, so we use sin for X and cos for Y (reversed from before)
-    ctx.lineTo(
-      size / 2 + Math.sin(angle) * 10,
-      size / 2 + Math.cos(angle) * 10
-    );
+    ctx.moveTo(0, -10);  // Arrow tip
+    ctx.lineTo(-4, -4);
+    ctx.lineTo(0, 0);
+    ctx.lineTo(4, -4);
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
+
+    ctx.restore();
   }
 
   /**

@@ -23,9 +23,47 @@ export class AudioManager {
   };
   private isMuted: boolean = false;
   private ambientSound: Howl | null = null;
+  private isUnlocked: boolean = false;
+  private loadingPromises: Promise<void>[] = [];
+  private isFullyLoaded: boolean = false;
 
   constructor() {
     this.initializeSounds();
+  }
+
+  /**
+   * Wait for all sounds to finish loading
+   * CRITICAL: Must be called before playing any sounds to ensure zero delay
+   */
+  async waitForLoad(): Promise<void> {
+    if (this.isFullyLoaded) return;
+    await Promise.all(this.loadingPromises);
+    this.isFullyLoaded = true;
+  }
+
+  /**
+   * Unlock audio context on first user interaction
+   * Modern browsers require user gesture before playing audio
+   */
+  async unlock(): Promise<void> {
+    if (this.isUnlocked) return;
+
+    // Check if Howler context exists, create if needed
+    if (!Howler.ctx) {
+      // Play a silent sound to create the context
+      const testSound = this.sounds.values().next().value;
+      if (testSound) {
+        const id = testSound.play();
+        testSound.stop(id);
+      }
+    }
+
+    // Resume if suspended
+    if (Howler.ctx && Howler.ctx.state === 'suspended') {
+      await Howler.ctx.resume();
+    }
+
+    this.isUnlocked = true;
   }
 
   /**
@@ -109,8 +147,6 @@ export class AudioManager {
     //   volume: 0.3,
     //   loop: true,
     // });
-
-    console.log('AudioManager: Sound library initialized with WAV files');
   }
 
   /**
@@ -118,21 +154,32 @@ export class AudioManager {
    */
   private loadSound(id: string, config: SoundConfig): void {
     try {
-      const sound = new Howl({
-        src: config.src,
-        volume: config.volume,
-        loop: config.loop || false,
-        sprite: config.sprite,
-        // Handle errors gracefully for missing audio files
-        onloaderror: (id, error) => {
-          console.warn(`AudioManager: Failed to load sound "${id}":`, error);
-        },
-        onplayerror: (id, error) => {
-          console.warn(`AudioManager: Failed to play sound "${id}":`, error);
-        },
+      // Create a Promise that resolves when the sound finishes loading
+      const loadPromise = new Promise<void>((resolve, reject) => {
+        const sound = new Howl({
+          src: config.src,
+          volume: config.volume,
+          loop: config.loop || false,
+          sprite: config.sprite,
+          preload: true,
+          html5: false,
+          onloaderror: (_soundId, error) => {
+            console.warn(`AudioManager: Failed to load sound "${id}":`, error);
+            reject(new Error(`Failed to load sound ${id}`));
+          },
+          onplayerror: (_soundId, error) => {
+            console.warn(`AudioManager: Failed to play sound "${id}":`, error);
+          },
+          onload: () => {
+            resolve();
+          },
+        });
+
+        this.sounds.set(id, sound);
       });
 
-      this.sounds.set(id, sound);
+      // Track this loading promise
+      this.loadingPromises.push(loadPromise);
     } catch (error) {
       console.error(`AudioManager: Error creating sound "${id}":`, error);
     }
@@ -183,6 +230,7 @@ export class AudioManager {
 
   /**
    * Play ambient background sounds
+   * NOTE: unlock() must be called ONCE before using this
    */
   playAmbient(): void {
     if (this.isMuted) return;

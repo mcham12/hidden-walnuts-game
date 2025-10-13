@@ -103,7 +103,7 @@
         border-radius: 5px;
         font-family: monospace;
         font-size: 12px;
-        z-index: 1000;
+        z-index: 1100;
       }
       #debug-overlay.hidden {
         display: none;
@@ -532,6 +532,70 @@
       #settings-toggle.hidden {
         display: none;
       }
+      /* MVP 5: Persistent Control Guide */
+      #control-guide {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-family: 'Arial', sans-serif;
+        font-size: 13px;
+        z-index: 1000;
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        transition: opacity 0.3s ease;
+      }
+      #control-guide.hidden {
+        display: none;
+      }
+      #control-guide-close {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(255,255,255,0.2);
+        border: none;
+        color: white;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 14px;
+        line-height: 1;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+      }
+      #control-guide-close:hover {
+        background: rgba(255,255,255,0.3);
+        transform: scale(1.1);
+      }
+      .control-item-inline {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .control-key-inline {
+        background: rgba(255,255,255,0.2);
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-weight: bold;
+        font-size: 12px;
+        color: #FFD700;
+        min-width: 30px;
+        text-align: center;
+      }
+      .control-separator {
+        color: rgba(255,255,255,0.3);
+        font-weight: bold;
+      }
       /* MVP 5: Loading Progress Bar */
       #loading-screen {
         position: fixed;
@@ -727,6 +791,10 @@
       <div>🌐 Network: <span id="network-status">Disconnected</span></div>
       <div>🆔 ID: <span id="player-id">None</span></div>
       <hr style="margin: 8px 0; border-color: #666;">
+      <div>⚡ FPS: <span id="debug-fps">60</span></div>
+      <div>💾 Memory: <span id="debug-memory">0 MB</span></div>
+      <div>📡 Latency: <span id="debug-latency">0 ms</span></div>
+      <hr style="margin: 8px 0; border-color: #666;">
       <div style="font-size: 10px; color: #ccc;">
         Press F to show/hide debug<br>
         WASD to move around<br>
@@ -765,6 +833,44 @@
       <button class="emote-button" data-emote="celebrate" title="Celebrate">🎉</button>
     </div>
     <div id="chat-message-display"></div>
+    <!-- MVP 5: Persistent Control Guide -->
+    <div id="control-guide" class="hidden">
+      <button id="control-guide-close" title="Dismiss (you can reopen in Settings)">×</button>
+      <div class="control-item-inline">
+        <span class="control-key-inline">WASD</span>
+        <span>Move</span>
+      </div>
+      <span class="control-separator">|</span>
+      <div class="control-item-inline">
+        <span class="control-key-inline">SPACE</span>
+        <span>Jump</span>
+      </div>
+      <span class="control-separator">|</span>
+      <div class="control-item-inline">
+        <span class="control-key-inline">H</span>
+        <span>Hide Walnut</span>
+      </div>
+      <span class="control-separator">|</span>
+      <div class="control-item-inline">
+        <span class="control-key-inline">Click</span>
+        <span>Find</span>
+      </div>
+      <span class="control-separator">|</span>
+      <div class="control-item-inline">
+        <span class="control-key-inline">M</span>
+        <span>Mute</span>
+      </div>
+      <span class="control-separator">|</span>
+      <div class="control-item-inline">
+        <span class="control-key-inline">F</span>
+        <span>Debug</span>
+      </div>
+      <span class="control-separator">|</span>
+      <div class="control-item-inline">
+        <span class="control-key-inline">ESC</span>
+        <span>Settings</span>
+      </div>
+    </div>
     <!-- MVP 5: Settings Menu -->
     <button id="settings-toggle" class="hidden">⚙️ Settings</button>
     <div id="settings-overlay" class="hidden">

@@ -129,7 +129,7 @@ export class VFXManager {
     (geometry.userData as any).startTime = Date.now();
 
     const material = new THREE.PointsMaterial({
-      size: type === 'confetti' ? 0.2 : 0.1,
+      size: type === 'confetti' ? 0.2 : (type === 'dust' ? 0.03 : 0.1),
       vertexColors: true,
       transparent: true,
       opacity: 1.0,

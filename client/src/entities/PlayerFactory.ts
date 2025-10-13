@@ -18,9 +18,9 @@ export class PlayerFactory {
   async createLocalPlayer(playerId: string): Promise<Entity> {
     Logger.info(LogCategory.PLAYER, `🐿️ Creating local player: ${playerId}`);
     
-    // TASK 8 FIX: Spawn players very close to origin for easier multiplayer testing
-    const spawnX = Math.random() * 10 - 5; // Random spawn between -5 and 5 (closer to origin)
-    const spawnZ = Math.random() * 10 - 5; // Random spawn between -5 and 5 (closer to origin)
+    // Spawn player just south of origin facing north
+    const spawnX = 0; // At origin on X axis
+    const spawnZ = 10; // 10 units south of origin (positive Z is south)
     
     let terrainHeight = 0;
     try {
@@ -58,7 +58,8 @@ export class PlayerFactory {
       }
     });
     model.position.set(spawnX, spawnY, spawnZ);
-    
+    model.rotation.y = Math.PI; // Face north (-Z direction)
+
     // Add to scene
     this.sceneManager.getScene().add(model);
     Logger.info(LogCategory.PLAYER, `✅ Local player added to scene at position (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
@@ -71,7 +72,7 @@ export class PlayerFactory {
       })
       .addComponent<RotationComponent>({
         type: 'rotation',
-        value: Rotation.fromRadians(0)
+        value: Rotation.fromRadians(Math.PI) // Face north (-Z direction)
       })
       .addComponent<RenderComponent>({
         type: 'render',

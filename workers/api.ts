@@ -109,8 +109,17 @@ export default {
         return await forest.fetch(request);
       }
 
+      // Handle /admin/reset-forest route
+      if (pathname === "/admin/reset-forest") {
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        return await forest.fetch(request);
+      }
 
-
+      // Handle /admin/reset-positions route
+      if (pathname === "/admin/reset-positions") {
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        return await forest.fetch(request);
+      }
 
 
 
