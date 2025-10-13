@@ -7,6 +7,7 @@ import { AudioManager } from './AudioManager.js';
 import { VFXManager } from './VFXManager.js';
 import { ToastManager } from './ToastManager.js';
 import { SettingsManager } from './SettingsManager.js';
+import { CollisionSystem } from './CollisionSystem.js';
 
 interface Character {
   id: string;
@@ -170,6 +171,9 @@ export class Game {
   // MVP 5: Toast notification system
   private toastManager: ToastManager = new ToastManager();
 
+  // MVP 5.5: Collision detection system
+  private collisionSystem: CollisionSystem | null = null;
+
 
   async init(canvas: HTMLCanvasElement, audioManager: AudioManager, settingsManager: SettingsManager) {
     try {
@@ -271,6 +275,10 @@ export class Game {
 
       // MVP 5: Initialize VFX Manager
       this.vfxManager = new VFXManager(this.scene, this.camera);
+
+      // MVP 5.5: Initialize Collision System
+      this.collisionSystem = new CollisionSystem(this.scene);
+      console.log('🔒 Collision system initialized');
 
       // MVP 3: Initialize minimap
       this.initMinimap();
@@ -472,6 +480,16 @@ export class Game {
       this.character.castShadow = true;
       this.scene.add(this.character);
 
+      // MVP 5.5: Add local player collision
+      if (this.collisionSystem) {
+        this.collisionSystem.addPlayerCollider(
+          this.playerId,
+          this.character.position,
+          0.5 // Character collision radius
+        );
+        console.log('🔒 Added collision for local player');
+      }
+
       // DIAGNOSTIC: Check for morph targets/blendshapes for facial expressions
       this.inspectMorphTargets(this.character, this.selectedCharacterId);
 
@@ -640,6 +658,10 @@ export class Game {
         const debugOverlay = document.getElementById('debug-overlay');
         if (debugOverlay) {
           debugOverlay.classList.toggle('hidden');
+        }
+        // MVP 5.5: Also toggle collision debug visualization
+        if (this.collisionSystem) {
+          this.collisionSystem.toggleDebug();
         }
       }
 
@@ -887,9 +909,17 @@ export class Game {
       }
     }
 
-    // Apply horizontal movement and update actual velocity for network sync
+    // MVP 5.5: Apply horizontal movement with collision detection
     const movementDelta = this.velocity.clone().setY(0).multiplyScalar(delta);
-    this.character.position.add(movementDelta);
+    const currentPosition = this.character.position.clone();
+    const desiredPosition = currentPosition.clone().add(movementDelta);
+
+    // Check collision and get adjusted position (slides around obstacles)
+    const finalPosition = this.collisionSystem
+      ? this.collisionSystem.checkCollision(this.playerId, currentPosition, desiredPosition)
+      : desiredPosition;
+
+    this.character.position.copy(finalPosition);
 
     // Update actual velocity (units per second) for accurate network transmission
     this.actualVelocity.x = this.velocity.x;
@@ -911,6 +941,11 @@ export class Game {
 
     // STANDARD: Use raycasting for precise ground detection (prevents sinking)
     this.snapToGround();
+
+    // MVP 5.5: Update player collision position
+    if (this.collisionSystem) {
+      this.collisionSystem.updateColliderPosition(this.playerId, this.character.position);
+    }
 
     if (!this.isJumping) {
       // INDUSTRY STANDARD: Animation state machine with hysteresis
@@ -1438,6 +1473,16 @@ export class Game {
       }
 
       this.scene.add(remoteCharacter);
+
+      // MVP 5.5: Add remote player collision
+      if (this.collisionSystem) {
+        this.collisionSystem.addPlayerCollider(
+          playerId,
+          remoteCharacter.position,
+          0.5 // Character collision radius
+        );
+        console.log('🔒 Added collision for remote player:', playerId);
+      }
     } catch (error) {
       console.error('❌ Failed to create remote player:', playerId, error);
     }
@@ -1533,6 +1578,11 @@ export class Game {
       // Simple interpolation between two states
       player.position.lerpVectors(fromState.position, toState.position, t);
       player.quaternion.slerpQuaternions(fromState.quaternion, toState.quaternion, t);
+
+      // MVP 5.5: Update remote player collision position
+      if (this.collisionSystem) {
+        this.collisionSystem.updateColliderPosition(playerId, player.position);
+      }
     }
   }
 
@@ -1555,13 +1605,19 @@ export class Game {
       
       this.scene.remove(remotePlayer);
       this.remotePlayers.delete(playerId);
-      
+
       // Clean up animation system
       this.remotePlayerMixers.delete(playerId);
       this.remotePlayerActions.delete(playerId);
-      
+
       // Clean up interpolation buffer
       this.remotePlayerBuffers.delete(playerId);
+
+      // MVP 5.5: Remove collision
+      if (this.collisionSystem) {
+        this.collisionSystem.removeCollider(playerId);
+        console.log('🔒 Removed collision for remote player:', playerId);
+      }
     }
   }
 
@@ -1671,6 +1727,20 @@ export class Game {
 
       // Register landmark in map for minimap display
       this.landmarks.set(name, new THREE.Vector3(x, terrainY, z));
+
+      // MVP 5.5: Add collision cylinder for landmark tree
+      if (this.collisionSystem) {
+        // Collision radius based on tree scale (trunk radius approximation)
+        const collisionRadius = scale * 0.5; // Trunk is roughly 0.5 units at base scale
+        const collisionHeight = scale * 8; // Trees are roughly 8 units tall at base scale
+        this.collisionSystem.addTreeCollider(
+          `landmark_${name}`,
+          new THREE.Vector3(x, terrainY, z),
+          collisionRadius,
+          collisionHeight
+        );
+        console.log(`   🔒 Added collision for ${name} (radius: ${collisionRadius.toFixed(1)}, height: ${collisionHeight.toFixed(1)})`);
+      }
 
       // Add floating text label above the landmark (1.3x higher to clear tree canopy)
       this.createLandmarkLabel(name, x, terrainY + 39, z);

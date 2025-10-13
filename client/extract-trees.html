@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tree Extractor</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #2c5f2d;
+    }
+    #output {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      min-height: 200px;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    button {
+      background: #2c5f2d;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 20px;
+    }
+    button:hover {
+      background: #4a8f4d;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .tree-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .tree-item {
+      background: white;
+      padding: 10px;
+      border-radius: 6px;
+      border: 2px solid #ddd;
+    }
+    .tree-item button {
+      width: 100%;
+      padding: 8px;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌲 Tree Extractor</h1>
+  <p>Extract individual trees from "low poly trees for itch.glb"</p>
+
+  <button id="loadBtn">Load and Extract Trees</button>
+
+  <div id="output">Ready to extract trees...</div>
+  <div id="treeList" class="tree-list"></div>
+
+  <script type="module">
+    import * as THREE from './node_modules/three/build/three.module.js';
+    import { GLTFLoader } from './node_modules/three/examples/jsm/loaders/GLTFLoader.js';
+    import { GLTFExporter } from './node_modules/three/examples/jsm/exporters/GLTFExporter.js';
+
+    const output = document.getElementById('output');
+    const treeList = document.getElementById('treeList');
+    const loadBtn = document.getElementById('loadBtn');
+
+    let extractedTrees = [];
+
+    function log(message) {
+      output.textContent += message + '\n';
+      console.log(message);
+    }
+
+    async function loadAndExtractTrees() {
+      loadBtn.disabled = true;
+      output.textContent = '';
+      treeList.innerHTML = '';
+      extractedTrees = [];
+
+      log('🌲 Loading GLB file...');
+
+      const loader = new GLTFLoader();
+
+      try {
+        const gltf = await loader.loadAsync('/assets/models/environment/low poly trees for itch.glb');
+
+        log('✅ GLB loaded successfully');
+        log(`📦 Found ${gltf.scene.children.length} objects\n`);
+
+        // Extract each tree
+        gltf.scene.children.forEach((child, index) => {
+          if (child.isMesh) {
+            const treeName = child.name || `Tree_${index + 1}`;
+            log(`  🌳 Found: ${treeName}`);
+            extractedTrees.push({ name: treeName, mesh: child });
+          }
+        });
+
+        log(`\n✅ Found ${extractedTrees.length} trees ready to export`);
+        log('Click individual download buttons below to save each tree.\n');
+
+        // Create download buttons for each tree
+        extractedTrees.forEach((tree, index) => {
+          const div = document.createElement('div');
+          div.className = 'tree-item';
+          div.innerHTML = `
+            <strong>${tree.name}</strong>
+            <button onclick="window.downloadTree(${index})">Download ${tree.name}.glb</button>
+          `;
+          treeList.appendChild(div);
+        });
+
+        loadBtn.disabled = false;
+      } catch (error) {
+        log(`❌ Error: ${error.message}`);
+        loadBtn.disabled = false;
+      }
+    }
+
+    async function downloadTree(index) {
+      const tree = extractedTrees[index];
+      log(`\n📦 Exporting ${tree.name}...`);
+
+      const exporter = new GLTFExporter();
+      const scene = new THREE.Scene();
+      scene.add(tree.mesh.clone());
+
+      exporter.parse(
+        scene,
+        (result) => {
+          const blob = new Blob([result], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${tree.name}.glb`;
+          link.click();
+
+          URL.revokeObjectURL(url);
+          log(`✅ Downloaded: ${tree.name}.glb (${(blob.size / 1024).toFixed(1)} KB)`);
+        },
+        (error) => {
+          log(`❌ Export error: ${error.message}`);
+        },
+        { binary: true }
+      );
+    }
+
+    // Make downloadTree available globally
+    window.downloadTree = downloadTree;
+
+    loadBtn.addEventListener('click', loadAndExtractTrees);
+  </script>
+</body>
+</html>
