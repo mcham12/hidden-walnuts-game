@@ -721,6 +721,185 @@
           opacity: 0;
         }
       }
+      /* MVP 5.7: Mobile/Touch-Friendly Styles */
+      @media (max-width: 768px), (hover: none) and (pointer: coarse) {
+        /* Make character select mobile-friendly */
+        #character-select {
+          min-width: auto;
+          width: 90%;
+          max-width: 450px;
+          padding: 20px;
+        }
+        #character-select h3 {
+          font-size: 20px;
+        }
+        #character-preview-container {
+          height: 200px;
+        }
+        #character-select select {
+          font-size: 18px;
+          padding: 12px;
+          min-height: 48px; /* Touch target minimum */
+        }
+        #start-btn {
+          padding: 18px;
+          font-size: 20px;
+          min-height: 56px; /* Touch target minimum */
+        }
+
+        /* Make HUD mobile-friendly */
+        #walnut-hud {
+          top: 5px;
+          left: 5px;
+          padding: 10px 15px;
+          font-size: 14px;
+          max-width: 200px;
+        }
+        #walnut-hud div {
+          margin: 3px 0;
+        }
+        #walnut-hud hr {
+          margin: 5px 0;
+        }
+
+        /* Make minimap smaller on mobile */
+        #minimap {
+          width: 120px;
+          height: 120px;
+          top: 5px;
+          right: 5px;
+        }
+
+        /* Hide debug overlay on mobile by default */
+        #debug-overlay {
+          font-size: 10px;
+          padding: 5px;
+          top: 5px;
+          right: 5px;
+        }
+
+        /* Mobile-friendly buttons (larger touch targets) */
+        #leaderboard-toggle,
+        #settings-toggle {
+          padding: 12px 18px;
+          font-size: 16px;
+          min-height: 48px;
+          min-width: 48px;
+        }
+
+        /* Stack leaderboard and settings vertically on mobile */
+        #leaderboard-toggle {
+          top: auto;
+          bottom: 120px;
+          right: 5px;
+        }
+        #settings-toggle {
+          top: auto;
+          bottom: 60px;
+          right: 5px;
+        }
+
+        /* Make leaderboard responsive */
+        #leaderboard {
+          right: 5px;
+          top: auto;
+          bottom: 180px;
+          width: calc(100vw - 10px);
+          max-width: 300px;
+        }
+
+        /* Hide control guide on mobile (not needed with touch controls) */
+        #control-guide {
+          display: none !important;
+        }
+
+        /* Make settings menu mobile-friendly */
+        #settings-menu {
+          padding: 20px;
+          width: 95%;
+          max-width: none;
+        }
+        #settings-menu h2 {
+          font-size: 24px;
+        }
+        .settings-tab {
+          font-size: 14px;
+          padding: 10px 15px;
+        }
+        .controls-grid {
+          grid-template-columns: 1fr;
+        }
+
+        /* Make chat/emotes mobile-friendly (larger touch targets) */
+        .chat-button {
+          padding: 14px 18px;
+          font-size: 14px;
+          min-height: 48px;
+        }
+        .emote-button {
+          width: 56px;
+          height: 56px;
+          font-size: 24px;
+        }
+        #quick-chat {
+          bottom: 10px;
+          left: 10px;
+        }
+        #emotes {
+          bottom: 10px;
+          right: 10px;
+        }
+
+        /* Make toast notifications stack at top-center on mobile */
+        #toast-container {
+          top: 10px;
+          right: auto;
+          left: 50%;
+          transform: translateX(-50%);
+          width: calc(100% - 20px);
+          max-width: 400px;
+        }
+        .toast {
+          min-width: auto;
+        }
+
+        /* Prevent text selection and improve touch responsiveness */
+        body {
+          -webkit-user-select: none;
+          user-select: none;
+          -webkit-tap-highlight-color: transparent;
+          -webkit-touch-callout: none;
+        }
+        button, select {
+          -webkit-tap-highlight-color: transparent;
+        }
+      }
+
+      /* MVP 5.7: Mobile-specific touch controls hint */
+      #touch-controls-hint {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 15px 25px;
+        border-radius: 8px;
+        font-family: 'Arial', sans-serif;
+        font-size: 14px;
+        text-align: center;
+        z-index: 1000;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        max-width: 90%;
+      }
+      #touch-controls-hint.hidden {
+        display: none;
+      }
+      @media (min-width: 769px) {
+        #touch-controls-hint {
+          display: none !important;
+        }
+      }
     </style>
   </head>
   <body>
@@ -833,6 +1012,14 @@
       <button class="emote-button" data-emote="celebrate" title="Celebrate">🎉</button>
     </div>
     <div id="chat-message-display"></div>
+    <!-- MVP 5.7: Touch Controls Hint (Mobile Only) -->
+    <div id="touch-controls-hint" class="hidden">
+      <div style="font-weight: bold; margin-bottom: 8px;">📱 Touch Controls</div>
+      <div>🕹️ Drag anywhere to move</div>
+      <div>👆 Tap walnut to find</div>
+      <div>👆👆 Double-tap to hide</div>
+      <div style="margin-top: 8px; font-size: 12px; opacity: 0.7;">Tap here to dismiss</div>
+    </div>
     <!-- MVP 5: Persistent Control Guide -->
     <div id="control-guide" class="hidden">
       <button id="control-guide-close" title="Dismiss (you can reopen in Settings)">×</button>

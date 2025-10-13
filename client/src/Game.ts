@@ -8,6 +8,7 @@ import { VFXManager } from './VFXManager.js';
 import { ToastManager } from './ToastManager.js';
 import { SettingsManager } from './SettingsManager.js';
 import { CollisionSystem } from './CollisionSystem.js';
+import { TouchControls } from './TouchControls.js';
 
 interface Character {
   id: string;
@@ -180,6 +181,9 @@ export class Game {
   // MVP 5.5: Collision detection system
   private collisionSystem: CollisionSystem | null = null;
 
+  // MVP 5.7: Touch controls for mobile
+  private touchControls: TouchControls | null = null;
+
 
   async init(canvas: HTMLCanvasElement, audioManager: AudioManager, settingsManager: SettingsManager) {
     try {
@@ -206,9 +210,18 @@ export class Game {
       this.camera.position.set(0, 10, 10); // Set initial camera position
 
       // Renderer
-      this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      // MVP 5.7: Detect mobile and optimize renderer settings
+      const isMobile = TouchControls.isMobile();
+      this.renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: !isMobile, // Disable antialiasing on mobile for performance
+        powerPreference: isMobile ? 'low-power' : 'high-performance'
+      });
       this.renderer.setSize(window.innerWidth, window.innerHeight);
-      this.renderer.shadowMap.enabled = true;
+      this.renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2)); // Lower pixel ratio on mobile
+      this.renderer.shadowMap.enabled = !isMobile; // Disable shadows on mobile for performance
+
+      console.log(`🎮 Renderer initialized for ${isMobile ? 'mobile' : 'desktop'} (antialias: ${!isMobile}, shadows: ${!isMobile}, pixelRatio: ${this.renderer.getPixelRatio()})`);
 
       // Lights
       const ambient = new THREE.AmbientLight(0xffffff, 0.6);
@@ -216,15 +229,19 @@ export class Game {
 
       const directional = new THREE.DirectionalLight(0xffffff, 0.8);
       directional.position.set(50, 100, 50);
-      directional.castShadow = true;
-      directional.shadow.mapSize.width = 2048;
-      directional.shadow.mapSize.height = 2048;
-      directional.shadow.camera.near = 0.5;
-      directional.shadow.camera.far = 500;
-      directional.shadow.camera.left = -100;
-      directional.shadow.camera.right = 100;
-      directional.shadow.camera.top = 100;
-      directional.shadow.camera.bottom = -100;
+
+      // MVP 5.7: Only enable shadows on desktop
+      if (!isMobile) {
+        directional.castShadow = true;
+        directional.shadow.mapSize.width = 2048;
+        directional.shadow.mapSize.height = 2048;
+        directional.shadow.camera.near = 0.5;
+        directional.shadow.camera.far = 500;
+        directional.shadow.camera.left = -100;
+        directional.shadow.camera.right = 100;
+        directional.shadow.camera.top = 100;
+        directional.shadow.camera.bottom = -100;
+      }
       this.scene.add(directional);
 
       // Terrain
@@ -698,6 +715,33 @@ export class Game {
     window.addEventListener('mousemove', (event) => {
       this.onMouseMove(event);
     });
+
+    // MVP 5.7: Touch controls for mobile
+    this.touchControls = new TouchControls(this.renderer.domElement);
+
+    // Set up tap callback for finding walnuts
+    this.touchControls.onTap((x: number, y: number) => {
+      // Convert touch coordinates to mouse event for finding walnuts
+      const mouseEvent = new MouseEvent('click', {
+        clientX: x,
+        clientY: y,
+        bubbles: true
+      });
+      this.onMouseClick(mouseEvent);
+    });
+
+    // Set up double-tap callback for hiding walnuts
+    this.touchControls.onDoubleTap(() => {
+      this.hideWalnut();
+    });
+
+    // Set up camera rotation callback
+    this.touchControls.onCameraRotate((deltaX: number, _deltaY: number) => {
+      // Rotate character based on horizontal drag
+      if (this.character) {
+        this.character.rotation.y -= deltaX * 0.01;
+      }
+    });
   }
 
   private onResize() {
@@ -733,6 +777,12 @@ export class Game {
 
     // MVP 5: Cleanup audio and VFX
     this.audioManager.dispose();
+
+    // MVP 5.7: Cleanup touch controls
+    if (this.touchControls) {
+      this.touchControls.destroy();
+      this.touchControls = null;
+    }
     if (this.vfxManager) {
       this.vfxManager.dispose();
     }
@@ -828,6 +878,36 @@ export class Game {
   private updatePlayer(delta: number) {
     // STANDARD: Validate character exists before movement
     if (!this.character) return;
+
+    // MVP 5.7: Sync touch controls input to keys (drag-to-move for mobile)
+    if (this.touchControls) {
+      const touchInput = this.touchControls.getMovementInput();
+
+      // Convert touch input to WASD keys
+      if (touchInput.forward) {
+        this.keys.add('w');
+      } else {
+        this.keys.delete('w');
+      }
+
+      if (touchInput.backward) {
+        this.keys.add('s');
+      } else {
+        this.keys.delete('s');
+      }
+
+      if (touchInput.left) {
+        this.keys.add('a');
+      } else {
+        this.keys.delete('a');
+      }
+
+      if (touchInput.right) {
+        this.keys.add('d');
+      } else {
+        this.keys.delete('d');
+      }
+    }
 
     // INDUSTRY STANDARD: Calculate desired velocity based on input
     const desiredVelocity = new THREE.Vector3(0, 0, 0);

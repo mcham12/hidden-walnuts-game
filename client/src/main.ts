@@ -355,23 +355,46 @@ async function main() {
       walnutHud.classList.remove('hidden');
     }
 
-    // MVP 5: Show persistent control guide
+    // MVP 5: Show persistent control guide (desktop only)
     const controlGuide = document.getElementById('control-guide');
     const controlGuideClose = document.getElementById('control-guide-close');
-    if (controlGuide) {
-      // Check localStorage to see if user dismissed it
-      const dismissed = localStorage.getItem('controlGuideDismissed');
-      if (!dismissed) {
-        controlGuide.classList.remove('hidden');
-      }
 
-      // Add close button handler
-      if (controlGuideClose) {
-        controlGuideClose.addEventListener('click', () => {
-          controlGuide.classList.add('hidden');
-          localStorage.setItem('controlGuideDismissed', 'true');
-          audioManager.playSound('ui', 'button_click');
-        });
+    // MVP 5.7: Show touch controls hint on mobile
+    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|windows phone/i.test(navigator.userAgent.toLowerCase()) ||
+                     ('ontouchstart' in window && window.innerWidth < 768);
+
+    if (isMobile) {
+      // Show touch controls hint on mobile
+      const touchHint = document.getElementById('touch-controls-hint');
+      if (touchHint) {
+        const touchHintDismissed = localStorage.getItem('touchHintDismissed');
+        if (!touchHintDismissed) {
+          touchHint.classList.remove('hidden');
+
+          // Add click handler to dismiss
+          touchHint.addEventListener('click', () => {
+            touchHint.classList.add('hidden');
+            localStorage.setItem('touchHintDismissed', 'true');
+            audioManager.playSound('ui', 'button_click');
+          });
+        }
+      }
+    } else {
+      // Show desktop control guide
+      if (controlGuide) {
+        const dismissed = localStorage.getItem('controlGuideDismissed');
+        if (!dismissed) {
+          controlGuide.classList.remove('hidden');
+        }
+
+        // Add close button handler
+        if (controlGuideClose) {
+          controlGuideClose.addEventListener('click', () => {
+            controlGuide.classList.add('hidden');
+            localStorage.setItem('controlGuideDismissed', 'true');
+            audioManager.playSound('ui', 'button_click');
+          });
+        }
       }
     }
 
