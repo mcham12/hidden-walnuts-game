@@ -10,6 +10,8 @@ const BUSH_COUNT = 30;
 // Cache for loaded models
 let treeModel: THREE.Group | null = null;
 let bushModel: THREE.Group | null = null;
+let rockModels: (THREE.Group | null)[] = [null, null, null, null, null]; // Rock_01 through Rock_05
+let stumpModel: THREE.Group | null = null;
 
 // Export bush positions for walnut hiding
 export const bushPositions: THREE.Vector3[] = [];
@@ -17,7 +19,7 @@ export const bushPositions: THREE.Vector3[] = [];
 // Export function to create forest from server data
 export async function createForestFromServer(
   scene: THREE.Scene,
-  forestObjects: Array<{ type: 'tree' | 'shrub'; x: number; y: number; z: number; scale: number }>,
+  forestObjects: Array<{ id: string; type: 'tree' | 'shrub' | 'rock' | 'stump'; x: number; y: number; z: number; scale: number; modelVariant?: number }>,
   collisionSystem?: CollisionSystem
 ) {
   try {
@@ -25,7 +27,16 @@ export async function createForestFromServer(
     console.log('Loading forest models from server data...');
     treeModel = await loadModel('/assets/models/environment/Tree_01.glb');
     bushModel = await loadModel('/assets/models/environment/Bush_01.glb');
-    console.log('Forest models loaded successfully');
+
+    // MVP 5.5: Load rock models (5 variants)
+    for (let i = 0; i < 5; i++) {
+      rockModels[i] = await loadModel(`/assets/models/environment/Rock_0${i + 1}.glb`);
+    }
+
+    // MVP 5.5: Load stump model
+    stumpModel = await loadModel('/assets/models/environment/Stump_01.glb');
+
+    console.log('Forest models loaded successfully (trees, bushes, rocks, stumps)');
 
     // Clear bush positions (in case of reload)
     bushPositions.length = 0;
@@ -64,12 +75,57 @@ export async function createForestFromServer(
         bushPositions.push(new THREE.Vector3(obj.x, y, obj.z));
 
         // Note: Bushes are passable, no collision needed
+      } else if (obj.type === 'rock') {
+        // MVP 5.5: Add rocks as obstacles
+        const rockIndex = (obj.modelVariant || 1) - 1;
+        const rockModel = rockModels[rockIndex];
+        if (rockModel) {
+          const rock = rockModel.clone();
+
+          // Fix: Adjust rock Y position to sit on terrain (rocks have pivot at center, not bottom)
+          // Rock models are roughly 0.5-0.6 units tall at base scale
+          const rockHeightOffset = 0.3 * obj.scale; // Half of rock height to place bottom on ground
+          rock.position.set(obj.x, y + rockHeightOffset, obj.z);
+          rock.scale.set(obj.scale, obj.scale, obj.scale);
+          scene.add(rock);
+
+          // MVP 5.5: Use Octree mesh collision for accurate irregular rock shapes
+          if (collisionSystem) {
+            collisionSystem.addTreeMeshCollider(
+              `rock_${obj.id}`,
+              rock,
+              new THREE.Vector3(obj.x, y, obj.z)
+            );
+          }
+        }
+      } else if (obj.type === 'stump') {
+        // MVP 5.5: Add stumps as obstacles
+        if (stumpModel) {
+          const stump = stumpModel.clone();
+          stump.position.set(obj.x, y, obj.z);
+          stump.scale.set(obj.scale, obj.scale, obj.scale);
+          scene.add(stump);
+
+          // Add collision for stump (cylinder)
+          if (collisionSystem) {
+            const collisionRadius = 0.5 * obj.scale;
+            const collisionHeight = 1.0 * obj.scale;
+            collisionSystem.addTreeCollider(
+              `stump_${obj.id}`,
+              new THREE.Vector3(obj.x, y, obj.z),
+              collisionRadius,
+              collisionHeight
+            );
+          }
+        }
       }
     }
 
-    console.log(`🔒 Added collision for ${treeCount} forest trees`);
+    const rockCount = forestObjects.filter(o => o.type === 'rock').length;
+    const stumpCount = forestObjects.filter(o => o.type === 'stump').length;
+    console.log(`🔒 Added collision for ${treeCount} forest trees, ${rockCount} rocks, ${stumpCount} stumps`);
 
-    console.log(`✅ Forest created from server: ${forestObjects.filter(o => o.type === 'tree').length} trees, ${bushPositions.length} bushes`);
+    console.log(`✅ Forest created from server: ${treeCount} trees, ${bushPositions.length} bushes, ${rockCount} rocks, ${stumpCount} stumps`);
   } catch (error) {
     console.error('Failed to create forest from server:', error);
     // Create simple fallback forest

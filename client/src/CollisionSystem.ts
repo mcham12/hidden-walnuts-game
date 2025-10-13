@@ -11,6 +11,8 @@
  */
 
 import * as THREE from 'three';
+import { Octree } from 'three/examples/jsm/math/Octree.js';
+import { Capsule } from 'three/examples/jsm/math/Capsule.js';
 
 export interface Collider {
   id: string;
@@ -19,6 +21,8 @@ export interface Collider {
   height: number;
   type: 'tree' | 'player' | 'npc';
   mesh?: THREE.Mesh; // Debug visualization
+  actualMesh?: THREE.Object3D; // Actual tree mesh for precise collision (standard practice)
+  octree?: Octree; // Standard Three.js Octree for mesh collision (like FPS example)
 }
 
 export class CollisionSystem {
@@ -49,6 +53,51 @@ export class CollisionSystem {
     if (this.debugMode) {
       this.createDebugMesh(collider);
     }
+  }
+
+  /**
+   * Add tree collider using Three.js Octree (standard approach from FPS example)
+   * https://threejs.org/examples/#games_fps
+   */
+  addTreeMeshCollider(id: string, treeMesh: THREE.Object3D, position: THREE.Vector3): void {
+    treeMesh.updateMatrixWorld(true);
+
+    // Standard Three.js: Build Octree from mesh (like FPS example)
+    const octree = new Octree();
+    octree.fromGraphNode(treeMesh);
+
+    const collider: Collider = {
+      id,
+      position: position.clone(),
+      radius: 0,
+      height: 0,
+      type: 'tree',
+      actualMesh: treeMesh,
+      octree: octree
+    };
+
+    this.colliders.set(id, collider);
+
+    if (this.debugMode) {
+      this.createMeshDebugVisualization(treeMesh, position);
+    }
+  }
+
+  /**
+   * Create debug visualization for mesh colliders
+   */
+  private createMeshDebugVisualization(treeMesh: THREE.Object3D, position: THREE.Vector3): void {
+    // Create a helper to visualize the actual mesh bounds at player height
+    const bbox = new THREE.Box3().setFromObject(treeMesh);
+
+    // Clamp to player height
+    const playerMin = position.y;
+    const playerMax = position.y + 2;
+    bbox.min.y = Math.max(bbox.min.y, playerMin);
+    bbox.max.y = Math.min(bbox.max.y, playerMax);
+
+    const helper = new THREE.Box3Helper(bbox, 0xff0000);
+    this.scene.add(helper);
   }
 
   /**
@@ -121,13 +170,17 @@ export class CollisionSystem {
 
   /**
    * Check if movement from 'from' to 'to' would cause a collision
-   * Returns the adjusted position (slides around obstacles)
+   * Returns { position: adjusted position, collided: whether collision occurred }
    */
   checkCollision(
     playerId: string,
     from: THREE.Vector3,
     to: THREE.Vector3
-  ): THREE.Vector3 {
+  ): { position: THREE.Vector3; collided: boolean } {
+    // Get player's collider to determine its radius (standard collision practice)
+    const playerCollider = this.colliders.get(playerId);
+    const playerRadius = playerCollider ? playerCollider.radius : 0.5;
+
     // Get nearby colliders for performance (don't check distant trees)
     const nearbyColliders = this.getNearbyColliders(from);
 
@@ -136,17 +189,83 @@ export class CollisionSystem {
       // Skip self (don't collide with own collider)
       if (collider.id === playerId) continue;
 
-      // Check 2D collision (ignore Y axis - just XZ plane)
-      const distance = this.distance2D(to, collider.position);
-
-      // Collision detected if too close
-      if (distance < collider.radius) {
-        // Calculate slide vector
-        return this.resolveCollision(from, to, collider);
+      // If collider has actual mesh, use mesh-based collision (standard practice)
+      if (collider.actualMesh) {
+        if (this.checkMeshCollision(to, playerRadius, collider, from.y)) {
+          return {
+            position: this.resolveMeshCollision(from, to, collider, playerRadius),
+            collided: true
+          };
+        }
+      } else {
+        // Fallback: cylinder collision for simple colliders
+        const distance = this.distance2D(to, collider.position);
+        const combinedRadius = collider.radius + playerRadius;
+        if (distance < combinedRadius) {
+          return {
+            position: this.resolveCollision(from, to, collider, playerRadius),
+            collided: true
+          };
+        }
       }
     }
 
     // No collision - allow movement
+    return { position: to, collided: false };
+  }
+
+  /**
+   * Check collision using standard Three.js Octree (like FPS example)
+   * https://threejs.org/examples/#games_fps
+   */
+  private checkMeshCollision(
+    playerPos: THREE.Vector3,
+    playerRadius: number,
+    collider: Collider,
+    playerY: number
+  ): boolean {
+    if (!collider.octree) return false;
+
+    // Standard Three.js: Create player capsule (cylinder) at player height
+    const start = new THREE.Vector3(playerPos.x, playerY, playerPos.z);
+    const end = new THREE.Vector3(playerPos.x, playerY + 2, playerPos.z);
+    const playerCapsule = new Capsule(start, end, playerRadius);
+
+    // Standard Octree collision test (like FPS example)
+    const result = collider.octree.capsuleIntersect(playerCapsule);
+    return result !== false;
+  }
+
+  /**
+   * Resolve mesh collision using Octree result (standard FPS example approach)
+   */
+  private resolveMeshCollision(
+    from: THREE.Vector3,
+    to: THREE.Vector3,
+    collider: Collider,
+    playerRadius: number
+  ): THREE.Vector3 {
+    if (!collider.octree) return from;
+
+    // Standard Three.js: Create player capsule and get collision result
+    const start = new THREE.Vector3(to.x, from.y, to.z);
+    const end = new THREE.Vector3(to.x, from.y + 2, to.z);
+    const playerCapsule = new Capsule(start, end, playerRadius);
+
+    const result = collider.octree.capsuleIntersect(playerCapsule);
+
+    if (result) {
+      // Push player out of collision using normal (standard FPS example)
+      playerCapsule.translate(result.normal.multiplyScalar(result.depth));
+
+      // Return adjusted position
+      return new THREE.Vector3(
+        playerCapsule.start.x,
+        to.y,
+        playerCapsule.start.z
+      );
+    }
+
     return to;
   }
 
@@ -156,15 +275,16 @@ export class CollisionSystem {
   private resolveCollision(
     from: THREE.Vector3,
     to: THREE.Vector3,
-    collider: Collider
+    collider: Collider,
+    playerRadius: number
   ): THREE.Vector3 {
     // Different behavior based on collider type
     if (collider.type === 'tree') {
       // Trees are solid - slide around them
-      return this.slideAroundObstacle(from, to, collider);
+      return this.slideAroundObstacle(from, to, collider, playerRadius);
     } else {
       // Players/NPCs - soft collision (can push through slightly)
-      return this.softCollision(from, to, collider);
+      return this.softCollision(from, to, collider, playerRadius);
     }
   }
 
@@ -172,9 +292,10 @@ export class CollisionSystem {
    * Slide around a solid obstacle (trees)
    */
   private slideAroundObstacle(
-    from: THREE.Vector3,
+    _from: THREE.Vector3,
     to: THREE.Vector3,
-    collider: Collider
+    collider: Collider,
+    playerRadius: number
   ): THREE.Vector3 {
     // Vector from collider center to desired position
     const toCollider = new THREE.Vector3(
@@ -184,8 +305,9 @@ export class CollisionSystem {
     );
 
     // Push player away from collider center
+    // Standard collision: maintain distance = tree.radius + player.radius + buffer
     toCollider.normalize();
-    toCollider.multiplyScalar(collider.radius + 0.1); // Small buffer
+    toCollider.multiplyScalar(collider.radius + playerRadius + 0.1); // Small buffer
 
     // New position just outside the collider
     const adjusted = new THREE.Vector3(
@@ -201,12 +323,14 @@ export class CollisionSystem {
    * Soft collision for players/NPCs (can push through slightly)
    */
   private softCollision(
-    from: THREE.Vector3,
+    _from: THREE.Vector3,
     to: THREE.Vector3,
-    collider: Collider
+    collider: Collider,
+    playerRadius: number
   ): THREE.Vector3 {
-    // Allow overlapping but with resistance
-    const pushDistance = collider.radius * 0.7; // Can get 70% close
+    // Allow overlapping but with resistance (70% of combined radii)
+    const combinedRadius = collider.radius + playerRadius;
+    const pushDistance = combinedRadius * 0.7; // Can get 70% close
 
     const toCollider = new THREE.Vector3(
       to.x - collider.position.x,
@@ -301,7 +425,6 @@ export class CollisionSystem {
           this.createDebugMesh(collider);
         }
       }
-      console.log('🔍 Collision debug mode: ON');
     } else {
       // Remove all debug meshes
       for (const collider of this.colliders.values()) {
@@ -310,7 +433,6 @@ export class CollisionSystem {
           collider.mesh = undefined;
         }
       }
-      console.log('🔍 Collision debug mode: OFF');
     }
   }
 

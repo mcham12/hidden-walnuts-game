@@ -102,6 +102,12 @@ export class Game {
   private lastFootstepTime: number = 0;
   private footstepInterval: number = 500; // 500ms between footsteps (more subtle)
 
+  // MVP 5.5: Camera shake on collision (standard game feel technique)
+  private cameraShakeIntensity: number = 0;
+  private cameraShakeDuration: number = 0;
+  private cameraShakeTime: number = 0;
+  private cameraBaseOffset: THREE.Vector3 = new THREE.Vector3();
+
   // INDUSTRY STANDARD: Manual delta time calculation to avoid Clock.getDelta() issues
   private lastFrameTime: number = 0;
   private MAX_DELTA_TIME = 1/30; // Cap at 30fps to prevent spiral of death
@@ -270,15 +276,15 @@ export class Game {
       // MVP 3: Initialize labels container
       this.labelsContainer = document.getElementById('labels-container');
 
-      // Add landmark trees
+      // MVP 5.5: Initialize Collision System BEFORE adding landmarks (so they can register collision)
+      this.collisionSystem = new CollisionSystem(this.scene);
+      console.log('🔒 Collision system initialized');
+
+      // Add landmark trees (now collision system is ready)
       await this.addLandmarks();
 
       // MVP 5: Initialize VFX Manager
       this.vfxManager = new VFXManager(this.scene, this.camera);
-
-      // MVP 5.5: Initialize Collision System
-      this.collisionSystem = new CollisionSystem(this.scene);
-      console.log('🔒 Collision system initialized');
 
       // MVP 3: Initialize minimap
       this.initMinimap();
@@ -487,7 +493,6 @@ export class Game {
           this.character.position,
           0.5 // Character collision radius
         );
-        console.log('🔒 Added collision for local player');
       }
 
       // DIAGNOSTIC: Check for morph targets/blendshapes for facial expressions
@@ -761,6 +766,8 @@ export class Game {
     if (this.character) {
       this.updatePlayer(delta);
       this.updateCamera();
+      // MVP 5.5: Update camera shake effect
+      this.updateCameraShake(delta);
     }
 
     // Update animations
@@ -915,11 +922,16 @@ export class Game {
     const desiredPosition = currentPosition.clone().add(movementDelta);
 
     // Check collision and get adjusted position (slides around obstacles)
-    const finalPosition = this.collisionSystem
+    const collisionResult = this.collisionSystem
       ? this.collisionSystem.checkCollision(this.playerId, currentPosition, desiredPosition)
-      : desiredPosition;
+      : { position: desiredPosition, collided: false };
 
-    this.character.position.copy(finalPosition);
+    // MVP 5.5: Trigger camera shake on collision
+    if (collisionResult.collided && moving) {
+      this.triggerCameraShake(0.03, 0.15);
+    }
+
+    this.character.position.copy(collisionResult.position);
 
     // Update actual velocity (units per second) for accurate network transmission
     this.actualVelocity.x = this.velocity.x;
@@ -1023,7 +1035,14 @@ export class Game {
   private async setupMultiplayer() {
     // Generate player ID
     this.playerId = 'player_' + Math.random().toString(36).substr(2, 9);
-    
+
+    // MVP 5.5: Fix collision bug - Update collision system with actual player ID
+    // (Collision was registered with empty string '' before playerId was set)
+    if (this.collisionSystem && this.character) {
+      this.collisionSystem.removeCollider('');  // Remove old collider with empty ID
+      this.collisionSystem.addPlayerCollider(this.playerId, this.character.position, 0.5);
+    }
+
     // Attempt connection with retry logic
     await this.connectWebSocket();
   }
@@ -1482,7 +1501,6 @@ export class Game {
           remoteCharacter.position,
           0.5 // Character collision radius
         );
-        console.log('🔒 Added collision for remote player:', playerId);
       }
     } catch (error) {
       console.error('❌ Failed to create remote player:', playerId, error);
@@ -1617,7 +1635,6 @@ export class Game {
       // MVP 5.5: Remove collision
       if (this.collisionSystem) {
         this.collisionSystem.removeCollider(playerId);
-        console.log('🔒 Removed collision for remote player:', playerId);
       }
     }
   }
@@ -1647,7 +1664,7 @@ export class Game {
     // North landmark at (0, -80)
     await this.createLandmark(0, -80, '/assets/models/environment/bottle_tree.glb', 'North');
 
-    // South landmark at (0, 80)
+    // South landmark at (0, 80) - Collision auto-calculated from mesh
     await this.createLandmark(0, 80, '/assets/models/environment/Big_pine.glb', 'South');
 
     // East landmark at (80, 0) - 1.75x bigger
@@ -1729,18 +1746,14 @@ export class Game {
       // Register landmark in map for minimap display
       this.landmarks.set(name, new THREE.Vector3(x, terrainY, z));
 
-      // MVP 5.5: Add collision cylinder for landmark tree
+      // MVP 5.5: Add collision using ACTUAL tree mesh (standard game practice)
       if (this.collisionSystem) {
-        // Collision radius based on tree scale (trunk radius approximation)
-        const collisionRadius = scale * 0.5; // Trunk is roughly 0.5 units at base scale
-        const collisionHeight = scale * 8; // Trees are roughly 8 units tall at base scale
-        this.collisionSystem.addTreeCollider(
+        const treeWorldPos = new THREE.Vector3(x, terrainY, z);
+        this.collisionSystem.addTreeMeshCollider(
           `landmark_${name}`,
-          new THREE.Vector3(x, terrainY, z),
-          collisionRadius,
-          collisionHeight
+          tree,
+          treeWorldPos
         );
-        console.log(`   🔒 Added collision for ${name} (radius: ${collisionRadius.toFixed(1)}, height: ${collisionHeight.toFixed(1)})`);
       }
 
       // Add floating text label above the landmark (1.3x higher to clear tree canopy)
@@ -2110,6 +2123,45 @@ export class Game {
         this.updateLabelPosition(label, labelPos);
       }
     }
+  }
+
+  /**
+   * MVP 5.5: Trigger camera shake on collision (standard game feel technique)
+   */
+  private triggerCameraShake(intensity: number = 0.03, duration: number = 0.15): void {
+    this.cameraShakeIntensity = intensity;
+    this.cameraShakeDuration = duration;
+    this.cameraShakeTime = 0;
+  }
+
+  /**
+   * MVP 5.5: Update camera shake effect (called each frame)
+   */
+  private updateCameraShake(delta: number): void {
+    if (this.cameraShakeTime >= this.cameraShakeDuration) {
+      // Shake finished - reset camera offset
+      this.camera.position.sub(this.cameraBaseOffset);
+      this.cameraBaseOffset.set(0, 0, 0);
+      return;
+    }
+
+    // Remove previous shake offset
+    this.camera.position.sub(this.cameraBaseOffset);
+
+    // Calculate new shake offset (random direction, decreasing intensity)
+    this.cameraShakeTime += delta;
+    const progress = this.cameraShakeTime / this.cameraShakeDuration;
+    const currentIntensity = this.cameraShakeIntensity * (1 - progress); // Linear decay
+
+    // Random shake in all directions
+    this.cameraBaseOffset.set(
+      (Math.random() - 0.5) * currentIntensity * 2,
+      (Math.random() - 0.5) * currentIntensity * 2,
+      (Math.random() - 0.5) * currentIntensity * 2
+    );
+
+    // Apply new shake offset
+    this.camera.position.add(this.cameraBaseOffset);
   }
 
   // MVP 3: Walnut visual system methods

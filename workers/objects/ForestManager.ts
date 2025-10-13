@@ -40,11 +40,12 @@ interface Walnut {
 
 interface ForestObject {
   id: string;
-  type: 'tree' | 'shrub';
+  type: 'tree' | 'shrub' | 'rock' | 'stump';
   x: number;
   y: number;
   z: number;
   scale: number;
+  modelVariant?: number; // For rocks (1-5) and other models with variants
 }
 
 export default class ForestManager {
@@ -557,10 +558,10 @@ export default class ForestManager {
       return false;
     };
 
-    // Generate 20 trees (with landmark exclusion)
+    // Generate 30 trees (with landmark exclusion)
     let attempts = 0;
-    const maxAttempts = 200; // Prevent infinite loop
-    for (let i = 0; i < 20 && attempts < maxAttempts; attempts++) {
+    const maxAttempts = 300; // Prevent infinite loop
+    for (let i = 0; i < 30 && attempts < maxAttempts; attempts++) {
       const x = (Math.random() - 0.5) * 100;
       const z = (Math.random() - 0.5) * 100;
 
@@ -580,9 +581,9 @@ export default class ForestManager {
       i++;
     }
 
-    // Generate 30 shrubs (with landmark exclusion)
+    // Generate 40 shrubs (with landmark exclusion)
     attempts = 0;
-    for (let i = 0; i < 30 && attempts < maxAttempts; attempts++) {
+    for (let i = 0; i < 40 && attempts < maxAttempts; attempts++) {
       const x = (Math.random() - 0.5) * 100;
       const z = (Math.random() - 0.5) * 100;
 
@@ -602,9 +603,56 @@ export default class ForestManager {
       i++;
     }
 
+    // MVP 5.5: Generate 20 rocks (with landmark exclusion)
+    attempts = 0;
+    for (let i = 0; i < 20 && attempts < maxAttempts; attempts++) {
+      const x = (Math.random() - 0.5) * 100;
+      const z = (Math.random() - 0.5) * 100;
+
+      // Skip if too close to any landmark
+      if (isTooCloseToLandmark(x, z)) {
+        continue;
+      }
+
+      objects.push({
+        id: `rock-${Date.now()}-${i}`,
+        type: "rock",
+        x,
+        y: 0,
+        z,
+        scale: 0.8 + Math.random() * 0.4,
+        modelVariant: Math.floor(Math.random() * 5) + 1 // Random rock 1-5
+      });
+      i++;
+    }
+
+    // MVP 5.5: Generate 15 stumps (with landmark exclusion)
+    attempts = 0;
+    for (let i = 0; i < 15 && attempts < maxAttempts; attempts++) {
+      const x = (Math.random() - 0.5) * 100;
+      const z = (Math.random() - 0.5) * 100;
+
+      // Skip if too close to any landmark
+      if (isTooCloseToLandmark(x, z)) {
+        continue;
+      }
+
+      objects.push({
+        id: `stump-${Date.now()}-${i}`,
+        type: "stump",
+        x,
+        y: 0,
+        z,
+        scale: 0.9 + Math.random() * 0.3
+      });
+      i++;
+    }
+
     const treeCount = objects.filter(o => o.type === 'tree').length;
     const shrubCount = objects.filter(o => o.type === 'shrub').length;
-    console.log(`✅ Generated ${treeCount} trees (Tree_01.glb) and ${shrubCount} shrubs`);
+    const rockCount = objects.filter(o => o.type === 'rock').length;
+    const stumpCount = objects.filter(o => o.type === 'stump').length;
+    console.log(`✅ Generated ${treeCount} trees, ${shrubCount} shrubs, ${rockCount} rocks, ${stumpCount} stumps`);
     console.log(`   Excluded 25-unit radius around 5 landmark positions`);
     console.log(`   Landmark trees use DIFFERENT models: Big_pine, bottle_tree, Dead_straight_tree, etc.`);
 

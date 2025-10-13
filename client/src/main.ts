@@ -318,8 +318,14 @@ async function main() {
     }
   };
 
-  // Set initial character
-  updateCharacter();
+  // Set initial character description (before updateCharacter to avoid audio unlock)
+  const initialCharInfo = CHARACTER_DESCRIPTIONS[charSelect.value];
+  if (initialCharInfo && charDescription) {
+    charDescription.innerHTML = `<strong>${initialCharInfo.name}</strong> ${initialCharInfo.description}`;
+  }
+
+  // Set initial character (note: skip audio unlock on first call)
+  // updateCharacter();
 
   // Update on change
   charSelect.addEventListener('change', updateCharacter);
