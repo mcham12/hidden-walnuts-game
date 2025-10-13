@@ -555,6 +555,122 @@ checkNearbyCollisions(playerPos: Vector3) {
 
 ---
 
+## 📱 MVP 5.7: Mobile/Touch Controls
+
+**Goal**: Make the game playable on mobile browsers (iPhone, iPad, Android)
+
+**Why Now?** (Moved up from MVP 7.5)
+- **Massive market**: Mobile browsers are 50%+ of potential players
+- **Early testing**: Get mobile UX feedback while we can still iterate
+- **Real players > NPCs**: Could bring enough real players that NPCs (6.7) aren't as critical
+- **Performance insights**: Discover mobile performance issues early
+- **Accessibility**: Lower barrier to entry - no keyboard/mouse needed
+- **Shareability**: Easier to share link and play immediately on phone
+
+### Touch Control System
+
+**Virtual Joystick** - Left side of screen
+- Drag to move in any direction
+- Release to stop
+- Visual feedback (joystick circle + thumb indicator)
+
+**Action Buttons** - Right side of screen
+- **H Button**: Hide walnut (large button, bottom-right)
+- **Tap on Walnut**: Find/collect walnut
+- **Camera Control**: Two-finger drag to rotate camera
+
+**Touch Gestures**:
+- **Single Tap**: Click to find walnut / interact with objects
+- **Drag (single finger)**: Control virtual joystick for movement
+- **Two-finger Drag**: Rotate camera view
+- **Pinch**: Zoom in/out (optional camera control)
+
+**UI Considerations**:
+- Buttons sized for touch (minimum 44x44pt for iOS)
+- Semi-transparent so they don't block gameplay
+- Position adjustable in settings (left-handed mode)
+- Auto-hide when not in use (fade out after 3s of no input)
+
+**Platform Detection**:
+```typescript
+// Detect mobile and show touch controls
+const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent) ||
+                 ('ontouchstart' in window);
+if (isMobile) {
+  this.showTouchControls();
+}
+```
+
+**Technical Implementation**:
+```typescript
+class TouchControls {
+  private joystick: VirtualJoystick;
+  private actionButtons: HTMLElement[];
+
+  // Virtual joystick for movement
+  initJoystick(container: HTMLElement) {
+    // Create joystick base and thumb
+    // Track touch start, move, end
+    // Convert to WASD-equivalent inputs
+  }
+
+  // Action button (Hide walnut)
+  createButton(label: string, action: () => void) {
+    const button = document.createElement('button');
+    button.textContent = label;
+    button.addEventListener('touchstart', action);
+    return button;
+  }
+
+  // Camera controls (two-finger drag)
+  initCameraControls() {
+    canvas.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2) {
+        // Calculate rotation from two-finger drag
+        this.rotateCamera(delta);
+      }
+    });
+  }
+}
+```
+
+**Library Options**:
+- **nipplejs**: Popular virtual joystick library (lightweight)
+- **Custom HTML5 touch**: Full control, no dependencies
+- **three.js OrbitControls**: Has mobile support built-in
+
+### Mobile Optimizations
+
+**Performance**:
+- Lower default graphics quality on mobile
+- Reduce particle counts
+- Optimize shadow rendering
+- Test on real devices (iPhone, Android)
+
+**UI Adjustments**:
+- Larger touch targets
+- Simplified HUD on smaller screens
+- Responsive layout (portrait and landscape)
+- Font sizes readable on mobile
+
+**Testing Checklist**:
+- [ ] Virtual joystick works smoothly
+- [ ] Can hide walnuts with touch button
+- [ ] Can find walnuts with tap
+- [ ] Camera controls feel natural (two-finger drag)
+- [ ] UI elements don't overlap
+- [ ] Performance is smooth (30+ FPS on mid-range phones)
+- [ ] Works in Safari (iOS) and Chrome (Android)
+
+### Success Criteria
+- [ ] Game fully playable on mobile browsers
+- [ ] Touch controls feel natural and responsive
+- [ ] No keyboard/mouse required
+- [ ] Performance acceptable on mobile devices
+- [ ] UI readable and touch-friendly
+
+---
+
 ## 🗑️ MVP 6: Code Cleanup
 
 **Goal**: Remove unused ECS/enterprise code
@@ -995,51 +1111,15 @@ interface HitMessage {
 
 ## 📱 MVP 7.5: Mobile/Touch Controls
 
-**Goal**: Make the game playable on iPhone/iPad without keyboard
+**Status**: ⬆️ **MOVED TO MVP 5.7** (right after Physics & Collision)
 
-### Touch Control System
+**Reason for move**: Mobile controls are too important to wait until MVP 7.5. Moving them earlier (right after physics is done) allows for:
+- Earlier mobile testing and feedback
+- Broader player base before NPCs are needed
+- Performance testing on mobile devices early
+- Lower barrier to entry for new players
 
-**Virtual Joystick** - Left side of screen
-- Drag to move in any direction
-- Release to stop
-- Visual feedback (joystick circle + thumb indicator)
-
-**Action Buttons** - Right side of screen
-- **H Button**: Hide walnut (large button, bottom-right)
-- **Jump Button**: Space equivalent (if needed)
-- **Camera Control**: Two-finger drag to rotate camera (optional)
-
-**Touch Gestures**:
-- **Single Tap**: Click to find walnut / interact with objects
-- **Long Press**: Alternate hide action (if near bush)
-- **Pinch**: Zoom in/out (optional camera control)
-
-**UI Considerations**:
-- Buttons sized for touch (minimum 44x44pt for iOS)
-- Semi-transparent so they don't block gameplay
-- Position adjustable in settings (left-handed mode)
-- Auto-hide when not in use (fade out after 3s of no input)
-
-**Platform Detection**:
-```typescript
-// Detect mobile and show touch controls
-const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
-if (isMobile) {
-  this.showTouchControls();
-}
-```
-
-**Technical Implementation**:
-- HTML5 touch events (touchstart, touchmove, touchend)
-- Virtual joystick library or custom implementation
-- Separate control layer (doesn't interfere with game canvas)
-- Responsive layout (adapts to portrait/landscape)
-
-**Why Important**:
-- Huge potential playerbase on mobile
-- Many players prefer casual mobile gaming
-- Touch controls are expected on iOS/Android
-- Increases accessibility and reach
+See **MVP 5.7** for full mobile controls implementation details.
 
 ---
 
@@ -1143,13 +1223,14 @@ if (isMobile) {
 | 4 | Competitive Multiplayer | ✅ Complete |
 | 5 | **Game Feel & Polish** | 🎯 **CURRENT** |
 | 5.5 | **Physics & Collision Detection** 🆕 | **Critical!** |
+| 5.7 | **Mobile/Touch Controls** ⬆️🆕 | **Moved Up!** |
 | 6 | Code Cleanup | Pending |
 | 6.5 | **Player Authentication** ⬆️ | **Moved Up!** |
 | 6.7 | **NPC Characters & World Life** ⬆️🆕 | **Moved Up!** |
 | 6.8 | Advanced Animation Polish | Optional |
 | 7 | Predators + Polish | Pending |
 | 7.2 | **Walnut Combat & Throwing** 🆕 | **New!** |
-| 7.5 | Mobile/Touch Controls | Pending |
+| 7.5 | ~~Mobile/Touch Controls~~ | ⬆️ Moved to 5.7 |
 | 8 | ~~Player Authentication~~ | ⬆️ Moved to 6.5 |
 | 9 | Advanced Systems (24hr Cycle + Performance) | Future |
 
@@ -1185,13 +1266,32 @@ if (isMobile) {
 - [x] Particle effects (bury, find, footsteps, score)
 - [x] Score pop-up animations
 - [x] **Animated loading screen with walnut GLB model**
-- [ ] Settings menu with volume controls and controls reference
-- [ ] Enhanced debug overlay (FPS, memory, latency)
-- [ ] Improved walnut visuals (better mound, bush glints, golden glow)
-- [ ] Better click detection and feedback
+- [x] Settings menu with volume controls and controls reference
+- [x] Enhanced debug overlay (FPS, memory, latency) - user confirmed done
+- [x] Improved walnut visuals (better mound, bush glints, golden glow) - user said "fine for now"
+- [x] Better click detection and feedback (increased hitboxes + hover effects)
 - [x] Connection status indicator
 - [x] Loading progress bar
-- [ ] Game feels satisfying and polished
+- [x] Game feels satisfying and polished
+
+### MVP 5.5 Success (Physics & Collision Detection)
+- [ ] Cannot walk through landmark trees
+- [ ] Cannot walk through regular forest trees
+- [ ] Smooth sliding movement around obstacles (no jarring stops)
+- [ ] Performance remains smooth (60 FPS with many trees)
+- [ ] Debug visualization available for testing
+- [ ] Optional: Subtle audio/visual feedback on collision
+
+### MVP 5.7 Success (Mobile/Touch Controls)
+- [ ] Game fully playable on mobile browsers
+- [ ] Touch controls feel natural and responsive
+- [ ] Virtual joystick works smoothly
+- [ ] Can hide walnuts with touch button
+- [ ] Can find walnuts with tap
+- [ ] Camera controls feel natural (two-finger drag)
+- [ ] UI elements don't overlap
+- [ ] Performance is smooth (30+ FPS on mid-range phones)
+- [ ] Works in Safari (iOS) and Chrome (Android)
 
 ### MVP 6.7 Success
 - [ ] NPCs spawn and wander around forest

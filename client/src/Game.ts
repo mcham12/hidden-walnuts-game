@@ -1672,8 +1672,8 @@ export class Game {
       // Register landmark in map for minimap display
       this.landmarks.set(name, new THREE.Vector3(x, terrainY, z));
 
-      // Add floating text label above the landmark (2x higher)
-      this.createLandmarkLabel(name, x, terrainY + 30, z);
+      // Add floating text label above the landmark (1.3x higher to clear tree canopy)
+      this.createLandmarkLabel(name, x, terrainY + 39, z);
     } catch (error) {
       console.error(`❌ Error creating landmark ${name}:`, error);
     }
@@ -2095,14 +2095,28 @@ export class Game {
       group.add(particle);
     }
 
-    // Add invisible collision sphere for easier clicking (MVP 5: Increased from 0.5 to 0.8 for better UX)
-    const collisionGeometry = new THREE.SphereGeometry(0.8, 8, 8);
+    // Add invisible collision sphere for easier clicking (MVP 5: Increased to 1.2 for even better click detection)
+    const collisionGeometry = new THREE.SphereGeometry(1.2, 8, 8);
     const collisionMaterial = new THREE.MeshBasicMaterial({
       visible: false
     });
     const collisionMesh = new THREE.Mesh(collisionGeometry, collisionMaterial);
     collisionMesh.position.y = 0.1;
     group.add(collisionMesh);
+
+    // MVP 5: Add hover highlight ring (initially hidden)
+    const hoverRingGeometry = new THREE.TorusGeometry(0.6, 0.05, 8, 24);
+    const hoverRingMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffff00,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending
+    });
+    const hoverRing = new THREE.Mesh(hoverRingGeometry, hoverRingMaterial);
+    hoverRing.rotation.x = -Math.PI / 2;
+    hoverRing.position.y = 0.05;
+    group.add(hoverRing);
+    group.userData.hoverRing = hoverRing;
 
     // Position the entire group
     group.position.copy(position);
@@ -2146,14 +2160,27 @@ export class Game {
     glint.position.copy(walnut.position);
     group.add(glint);
 
-    // Add invisible collision sphere for easier clicking (MVP 5: Increased from 0.5 to 0.8 for better UX)
-    const collisionGeometry = new THREE.SphereGeometry(0.8, 8, 8);
+    // Add invisible collision sphere for easier clicking (MVP 5: Increased to 1.0 for better click detection)
+    const collisionGeometry = new THREE.SphereGeometry(1.0, 8, 8);
     const collisionMaterial = new THREE.MeshBasicMaterial({
       visible: false
     });
     const collisionMesh = new THREE.Mesh(collisionGeometry, collisionMaterial);
     collisionMesh.position.y = 0.4;
     group.add(collisionMesh);
+
+    // MVP 5: Add hover highlight glow (initially hidden)
+    const hoverGlowGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+    const hoverGlowMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffff88,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending
+    });
+    const hoverGlow = new THREE.Mesh(hoverGlowGeometry, hoverGlowMaterial);
+    hoverGlow.position.y = 0.4;
+    group.add(hoverGlow);
+    group.userData.hoverGlow = hoverGlow;
 
     // Store glint for animation
     group.userData.glint = glint;
@@ -2220,14 +2247,28 @@ export class Game {
       sparkles.push(sparkle);
     }
 
-    // Invisible collision sphere for clicking (MVP 5: Increased from 0.6 to 1.0 for better UX)
-    const collisionGeometry = new THREE.SphereGeometry(1.0, 8, 8);
+    // Invisible collision sphere for clicking (MVP 5: Increased to 1.3 for even better click detection)
+    const collisionGeometry = new THREE.SphereGeometry(1.3, 8, 8);
     const collisionMaterial = new THREE.MeshBasicMaterial({
       visible: false
     });
     const collisionMesh = new THREE.Mesh(collisionGeometry, collisionMaterial);
     collisionMesh.position.y = 0.25;
     group.add(collisionMesh);
+
+    // MVP 5: Add hover pulse glow (initially hidden)
+    const hoverPulseGeometry = new THREE.SphereGeometry(0.5, 16, 12);
+    hoverPulseGeometry.scale(1, 1.3, 1);
+    const hoverPulseMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffff00,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending
+    });
+    const hoverPulse = new THREE.Mesh(hoverPulseGeometry, hoverPulseMaterial);
+    hoverPulse.position.y = 0.25;
+    group.add(hoverPulse);
+    group.userData.hoverPulse = hoverPulse;
 
     // Store references for animation
     group.userData.walnut = walnut;
@@ -2747,7 +2788,7 @@ export class Game {
   }
 
   /**
-   * MVP 5: Handle mouse move for cursor highlighting
+   * MVP 5: Handle mouse move for cursor highlighting and hover effects
    */
   private onMouseMove(event: MouseEvent): void {
     // Calculate mouse position in normalized device coordinates (-1 to +1)
@@ -2768,7 +2809,9 @@ export class Game {
 
     // Check if hovering over a walnut that's within interaction range
     let hoveringWalnut = false;
-    if (intersects.length > 0) {
+    let hoveredWalnutGroup: THREE.Group | null = null;
+
+    if (intersects.length > 0 && this.character) {
       // Find the walnut group that's being hovered
       for (const intersect of intersects) {
         let obj = intersect.object;
@@ -2783,12 +2826,27 @@ export class Game {
             // Only show pointer cursor if within interaction range
             if (distance <= maxDistance) {
               hoveringWalnut = true;
+              hoveredWalnutGroup = walnutGroup;
             }
             break;
           }
           obj = obj.parent;
         }
         if (hoveringWalnut) break;
+      }
+    }
+
+    // Update hover effects on all walnuts
+    for (const walnutGroup of this.walnuts.values()) {
+      const isHovered = walnutGroup === hoveredWalnutGroup;
+      const hoverEffect = walnutGroup.userData.hoverRing || walnutGroup.userData.hoverGlow || walnutGroup.userData.hoverPulse;
+
+      if (hoverEffect && hoverEffect.material) {
+        // Smoothly fade in/out hover effect
+        const targetOpacity = isHovered ? 0.6 : 0;
+        const currentOpacity = (hoverEffect.material as THREE.MeshBasicMaterial).opacity;
+        const newOpacity = currentOpacity + (targetOpacity - currentOpacity) * 0.1;
+        (hoverEffect.material as THREE.MeshBasicMaterial).opacity = newOpacity;
       }
     }
 
