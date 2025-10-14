@@ -242,64 +242,29 @@ class CharacterPreview {
   }
 }
 
-// MVP 5.7: On-screen debug overlay for iPad debugging (console not visible on iOS)
-let debugOverlay: HTMLDivElement | null = null;
-function showDebugMessage(message: string, isError = false) {
-  if (!debugOverlay) {
-    debugOverlay = document.createElement('div');
-    debugOverlay.style.cssText = `
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      right: 10px;
-      max-height: 300px;
-      overflow-y: auto;
-      background: rgba(0,0,0,0.9);
-      color: ${isError ? '#ff4444' : '#00ff00'};
-      padding: 10px;
-      font-family: monospace;
-      font-size: 12px;
-      z-index: 999999;
-      border-radius: 4px;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-    `;
-    document.body.appendChild(debugOverlay);
-  }
-
-  const timestamp = new Date().toLocaleTimeString();
-  const prefix = isError ? '❌' : '✅';
-  debugOverlay.textContent = `${prefix} [${timestamp}] ${message}\n` + (debugOverlay.textContent || '');
-  console.log(message);
-}
-
-// MVP 5.7: Global error handler for debugging iPad and mobile issues
+// MVP 5.7: Global error handler for debugging
 window.addEventListener('error', (event) => {
-  const errorMsg = `ERROR: ${event.message} at ${event.filename}:${event.lineno}`;
-  showDebugMessage(errorMsg, true);
-  console.error('🚨 Global error caught:', event);
+  console.error('🚨 Global error caught:', {
+    message: event.message,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+    error: event.error
+  });
 });
 
 window.addEventListener('unhandledrejection', (event) => {
-  const errorMsg = `PROMISE REJECTION: ${event.reason}`;
-  showDebugMessage(errorMsg, true);
-  console.error('🚨 Unhandled promise rejection:', event);
+  console.error('🚨 Unhandled promise rejection:', {
+    reason: event.reason,
+    promise: event.promise
+  });
 });
 
 async function main() {
   try {
-    showDebugMessage('Starting app...');
-
-    // MVP 5.7: Add loading timeout with on-screen alert
-    const loadingTimeout = setTimeout(() => {
-      showDebugMessage('TIMEOUT! App hung for 30 seconds. Check last message.', true);
-    }, 30000);
-
     // MVP 5: Show loading screen with animated walnut
-    showDebugMessage('Creating LoadingScreen...');
     const loadingScreen = new LoadingScreen();
     await loadingScreen.show();
-    showDebugMessage('LoadingScreen shown');
 
   const selectDiv = document.getElementById('character-select') as HTMLDivElement;
   const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
@@ -310,66 +275,42 @@ async function main() {
   const walnutHud = document.getElementById('walnut-hud') as HTMLDivElement;
 
   if (!canvas) {
-    showDebugMessage('Canvas not found!', true);
+    console.error('Canvas not found');
     return;
   }
 
   canvas.classList.add('hidden');
-  showDebugMessage('Canvas ready');
 
   // CRITICAL: Create AudioManager but DON'T wait for audio on iOS (will hang)
   loadingScreen.updateProgress(0.3, 'Loading audio...');
-  showDebugMessage('Creating AudioManager...');
   const audioManager = new AudioManager();
 
   // MVP 5.7: iOS FIX - Skip audio wait on mobile (iOS requires user interaction)
   const isMobile = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
   if (!isMobile) {
-    showDebugMessage('Waiting for audio (desktop)...');
     await audioManager.waitForLoad();
-    showDebugMessage('Audio loaded');
-  } else {
-    showDebugMessage('Skipping audio wait on mobile (iOS fix)');
   }
 
   // MVP 5: Load characters.json and populate dropdown
   loadingScreen.updateProgress(0.6, 'Loading characters...');
-  showDebugMessage('Loading characters.json...');
   await loadCharactersAndPopulateDropdown(charSelect);
-  showDebugMessage('Characters loaded');
 
   // Initialize character preview (works fine on mobile!)
   loadingScreen.updateProgress(0.8, 'Preparing character preview...');
   let characterPreview: CharacterPreview | null = null;
   if (previewCanvas) {
-    showDebugMessage('Initializing character preview...');
     characterPreview = new CharacterPreview(previewCanvas);
     characterPreview.startAnimation();
 
     // Load initial character (Squirrel by default)
-    showDebugMessage('Loading preview model...');
     await characterPreview.loadCharacter(charSelect.value);
-    showDebugMessage('Character preview ready');
   }
 
   // Hide loading screen and show character selection
   loadingScreen.updateProgress(1.0, 'Ready!');
-  showDebugMessage('Hiding loading screen...');
-
-  // Clear timeout
-  clearTimeout(loadingTimeout);
-
   setTimeout(() => {
     loadingScreen.hide();
     loadingScreen.destroy();
-    showDebugMessage('Loading complete! Ready to play.');
-
-    // Hide debug overlay after 3 seconds if no errors
-    setTimeout(() => {
-      if (debugOverlay && !debugOverlay.textContent?.includes('ERROR')) {
-        debugOverlay.style.display = 'none';
-      }
-    }, 3000);
   }, 500);
 
   // MVP 5: Initialize settings manager

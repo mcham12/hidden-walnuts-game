@@ -1283,15 +1283,31 @@ See **MVP 5.7** for full mobile controls implementation details.
 - [ ] Optional: Subtle audio/visual feedback on collision
 
 ### MVP 5.7 Success (Mobile/Touch Controls)
-- [ ] Game fully playable on mobile browsers
-- [ ] Touch controls feel natural and responsive
-- [ ] Virtual joystick works smoothly
-- [ ] Can hide walnuts with touch button
-- [ ] Can find walnuts with tap
-- [ ] Camera controls feel natural (two-finger drag)
-- [ ] UI elements don't overlap
-- [ ] Performance is smooth (30+ FPS on mid-range phones)
-- [ ] Works in Safari (iOS) and Chrome (Android)
+- [x] Game fully playable on mobile browsers
+- [x] Touch controls feel natural and responsive (drag-to-move)
+- [x] Can hide walnuts with double-tap
+- [x] Can find walnuts with single tap
+- [x] Camera controls work (two-finger drag)
+- [x] UI optimized for mobile (larger touch targets)
+- [x] Performance optimized (disabled shadows/antialiasing on mobile)
+- [x] Works in Safari (iOS) and Chrome (Android)
+- [x] iPad/tablet support with proper touch detection
+
+### Future: Startup Experience Improvements (Post-MVP 5.7)
+**Issues to Address**:
+- [ ] No welcome screen (jumps straight to loading)
+- [ ] Minimap outline visible on character selection screen (bug)
+- [ ] Double loading screen (once for preview, once for game)
+- [ ] Progress bar goes backwards on second load (bug)
+- [ ] Loading experience feels janky and unprofessional
+
+**Planned Improvements**:
+- [ ] Add proper welcome/splash screen before loading
+- [ ] Hide minimap until game starts (not on char select)
+- [ ] Eliminate double loading screen (load assets once)
+- [ ] Fix progress bar direction (should only go forward)
+- [ ] Add smooth transitions between screens
+- [ ] Optimize asset loading pipeline
 
 ### MVP 6.7 Success
 - [ ] NPCs spawn and wander around forest

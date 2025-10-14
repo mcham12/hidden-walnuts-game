@@ -183,6 +183,7 @@ export class Game {
 
   // MVP 5.7: Touch controls for mobile
   private touchControls: TouchControls | null = null;
+  private wasTouchActive: boolean = false; // Track if touch was active last frame
 
 
   async init(canvas: HTMLCanvasElement, audioManager: AudioManager, settingsManager: SettingsManager) {
@@ -892,14 +893,15 @@ export class Game {
     if (!this.character) return;
 
     // MVP 5.7: Sync touch controls input to keys (drag-to-move for mobile)
-    // CRITICAL FIX: Only sync touch input on mobile, don't interfere with keyboard
+    // CRITICAL FIX: Clear keys when touch stops to prevent infinite movement
     if (this.touchControls) {
       const touchInput = this.touchControls.getMovementInput();
+      const isTouchActive = touchInput.magnitude > 0;
 
-      // Only modify keys if touch is actually being used (magnitude > 0)
-      // This allows keyboard and touch to coexist without conflicts
-      if (touchInput.magnitude > 0) {
+      if (isTouchActive) {
         // Touch is active - set keys based on touch input
+        this.wasTouchActive = true;
+
         if (touchInput.forward) {
           this.keys.add('w');
         } else {
@@ -923,8 +925,15 @@ export class Game {
         } else {
           this.keys.delete('d');
         }
+      } else if (this.wasTouchActive) {
+        // Touch just stopped - clear all movement keys to stop character
+        this.keys.delete('w');
+        this.keys.delete('a');
+        this.keys.delete('s');
+        this.keys.delete('d');
+        this.wasTouchActive = false;
       }
-      // When touch is not active (magnitude = 0), leave keys alone for keyboard input
+      // When touch was never active, leave keyboard keys alone
     }
 
     // INDUSTRY STANDARD: Calculate desired velocity based on input
@@ -2577,6 +2586,12 @@ export class Game {
     this.minimapCanvas = document.getElementById('minimap-canvas') as HTMLCanvasElement;
     if (this.minimapCanvas) {
       this.minimapContext = this.minimapCanvas.getContext('2d');
+
+      // MVP 5.7: Show minimap when game starts (was hidden on character select)
+      const minimapContainer = document.getElementById('minimap');
+      if (minimapContainer) {
+        minimapContainer.classList.add('visible');
+      }
     }
   }
 

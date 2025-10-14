@@ -159,9 +159,10 @@
         border: 2px solid rgba(255, 255, 255, 0.3);
         border-radius: 8px;
         z-index: 1000;
+        display: none; /* MVP 5.7: Hidden by default, shown after game starts */
       }
-      #minimap.hidden {
-        display: none;
+      #minimap.visible {
+        display: block;
       }
       #minimap canvas {
         width: 100%;
@@ -726,15 +727,21 @@
         /* Make character select mobile-friendly */
         #character-select {
           min-width: auto;
-          width: 90%;
+          width: 95%;
           max-width: 450px;
-          padding: 20px;
+          padding: 15px;
         }
         #character-select h3 {
-          font-size: 20px;
+          font-size: 18px;
+          margin-bottom: 10px;
         }
         #character-preview-container {
-          height: 200px;
+          height: 180px;
+        }
+        #char-description {
+          padding: 10px;
+          font-size: 13px;
+          min-height: 50px;
         }
         #character-select select {
           font-size: 18px;
@@ -898,6 +905,68 @@
       @media (min-width: 769px) {
         #touch-controls-hint {
           display: none !important;
+        }
+      }
+
+      /* MVP 5.7: Extra optimizations for small phones (iPhone SE, iPhone 12 mini, etc) */
+      @media (max-width: 430px) {
+        #character-select {
+          padding: 12px;
+          width: 98%;
+        }
+        #character-select h3 {
+          font-size: 16px;
+          margin-bottom: 8px;
+        }
+        #character-preview-container {
+          height: 150px;
+        }
+        #char-description {
+          font-size: 12px;
+          padding: 8px;
+          min-height: 40px;
+        }
+        #start-btn {
+          padding: 14px;
+          font-size: 18px;
+        }
+
+        /* Smaller HUD for phones */
+        #walnut-hud {
+          font-size: 12px;
+          padding: 8px 12px;
+          max-width: 180px;
+        }
+        #walnut-hud div {
+          margin: 2px 0;
+        }
+        #walnut-hud hr {
+          margin: 4px 0;
+        }
+
+        /* Extra small minimap for phones */
+        #minimap {
+          width: 100px;
+          height: 100px;
+        }
+
+        /* Compact touch hint */
+        #touch-controls-hint {
+          font-size: 12px;
+          padding: 10px 15px;
+          bottom: 10px;
+        }
+
+        /* Smaller emote/chat buttons */
+        .emote-button {
+          width: 48px;
+          height: 48px;
+          font-size: 20px;
+        }
+        .chat-button {
+          font-size: 12px;
+          padding: 10px 12px;
+          min-height: 44px;
         }
       }
     </style>
