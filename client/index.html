@@ -107,7 +107,7 @@
         transform: translateY(0);
       }
       #debug-overlay {
-        position: absolute;
+        position: fixed; /* Must be fixed like canvas for proper iPad stacking */
         top: 10px;
         right: 10px;
         background: rgba(0,0,0,0.8);
@@ -122,7 +122,7 @@
         display: none;
       }
       #walnut-hud {
-        position: absolute;
+        position: fixed; /* Must be fixed like canvas for proper iPad stacking */
         top: 10px;
         left: 10px;
         background: rgba(139, 69, 19, 0.9);
@@ -164,7 +164,7 @@
         transform: translate(-50%, -100%);
       }
       #minimap {
-        position: absolute;
+        position: fixed; /* Must be fixed like canvas for proper iPad stacking */
         top: 10px;
         right: 10px;
         width: 200px;
@@ -188,7 +188,7 @@
         display: none !important;
       }
       #leaderboard {
-        position: absolute;
+        position: fixed; /* Must be fixed like canvas for proper iPad stacking */
         top: 10px;
         right: 220px;
         width: 250px;
@@ -251,7 +251,7 @@
         color: #FFE4B5;
       }
       #leaderboard-toggle {
-        position: absolute;
+        position: fixed; /* Must be fixed like canvas for proper iPad stacking */
         top: 10px;
         right: 475px;
         background: rgba(44, 95, 45, 0.9);
@@ -277,7 +277,7 @@
         display: none;
       }
       #quick-chat {
-        position: absolute;
+        position: fixed; /* Must be fixed like canvas for proper iPad stacking */
         bottom: 20px;
         left: 20px;
         display: flex;
@@ -310,7 +310,7 @@
         transform: translateX(3px);
       }
       #emotes {
-        position: absolute;
+        position: fixed; /* Must be fixed like canvas for proper iPad stacking */
         bottom: 20px;
         right: 20px;
         display: flex;
@@ -343,7 +343,7 @@
         transform: scale(1.1);
       }
       #chat-message-display {
-        position: absolute;
+        position: fixed; /* Must be fixed like canvas for proper iPad stacking */
         bottom: 200px;
         left: 20px;
         background: rgba(0, 0, 0, 0.7);
@@ -531,7 +531,7 @@
         background: rgba(0,0,0,0.4);
       }
       #settings-toggle {
-        position: absolute;
+        position: fixed; /* Must be fixed like canvas for proper iPad stacking */
         top: 220px;
         right: 10px;
         background: rgba(44, 95, 45, 0.9);
@@ -558,7 +558,7 @@
       }
       /* MVP 5: Persistent Control Guide */
       #control-guide {
-        position: absolute;
+        position: fixed; /* Must be fixed like canvas for proper iPad stacking */
         bottom: 20px;
         left: 50%;
         transform: translateX(-50%);
@@ -907,7 +907,7 @@
 
       /* MVP 5.7: Mobile-specific touch controls hint */
       #touch-controls-hint {
-        position: absolute;
+        position: fixed; /* Must be fixed like canvas for proper iPad stacking */
         bottom: 20px;
         left: 50%;
         transform: translateX(-50%);
@@ -936,7 +936,7 @@
 
       /* MVP 5.7: Mobile Action Buttons (Hide/Throw walnuts) */
       #mobile-actions {
-        position: absolute;
+        position: fixed; /* CRITICAL: Must be fixed like canvas for proper stacking on iPad */
         bottom: 80px;
         right: 20px;
         display: none; /* Hidden until game starts */
