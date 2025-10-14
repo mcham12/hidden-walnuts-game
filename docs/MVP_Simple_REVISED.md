@@ -334,6 +334,107 @@ class BoundaryManager {
 
 ---
 
+## ⌨️ MVP 5.10: Arrow Key Support
+
+**Goal**: Add arrow key support in addition to WASD for movement
+
+**Why Important:**
+- **Accessibility**: Some users prefer arrow keys (left-handed players, accessibility needs)
+- **Muscle memory**: Many games use arrow keys
+- **Easy implementation**: ~15 minutes of work
+- **Standard practice**: Most games support both WASD and arrow keys
+
+### Implementation
+
+**Current System** (WASD only):
+```typescript
+// Game.ts keyboard handler
+private onKeyDown(e: KeyboardEvent): void {
+  switch(e.key.toLowerCase()) {
+    case 'w': this.keys.forward = true; break;
+    case 'a': this.keys.left = true; break;
+    case 's': this.keys.backward = true; break;
+    case 'd': this.keys.right = true; break;
+  }
+}
+```
+
+**Enhanced System** (WASD + Arrow Keys):
+```typescript
+private onKeyDown(e: KeyboardEvent): void {
+  switch(e.key.toLowerCase()) {
+    case 'w':
+    case 'arrowup':
+      this.keys.forward = true;
+      break;
+    case 'a':
+    case 'arrowleft':
+      this.keys.left = true;
+      break;
+    case 's':
+    case 'arrowdown':
+      this.keys.backward = true;
+      break;
+    case 'd':
+    case 'arrowright':
+      this.keys.right = true;
+      break;
+  }
+}
+
+private onKeyUp(e: KeyboardEvent): void {
+  // Same pattern for key release
+  switch(e.key.toLowerCase()) {
+    case 'w':
+    case 'arrowup':
+      this.keys.forward = false;
+      break;
+    // ... etc
+  }
+}
+```
+
+### UI Updates
+
+**Control Guide** (client/index.html):
+```html
+<!-- Before -->
+<span class="control-key">W A S D</span> Move
+
+<!-- After -->
+<span class="control-key">W A S D / ↑ ← ↓ →</span> Move
+```
+
+**Settings Menu** (Controls tab):
+```html
+<div class="control-item">
+  <span class="control-key">WASD</span> or
+  <span class="control-key">Arrow Keys</span> Move
+</div>
+```
+
+**Tutorial Messages**:
+Update tutorial text to mention both control schemes:
+- "Use WASD or Arrow Keys to move around the forest"
+
+### Success Criteria
+
+- [ ] Arrow keys work for movement (↑↓←→)
+- [ ] Both WASD and arrows work simultaneously (no conflict)
+- [ ] UI/tutorial updated to show both options
+- [ ] Settings menu reflects both control schemes
+- [ ] Works on all platforms (desktop only, mobile uses touch)
+
+### Time Estimate
+
+- **Code changes**: 15 minutes (keyboard handler update)
+- **UI updates**: 15 minutes (control guide, settings, tutorial)
+- **Testing**: 10 minutes
+- **Total**: 40 minutes
+- **Priority**: LOW-MEDIUM (nice to have, improves accessibility)
+
+---
+
 ## 🗑️ MVP 6: Code Cleanup
 
 **Goal**: Remove unused ECS/enterprise code
@@ -1349,6 +1450,7 @@ See **MVP 5.7** for full mobile controls implementation details.
 | 5.7 | Mobile/Touch Controls | ✅ Complete |
 | 5.8 | **Startup Experience & UX Polish** 🆕 | 🎯 **NEXT** |
 | 5.9 | World Boundaries | Pending |
+| 5.10 | Arrow Key Support | Pending |
 | 6 | Code Cleanup | Pending |
 | 6.5 | Player Authentication & Identity | Pending |
 | 6.7 | NPC Characters & World Life | Pending |
