@@ -242,10 +242,29 @@ class CharacterPreview {
   }
 }
 
+// MVP 5.7: Global error handler for debugging iPad and mobile issues
+window.addEventListener('error', (event) => {
+  console.error('🚨 Global error caught:', {
+    message: event.message,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+    error: event.error
+  });
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('🚨 Unhandled promise rejection:', {
+    reason: event.reason,
+    promise: event.promise
+  });
+});
+
 async function main() {
-  // MVP 5: Show loading screen with animated walnut
-  const loadingScreen = new LoadingScreen();
-  await loadingScreen.show();
+  try {
+    // MVP 5: Show loading screen with animated walnut
+    const loadingScreen = new LoadingScreen();
+    await loadingScreen.show();
 
   const selectDiv = document.getElementById('character-select') as HTMLDivElement;
   const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
@@ -406,6 +425,20 @@ async function main() {
     // Show settings button after game starts
     settingsManager.show();
   });
+  } catch (error) {
+    console.error('🚨 Fatal error in main():', error);
+    // Show user-friendly error message
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,0,0,0.9);color:white;padding:20px;border-radius:8px;font-family:Arial;text-align:center;z-index:10000;';
+    errorDiv.innerHTML = `
+      <h2>Error Loading Game</h2>
+      <p>Please try refreshing the page.</p>
+      <p style="font-size:12px;opacity:0.8;">${error instanceof Error ? error.message : 'Unknown error'}</p>
+    `;
+    document.body.appendChild(errorDiv);
+  }
 }
 
-main().catch(console.error);
+main().catch((error) => {
+  console.error('🚨 Unhandled error in main():', error);
+});

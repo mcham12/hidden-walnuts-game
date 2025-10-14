@@ -67,21 +67,38 @@ export class TouchControls {
   }
 
   /**
-   * Detect if running on mobile device
+   * Detect if running on mobile/touch device
+   * Best Practice: Use multiple signals, prioritize touch capability over screen size
    */
   static isMobile(): boolean {
-    // Check user agent
+    // 1. Check for touch points (most reliable - works for all iPads, tablets, etc.)
+    if (navigator.maxTouchPoints > 0) {
+      return true;
+    }
+
+    // 2. Check for touch events
+    if ('ontouchstart' in window) {
+      return true;
+    }
+
+    // 3. Check pointer media query (coarse = touch, fine = mouse)
+    if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) {
+      return true;
+    }
+
+    // 4. Fallback: Check user agent for known mobile devices
     const userAgent = navigator.userAgent.toLowerCase();
-    const mobileKeywords = ['android', 'webos', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone'];
-    const isMobileUA = mobileKeywords.some(keyword => userAgent.includes(keyword));
+    const mobileKeywords = ['android', 'webos', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone', 'mobile'];
+    if (mobileKeywords.some(keyword => userAgent.includes(keyword))) {
+      return true;
+    }
 
-    // Check touch support
-    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    // 5. Last resort: Small screen size (but don't use as primary signal)
+    if (window.innerWidth < 768 && window.innerHeight < 1024) {
+      return true;
+    }
 
-    // Check screen size (mobile typically < 768px width)
-    const isSmallScreen = window.innerWidth < 768;
-
-    return (isMobileUA || hasTouch) && isSmallScreen;
+    return false;
   }
 
   /**

@@ -187,6 +187,18 @@ export class Game {
 
   async init(canvas: HTMLCanvasElement, audioManager: AudioManager, settingsManager: SettingsManager) {
     try {
+      // MVP 5.7: Log device info for debugging mobile issues
+      console.log('🎮 Game initialization starting...');
+      console.log('📱 Device detection:', {
+        userAgent: navigator.userAgent,
+        maxTouchPoints: navigator.maxTouchPoints,
+        hasTouch: 'ontouchstart' in window,
+        screenSize: `${window.innerWidth}x${window.innerHeight}`,
+        pixelRatio: window.devicePixelRatio,
+        isMobile: TouchControls.isMobile(),
+        pointerType: window.matchMedia('(pointer: coarse)').matches ? 'coarse (touch)' : 'fine (mouse)'
+      });
+
       // MVP 5: Set audio manager (reuse from main.ts with preloaded sounds)
       this.audioManager = audioManager;
 
@@ -880,33 +892,39 @@ export class Game {
     if (!this.character) return;
 
     // MVP 5.7: Sync touch controls input to keys (drag-to-move for mobile)
+    // CRITICAL FIX: Only sync touch input on mobile, don't interfere with keyboard
     if (this.touchControls) {
       const touchInput = this.touchControls.getMovementInput();
 
-      // Convert touch input to WASD keys
-      if (touchInput.forward) {
-        this.keys.add('w');
-      } else {
-        this.keys.delete('w');
-      }
+      // Only modify keys if touch is actually being used (magnitude > 0)
+      // This allows keyboard and touch to coexist without conflicts
+      if (touchInput.magnitude > 0) {
+        // Touch is active - set keys based on touch input
+        if (touchInput.forward) {
+          this.keys.add('w');
+        } else {
+          this.keys.delete('w');
+        }
 
-      if (touchInput.backward) {
-        this.keys.add('s');
-      } else {
-        this.keys.delete('s');
-      }
+        if (touchInput.backward) {
+          this.keys.add('s');
+        } else {
+          this.keys.delete('s');
+        }
 
-      if (touchInput.left) {
-        this.keys.add('a');
-      } else {
-        this.keys.delete('a');
-      }
+        if (touchInput.left) {
+          this.keys.add('a');
+        } else {
+          this.keys.delete('a');
+        }
 
-      if (touchInput.right) {
-        this.keys.add('d');
-      } else {
-        this.keys.delete('d');
+        if (touchInput.right) {
+          this.keys.add('d');
+        } else {
+          this.keys.delete('d');
+        }
       }
+      // When touch is not active (magnitude = 0), leave keys alone for keyboard input
     }
 
     // INDUSTRY STANDARD: Calculate desired velocity based on input
@@ -1360,6 +1378,13 @@ export class Game {
               // Convert server Walnut format to client format
               // Game walnuts (origin='game') should render as golden bonus walnuts
               const walnutType = isGoldenWalnut ? 'game' : walnut.hiddenIn;
+
+              // CRITICAL FIX: Skip walnuts with undefined type (corrupted/old data)
+              if (!walnutType) {
+                console.warn(`⚠️ Skipping walnut ${walnut.id} with undefined type (hiddenIn=${walnut.hiddenIn}, origin=${walnut.origin})`);
+                continue;
+              }
+
               const points = isGoldenWalnut ? 5 : (walnut.hiddenIn === 'buried' ? 3 : 1);
 
               if (isGoldenWalnut) {
