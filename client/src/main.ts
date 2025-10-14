@@ -399,6 +399,13 @@ async function main() {
           });
         }
       }
+
+      // MVP 5.7: Show mobile action buttons on mobile
+      const mobileActions = document.getElementById('mobile-actions');
+      if (mobileActions) {
+        mobileActions.classList.add('visible');
+        console.log('✅ Mobile action buttons shown');
+      }
     } else {
       // Show desktop control guide
       if (controlGuide) {
