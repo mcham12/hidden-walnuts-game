@@ -6,7 +6,16 @@
     <title>Hidden Walnuts</title>
     <style>
       body { margin: 0; padding: 0; overflow: hidden; }
-      canvas { display: block; width: 100vw; height: 100vh; }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 0; /* CRITICAL: Canvas must be behind all UI */
+        pointer-events: auto;
+      }
       #character-select {
         position: absolute;
         top: 50%;
@@ -121,6 +130,7 @@
         font-weight: bold;
         z-index: 1000;
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        pointer-events: none; /* Let touches pass through to canvas */
       }
       #walnut-hud.hidden {
         display: none;
@@ -160,6 +170,7 @@
         border-radius: 8px;
         z-index: 1000;
         display: none; /* MVP 5.7: Hidden by default, shown after game starts */
+        pointer-events: none; /* Let touches pass through to canvas */
       }
       #minimap.visible {
         display: block;
@@ -251,6 +262,8 @@
         z-index: 1001;
         box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         transition: all 0.2s;
+        pointer-events: auto;
+        touch-action: manipulation;
       }
       #leaderboard-toggle:hover {
         background: rgba(44, 95, 45, 1);
@@ -285,6 +298,8 @@
         box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         min-width: 150px;
         text-align: left;
+        pointer-events: auto;
+        touch-action: manipulation;
       }
       .chat-button:hover {
         background: rgba(44, 95, 45, 1);
@@ -316,6 +331,8 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        pointer-events: auto;
+        touch-action: manipulation;
       }
       .emote-button:hover {
         background: rgba(139, 69, 19, 1);
@@ -525,6 +542,8 @@
         z-index: 1001;
         box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         transition: all 0.2s;
+        pointer-events: auto;
+        touch-action: manipulation;
       }
       #settings-toggle:hover {
         background: rgba(44, 95, 45, 1);
@@ -898,6 +917,9 @@
         z-index: 1000;
         box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         max-width: 90%;
+        pointer-events: auto; /* Allow tap to dismiss */
+        touch-action: manipulation;
+        cursor: pointer;
       }
       #touch-controls-hint.hidden {
         display: none;
@@ -913,10 +935,11 @@
         position: absolute;
         bottom: 80px;
         right: 20px;
-        display: none; /* Hidden by default, shown on mobile */
+        display: none; /* Hidden by default, shown on mobile via media query */
         flex-direction: column;
         gap: 12px;
-        z-index: 1000;
+        z-index: 1001; /* Above canvas and game HUD */
+        pointer-events: auto; /* Ensure touch events work */
       }
       .mobile-action-btn {
         background: rgba(139, 69, 19, 0.9);
@@ -939,6 +962,8 @@
         gap: 4px;
         user-select: none;
         -webkit-tap-highlight-color: transparent;
+        pointer-events: auto; /* CRITICAL: Ensure touch events work */
+        touch-action: manipulation; /* Optimize touch response */
       }
       .mobile-action-btn:active {
         transform: scale(0.95);
@@ -1176,7 +1201,7 @@
       <div style="margin-top: 8px; font-size: 12px; opacity: 0.7;">Tap here to dismiss</div>
     </div>
     <!-- MVP 5.7: Mobile Action Buttons (Hide/Throw) -->
-    <div id="mobile-actions" class="hidden">
+    <div id="mobile-actions">
       <button id="mobile-hide-btn" class="mobile-action-btn" title="Hide Walnut">
         <span class="btn-icon">🥜</span>
         <span class="btn-label">HIDE</span>

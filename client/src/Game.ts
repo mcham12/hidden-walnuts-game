@@ -764,17 +764,9 @@ export class Game {
   /**
    * MVP 5.7: Initialize mobile action buttons for hiding/throwing walnuts
    * Replaces double-tap gesture with visible, discoverable on-screen buttons
+   * Note: Visibility is controlled by CSS media queries, not JavaScript
    */
   private initMobileActionButtons(): void {
-    // Mobile actions container
-    const mobileActions = document.getElementById('mobile-actions');
-    if (!mobileActions) return;
-
-    // Show on mobile (already handled by CSS media queries)
-    if (TouchControls.isMobile()) {
-      mobileActions.classList.remove('hidden');
-    }
-
     // Hide button
     const hideButton = document.getElementById('mobile-hide-btn');
     if (hideButton) {

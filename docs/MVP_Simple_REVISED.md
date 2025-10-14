@@ -268,6 +268,156 @@ rm client/src/ARCHITECTURE_README.md
 
 ---
 
+## 🔌 MVP 6.3: Session & Connection Management
+
+**Goal**: Properly handle disconnected/abandoned players following standard gaming practices
+
+**Why Now?** (Before Player Authentication)
+- **Clean multiplayer state**: Remove ghost players from world
+- **Performance**: Don't track inactive connections
+- **UX**: Other players don't see frozen/abandoned characters
+- **Foundation for auth**: Session management needed before user accounts
+
+### Abandoned Player Cleanup
+
+**Standard Gaming Practices:**
+- **Disconnect timeout**: 30 seconds of no heartbeat = disconnected
+- **Reconnection grace period**: 2 minutes to reconnect and resume
+- **Abandoned cleanup**: 5 minutes of inactivity = full cleanup
+
+**Implementation:**
+```typescript
+interface PlayerSession {
+  playerId: string;
+  lastHeartbeat: number;
+  disconnectedAt: number | null;
+  isAbandoned: boolean;
+}
+
+class SessionManager {
+  private sessions: Map<string, PlayerSession> = new Map();
+
+  // Check heartbeats every 10 seconds
+  startSessionMonitoring() {
+    setInterval(() => {
+      const now = Date.now();
+
+      for (const [playerId, session] of this.sessions) {
+        // No heartbeat for 30 seconds = disconnected
+        if (now - session.lastHeartbeat > 30000) {
+          if (!session.disconnectedAt) {
+            this.handlePlayerDisconnect(playerId);
+            session.disconnectedAt = now;
+          }
+
+          // Abandoned after 5 minutes of disconnect
+          if (now - session.disconnectedAt > 300000) {
+            this.cleanupAbandonedPlayer(playerId);
+            this.sessions.delete(playerId);
+          }
+        }
+      }
+    }, 10000);
+  }
+
+  handlePlayerDisconnect(playerId: string) {
+    // Hide player character (keep in memory for reconnect)
+    // Show "Disconnected" status in UI
+    // Stop broadcasting their position
+  }
+
+  cleanupAbandonedPlayer(playerId: string) {
+    // Remove player character from world
+    // Remove from leaderboard (temp players only)
+    // Clear their walnuts (or mark as "abandoned" for scavenging)
+    // Free up server resources
+  }
+}
+```
+
+### Heartbeat System
+
+**Client → Server:**
+- Send heartbeat every 10 seconds
+- Include playerId and timestamp
+- Piggybacked on existing messages when possible
+
+**Server → Client:**
+- Acknowledge heartbeats
+- Broadcast player disconnect/reconnect events
+- Send reconnection token (for resuming session)
+
+### Reconnection Flow
+
+**When Player Reconnects:**
+```typescript
+// Client sends reconnection request
+interface ReconnectMessage {
+  type: 'reconnect';
+  playerId: string;
+  reconnectToken: string; // Stored in localStorage
+}
+
+// Server validates and restores session
+if (session.disconnectedAt && now - session.disconnectedAt < 120000) {
+  // Within grace period - restore player
+  session.disconnectedAt = null;
+  session.lastHeartbeat = now;
+
+  // Send full world state to reconnecting player
+  // Show "Player reconnected" to others
+} else {
+  // Grace period expired - start fresh
+  createNewSession(playerId);
+}
+```
+
+### Visual Feedback
+
+**Disconnected Players:**
+- Character fades to 50% opacity
+- "Disconnected" label above character
+- No longer move or interact
+- Still visible for 2-minute grace period
+
+**Abandoned Cleanup:**
+- Character fades out completely (2-second animation)
+- Removed from leaderboard (if temp player)
+- Walnuts marked as "abandoned" (can be found by others)
+
+### Server Optimizations
+
+**Resource Management:**
+- Close WebSocket connections after timeout
+- Clear player state from memory
+- Update player count in real-time
+- Broadcast abandoned player cleanup to all clients
+
+**Database Updates:**
+- Update "lastSeen" timestamp for authenticated users
+- Mark session as "abandoned" in database
+- Keep session history for analytics (7 days)
+
+### Success Criteria
+
+- [ ] Players automatically disconnected after 30s no heartbeat
+- [ ] 2-minute grace period for reconnection
+- [ ] Full cleanup after 5 minutes of inactivity
+- [ ] Disconnected players visually indicated
+- [ ] Reconnection works seamlessly (restore position/state)
+- [ ] No ghost players in world
+- [ ] Server resources properly freed
+
+### What's Saved for Later
+
+**Advanced Features:**
+- Cross-device reconnection (needs full auth)
+- Session migration (switch device mid-game)
+- Spectator mode for disconnected players
+- Session analytics and metrics
+
+---
+
 ## 🔐 MVP 6.5: Player Authentication & Identity
 
 **Goal**: Players can create a username and come back as the same identity
