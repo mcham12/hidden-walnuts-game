@@ -230,6 +230,110 @@ async function preloadAllAssets() {
 
 ---
 
+## 🛡️ MVP 5.9: World Boundaries
+
+**Goal**: Prevent players from falling off the edge of the world
+
+**Why Important:**
+- Current issue: Players can walk past forest edge and fall into void
+- Creates confusion and poor UX
+- Easy fix with invisible collision boundaries
+
+### Implementation
+
+**Approach 1: Invisible Walls** (Simplest)
+```typescript
+// Add invisible box colliders at world edges
+const WORLD_SIZE = 100; // Match terrain size
+const BOUNDARY_HEIGHT = 10; // Tall enough to block jumping
+
+// Create boundaries on all 4 sides
+const boundaries = [
+  { pos: [0, 5, WORLD_SIZE/2], size: [WORLD_SIZE, BOUNDARY_HEIGHT, 1] },      // North
+  { pos: [0, 5, -WORLD_SIZE/2], size: [WORLD_SIZE, BOUNDARY_HEIGHT, 1] },     // South
+  { pos: [WORLD_SIZE/2, 5, 0], size: [1, BOUNDARY_HEIGHT, WORLD_SIZE] },      // East
+  { pos: [-WORLD_SIZE/2, 5, 0], size: [1, BOUNDARY_HEIGHT, WORLD_SIZE] }      // West
+];
+
+boundaries.forEach(boundary => {
+  const wall = new THREE.Mesh(
+    new THREE.BoxGeometry(...boundary.size),
+    new THREE.MeshBasicMaterial({ visible: false }) // Invisible
+  );
+  wall.position.set(...boundary.pos);
+  scene.add(wall);
+
+  // Add to collision system (existing MVP 5.5 code)
+  this.collisionManager.addStaticCollider(wall);
+});
+```
+
+**Approach 2: Soft Boundaries** (Better UX)
+```typescript
+// Instead of hard stop, gently push player back
+class BoundaryManager {
+  private readonly WORLD_RADIUS = 50;
+  private readonly PUSH_ZONE = 5; // Start pushing 5 units from edge
+
+  update(playerPosition: THREE.Vector3): THREE.Vector3 {
+    const distFromCenter = Math.sqrt(
+      playerPosition.x ** 2 + playerPosition.z ** 2
+    );
+
+    if (distFromCenter > this.WORLD_RADIUS - this.PUSH_ZONE) {
+      // Calculate push direction (toward center)
+      const pushStrength = (distFromCenter - (this.WORLD_RADIUS - this.PUSH_ZONE)) / this.PUSH_ZONE;
+      const angle = Math.atan2(playerPosition.z, playerPosition.x);
+
+      // Gradually push back
+      playerPosition.x -= Math.cos(angle) * pushStrength * 0.5;
+      playerPosition.z -= Math.sin(angle) * pushStrength * 0.5;
+
+      // Show subtle warning
+      if (pushStrength > 0.7) {
+        this.showBoundaryWarning();
+      }
+    }
+
+    return playerPosition;
+  }
+}
+```
+
+**Approach 3: Natural Barriers** (Most Realistic)
+- Place dense trees/rocks at forest edge (existing assets)
+- Use collision detection from MVP 5.5
+- Creates natural-looking boundary
+- More immersive than invisible walls
+
+### Visual Feedback
+
+**Warning System:**
+- Screen vignette (dark edges) when near boundary
+- Subtle "Turn back" notification
+- Audio cue (rustling, ambient change)
+
+**Debug Mode:**
+- Show boundary lines when debug enabled (F key)
+- Display distance from edge in debug overlay
+
+### Success Criteria
+
+- [ ] Players cannot walk past world boundaries
+- [ ] No jarring collision (smooth push-back or invisible wall)
+- [ ] Works in all directions (N, S, E, W)
+- [ ] Subtle warning before reaching edge
+- [ ] Debug visualization available
+
+### Time Estimate
+
+- **Invisible walls**: 30 minutes
+- **Soft boundaries**: 1 hour
+- **Natural barriers**: 2 hours (asset placement)
+- **Priority**: MEDIUM (not game-breaking but improves UX)
+
+---
+
 ## 🗑️ MVP 6: Code Cleanup
 
 **Goal**: Remove unused ECS/enterprise code
@@ -1244,6 +1348,7 @@ See **MVP 5.7** for full mobile controls implementation details.
 | 5.5 | Physics & Collision Detection | ✅ Complete |
 | 5.7 | Mobile/Touch Controls | ✅ Complete |
 | 5.8 | **Startup Experience & UX Polish** 🆕 | 🎯 **NEXT** |
+| 5.9 | World Boundaries | Pending |
 | 6 | Code Cleanup | Pending |
 | 6.5 | Player Authentication & Identity | Pending |
 | 6.7 | NPC Characters & World Life | Pending |
