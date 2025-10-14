@@ -932,12 +932,12 @@
         }
       }
 
-      /* MVP 5.7: iPhone Landscape Orientation Fixes - COMPREHENSIVE */
+      /* MVP 5.7: iPhone Landscape Orientation Fixes - WITH SAFE AREA SUPPORT */
       @media (max-height: 500px) and (orientation: landscape) {
-        /* SUPER COMPACT HUD - Single line only */
+        /* SUPER COMPACT HUD - Single line only, respects notch */
         #walnut-hud {
-          top: 3px;
-          left: 3px;
+          top: max(5px, env(safe-area-inset-top, 5px));
+          left: max(5px, env(safe-area-inset-left, 5px));
           padding: 4px 8px;
           font-size: 9px;
           max-width: none;
@@ -963,31 +963,31 @@
           margin-right: 3px;
         }
 
-        /* Smaller minimap in landscape */
+        /* Smaller minimap in landscape, respects notch */
         #minimap {
           width: 70px;
           height: 70px;
-          top: 3px;
-          right: 3px;
+          top: max(5px, env(safe-area-inset-top, 5px));
+          right: max(5px, env(safe-area-inset-right, 5px));
         }
 
-        /* Make right-side buttons NARROWER to fit in landscape */
+        /* Make right-side buttons NARROWER to fit in landscape, respect safe areas */
         #settings-toggle,
         #leaderboard-toggle {
           padding: 6px 10px;
           font-size: 11px;
           min-width: 70px;
           min-height: 36px;
+          right: max(5px, env(safe-area-inset-right, 5px));
         }
 
         /* Stack buttons closer together in landscape */
         #settings-toggle {
-          top: 78px; /* Below minimap (70px + 8px gap) */
-          right: 3px;
+          top: calc(max(5px, env(safe-area-inset-top, 5px)) + 70px + 8px);
         }
         #mobile-actions {
-          bottom: 5px;
-          right: 3px;
+          bottom: max(5px, env(safe-area-inset-bottom, 5px));
+          right: max(5px, env(safe-area-inset-right, 5px));
         }
         .mobile-action-btn {
           min-width: 70px;
@@ -1002,14 +1002,13 @@
           font-size: 11px;
         }
         #leaderboard-toggle {
-          bottom: 60px;
-          right: 3px;
+          bottom: calc(max(5px, env(safe-area-inset-bottom, 5px)) + 44px + 10px);
         }
 
-        /* Leaderboard compact in landscape */
+        /* Leaderboard compact in landscape, respect safe areas */
         #leaderboard {
-          bottom: 105px;
-          right: 3px;
+          bottom: calc(max(5px, env(safe-area-inset-bottom, 5px)) + 44px + 36px + 20px);
+          right: max(5px, env(safe-area-inset-right, 5px));
           width: 180px;
           max-width: 180px;
           font-size: 11px;
@@ -1026,11 +1025,11 @@
           font-size: 10px;
         }
 
-        /* Position quick chat at BOTTOM-LEFT (below HUD zone) */
+        /* Position quick chat at BOTTOM-LEFT, respects notch and home indicator */
         #quick-chat {
-          bottom: 5px;
+          bottom: max(5px, env(safe-area-inset-bottom, 5px));
           top: auto;
-          left: 3px;
+          left: max(5px, env(safe-area-inset-left, 5px));
           transform: none;
           max-height: none;
           overflow-y: visible;
@@ -1045,10 +1044,11 @@
           white-space: nowrap;
         }
 
-        /* Position emotes at BOTTOM-LEFT next to quick chat */
+        /* Position emotes at BOTTOM-LEFT next to quick chat, respects safe areas */
         #emotes {
-          bottom: 5px;
-          left: 300px; /* After quick chat buttons (4 * 70px + gaps) */
+          bottom: max(5px, env(safe-area-inset-bottom, 5px));
+          /* Position after quick chat: safe-area-left + 4 buttons (70px each) + 3 gaps (4px) */
+          left: calc(max(5px, env(safe-area-inset-left, 5px)) + 280px + 16px);
           right: auto;
           flex-direction: row;
           gap: 4px;
@@ -1060,9 +1060,9 @@
           padding: 6px;
         }
 
-        /* Compact toast notifications in landscape */
+        /* Compact toast notifications in landscape, respect safe areas */
         #toast-container {
-          top: 3px;
+          top: max(5px, env(safe-area-inset-top, 5px));
           left: 50%;
           right: auto;
           transform: translateX(-50%);
