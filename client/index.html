@@ -2,20 +2,42 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
     <title>Hidden Walnuts</title>
     <style>
-      body { margin: 0; padding: 0; overflow: hidden; }
+      /* CRITICAL: Prevent iOS Safari white space issues */
+      html {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        position: fixed;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        position: fixed;
+        -webkit-overflow-scrolling: touch;
+      }
       /* CRITICAL: Only style the GAME canvas, not preview canvas */
       #gameCanvas {
         display: block;
-        width: 100vw;
-        height: 100vh;
         position: fixed;
         top: 0;
         left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
         z-index: 0; /* Behind all UI */
         pointer-events: auto;
+        /* Prevent iOS white space */
+        -webkit-transform: translate3d(0, 0, 0);
+        transform: translate3d(0, 0, 0);
       }
       #gameCanvas.hidden {
         display: none;
@@ -910,123 +932,145 @@
         }
       }
 
-      /* MVP 5.7: iPhone Landscape Orientation Fixes */
+      /* MVP 5.7: iPhone Landscape Orientation Fixes - COMPREHENSIVE */
       @media (max-height: 500px) and (orientation: landscape) {
-        /* Fix canvas to fill entire viewport (including dynamic viewport height for iOS) */
-        #gameCanvas {
-          width: 100vw;
-          height: 100vh;
-          height: 100dvh; /* Dynamic viewport height for iOS Safari */
-        }
-
-        /* Compact HUD for landscape */
+        /* SUPER COMPACT HUD - Single line only */
         #walnut-hud {
-          top: 5px;
-          left: 5px;
-          padding: 6px 10px;
-          font-size: 11px;
-          max-width: 160px;
+          top: 3px;
+          left: 3px;
+          padding: 4px 8px;
+          font-size: 9px;
+          max-width: none;
+          display: flex;
+          flex-direction: row;
+          gap: 8px;
+          align-items: center;
+          background: rgba(139, 69, 19, 0.85);
+          border-radius: 4px;
         }
         #walnut-hud div {
-          margin: 2px 0;
+          margin: 0;
+          display: inline;
         }
-        #walnut-hud hr {
-          margin: 3px 0;
+        #walnut-hud hr,
+        #walnut-hud div:nth-child(3),
+        #walnut-hud div:nth-child(4) {
+          display: none !important; /* Hide location and instructions in landscape */
+        }
+        .walnut-icon {
+          width: 10px;
+          height: 10px;
+          margin-right: 3px;
         }
 
         /* Smaller minimap in landscape */
         #minimap {
-          width: 80px;
-          height: 80px;
-          top: 5px;
-          right: 5px;
+          width: 70px;
+          height: 70px;
+          top: 3px;
+          right: 3px;
         }
 
         /* Make right-side buttons NARROWER to fit in landscape */
         #settings-toggle,
         #leaderboard-toggle {
-          padding: 8px 12px;
-          font-size: 12px;
-          min-width: 80px;
-          min-height: 40px;
+          padding: 6px 10px;
+          font-size: 11px;
+          min-width: 70px;
+          min-height: 36px;
         }
 
         /* Stack buttons closer together in landscape */
         #settings-toggle {
-          top: 90px; /* Below minimap (80px + 10px gap) */
-          right: 5px;
+          top: 78px; /* Below minimap (70px + 8px gap) */
+          right: 3px;
         }
         #mobile-actions {
-          bottom: 10px;
-          right: 5px;
+          bottom: 5px;
+          right: 3px;
         }
         .mobile-action-btn {
-          min-width: 80px;
-          min-height: 48px;
-          padding: 10px 12px;
-          font-size: 14px;
+          min-width: 70px;
+          min-height: 44px;
+          padding: 8px 10px;
+          font-size: 12px;
+        }
+        .mobile-action-btn .btn-icon {
+          font-size: 16px;
+        }
+        .mobile-action-btn .btn-label {
+          font-size: 11px;
         }
         #leaderboard-toggle {
-          bottom: 70px;
-          right: 5px;
+          bottom: 60px;
+          right: 3px;
         }
 
         /* Leaderboard compact in landscape */
         #leaderboard {
-          bottom: 120px;
-          right: 5px;
-          width: 200px;
-          max-width: 200px;
-          font-size: 12px;
-          padding: 10px;
+          bottom: 105px;
+          right: 3px;
+          width: 180px;
+          max-width: 180px;
+          font-size: 11px;
+          padding: 8px;
         }
         #leaderboard h3 {
-          font-size: 14px;
-          margin-bottom: 6px;
+          font-size: 13px;
+          margin-bottom: 4px;
+          padding-bottom: 4px;
         }
         #leaderboard-list li {
-          padding: 4px;
+          padding: 3px;
           margin: 2px 0;
-          font-size: 11px;
+          font-size: 10px;
         }
 
-        /* Reposition quick chat HIGHER to avoid HUD overlap */
+        /* Position quick chat at BOTTOM-LEFT (below HUD zone) */
         #quick-chat {
-          bottom: auto;
-          top: 50%;
-          transform: translateY(-50%);
-          left: 5px;
-          max-height: 70vh;
-          overflow-y: auto;
+          bottom: 5px;
+          top: auto;
+          left: 3px;
+          transform: none;
+          max-height: none;
+          overflow-y: visible;
+          flex-direction: row; /* Horizontal in landscape */
+          gap: 4px;
         }
         .chat-button {
-          padding: 8px 12px;
-          font-size: 12px;
-          min-height: 36px;
-          min-width: 100px;
+          padding: 6px 8px;
+          font-size: 10px;
+          min-height: 32px;
+          min-width: 70px;
+          white-space: nowrap;
         }
 
-        /* Keep emotes VISIBLE on bottom-left in landscape */
+        /* Position emotes at BOTTOM-LEFT next to quick chat */
         #emotes {
           bottom: 5px;
-          left: 120px; /* Next to quick chat */
+          left: 300px; /* After quick chat buttons (4 * 70px + gaps) */
           right: auto;
           flex-direction: row;
+          gap: 4px;
         }
         .emote-button {
-          width: 44px;
-          height: 44px;
-          font-size: 18px;
+          width: 36px;
+          height: 36px;
+          font-size: 16px;
+          padding: 6px;
         }
 
         /* Compact toast notifications in landscape */
         #toast-container {
-          top: 5px;
-          max-width: 250px;
+          top: 3px;
+          left: 50%;
+          right: auto;
+          transform: translateX(-50%);
+          max-width: 200px;
         }
         .toast {
-          padding: 8px 12px;
-          font-size: 12px;
+          padding: 6px 10px;
+          font-size: 11px;
         }
 
         /* Touch hint hidden in landscape (no room) */
