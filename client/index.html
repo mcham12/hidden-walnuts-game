@@ -808,24 +808,29 @@
           right: 5px;
         }
 
-        /* Mobile-friendly buttons (larger touch targets) */
+        /* Mobile-friendly buttons (larger touch targets) - FIX OVERLAP */
         #leaderboard-toggle,
         #settings-toggle {
-          padding: 12px 18px;
-          font-size: 16px;
+          padding: 10px 14px;
+          font-size: 14px;
           min-height: 48px;
-          min-width: 48px;
+          min-width: 100px;
         }
 
-        /* Stack leaderboard and settings vertically on mobile */
-        #leaderboard-toggle {
-          top: auto;
-          bottom: 120px;
+        /* FIX: Stack buttons vertically on RIGHT side without overlap */
+        /* Order from top: Settings (top: 130px) → Hide (mobile-actions at bottom: 80px) → Leaderboard (bottom: 180px) */
+        #settings-toggle {
+          top: 130px; /* Below minimap (120px height + 10px gap) */
+          right: 5px;
+          bottom: auto;
+        }
+        #mobile-actions {
+          bottom: 80px;
           right: 5px;
         }
-        #settings-toggle {
+        #leaderboard-toggle {
           top: auto;
-          bottom: 60px;
+          bottom: 180px;
           right: 5px;
         }
 
@@ -833,7 +838,7 @@
         #leaderboard {
           right: 5px;
           top: auto;
-          bottom: 180px;
+          bottom: 240px; /* Above leaderboard toggle */
           width: calc(100vw - 10px);
           max-width: 300px;
         }
@@ -902,6 +907,131 @@
         }
         button, select {
           -webkit-tap-highlight-color: transparent;
+        }
+      }
+
+      /* MVP 5.7: iPhone Landscape Orientation Fixes */
+      @media (max-height: 500px) and (orientation: landscape) {
+        /* Fix canvas to fill entire viewport (including dynamic viewport height for iOS) */
+        #gameCanvas {
+          width: 100vw;
+          height: 100vh;
+          height: 100dvh; /* Dynamic viewport height for iOS Safari */
+        }
+
+        /* Compact HUD for landscape */
+        #walnut-hud {
+          top: 5px;
+          left: 5px;
+          padding: 6px 10px;
+          font-size: 11px;
+          max-width: 160px;
+        }
+        #walnut-hud div {
+          margin: 2px 0;
+        }
+        #walnut-hud hr {
+          margin: 3px 0;
+        }
+
+        /* Smaller minimap in landscape */
+        #minimap {
+          width: 80px;
+          height: 80px;
+          top: 5px;
+          right: 5px;
+        }
+
+        /* Make right-side buttons NARROWER to fit in landscape */
+        #settings-toggle,
+        #leaderboard-toggle {
+          padding: 8px 12px;
+          font-size: 12px;
+          min-width: 80px;
+          min-height: 40px;
+        }
+
+        /* Stack buttons closer together in landscape */
+        #settings-toggle {
+          top: 90px; /* Below minimap (80px + 10px gap) */
+          right: 5px;
+        }
+        #mobile-actions {
+          bottom: 10px;
+          right: 5px;
+        }
+        .mobile-action-btn {
+          min-width: 80px;
+          min-height: 48px;
+          padding: 10px 12px;
+          font-size: 14px;
+        }
+        #leaderboard-toggle {
+          bottom: 70px;
+          right: 5px;
+        }
+
+        /* Leaderboard compact in landscape */
+        #leaderboard {
+          bottom: 120px;
+          right: 5px;
+          width: 200px;
+          max-width: 200px;
+          font-size: 12px;
+          padding: 10px;
+        }
+        #leaderboard h3 {
+          font-size: 14px;
+          margin-bottom: 6px;
+        }
+        #leaderboard-list li {
+          padding: 4px;
+          margin: 2px 0;
+          font-size: 11px;
+        }
+
+        /* Reposition quick chat HIGHER to avoid HUD overlap */
+        #quick-chat {
+          bottom: auto;
+          top: 50%;
+          transform: translateY(-50%);
+          left: 5px;
+          max-height: 70vh;
+          overflow-y: auto;
+        }
+        .chat-button {
+          padding: 8px 12px;
+          font-size: 12px;
+          min-height: 36px;
+          min-width: 100px;
+        }
+
+        /* Keep emotes VISIBLE on bottom-left in landscape */
+        #emotes {
+          bottom: 5px;
+          left: 120px; /* Next to quick chat */
+          right: auto;
+          flex-direction: row;
+        }
+        .emote-button {
+          width: 44px;
+          height: 44px;
+          font-size: 18px;
+        }
+
+        /* Compact toast notifications in landscape */
+        #toast-container {
+          top: 5px;
+          max-width: 250px;
+        }
+        .toast {
+          padding: 8px 12px;
+          font-size: 12px;
+        }
+
+        /* Touch hint hidden in landscape (no room) */
+        #touch-controls-hint {
+          display: none !important;
         }
       }
 

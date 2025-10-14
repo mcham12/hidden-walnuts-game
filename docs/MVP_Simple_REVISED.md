@@ -706,49 +706,359 @@ class Predator {
 
 ---
 
-## 🥊 MVP 7.2: Walnut Combat & Throwing
+## 🥊 MVP 7.2: Combat, Health & Resource Management
 
-**Goal**: Add direct player-vs-player interaction with throwable walnuts
+**Goal**: Add survival mechanics with walnuts as life-source AND weapon
 
-**Philosophy**: Complements hide-and-seek with action combat
+**Philosophy**: Strategic resource management meets action combat. Every walnut is a choice: hide for points, throw for offense, or eat for survival.
 
-### Throwable Walnut Mechanics
+### 🎯 Core Mechanic: Triple-Purpose Walnuts
 
-**Walnut GLB Asset** - Physical walnut object (already added to assets/environment)
-- Appears as ground loot (unburied walnuts)
-- Can be picked up and thrown at other players
-- Physics-based projectile with arc trajectory
+**Walnuts now serve THREE purposes:**
+1. **Scoring** - Hide walnuts = points (existing gameplay)
+2. **Combat** - Throw walnuts at opponents = damage + points, BUT lose the walnut forever
+3. **Survival** - Eat walnuts = restore health when low
 
-**Picking Up Walnuts**:
+**Strategic Tension**:
+- Finding walnuts is now critical (not just for points, but for survival)
+- Throwing a walnut gives immediate tactical advantage but reduces future survival options
+- Must balance offense (throw), defense (eat), and scoring (hide)
+- Limited inventory (10 walnuts max) forces constant decision-making
+
+### 🌰 Increased Walnut Availability
+
+**Why More Walnuts Needed:**
+- Previous spawn rates designed for pure hide-and-seek gameplay
+- New combat/health mechanics require MORE walnuts as consumable resources
+- Players now use walnuts faster (throwing + eating vs. just hiding)
+- Resource scarcity creates tension, but too scarce = frustration
+
+**Updated Spawn System**:
 ```typescript
-// Walk over unburied walnut to pick it up
+interface WalnutSpawnConfig {
+  // Game walnuts (spawned by server at cycle start)
+  gameWalnutCount: number;       // 100 → 200 (doubled)
+  gameWalnutRespawn: boolean;    // true (respawn after found)
+  respawnDelay: number;          // 60 seconds (constant supply)
+
+  // Player walnuts (given to each player on join)
+  playerStartWalnuts: number;    // 3 → 5 (increased for survival)
+
+  // Found walnut drops (when player picks up but inventory full)
+  dropRate: number;              // 100% (excess walnuts drop as ground loot)
+}
+```
+
+**Spawn Distribution**:
+- **200 game walnuts** spawned at cycle start (was 100)
+- **Respawning enabled**: Found walnuts respawn after 60 seconds at new random location
+- **5 starting walnuts** per player (was 3)
+- **Death drops**: All carried walnuts become ground loot for others
+- **Throw misses**: Thrown walnuts that miss become ground loot (can be picked up again)
+
+**Spawn Balancing**:
+- Higher density encourages exploration AND combat
+- Respawning prevents walnut drought mid-cycle
+- Death/throw drops create contested "hot zones"
+- Starting walnuts ensure immediate survivability
+
+**Visual Indicators** (to help players find walnuts):
+- **Glint effect** on unburied walnuts (catch eye from distance)
+- **Minimap icons** for nearby walnuts (within 20 units)
+- **Audio cue** when walnut nearby (subtle rustle/sparkle sound)
+- **Scent trail** particle effect leading toward closest walnut (when inventory < 3)
+
+### 🫀 Health System
+
+**Player Health**:
+```typescript
+interface PlayerHealth {
+  current: number;        // 0-100
+  max: number;            // 100
+  regeneration: number;   // +1 HP per 10 seconds (slow natural regen)
+  lastDamageTime: number;
+  isDead: boolean;
+}
+```
+
+**Health Sources**:
+- Start with 100 HP
+- Natural regeneration: +1 HP per 10 seconds (encourages survival over aggression)
+- Eating walnut: +25 HP (instant heal)
+- Getting hit by thrown walnut: -20 HP
+
+**Death & Respawn**:
+- Health reaches 0 = "knocked out" (3 second respawn timer)
+- Respawn at random location (lose ALL carried walnuts)
+- Score penalty: -5 points on death
+- Attacker gets +5 points for knockout
+
+**Health UI**:
+- **Desktop**: Health bar top-left corner (gradient: green → yellow → red)
+- **Mobile**: Larger health bar bottom-left (easy thumb-reach for EAT button)
+- **Critical warning**: Screen edges pulse red when health < 20%
+- **Eat prompt**: "Press E to eat walnut" overlay appears when health < 30% and carrying walnuts
+
+### 🎒 Inventory & Resource Management
+
+**Walnut Inventory**:
+```typescript
 interface WalnutInventory {
-  walnutCount: number;     // Max 5 walnuts
-  canThrow: boolean;       // Cooldown check
-  lastThrowTime: number;
+  walnutCount: number;     // Current count (0-10)
+  maxCapacity: number;     // 10 walnuts (tunable later)
+  canPickup: boolean;      // False if at max capacity
+  lastPickupTime: number;
 }
 ```
 
-**Throwing Mechanics**:
+**Inventory Rules**:
+- Max 10 walnuts carried at once (start with 10, optimize later)
+- Can't pick up more when at capacity (must throw/eat/hide first)
+- Finding walnut when full = auto-hide prompt ("Inventory full! Hide first?")
+- Death drops all carried walnuts (become ground loot for others)
+
+**Inventory UI**:
+- **Desktop**: Counter in HUD (top-right): "🥜 7/10"
+- **Mobile**: Integrated with action buttons (shows count on THROW/EAT buttons)
+- **Visual feedback**: Walnut icons fill up inventory bar (like ammo counter)
+- **Full warning**: Inventory bar glows yellow when 9/10, red when 10/10
+
+### 🎯 Throwing Mechanics
+
+**Walnut GLB Asset** - Physical walnut projectile (already in assets/environment)
+- Physics-based arc trajectory
+- Spin animation while flying
+- Bounces on ground if misses target
+
+**Throwing Controls**:
+
+**Desktop**:
+- **T key**: Throw walnut in camera direction
+- **Hold T**: Charge throw power (0.5s - 2s hold = distance)
+- **Mouse aim**: Direction of throw
+- **Visual**: Arc trajectory preview line while holding T
+
+**Mobile/iPad**:
+- **THROW button**: Tap to throw, hold for power
+- **Drag joystick**: Aim direction while holding THROW
+- **Release**: Launches walnut
+- **Visual**: Touch-friendly trajectory arc with larger touch targets
+
+**Throwing Physics**:
 ```typescript
-// Press T key (or click while holding walnut)
 interface ThrowPhysics {
-  throwPower: number;      // Based on hold duration
-  trajectory: THREE.Vector3;  // Arc calculation
-  collisionCheck: boolean;    // Hits player or ground
+  throwPower: number;        // 10-30 units (based on charge time)
+  trajectory: THREE.Vector3; // Arc calculation with gravity
+  speed: number;             // 20 m/s base speed
+  damage: number;            // 20 HP on direct hit
+  hitbox: number;            // 0.5 unit radius (forgiving collision)
 }
 ```
 
-**Scoring System**:
-- **Pick up unburied walnut**: +1 point (encourages ground loot)
-- **Hit another player**: +1 point (skill-based)
-- **Get hit**: -1 point + "death" animation (2 second stun)
+**Throw Cooldown**:
+- 1.5 seconds between throws (prevents spam)
+- Visual cooldown timer on button/key
+- Audio: "Click" sound when cooldown ready
 
-**Balance Mechanics**:
-- **Inventory limit**: Max 5 walnuts (prevents hoarding)
-- **Throw cooldown**: 2 seconds between throws (prevents spam)
-- **Death animation**: 2 second stun when hit (gives others time to escape)
-- **Walnut physics**: Arc trajectory requires skill to hit moving targets
+### 🍽️ Eating Mechanics
+
+**Eating Controls**:
+
+**Desktop**:
+- **E key**: Eat one walnut (instant, no animation)
+- **Visual**: Health bar flashes green, "+25 HP" pop-up
+- **Audio**: Crunch sound effect
+
+**Mobile/iPad**:
+- **EAT button**: Large button in mobile-actions bar
+- **State**: Glows red + pulses when health < 30%
+- **Feedback**: Button animates (shrinks) on use, haptic feedback (if available)
+
+**Eating Rules**:
+```typescript
+interface EatAction {
+  healthRestored: number;  // +25 HP per walnut
+  canEat: boolean;         // Must have walnut AND not at full HP
+  cooldown: number;        // 2 seconds (prevents spam healing)
+  animation: string;       // Brief "eating" particle effect
+}
+```
+
+**Eat Prompt System**:
+- **Critical health (< 20%)**: Screen flashes red, "EAT WALNUT!" prompt pulses
+- **Low health (< 30%)**: Subtle "Consider eating" notification
+- **Full health**: EAT button grayed out (can't eat)
+- **No walnuts**: Button shows "Empty" state
+
+### 🎮 Updated Scoring System
+
+**Walnut Actions**:
+- **Find walnut**: +1 point (bush) / +3 points (buried)
+- **Hide walnut**: No immediate points (others find it = they get points)
+- **Hit opponent with throw**: +3 points (skill-based reward)
+- **Knockout opponent**: +5 points (reduce them to 0 HP)
+- **Get hit**: -1 point (minor penalty)
+- **Die**: -5 points + lose ALL carried walnuts
+
+**Combat Incentives**:
+- High risk/reward: Throwing walnuts gives points BUT reduces survival resources
+- Knockout bonus encourages aggressive play
+- Death penalty prevents reckless throwing
+- Score rebalancing makes combat viable strategy (not just hide-and-seek)
+
+### 🎨 Visual & Audio Feedback
+
+**Animations**:
+- **Throw animation**: Quick overhand wind-up (0.3s)
+- **Eat animation**: Brief munch particle effect (instant HP gain)
+- **Hit reaction**: Target stumbles, red damage number floats up
+- **Knockout animation**: Fall to ground (3s), then respawn fade-in
+- **Pick-up animation**: Quick bend (existing)
+
+**Particle Effects**:
+- **Throw trail**: Spinning walnut with motion blur
+- **Impact burst**: Brown shell particles + red damage indicator
+- **Miss effect**: Walnut bounces and rolls on ground
+- **Eat effect**: Green sparkles (healing)
+- **Death effect**: Character fades out, walnuts scatter
+
+**Sound Effects**:
+- **Throw**: Whoosh (wind-up), whistle (flight)
+- **Hit**: Bonk + character grunt/yelp
+- **Miss**: Thud + walnut rolling
+- **Eat**: Crunch + gulp
+- **Knockout**: Heavy thud + "Oof!"
+- **Pickup**: Soft collect chime (existing)
+- **Health critical**: Heartbeat sound loop
+
+### 📱 Platform-Specific UI
+
+**Desktop HUD**:
+```
+┌─────────────────────────────────┐
+│ HP: ████████░░ 80/100          │ (Top-left)
+│                    🥜 Walnuts: 7/10 │ (Top-right)
+└─────────────────────────────────┘
+
+Controls (bottom-right):
+T - Throw Walnut [1.2s cooldown]
+E - Eat Walnut [Ready]
+```
+
+**Mobile/iPad HUD**:
+```
+┌─────────────────────────────────┐
+│ HP: ████████████░░░░ 80/100    │ (Top, larger bars)
+│                    🥜 7/10          │ (Top-right)
+│                                     │
+│  [THROW] [EAT]  [HIDE]          │ (Bottom action bar)
+│   (7)    (❤️)                      │ (Counts on buttons)
+└─────────────────────────────────┘
+```
+
+**Critical Health Overlay** (All Platforms):
+```
+┌───────────────────────────┐
+│  ⚠️  LOW HEALTH! ⚠️        │
+│                           │
+│  [E] EAT WALNUT           │
+│  Restore +25 HP           │
+│                           │
+│  Walnuts: 7/10            │
+└───────────────────────────┘
+```
+
+### 🔧 Server Synchronization
+
+**Throw Message**:
+```typescript
+interface ThrowWalnutMessage {
+  type: 'THROW_WALNUT';
+  throwerId: string;
+  startPosition: Vector3;
+  velocity: Vector3;      // Direction + power
+  timestamp: number;
+  walnutId: string;       // Track individual projectiles
+}
+```
+
+**Hit Detection**:
+```typescript
+interface WalnutHitMessage {
+  type: 'WALNUT_HIT';
+  throwerId: string;
+  targetId: string;
+  damage: number;         // 20 HP
+  position: Vector3;      // Impact location
+  wasKnockout: boolean;   // Did this kill target?
+}
+```
+
+**Eat Action**:
+```typescript
+interface EatWalnutMessage {
+  type: 'EAT_WALNUT';
+  playerId: string;
+  healthBefore: number;
+  healthAfter: number;    // Min(100, healthBefore + 25)
+  walnutsRemaining: number;
+}
+```
+
+**Death/Respawn**:
+```typescript
+interface PlayerDeathMessage {
+  type: 'PLAYER_DEATH';
+  victimId: string;
+  killerId: string;       // Who dealt final blow
+  deathPosition: Vector3; // Where walnuts drop
+  droppedWalnuts: number; // How many walnuts scattered
+  respawnTime: number;    // 3 seconds
+}
+
+interface PlayerRespawnMessage {
+  type: 'PLAYER_RESPAWN';
+  playerId: string;
+  spawnPosition: Vector3; // Random safe location
+  initialHealth: number;  // 100 HP
+  walnutCount: number;    // 0 (start fresh)
+}
+```
+
+### ⚖️ Balance Tuning (Adjustable Values)
+
+**Health Values** (Start conservative, tune based on playtesting):
+- Max HP: 100
+- Walnut heal: 25 HP (4 walnuts = full heal)
+- Throw damage: 20 HP (5 hits to knockout)
+- Natural regen: +1 HP per 10s (slow comeback mechanic)
+
+**Inventory** (User requested X=10, tunable):
+- Max capacity: 10 walnuts (good starting point)
+- Consider later: Inventory upgrades (MVP 8+)
+
+**Cooldowns**:
+- Throw cooldown: 1.5s (balance spam vs. flow)
+- Eat cooldown: 2s (prevent panic spam)
+- Respawn time: 3s (punishment, but not too harsh)
+
+**Score Balance**:
+- Hit bonus: +3 points (reward accuracy)
+- Knockout bonus: +5 points (reward aggression)
+- Death penalty: -5 points (discourage recklessness)
+
+### 🎯 Success Criteria
+
+- [ ] Health system working (take damage, heal, die, respawn)
+- [ ] Can throw walnuts at opponents (physics + hit detection)
+- [ ] Can eat walnuts to restore health (with cooldown)
+- [ ] Inventory limited to 10 walnuts (enforced)
+- [ ] Low health prompts player to eat walnut
+- [ ] Scoring rewards combat (hit/knockout bonuses)
+- [ ] Works on desktop (T/E keys)
+- [ ] Works on mobile/iPad (THROW/EAT buttons)
+- [ ] All UI elements present and readable
+- [ ] Audio/visual feedback feels impactful
 
 ### Visual & Audio Feedback
 

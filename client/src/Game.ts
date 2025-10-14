@@ -2685,25 +2685,27 @@ export class Game {
 
   /**
    * MVP 5: Update connection status indicator
+   * Only show when disconnected or reconnecting (hide when connected)
    */
   private updateConnectionStatus(status: 'connected' | 'disconnected' | 'reconnecting'): void {
     if (!this.connectionStatusElement) return;
 
     switch (status) {
       case 'connected':
-        this.connectionStatusElement.textContent = '● Connected';
-        this.connectionStatusElement.style.backgroundColor = '#4CAF50';
-        this.connectionStatusElement.style.color = '#ffffff';
+        // Hide indicator when connected (no need to show "Connected")
+        this.connectionStatusElement.style.display = 'none';
         break;
       case 'disconnected':
         this.connectionStatusElement.textContent = '● Disconnected';
         this.connectionStatusElement.style.backgroundColor = '#f44336';
         this.connectionStatusElement.style.color = '#ffffff';
+        this.connectionStatusElement.style.display = 'block';
         break;
       case 'reconnecting':
         this.connectionStatusElement.textContent = '⟳ Reconnecting...';
         this.connectionStatusElement.style.backgroundColor = '#FF9800';
         this.connectionStatusElement.style.color = '#ffffff';
+        this.connectionStatusElement.style.display = 'block';
         break;
     }
   }

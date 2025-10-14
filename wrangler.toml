@@ -1,4 +1,4 @@
-name = "hidden-walnuts-game"
+name = "hidden-walnuts-api"
 
 # CHEN'S FIX: Correct entry point for workers
 main = "workers/dist/worker/api.js"
