@@ -2,6 +2,7 @@ import { Game } from './Game';
 import { AudioManager } from './AudioManager';
 import { LoadingScreen } from './LoadingScreen';
 import { SettingsManager } from './SettingsManager';
+import { TouchControls } from './TouchControls';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
@@ -286,8 +287,8 @@ async function main() {
   const audioManager = new AudioManager();
 
   // MVP 5.7: iOS FIX - Skip audio wait on mobile (iOS requires user interaction)
-  const isMobile = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
-  if (!isMobile) {
+  // Use TouchControls.isMobile() for consistent detection across devices
+  if (!TouchControls.isMobile()) {
     await audioManager.waitForLoad();
   }
 
@@ -379,9 +380,9 @@ async function main() {
     const controlGuide = document.getElementById('control-guide');
     const controlGuideClose = document.getElementById('control-guide-close');
 
-    // MVP 5.7: Show touch controls hint on mobile
-    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|windows phone/i.test(navigator.userAgent.toLowerCase()) ||
-                     ('ontouchstart' in window && window.innerWidth < 768);
+    // MVP 5.7: Use TouchControls.isMobile() for consistent, reliable detection
+    // This properly detects modern iPads (which report as Mac in user agent)
+    const isMobile = TouchControls.isMobile();
 
     if (isMobile) {
       // Show touch controls hint on mobile

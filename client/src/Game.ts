@@ -3378,8 +3378,9 @@ export class Game {
     }
 
     // Show the tutorial after a short delay (allow game to fully load)
+    // MVP 5.7: Skip keyboard tutorial on mobile - touch-controls-hint serves as mobile tutorial
     setTimeout(() => {
-      if (!this.tutorialShown) {
+      if (!this.tutorialShown && !TouchControls.isMobile()) {
         this.showTutorial();
       }
     }, 1000);
