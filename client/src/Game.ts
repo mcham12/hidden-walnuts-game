@@ -743,10 +743,11 @@ export class Game {
       this.onMouseClick(mouseEvent);
     });
 
-    // Set up double-tap callback for hiding walnuts
-    this.touchControls.onDoubleTap(() => {
-      this.hideWalnut();
-    });
+    // MVP 5.7 IMPROVED: Remove double-tap gesture, use on-screen button instead
+    // (Double-tap is not discoverable, on-screen button is clear and visible)
+    // this.touchControls.onDoubleTap(() => {
+    //   this.hideWalnut();
+    // });
 
     // Set up camera rotation callback
     this.touchControls.onCameraRotate((deltaX: number, _deltaY: number) => {
@@ -755,6 +756,53 @@ export class Game {
         this.character.rotation.y -= deltaX * 0.01;
       }
     });
+
+    // MVP 5.7: Initialize mobile action buttons (Hide, future: Throw)
+    this.initMobileActionButtons();
+  }
+
+  /**
+   * MVP 5.7: Initialize mobile action buttons for hiding/throwing walnuts
+   * Replaces double-tap gesture with visible, discoverable on-screen buttons
+   */
+  private initMobileActionButtons(): void {
+    // Mobile actions container
+    const mobileActions = document.getElementById('mobile-actions');
+    if (!mobileActions) return;
+
+    // Show on mobile (already handled by CSS media queries)
+    if (TouchControls.isMobile()) {
+      mobileActions.classList.remove('hidden');
+    }
+
+    // Hide button
+    const hideButton = document.getElementById('mobile-hide-btn');
+    if (hideButton) {
+      hideButton.addEventListener('click', () => {
+        // Haptic feedback on mobile
+        if (navigator.vibrate) {
+          navigator.vibrate(50);
+        }
+        this.hideWalnut();
+      });
+
+      // Pulse animation on first load (tutorial hint)
+      const hasSeenHideButton = localStorage.getItem('hideButtonSeen');
+      if (!hasSeenHideButton) {
+        hideButton.classList.add('pulse');
+        // Remove pulse after 10 seconds or first click
+        setTimeout(() => {
+          hideButton.classList.remove('pulse');
+          localStorage.setItem('hideButtonSeen', 'true');
+        }, 10000);
+        hideButton.addEventListener('click', () => {
+          hideButton.classList.remove('pulse');
+          localStorage.setItem('hideButtonSeen', 'true');
+        }, { once: true });
+      }
+    }
+
+    console.log('✅ Mobile action buttons initialized');
   }
 
   private onResize() {
@@ -2126,6 +2174,31 @@ export class Game {
 
     if (gridLocationSpan && this.character) {
       gridLocationSpan.textContent = this.calculateGridLocation(this.character.position);
+    }
+
+    // MVP 5.7: Update mobile hide button
+    this.updateMobileHideButton();
+  }
+
+  /**
+   * MVP 5.7: Update mobile hide button state (count, enabled/disabled)
+   */
+  private updateMobileHideButton(): void {
+    const hideButton = document.getElementById('mobile-hide-btn') as HTMLButtonElement;
+    const hideCountSpan = document.getElementById('mobile-hide-count');
+
+    if (hideButton && hideCountSpan) {
+      // Update count display
+      hideCountSpan.textContent = `(${this.playerWalnutCount})`;
+
+      // Enable/disable button based on walnut count
+      if (this.playerWalnutCount <= 0) {
+        hideButton.disabled = true;
+        hideButton.style.opacity = '0.4';
+      } else {
+        hideButton.disabled = false;
+        hideButton.style.opacity = '1';
+      }
     }
   }
 

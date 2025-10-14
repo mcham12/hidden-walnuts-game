@@ -908,6 +908,92 @@
         }
       }
 
+      /* MVP 5.7: Mobile Action Buttons (Hide/Throw walnuts) */
+      #mobile-actions {
+        position: absolute;
+        bottom: 80px;
+        right: 20px;
+        display: none; /* Hidden by default, shown on mobile */
+        flex-direction: column;
+        gap: 12px;
+        z-index: 1000;
+      }
+      .mobile-action-btn {
+        background: rgba(139, 69, 19, 0.9);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-family: 'Arial', sans-serif;
+        font-size: 16px;
+        font-weight: bold;
+        padding: 16px 20px;
+        min-width: 120px;
+        min-height: 64px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .mobile-action-btn:active {
+        transform: scale(0.95);
+        background: rgba(139, 69, 19, 1);
+      }
+      .mobile-action-btn:disabled {
+        opacity: 0.4;
+        background: rgba(100, 100, 100, 0.6);
+        cursor: not-allowed;
+      }
+      .mobile-action-btn .btn-icon {
+        font-size: 24px;
+        line-height: 1;
+      }
+      .mobile-action-btn .btn-label {
+        font-size: 14px;
+        line-height: 1;
+      }
+      .mobile-action-btn .btn-count {
+        font-size: 12px;
+        opacity: 0.9;
+      }
+      /* Pulse animation for first-time hint */
+      .mobile-action-btn.pulse {
+        animation: btnPulse 2s infinite;
+      }
+      @keyframes btnPulse {
+        0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+        50% { box-shadow: 0 4px 20px rgba(255,215,0,0.8); }
+      }
+      /* Show on mobile */
+      @media (max-width: 768px), (hover: none) and (pointer: coarse) {
+        #mobile-actions {
+          display: flex;
+        }
+      }
+      /* Adjust position for small phones */
+      @media (max-width: 430px) {
+        #mobile-actions {
+          right: 10px;
+          bottom: 70px;
+        }
+        .mobile-action-btn {
+          min-width: 100px;
+          min-height: 56px;
+          padding: 12px 16px;
+        }
+        .mobile-action-btn .btn-icon {
+          font-size: 20px;
+        }
+        .mobile-action-btn .btn-label {
+          font-size: 13px;
+        }
+      }
+
       /* MVP 5.7: Extra optimizations for small phones (iPhone SE, iPhone 12 mini, etc) */
       @media (max-width: 430px) {
         #character-select {
@@ -1086,9 +1172,22 @@
       <div style="font-weight: bold; margin-bottom: 8px;">📱 Touch Controls</div>
       <div>🕹️ Drag anywhere to move</div>
       <div>👆 Tap walnut to find</div>
-      <div>👆👆 Double-tap to hide</div>
+      <div>👉 Use HIDE button to bury walnuts</div>
       <div style="margin-top: 8px; font-size: 12px; opacity: 0.7;">Tap here to dismiss</div>
     </div>
+    <!-- MVP 5.7: Mobile Action Buttons (Hide/Throw) -->
+    <div id="mobile-actions" class="hidden">
+      <button id="mobile-hide-btn" class="mobile-action-btn" title="Hide Walnut">
+        <span class="btn-icon">🥜</span>
+        <span class="btn-label">HIDE</span>
+        <span class="btn-count" id="mobile-hide-count">(3)</span>
+      </button>
+      <!-- Future MVP 7.2: Throw button
+      <button id="mobile-throw-btn" class="mobile-action-btn hidden" title="Throw Walnut">
+        <span class="btn-icon">⚾</span>
+        <span class="btn-label">THROW</span>
+      </button>
+      -->
     <!-- MVP 5: Persistent Control Guide -->
     <div id="control-guide" class="hidden">
       <button id="control-guide-close" title="Dismiss (you can reopen in Settings)">×</button>
