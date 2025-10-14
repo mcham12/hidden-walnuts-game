@@ -1,14 +1,15 @@
 # 🎮 Hidden Walnuts - MVP Development Plan
 
-**Current Status**: Multiplayer foundation complete with smooth animations ✅
+**Current Status**: MVP 5.7 (Mobile/Touch Controls) - Final testing on iPhone ✅
 
 ---
 
 ## 📋 Table of Contents
 - [Completed Work](#completed-work)
-- [Current Work: MVP 2.0](#mvp-20-multiplayer-foundation)
-- [Upcoming MVPs](#upcoming-mvps)
+- [Current: MVP 5.8 - Startup Experience](#mvp-58-startup-experience--ux-polish)
+- [Upcoming MVPs](#mvp-6-code-cleanup)
 - [Timeline Summary](#timeline-summary)
+- [Success Criteria](#success-criteria)
 
 ---
 
@@ -16,7 +17,7 @@
 
 ### MVP 1.5: Animated Character System
 - 3D forest terrain with procedural generation
-- Colobus character with idle/walk/run/jump animations
+- Multiple character models with idle/walk/run/jump animations
 - WASD movement + camera following + physics
 - Smooth animation transitions and movement
 
@@ -26,648 +27,206 @@
 - WebSocket connections working
 - Production-ready with CORS fixes
 
----
+### MVP 2.0: Multiplayer Foundation
+- WebSocket connections with real-time sync
+- Multiple players can see each other moving
+- Smooth animation synchronization
+- Player name tags and identification
+- Loading states & connection status
+- Error handling and recovery
 
-## 🎯 MVP 2.0: Multiplayer Foundation
+### MVP 3: Core Walnut Mechanics
+- Hide walnuts with H key (context-based: bush vs buried)
+- Find walnuts by clicking
+- Walnut types: buried (3pts), bush (1pt), golden (bonus)
+- Proximity indicators and cursor feedback
+- Cardinal direction landmarks (N/S/E/W towers)
+- Minimap with player positions and landmarks
+- Server-synchronized world state
 
-**Goal**: Multiple players can see each other moving in real-time
+### MVP 3.5: Multiple Character Selection
+- 11 playable characters across categories (mammals, reptiles, birds, aquatic)
+- Character preview with 3D model rotation
+- Characters.json-based configuration system
+- Dynamic character loading and selection UI
 
-**Status**: IN PROGRESS
+### MVP 4: Competitive Multiplayer
+- Real-time leaderboard with live updates
+- Walnut stealing mechanics
+- Quick chat system with predefined messages
+- Emote system with character gestures
+- Competitive scoring and rankings
 
-### Core Features
-✅ WebSocket connections
-✅ Basic player position sync
-✅ Smooth animation synchronization
-⏳ Player identification UI
-⏳ Loading states & error handling
-⏳ Connection recovery
+### MVP 5: Game Feel & Polish
+- Audio system with sound effects (hide, find, footsteps, ambient)
+- Particle effects (bury, find, footsteps, score, confetti)
+- Score pop-up animations with tweening
+- Animated loading screen with walnut GLB model
+- Settings menu with volume controls
+- Enhanced walnut click detection and hover effects
+- Connection status indicator
+- Loading progress bar
 
-### NEW: Player Identification System
-**Player Name Tags** - Floating UI above each character
-```typescript
-// Display name tag above player with unique icon/badge
-interface PlayerTag {
-  playerId: string;
-  displayName: string;  // "Player 1", "Player 2", or custom name
-  iconShape: 'circle' | 'square' | 'triangle';  // Unique visual marker
-  tagColor: string;     // Background color for tag (not character)
-}
-```
+### MVP 5.5: Physics & Collision Detection
+- Player collision with landmark trees
+- Player collision with regular forest trees
+- Smooth sliding movement around obstacles
+- Spatial partitioning for performance
+- Camera shake on collision feedback
 
-**UI Features**:
-- Floating name tag above character (always facing camera)
-- Small icon/shape next to name (circle, square, triangle, star)
-- Clean, minimal design (semi-transparent background)
-- Distance-based scaling (smaller when far away)
-
-### NEW: Loading & Error States
-- **Loading Screen**: Progress bar while assets load
-- **Connection Status**: Visual indicator (connected/disconnected)
-- **Reconnection**: Automatic retry with user feedback
-- **Error Messages**: Clear notifications for network issues
-
----
-
-## 🥜 MVP 3: Core Walnut Mechanics
-
-**Goal**: Players can hide and find walnuts with proper game rules
-
-### Part 1: Walnut Interaction (Week 1)
-
-**Hiding Walnuts** - Press H key
-```typescript
-private onHideWalnut() {
-  if (this.playerWalnuts > 0) {
-    this.setAction('eat');  // Digging animation
-    const walnut = this.createWalnut(this.character.position, 'buried');
-    this.sendWalnutHide(walnut);
-    this.playerWalnuts--;
-  }
-}
-```
-
-**Finding Walnuts** - Click on walnut
-```typescript
-private onMouseClick(event: MouseEvent) {
-  const walnut = this.getWalnutAtPosition(mousePos);
-  if (walnut && this.isNearPlayer(walnut.position)) {
-    this.setAction('bounce');  // Excited animation
-    this.collectWalnut(walnut);
-    this.score += walnut.points;
-  }
-}
-```
-
-**Walnut Types & Visual Indicators**:
-
-**1. Buried Walnuts** (3 points - harder to find)
-- **Visual Clue**: Small mound of disturbed earth
-  - Slightly raised terrain bump (subtle, 0.1 units high)
-  - Darker soil texture where dug
-  - Particle effect: tiny dirt particles occasionally puff up
-  - Proximity hint: Cursor changes when hovering over area
-- **Finding**: Click on mound when within 2 units
-- **Difficulty**: Subtle - requires careful exploration
-
-**2. Bush Walnuts** (1 point - easier to spot)
-- **Visual Clue**: Walnut partially visible in bush foliage
-  - Brown walnut shell peeking through leaves
-  - Subtle glint/shimmer effect (catches light)
-  - Bush leaves slightly disturbed/parted
-  - Proximity hint: Cursor highlights when hovering
-- **Finding**: Click on visible walnut
-- **Difficulty**: Easier - visually obvious when near bush
-
-**3. Game Walnuts** (Special bonus multiplier)
-- **Visual Clue**: Golden/glowing walnut
-  - Bright golden color (stands out)
-  - Gentle pulsing glow effect
-  - Sparkle particles around it
-  - Visible from greater distance
-- **Finding**: Click to collect
-- **Difficulty**: Very easy - meant to be found quickly
-
-**Detection System**:
-```typescript
-// Raycasting for walnut detection
-interface WalnutDetection {
-  // Visual feedback when player looks at walnut area
-  cursorHighlight: boolean;      // Change cursor to "hand" icon
-  proximityGlow: boolean;         // Faint glow when within 3 units
-  soundCue: 'rustle' | 'none';   // Audio hint when very close
-}
-```
-
-**Proximity Indicators** (help players know they're close):
-- **Very Close** (< 1 unit): Walnut outline appears through terrain/bush
-- **Close** (< 3 units): Cursor changes to search icon
-- **Medium** (< 5 units): Subtle audio cue (leaves rustling for bush, dirt shifting for buried)
-- **Far** (> 5 units): No indicators (pure exploration)
-
-### Part 2: World Navigation (Week 1)
-
-**Navigation Landmarks** - Help players orient themselves
-- Colored stone towers at cardinal directions (North, South, East, West)
-- Unique rock formations (arch, pillar, cluster)
-- Special trees with ribbons/markers
-- Spawn point beacon (always visible "home")
-
-**Grid Location System** - A1 to Z26 coordinate grid
-- Simple A1-style grid overlay on minimap
-- Location shown in corner of screen ("Current: M12")
-- Makes it easier to communicate locations
-
-**Minimap** - Corner of screen
-- Shows player positions (friendly dots)
-- Landmarks marked
-- Grid lines visible
-
-### Part 3: Basic HUD (Week 1)
-
-**Player Information Display**:
-- Walnut inventory count (e.g., "Walnuts: 3")
-- Current score
-- Controls reminder (togglable with F key)
-- Current location grid (e.g., "Location: M12")
-
-### Part 4: Walnut Persistence (Week 2)
-
-**Server Integration**:
-```typescript
-interface WalnutMessage {
-  type: 'HIDE_WALNUT' | 'FIND_WALNUT';
-  walnutId: string;
-  position: Vector3;
-  walnutType: 'buried' | 'bush';
-  playerId: string;
-}
-```
-
-**Persistence Features**:
-- Walnuts remain after players leave
-- Server validates walnut positions (anti-cheat)
-- Walnut ownership tracking
-- WalnutRegistry Durable Object integration
-
-### Part 5: Text-Based Tutorial System (MVP 3 Foundation)
-
-**Tutorial Messages** - Guide players with text overlays
-- Welcome message: "Welcome to the Hidden Walnuts! You have 3 walnuts to hide..."
-- Tutorial tips: "Press H to hide a walnut..." "Click to collect walnuts..."
-- Achievement callouts: "First walnut hidden!" "10 walnuts found!"
-- Event announcements: "New walnut available!"
-
-**Technical Implementation**:
-```typescript
-class TutorialSystem {
-  showMessage(event: 'welcome' | 'tutorial' | 'achievement' | 'hint', text: string);
-  // Simple text overlay - temporary display with fade out
-}
-```
-
-**Note**: Voice acting for narrator and NPCs moved to **MVP 6.5** (optional polish)
+### MVP 5.7: Mobile/Touch Controls
+- Drag-to-move touch controls for mobile
+- Mobile device detection (iPad, iPhone, Android)
+- Mobile UI optimizations (responsive layouts)
+- Performance optimizations (disabled shadows/AA on mobile)
+- iOS audio policy handling
+- Touch state management (character stops when touch ends)
+- VPN/Cloudflare troubleshooting documentation
 
 ---
 
-## 🏆 MVP 3.5: Multiple Character Selection
+## 🎯 Current Focus
 
-**Goal**: Players can choose from 2-3 different characters (visual variety only)
+## 🎨 MVP 5.8: Startup Experience & UX Polish
 
-### Simple Character Selection
+**Goal**: Fix janky loading experience and create professional first impression
 
-**Available Characters** (8 total - no unique abilities yet):
-1. **Colobus** (monkey) ✅ Already implemented
-2. **Muskrat** (rodent) - Forest/walnut theme
-3. **Pudu** (small deer) - Forest dweller
-4. **Gecko** (lizard) - Agile climber
-5. **Sparrow** (bird) - Aerial character
-6. **Taipan** (snake) - Ground movement
-7. **Herring** (fish) - Aquatic (save for water mechanics)
-8. **Inkfish** (octopus) - Aquatic (save for water mechanics)
+**Why Now?** (Before Code Cleanup)
+- **First impressions matter**: Loading is the first thing users see
+- **Currently broken**: Double loading, backwards progress bar, visual bugs
+- **Quick wins**: Most issues are simple fixes that dramatically improve UX
+- **Before cleanup**: Fix UX issues before cleaning up code
 
-**Initial MVP 3.5 Release** (land-based only):
-- Start with 3-4 land characters: Colobus, Muskrat, Pudu, Gecko
-- Same movement/physics for all
-- Same animations (idle/walk/run/jump)
-- Save aquatic characters (Herring, Inkfish) for water mechanics later
+### Current Problems
 
-**Character Select Screen**:
-- Simple grid showing available characters
-- Click to preview character
-- Confirm selection before joining game
+**Issue 1: No Welcome Screen**
+- Currently jumps straight to loading screen
+- No branding or introduction to the game
+- Users confused about what they're loading into
 
-**Why Now?**:
-- Character assets already exist
-- Low implementation effort
-- Increases player engagement
-- Players can express preference
+**Issue 2: Double Loading Screen** (CRITICAL UX BUG)
+- First load: Character preview assets
+- Second load: Game world assets (AFTER character selection)
+- Progress bar resets and goes backwards
+- Feels unprofessional and confusing
 
-**What's Saved for Later**:
-- Unique character abilities
-- Character unlocks/progression
-- Full 8-character roster
-- Ability-based balancing
+**Issue 3: Minimap Visible on Character Select** ✅ FIXED in MVP 5.7
+- ~~Minimap outline shows on character selection~~
+- Fixed with `display: none` by default
 
----
+**Issue 4: Progress Bar Goes Backwards**
+- When second loading screen appears, progress resets from 100% to 0%
+- Violates user expectations (progress should only go forward)
 
-## 👥 MVP 4: Competitive Multiplayer
+**Issue 5: Asset Loading Not Optimized**
+- Loading character preview requires separate GLB fetch
+- Then loading game world requires another set of fetches
+- Could consolidate into single loading phase
 
-**Goal**: Full competitive multiplayer with leaderboards
+### Implementation Plan
 
-### Competitive Features
-
-**Walnut Stealing**:
-- Find other players' hidden walnuts
-- Collect them for points
-- Re-hide them in new locations
-
-**Real-time Leaderboard**:
+**Phase 1: Welcome/Splash Screen** (30 minutes)
 ```typescript
-interface GameScore {
-  playerId: string;
-  displayName: string;
-  score: number;
-  walnuts Hidden: number;
-  walnutsFound: number;
-  timeMultiplier: number;  // 1.1x to 2x based on play time
-}
-```
-
-**Leaderboard UI**:
-- Top 10 players visible
-- Your current rank highlighted
-- Live updates as scores change
-- 24-hour cycle stats
-
-**Competition Balance**:
-- Proximity rules (can't hide/find too close to other players)
-- Fresh player boost (catch-up mechanic for late joiners)
-- Time multiplier rewards (longer play = higher multiplier)
-
-### NEW: Communication System
-
-**Quick Chat** - Predefined messages
-- "Nice find!"
-- "Over here!"
-- "Good hiding spot!"
-- "Want to team up?"
-
-**Emotes** - Character gestures
-- Wave
-- Point
-- Celebrate
-- Shrug
-
-### Tutorial & Onboarding
-
-**First-Time Player Guide**:
-- 5-step interactive tutorial
-- Shows controls (WASD, H, mouse)
-- Explains walnut hiding/finding
-- Teaches scoring system
-- Optional skip for experienced players
-
-**In-Game Hints**:
-- Context-sensitive tips
-- Appears when relevant (e.g., "Press H to hide" when near good spot)
-- Can be disabled in settings
-
----
-
-## ✨ MVP 5: Game Feel & Polish
-
-**Goal**: Make the existing gameplay feel AMAZING with audio, visual juice, and quality of life improvements
-
-**Philosophy**: Polish the core experience before adding complex systems
-
-### Audio System 🔊
-
-**Sound Effects**:
-- **Walnut Actions**: Hide sound (digging), find sound (success chime)
-- **Movement**: Footstep sounds (grass, dirt, leaves)
-- **UI Feedback**: Button clicks, score pop sounds
-- **Ambient**: Forest background (birds chirping, wind rustling, distant streams)
-
-**Implementation**:
-```typescript
-class AudioManager {
-  playSound(type: 'hide' | 'find' | 'footstep' | 'ui' | 'ambient');
-  setVolume(category: 'sfx' | 'ambient' | 'master', level: number);
-  toggleMute(): void;
-}
-```
-
-**Audio Library Options**:
-- Howler.js (recommended - simple, powerful)
-- Web Audio API (native, more complex)
-- THREE.PositionalAudio (for 3D spatial audio)
-
-### Visual Juice ✨
-
-**Particle Effects**:
-- **Bury Walnut**: Dirt/soil particles spray up
-- **Find Walnut**: Sparkle burst effect
-- **Footsteps**: Dust/leaf particles on movement
-- **Score**: Confetti/stars on point gain
-
-**Score Feedback**:
-- Animated "+3 points!" text pop-up (flies up and fades)
-- Screen shake on big finds (subtle, satisfying)
-- Player glow effect when scoring
-- Score counter animates (number tween)
-
-**Walnut Visual Improvements**:
-- Better buried walnut mound (rounded, natural-looking)
-- More obvious bush walnuts (better glint effect)
-- Enhanced golden walnut glow (pulsing animation)
-
-**Implementation**:
-```typescript
-class VFXManager {
-  spawnParticles(type: 'dirt' | 'sparkle' | 'dust', position: Vector3);
-  showScorePopup(points: number, position: Vector3);
-  screenShake(intensity: number, duration: number);
-  playerGlow(playerId: string, duration: number);
-}
-```
-
-### Quality of Life 🎮
-
-**Settings Menu**:
-- Audio volume sliders (SFX, Ambient, Master)
-- Mouse sensitivity control
-- Graphics quality toggle (if needed)
-- Debug overlay toggle (F key functionality)
-- Controls reference
-
-**Better Feedback**:
-- Clear error messages (network, loading, etc.)
-- Connection status indicator (connected/disconnected/reconnecting)
-- Loading progress bar with percentage
-- Toast notifications for events
-
-**Tutorial Improvements**:
-- Clearer first-time onboarding
-- Contextual hints that fade in/out
-- Skip tutorial option
-- Help menu (H key reference)
-
-**Player Spawn Improvements** (Future):
-- Fix player spawn position (currently spawning south of origin despite coordinate updates)
-- Investigate coordinate system vs terrain orientation
-- Ensure saved positions clear properly on reset
-- Consider spawn facing direction (look at origin landmark)
-
-### Bug Fixes & Stability 🐛
-
-**Multiplayer**:
-- Fix remaining sync edge cases
-- Improve animation transitions
-- Better handling of player disconnect/reconnect
-- Test with multiple simultaneous players
-
-**Interaction**:
-- Improve walnut click detection (larger hitboxes)
-- Better raycasting for buried walnuts
-- Proximity detection refinement
-- Click feedback (cursor change, highlight)
-
-**Performance**:
-- Profile current FPS in various scenarios
-- Optimize only if needed (measure first!)
-- Memory leak checks
-- Browser compatibility testing
-
----
-
-## 🎯 MVP 5.5: Physics & Collision Detection
-
-**Goal**: Add collision detection so players can't walk through trees and obstacles
-
-**Why Now?**:
-- **Game feel is broken without it**: Walking through solid objects destroys immersion
-- **Before NPCs (MVP 6.7)**: NPCs will need obstacle avoidance and pathfinding
-- **Before Predators (MVP 7)**: Chase mechanics require collision
-- **Before Code Cleanup (MVP 6)**: Don't clean up code then add more systems
-
-### Core Collision System
-
-**Player vs Landmark Trees**:
-- Landmark trees are HUGE (10x scale, East is 17.5x) - should be solid obstacles
-- Use simple cylinder colliders around tree trunks
-- Player bounces/slides around trees smoothly
-
-**Player vs Regular Forest Trees**:
-- Regular trees from ForestManager also need collision
-- Smaller cylinder colliders (scale with tree size)
-- Bushes might be passable or have smaller collision
-
-**Player vs Terrain**:
-- Already have terrain height detection (getTerrainHeight)
-- Add steep slope detection (prevent climbing cliffs)
-- Optional: Add rocks/boulders as solid obstacles
-
-**Player vs Other Players** (Optional):
-- Light collision (can push through slightly)
-- Prevents players stacking exactly on top of each other
-- Soft collision feels better than hard blocking
-
-### Technical Implementation
-
-**Collision Library Options**:
-```typescript
-// Option 1: cannon-es (full physics engine)
-// PRO: Complete physics, realistic collisions
-// CON: Heavier, more complex
-
-// Option 2: Three.js Raycasting (manual collision)
-// PRO: Lightweight, full control
-// CON: More code to write
-
-// Option 3: rapier (Rust-based, very fast)
-// PRO: Excellent performance
-// CON: WebAssembly dependency
-```
-
-**Recommended: Start with Three.js Raycasting**
-```typescript
-class CollisionSystem {
-  private colliders: THREE.Mesh[] = [];
-
-  // Add collider for each landmark/tree
-  addCollider(position: Vector3, radius: number, height: number) {
-    const geometry = new THREE.CylinderGeometry(radius, radius, height);
-    const collider = new THREE.Mesh(geometry);
-    collider.position.copy(position);
-    collider.visible = false; // Invisible collision geometry
-    this.colliders.push(collider);
+// Add before LoadingScreen in main.ts
+class WelcomeScreen {
+  show() {
+    // Simple overlay with game title/logo
+    // "Hidden Walnuts" title
+    // Tagline: "A Multiplayer Forest Adventure"
+    // "Click to Start" button
+    // Fades in smoothly
   }
 
-  // Check if player movement would hit a collider
-  checkCollision(from: Vector3, to: Vector3): boolean {
-    const direction = to.clone().sub(from).normalize();
-    const raycaster = new THREE.Raycaster(from, direction);
-    const intersects = raycaster.intersectObjects(this.colliders);
-    return intersects.length > 0 && intersects[0].distance < from.distanceTo(to);
-  }
-
-  // Slide player around obstacle
-  resolveCollision(from: Vector3, to: Vector3): Vector3 {
-    // If collision detected, calculate slide vector
-    // Return adjusted position that slides around obstacle
+  hide() {
+    // Fade out and remove from DOM
   }
 }
+
+// Flow: WelcomeScreen → LoadingScreen → CharacterSelect → Game
 ```
 
-### Visual Feedback
-
-**Debug Visualization** (for development):
-- Show collision cylinders (wireframe)
-- Highlight active collisions (red when blocked)
-- Toggle with debug overlay (F key)
-
-**Player Feedback**:
-- Subtle "bump" sound when hitting tree
-- Brief camera shake on hard collision
-- Movement feels smooth (no jarring stops)
-
-### Performance Considerations
-
-**Spatial Partitioning**:
-- Only check collisions for nearby objects
-- Use grid-based partitioning (divide world into chunks)
-- Don't check collisions with trees 50+ units away
-
-**Optimization**:
+**Phase 2: Consolidate Asset Loading** (1 hour)
 ```typescript
-// Only check collisions within player's local area
-const COLLISION_CHECK_RADIUS = 20; // units
+// Instead of loading in two phases, load once upfront:
+async function preloadAllAssets() {
+  const loadingScreen = new LoadingScreen();
+  await loadingScreen.show();
 
-checkNearbyCollisions(playerPos: Vector3) {
-  const nearbyColliders = this.colliders.filter(c =>
-    c.position.distanceTo(playerPos) < COLLISION_CHECK_RADIUS
-  );
-  // Only raycast against nearby colliders
+  // Load character models (for preview AND game)
+  loadingScreen.updateProgress(0.2, 'Loading characters...');
+  await loadCharacters();
+
+  // Load audio (desktop only)
+  loadingScreen.updateProgress(0.4, 'Loading audio...');
+  if (!isMobile) await audioManager.waitForLoad();
+
+  // Preload environment assets
+  loadingScreen.updateProgress(0.6, 'Loading forest...');
+  await preloadEnvironmentAssets();
+
+  // Ready
+  loadingScreen.updateProgress(1.0, 'Ready!');
+
+  // Now show character select (no second loading needed!)
 }
 ```
+
+**Phase 3: Fix Progress Bar** (15 minutes)
+- Remove second loading screen entirely (consolidate loading)
+- Progress only goes 0% → 100% once
+- Never resets or goes backwards
+
+**Phase 4: Smooth Transitions** (30 minutes)
+- Fade transitions between screens
+- Welcome → Loading → Character Select → Game
+- No jarring cuts
+- Professional feel
+
+### Technical Details
+
+**Loading Strategy Changes**:
+```typescript
+// BEFORE (current - buggy):
+// 1. LoadingScreen (loads basic assets)
+// 2. Character Select (interactive, loads preview)
+// 3. Start button clicked
+// 4. LoadingScreen AGAIN (loads game world) ← PROBLEM!
+// 5. Game starts
+
+// AFTER (fixed):
+// 1. WelcomeScreen (title, click to start)
+// 2. LoadingScreen (loads ALL assets once)
+// 3. Character Select (everything already loaded)
+// 4. Start button clicked
+// 5. Game starts immediately (no second load!)
+```
+
+**Asset Preloading**:
+- Character GLB models (all characters, not just selected)
+- Audio files (if desktop)
+- Environment textures/models (bushes, trees, landmarks)
+- UI assets (walnut icons, etc.)
+
+**Performance Consideration**:
+- Total loading time might be slightly longer upfront
+- But no second loading screen = better UX
+- User only waits once, not twice
 
 ### Success Criteria
 
-- [ ] Cannot walk through landmark trees
-- [ ] Cannot walk through regular forest trees
-- [ ] Smooth sliding movement around obstacles (no jarring stops)
-- [ ] Performance remains smooth (60 FPS with many trees)
-- [ ] Debug visualization available for testing
-- [ ] Optional: Subtle audio/visual feedback on collision
+- [ ] Welcome screen shows before loading (with game title)
+- [ ] Single loading screen (no double load)
+- [ ] Progress bar only goes forward (0% → 100%)
+- [ ] No second loading after character selection
+- [ ] Smooth fade transitions between all screens
+- [ ] Minimap hidden on character select ✅ (already fixed)
+- [ ] Loading feels professional and polished
 
-### What's Saved for Later
+### Time Estimate
 
-**Advanced Physics** (not needed now):
-- Full rigid body physics
-- Character controller with acceleration/momentum
-- Jumping with gravity
-- Climbing mechanics
-
-**Complex Collision Shapes** (keep it simple):
-- Per-triangle mesh collision
-- Convex hull colliders
-- Heightmap terrain collision (we have height function already)
-
----
-
-## 📱 MVP 5.7: Mobile/Touch Controls
-
-**Goal**: Make the game playable on mobile browsers (iPhone, iPad, Android)
-
-**Why Now?** (Moved up from MVP 7.5)
-- **Massive market**: Mobile browsers are 50%+ of potential players
-- **Early testing**: Get mobile UX feedback while we can still iterate
-- **Real players > NPCs**: Could bring enough real players that NPCs (6.7) aren't as critical
-- **Performance insights**: Discover mobile performance issues early
-- **Accessibility**: Lower barrier to entry - no keyboard/mouse needed
-- **Shareability**: Easier to share link and play immediately on phone
-
-### Touch Control System
-
-**Virtual Joystick** - Left side of screen
-- Drag to move in any direction
-- Release to stop
-- Visual feedback (joystick circle + thumb indicator)
-
-**Action Buttons** - Right side of screen
-- **H Button**: Hide walnut (large button, bottom-right)
-- **Tap on Walnut**: Find/collect walnut
-- **Camera Control**: Two-finger drag to rotate camera
-
-**Touch Gestures**:
-- **Single Tap**: Click to find walnut / interact with objects
-- **Drag (single finger)**: Control virtual joystick for movement
-- **Two-finger Drag**: Rotate camera view
-- **Pinch**: Zoom in/out (optional camera control)
-
-**UI Considerations**:
-- Buttons sized for touch (minimum 44x44pt for iOS)
-- Semi-transparent so they don't block gameplay
-- Position adjustable in settings (left-handed mode)
-- Auto-hide when not in use (fade out after 3s of no input)
-
-**Platform Detection**:
-```typescript
-// Detect mobile and show touch controls
-const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent) ||
-                 ('ontouchstart' in window);
-if (isMobile) {
-  this.showTouchControls();
-}
-```
-
-**Technical Implementation**:
-```typescript
-class TouchControls {
-  private joystick: VirtualJoystick;
-  private actionButtons: HTMLElement[];
-
-  // Virtual joystick for movement
-  initJoystick(container: HTMLElement) {
-    // Create joystick base and thumb
-    // Track touch start, move, end
-    // Convert to WASD-equivalent inputs
-  }
-
-  // Action button (Hide walnut)
-  createButton(label: string, action: () => void) {
-    const button = document.createElement('button');
-    button.textContent = label;
-    button.addEventListener('touchstart', action);
-    return button;
-  }
-
-  // Camera controls (two-finger drag)
-  initCameraControls() {
-    canvas.addEventListener('touchmove', (e) => {
-      if (e.touches.length === 2) {
-        // Calculate rotation from two-finger drag
-        this.rotateCamera(delta);
-      }
-    });
-  }
-}
-```
-
-**Library Options**:
-- **nipplejs**: Popular virtual joystick library (lightweight)
-- **Custom HTML5 touch**: Full control, no dependencies
-- **three.js OrbitControls**: Has mobile support built-in
-
-### Mobile Optimizations
-
-**Performance**:
-- Lower default graphics quality on mobile
-- Reduce particle counts
-- Optimize shadow rendering
-- Test on real devices (iPhone, Android)
-
-**UI Adjustments**:
-- Larger touch targets
-- Simplified HUD on smaller screens
-- Responsive layout (portrait and landscape)
-- Font sizes readable on mobile
-
-**Testing Checklist**:
-- [ ] Virtual joystick works smoothly
-- [ ] Can hide walnuts with touch button
-- [ ] Can find walnuts with tap
-- [ ] Camera controls feel natural (two-finger drag)
-- [ ] UI elements don't overlap
-- [ ] Performance is smooth (30+ FPS on mid-range phones)
-- [ ] Works in Safari (iOS) and Chrome (Android)
-
-### Success Criteria
-- [ ] Game fully playable on mobile browsers
-- [ ] Touch controls feel natural and responsive
-- [ ] No keyboard/mouse required
-- [ ] Performance acceptable on mobile devices
-- [ ] UI readable and touch-friendly
+- **Total**: 2-3 hours of focused work
+- **Impact**: Massive UX improvement for minimal effort
+- **Priority**: HIGH (first impression is everything)
 
 ---
 
@@ -1221,15 +780,16 @@ See **MVP 5.7** for full mobile controls implementation details.
 | 3 | Walnut Mechanics + Navigation | ✅ Complete |
 | 3.5 | Multiple Characters | ✅ Complete |
 | 4 | Competitive Multiplayer | ✅ Complete |
-| 5 | **Game Feel & Polish** | 🎯 **CURRENT** |
-| 5.5 | **Physics & Collision Detection** 🆕 | **Critical!** |
-| 5.7 | **Mobile/Touch Controls** ⬆️🆕 | **Moved Up!** |
+| 5 | Game Feel & Polish | ✅ Complete |
+| 5.5 | Physics & Collision Detection | ✅ Complete |
+| 5.7 | Mobile/Touch Controls | ✅ Complete |
+| 5.8 | **Startup Experience & UX Polish** 🆕 | 🎯 **NEXT** |
 | 6 | Code Cleanup | Pending |
-| 6.5 | **Player Authentication** ⬆️ | **Moved Up!** |
-| 6.7 | **NPC Characters & World Life** ⬆️🆕 | **Moved Up!** |
+| 6.5 | Player Authentication & Identity | Pending |
+| 6.7 | NPC Characters & World Life | Pending |
 | 6.8 | Advanced Animation Polish | Optional |
 | 7 | Predators + Polish | Pending |
-| 7.2 | **Walnut Combat & Throwing** 🆕 | **New!** |
+| 7.2 | Walnut Combat & Throwing | Pending |
 | 7.5 | ~~Mobile/Touch Controls~~ | ⬆️ Moved to 5.7 |
 | 8 | ~~Player Authentication~~ | ⬆️ Moved to 6.5 |
 | 9 | Advanced Systems (24hr Cycle + Performance) | Future |
@@ -1275,12 +835,12 @@ See **MVP 5.7** for full mobile controls implementation details.
 - [x] Game feels satisfying and polished
 
 ### MVP 5.5 Success (Physics & Collision Detection)
-- [ ] Cannot walk through landmark trees
-- [ ] Cannot walk through regular forest trees
-- [ ] Smooth sliding movement around obstacles (no jarring stops)
-- [ ] Performance remains smooth (60 FPS with many trees)
-- [ ] Debug visualization available for testing
-- [ ] Optional: Subtle audio/visual feedback on collision
+- [x] Cannot walk through landmark trees
+- [x] Cannot walk through regular forest trees
+- [x] Smooth sliding movement around obstacles (no jarring stops)
+- [x] Performance remains smooth (60 FPS with many trees)
+- [x] Debug visualization available for testing
+- [x] Subtle audio/visual feedback on collision (camera shake)
 
 ### MVP 5.7 Success (Mobile/Touch Controls)
 - [x] Game fully playable on mobile browsers
@@ -1292,22 +852,16 @@ See **MVP 5.7** for full mobile controls implementation details.
 - [x] Performance optimized (disabled shadows/antialiasing on mobile)
 - [x] Works in Safari (iOS) and Chrome (Android)
 - [x] iPad/tablet support with proper touch detection
+- [x] Character stops when touch ends (critical bug fixed)
 
-### Future: Startup Experience Improvements (Post-MVP 5.7)
-**Issues to Address**:
-- [ ] No welcome screen (jumps straight to loading)
-- [ ] Minimap outline visible on character selection screen (bug)
-- [ ] Double loading screen (once for preview, once for game)
-- [ ] Progress bar goes backwards on second load (bug)
-- [ ] Loading experience feels janky and unprofessional
-
-**Planned Improvements**:
-- [ ] Add proper welcome/splash screen before loading
-- [ ] Hide minimap until game starts (not on char select)
-- [ ] Eliminate double loading screen (load assets once)
-- [ ] Fix progress bar direction (should only go forward)
-- [ ] Add smooth transitions between screens
-- [ ] Optimize asset loading pipeline
+### MVP 5.8 Success (Startup Experience & UX Polish)
+- [ ] Welcome/splash screen shows before loading
+- [ ] Single consolidated loading screen (no double load)
+- [ ] Progress bar only goes forward (0% → 100%)
+- [ ] No second loading after character selection
+- [ ] Smooth fade transitions between all screens
+- [ ] All assets preloaded before character selection
+- [ ] Loading feels professional and polished
 
 ### MVP 6.7 Success
 - [ ] NPCs spawn and wander around forest
