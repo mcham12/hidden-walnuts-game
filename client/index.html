@@ -806,19 +806,23 @@
           min-height: 56px; /* Touch target minimum */
         }
 
-        /* Make HUD mobile-friendly */
+        /* Make HUD mobile-friendly - HIDE INSTRUCTIONS */
         #walnut-hud {
           top: 5px;
           left: 5px;
-          padding: 10px 15px;
-          font-size: 14px;
-          max-width: 200px;
+          padding: 6px 10px;
+          font-size: 12px;
+          max-width: 150px;
         }
         #walnut-hud div {
-          margin: 3px 0;
+          margin: 2px 0;
         }
         #walnut-hud hr {
-          margin: 5px 0;
+          display: none !important; /* Hide separator on mobile */
+        }
+        /* Hide instructions text on mobile (4th div contains instructions) */
+        #walnut-hud div:nth-child(4) {
+          display: none !important;
         }
 
         /* Make minimap smaller on mobile */
