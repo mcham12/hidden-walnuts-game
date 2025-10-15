@@ -999,26 +999,28 @@
           min-height: 32px;
         }
 
-        /* Hide button (mobile-actions) - below settings, SKINNY */
+        /* Hide button (mobile-actions) - below settings, EXTRA SKINNY (40px) to prevent overlap */
         #mobile-actions {
           top: calc(max(5px, env(safe-area-inset-top)) + 70px + 3px + 32px + 3px);
           right: max(5px, env(safe-area-inset-right));
-          bottom: auto; /* Override bottom positioning */
+          bottom: auto !important; /* Override bottom positioning from other media queries */
         }
         .mobile-action-btn {
-          min-width: 50px;
+          min-width: 40px !important; /* Extra skinny to fit without overlap */
+          max-width: 40px;
           min-height: 32px;
-          padding: 4px 6px;
-          font-size: 10px;
-        }
-        .mobile-action-btn .btn-icon {
-          font-size: 14px;
-        }
-        .mobile-action-btn .btn-label {
+          padding: 3px 4px;
           font-size: 9px;
         }
-        .mobile-action-btn .btn-count {
+        .mobile-action-btn .btn-icon {
+          font-size: 13px;
+        }
+        .mobile-action-btn .btn-label {
           font-size: 8px;
+          line-height: 1;
+        }
+        .mobile-action-btn .btn-count {
+          font-size: 7px;
         }
 
         /* Leaderboard button - below hide button, skinny */
@@ -1102,6 +1104,122 @@
         /* Touch hint hidden in landscape (no room) */
         #touch-controls-hint {
           display: none !important;
+        }
+
+        /* iOS LANDSCAPE FIX: Compact Settings Menu - Scrollable and Dismissible */
+        #settings-menu {
+          padding: 10px 15px;
+          max-height: 90vh;
+          max-height: calc(var(--app-height) * 0.9);
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+        #settings-menu h2 {
+          font-size: 18px;
+          margin-bottom: 10px;
+        }
+        .settings-tabs {
+          gap: 5px;
+          margin-bottom: 10px;
+        }
+        .settings-tab {
+          font-size: 12px;
+          padding: 6px 10px;
+        }
+        .settings-content {
+          padding: 10px;
+          min-height: auto;
+          max-height: calc(var(--app-height) * 0.4);
+          overflow-y: auto;
+        }
+        .setting-group {
+          margin-bottom: 12px;
+        }
+        .setting-group label {
+          font-size: 13px;
+          margin-bottom: 4px;
+        }
+        .controls-grid {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+        .control-item {
+          padding: 6px;
+        }
+        .settings-buttons {
+          margin-top: 10px;
+          position: sticky;
+          bottom: 0;
+          background: linear-gradient(135deg, #2c5f2d 0%, #4a8f4d 100%);
+          padding-top: 10px;
+        }
+        .settings-button {
+          padding: 10px 20px;
+          font-size: 14px;
+          min-height: 44px; /* iOS touch target */
+        }
+
+        /* iOS LANDSCAPE FIX: Compact Leaderboard - Smaller and Positioned Right */
+        #leaderboard {
+          top: auto;
+          bottom: calc(max(5px, env(safe-area-inset-bottom)) + 32px + 5px);
+          right: max(5px, env(safe-area-inset-right));
+          width: 140px;
+          max-width: 140px;
+          max-height: calc(var(--app-height) * 0.5);
+          overflow-y: auto;
+          font-size: 9px;
+          padding: 6px;
+        }
+        #leaderboard h3 {
+          font-size: 11px;
+          margin-bottom: 3px;
+          padding-bottom: 3px;
+        }
+        #leaderboard-list li {
+          padding: 2px;
+          margin: 1px 0;
+          font-size: 9px;
+        }
+
+        /* iOS LANDSCAPE FIX: Compact Character Selection - Horizontal Layout */
+        #character-select {
+          flex-direction: row;
+          gap: 10px;
+          padding: 10px;
+          min-width: auto;
+          width: 95vw;
+          max-width: none;
+          max-height: 90vh;
+          max-height: calc(var(--app-height) * 0.9);
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+        #character-select h3 {
+          font-size: 16px;
+          margin-bottom: 8px;
+          width: 100%;
+        }
+        #character-preview-container {
+          width: 40%;
+          min-width: 150px;
+          height: 140px;
+          flex-shrink: 0;
+        }
+        #character-select select {
+          font-size: 14px;
+          padding: 8px;
+          min-height: 44px;
+        }
+        #char-description {
+          font-size: 11px;
+          padding: 8px;
+          min-height: auto;
+        }
+        #start-btn {
+          padding: 12px;
+          font-size: 16px;
+          min-height: 44px;
         }
       }
 
