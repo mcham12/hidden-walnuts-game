@@ -1,6 +1,7 @@
 import { Game } from './Game';
 import { AudioManager } from './AudioManager';
 import { LoadingScreen } from './LoadingScreen';
+import { WelcomeScreen } from './WelcomeScreen';
 import { SettingsManager } from './SettingsManager';
 import { TouchControls } from './TouchControls';
 import * as THREE from 'three';
@@ -263,6 +264,15 @@ window.addEventListener('unhandledrejection', (event) => {
 
 async function main() {
   try {
+    // MVP 5.8: Show welcome screen first
+    const welcomeScreen = new WelcomeScreen();
+    await welcomeScreen.show();
+
+    // Welcome screen waits for user to click "Enter the Forest"
+    // Once clicked, hide welcome screen with fade out
+    await welcomeScreen.hide();
+    welcomeScreen.destroy();
+
     // MVP 5: Show loading screen with animated walnut
     const loadingScreen = new LoadingScreen();
     await loadingScreen.show();

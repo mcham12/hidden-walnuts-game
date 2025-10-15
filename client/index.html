@@ -708,6 +708,247 @@
         font-weight: bold;
         color: #FFD700;
       }
+
+      /* MVP 5.8: Welcome Screen */
+      #welcome-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #1a4620 0%, #2d5f2e 50%, #4a8f4d 100%);
+        z-index: 10000;
+        display: none;
+        opacity: 0;
+        transition: opacity 0.5s ease-in-out;
+      }
+      .welcome-content {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 40px;
+        z-index: 2;
+      }
+      /* Walnut canvas container */
+      .welcome-canvas-container {
+        width: 400px;
+        height: 400px;
+        position: relative;
+      }
+      #welcome-canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      /* Title and tagline */
+      .welcome-text {
+        text-align: center;
+        color: white;
+        font-family: 'Arial', sans-serif;
+      }
+      .welcome-title {
+        font-size: 72px;
+        font-weight: 800;
+        margin: 0;
+        color: #FFD700;
+        text-shadow: 4px 4px 8px rgba(0,0,0,0.7);
+        letter-spacing: 2px;
+      }
+      .welcome-tagline {
+        font-size: 24px;
+        margin: 15px 0 0 0;
+        color: #FFE4B5;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        font-weight: 300;
+        letter-spacing: 1px;
+      }
+      /* Enter button */
+      .welcome-button {
+        background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+        color: #2c5f2d;
+        border: none;
+        padding: 20px 60px;
+        border-radius: 50px;
+        font-size: 24px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 8px 24px rgba(255, 215, 0, 0.4);
+        transition: all 0.3s ease;
+        font-family: 'Arial', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+      .welcome-button:hover {
+        transform: translateY(-4px) scale(1.05);
+        box-shadow: 0 12px 32px rgba(255, 215, 0, 0.6);
+      }
+      .welcome-button:active {
+        transform: translateY(-2px) scale(1.02);
+      }
+      /* Decorative elements */
+      .forest-rays {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(45deg,
+          transparent 0%,
+          rgba(255, 255, 255, 0.03) 25%,
+          transparent 50%,
+          rgba(255, 255, 255, 0.03) 75%,
+          transparent 100%);
+        background-size: 200% 200%;
+        animation: forestRays 15s ease-in-out infinite;
+        z-index: 1;
+        pointer-events: none;
+      }
+      @keyframes forestRays {
+        0%, 100% { opacity: 0.3; transform: rotate(0deg); }
+        50% { opacity: 0.6; transform: rotate(2deg); }
+      }
+      /* Floating leaves */
+      .floating-leaf {
+        position: absolute;
+        font-size: 32px;
+        opacity: 0.6;
+        animation: floatLeaf 8s ease-in-out infinite;
+        z-index: 1;
+        pointer-events: none;
+      }
+      .leaf-1 {
+        top: 10%;
+        left: 15%;
+        animation-delay: 0s;
+        animation-duration: 10s;
+      }
+      .leaf-2 {
+        top: 70%;
+        left: 80%;
+        animation-delay: 2s;
+        animation-duration: 12s;
+      }
+      .leaf-3 {
+        top: 30%;
+        right: 10%;
+        animation-delay: 4s;
+        animation-duration: 9s;
+      }
+      .leaf-4 {
+        bottom: 20%;
+        left: 25%;
+        animation-delay: 6s;
+        animation-duration: 11s;
+      }
+      @keyframes floatLeaf {
+        0%, 100% {
+          transform: translateY(0px) rotate(0deg);
+          opacity: 0.4;
+        }
+        50% {
+          transform: translateY(-30px) rotate(180deg);
+          opacity: 0.8;
+        }
+      }
+
+      /* Responsive: iPad Landscape */
+      @media (max-width: 1024px) and (orientation: landscape) {
+        .welcome-canvas-container {
+          width: 300px;
+          height: 300px;
+        }
+        .welcome-title {
+          font-size: 56px;
+        }
+        .welcome-tagline {
+          font-size: 20px;
+        }
+        .welcome-button {
+          padding: 16px 48px;
+          font-size: 20px;
+        }
+        .welcome-content {
+          gap: 30px;
+        }
+      }
+
+      /* Responsive: iPad Portrait */
+      @media (max-width: 768px) and (orientation: portrait) {
+        .welcome-canvas-container {
+          width: 280px;
+          height: 280px;
+        }
+        .welcome-title {
+          font-size: 52px;
+        }
+        .welcome-tagline {
+          font-size: 18px;
+        }
+        .welcome-button {
+          padding: 18px 50px;
+          font-size: 22px;
+        }
+      }
+
+      /* Responsive: iPhone Portrait */
+      @media (max-width: 430px) {
+        .welcome-canvas-container {
+          width: 220px;
+          height: 220px;
+        }
+        .welcome-title {
+          font-size: 42px;
+        }
+        .welcome-tagline {
+          font-size: 16px;
+        }
+        .welcome-button {
+          padding: 16px 40px;
+          font-size: 18px;
+        }
+        .welcome-content {
+          gap: 25px;
+        }
+        .floating-leaf {
+          font-size: 24px;
+        }
+      }
+
+      /* Responsive: iPhone Landscape (CRITICAL) */
+      @media (max-height: 500px) and (orientation: landscape) {
+        .welcome-content {
+          flex-direction: row;
+          gap: 20px;
+          padding: 10px;
+        }
+        .welcome-canvas-container {
+          width: 180px;
+          height: 180px;
+          flex-shrink: 0;
+        }
+        .welcome-text {
+          text-align: left;
+        }
+        .welcome-title {
+          font-size: 36px;
+        }
+        .welcome-tagline {
+          font-size: 14px;
+          margin-top: 8px;
+        }
+        .welcome-button {
+          padding: 12px 32px;
+          font-size: 16px;
+        }
+        .floating-leaf {
+          font-size: 20px;
+        }
+      }
+
       /* MVP 5: Toast Notification System */
       #toast-container {
         position: fixed;
