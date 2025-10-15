@@ -942,6 +942,12 @@
       /* MVP 5.7: iPhone Landscape Orientation Fixes - WITH SAFE AREA SUPPORT */
       @media (max-height: 500px) and (orientation: landscape),
              (max-width: 932px) and (max-height: 430px) and (orientation: landscape) {
+        /* CRITICAL: Prevent scrolling in landscape */
+        body {
+          touch-action: none !important;
+          overflow: hidden !important;
+        }
+
         /* SUPER COMPACT HUD - Single line only, respects notch */
         #walnut-hud {
           top: max(5px, env(safe-area-inset-top));
@@ -979,38 +985,51 @@
           right: max(5px, env(safe-area-inset-right));
         }
 
-        /* Make right-side buttons NARROWER to fit in landscape, respect safe areas */
-        #settings-toggle,
-        #leaderboard-toggle {
-          padding: 6px 10px;
-          font-size: 11px;
-          min-width: 70px;
-          min-height: 36px;
+        /* RIGHT SIDE VERTICAL STACK - All buttons SKINNY (50px wide) to fit without overlap */
+        /* Stack order from top: Minimap (70px) → Settings (32px) → Hide (32px) → Leaderboard (32px) */
+
+        /* Settings button - below minimap, skinny */
+        #settings-toggle {
+          top: calc(max(5px, env(safe-area-inset-top)) + 70px + 3px);
           right: max(5px, env(safe-area-inset-right));
+          bottom: auto; /* Override any bottom positioning */
+          padding: 4px 6px;
+          font-size: 10px;
+          min-width: 50px;
+          min-height: 32px;
         }
 
-        /* Stack buttons closer together in landscape */
-        #settings-toggle {
-          top: calc(max(5px, env(safe-area-inset-top)) + 70px + 8px);
-        }
+        /* Hide button (mobile-actions) - below settings, SKINNY */
         #mobile-actions {
-          bottom: max(5px, env(safe-area-inset-bottom));
+          top: calc(max(5px, env(safe-area-inset-top)) + 70px + 3px + 32px + 3px);
           right: max(5px, env(safe-area-inset-right));
+          bottom: auto; /* Override bottom positioning */
         }
         .mobile-action-btn {
-          min-width: 70px;
-          min-height: 44px;
-          padding: 8px 10px;
-          font-size: 12px;
+          min-width: 50px;
+          min-height: 32px;
+          padding: 4px 6px;
+          font-size: 10px;
         }
         .mobile-action-btn .btn-icon {
-          font-size: 16px;
+          font-size: 14px;
         }
         .mobile-action-btn .btn-label {
-          font-size: 11px;
+          font-size: 9px;
         }
+        .mobile-action-btn .btn-count {
+          font-size: 8px;
+        }
+
+        /* Leaderboard button - below hide button, skinny */
         #leaderboard-toggle {
-          bottom: calc(max(5px, env(safe-area-inset-bottom)) + 44px + 10px);
+          top: calc(max(5px, env(safe-area-inset-top)) + 70px + 3px + 32px + 3px + 32px + 3px);
+          right: max(5px, env(safe-area-inset-right));
+          bottom: auto; /* Override bottom positioning */
+          padding: 4px 6px;
+          font-size: 10px;
+          min-width: 50px;
+          min-height: 32px;
         }
 
         /* Leaderboard compact in landscape, respect safe areas */
@@ -1052,20 +1071,19 @@
           white-space: nowrap;
         }
 
-        /* Position emotes at BOTTOM-LEFT next to quick chat, respects safe areas */
+        /* Position emotes at BOTTOM-RIGHT corner, respects safe areas */
         #emotes {
           bottom: max(5px, env(safe-area-inset-bottom));
-          /* Position after quick chat: safe-area-left + 4 buttons (70px each) + 3 gaps (4px) */
-          left: calc(max(5px, env(safe-area-inset-left)) + 280px + 16px);
-          right: auto;
+          right: max(5px, env(safe-area-inset-right));
+          left: auto; /* Override left positioning */
           flex-direction: row;
-          gap: 4px;
+          gap: 3px;
         }
         .emote-button {
-          width: 36px;
-          height: 36px;
-          font-size: 16px;
-          padding: 6px;
+          width: 32px;
+          height: 32px;
+          font-size: 14px;
+          padding: 4px;
         }
 
         /* Compact toast notifications in landscape, respect safe areas */
