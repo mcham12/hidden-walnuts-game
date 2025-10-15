@@ -3478,6 +3478,19 @@ export class Game {
         }
       });
 
+      // Click outside to dismiss leaderboard (user-requested feature)
+      document.addEventListener('click', (event) => {
+        const target = event.target as HTMLElement;
+
+        // Check if click is outside leaderboard AND outside toggle button
+        if (this.leaderboardVisible &&
+            !leaderboardDiv.contains(target) &&
+            !toggleButton.contains(target)) {
+          this.leaderboardVisible = false;
+          leaderboardDiv.classList.add('hidden');
+        }
+      });
+
       // Start periodic leaderboard updates (every 5 seconds)
       this.leaderboardUpdateInterval = window.setInterval(() => {
         if (this.leaderboardVisible) {

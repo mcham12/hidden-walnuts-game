@@ -156,10 +156,10 @@
         left: 10px;
         background: rgba(139, 69, 19, 0.9);
         color: white;
-        padding: 15px 20px;
+        padding: 10px 15px;
         border-radius: 8px;
         font-family: 'Arial', sans-serif;
-        font-size: 16px;
+        font-size: 14px;
         font-weight: bold;
         z-index: 1000;
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
@@ -169,7 +169,14 @@
         display: none;
       }
       #walnut-hud div {
-        margin: 5px 0;
+        margin: 4px 0;
+      }
+      /* HIDE INSTRUCTIONS FOR ALL PLATFORMS - cleaner HUD */
+      #walnut-hud hr {
+        display: none !important;
+      }
+      #walnut-hud div:nth-child(4) {
+        display: none !important; /* Instructions text */
       }
       .walnut-icon {
         display: inline-block;
@@ -1003,18 +1010,18 @@
           min-height: 32px;
         }
 
-        /* Hide button (mobile-actions) - below settings, EXTRA SKINNY (40px) to prevent overlap */
+        /* Hide button (mobile-actions) - below settings, ULTRA SKINNY (35px) and SHORT (20px) to prevent overlap */
         #mobile-actions {
           top: calc(max(5px, env(safe-area-inset-top)) + 70px + 3px + 32px + 3px);
           right: max(5px, env(safe-area-inset-right));
           bottom: auto !important; /* Override bottom positioning from other media queries */
         }
         .mobile-action-btn {
-          min-width: 40px !important; /* Extra skinny to fit without overlap */
-          max-width: 40px;
-          min-height: 32px;
-          padding: 3px 4px;
-          font-size: 9px;
+          min-width: 35px !important; /* Ultra skinny to fit without overlap */
+          max-width: 35px;
+          min-height: 20px; /* Shorter button height */
+          padding: 2px 3px;
+          font-size: 8px;
         }
         .mobile-action-btn .btn-icon {
           font-size: 13px;
@@ -1677,10 +1684,26 @@
       // Update on resize (address bar show/hide)
       window.addEventListener('resize', setAppHeight);
 
-      // Update on orientation change (landscape/portrait)
+      // ENHANCED: Fix rotation scrolling issue on iOS Safari
+      // User reported: "when rotating the iphone to landscape from portrait, the browser window must be scrolled to show the full canvas"
       window.addEventListener('orientationchange', () => {
-        // iOS Safari needs a delay after orientation change
-        setTimeout(setAppHeight, 100);
+        // iOS Safari needs a delay after orientation change for proper recalculation
+        setTimeout(() => {
+          // Reset document height to force viewport recalculation
+          document.documentElement.style.height = 'initial';
+
+          setTimeout(() => {
+            // Set new app height based on actual viewport
+            setAppHeight();
+            document.documentElement.style.height = 'var(--app-height)';
+
+            // Force scroll to top to show full canvas (prevents white space)
+            setTimeout(() => {
+              window.scrollTo(0, 0);
+              console.log('📐 Rotation complete: viewport reset and scrolled to top');
+            }, 100);
+          }, 100);
+        }, 200);
       });
     </script>
     <script type="module" src="/src/main.ts"></script>
