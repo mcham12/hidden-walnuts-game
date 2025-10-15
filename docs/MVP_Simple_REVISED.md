@@ -1,6 +1,6 @@
 # 🎮 Hidden Walnuts - MVP Development Plan
 
-**Current Status**: MVP 5.7 (Mobile/Touch Controls) - Final testing on iPhone ✅
+**Current Status**: MVP 5.7 (Mobile/Touch Controls) - ✅ **COMPLETE**
 
 ---
 
@@ -74,13 +74,14 @@
 - Spatial partitioning for performance
 - Camera shake on collision feedback
 
-### MVP 5.7: Mobile/Touch Controls
+### MVP 5.7: Mobile/Touch Controls ✅
 - Drag-to-move touch controls for mobile
 - Mobile device detection (iPad, iPhone, Android)
-- Mobile UI optimizations (responsive layouts)
+- Mobile UI optimizations (responsive layouts, no overlap)
 - Performance optimizations (disabled shadows/AA on mobile)
-- iOS audio policy handling
+- iOS Safari audio (HTML5 Audio fallback, proper unlock sequence, always load assets)
 - Touch state management (character stops when touch ends)
+- iPhone landscape UI fixes (Hide button height, Leaderboard position, HUD cleanup)
 - VPN/Cloudflare troubleshooting documentation
 
 ---
