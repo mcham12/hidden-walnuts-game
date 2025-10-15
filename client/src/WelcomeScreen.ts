@@ -17,13 +17,14 @@ export class WelcomeScreen {
   private walnut: THREE.Group | null = null;
   private animationId: number | null = null;
   private particles: THREE.Points | null = null;
+  private walnutLoadedPromise: Promise<void> | null = null;
 
   private resolvePromise: (() => void) | null = null;
 
   constructor() {
     this.createHTML();
     this.setupThreeJS();
-    this.loadWalnut();
+    this.walnutLoadedPromise = this.loadWalnut();
     this.createParticles();
   }
 
@@ -219,8 +220,14 @@ export class WelcomeScreen {
 
   /**
    * Show welcome screen and wait for user interaction
+   * Waits for walnut model to load before displaying
    */
   async show(): Promise<void> {
+    // Wait for walnut model to load first
+    if (this.walnutLoadedPromise) {
+      await this.walnutLoadedPromise;
+    }
+
     return new Promise((resolve) => {
       this.resolvePromise = resolve;
 

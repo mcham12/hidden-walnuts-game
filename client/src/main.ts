@@ -264,16 +264,18 @@ window.addEventListener('unhandledrejection', (event) => {
 
 async function main() {
   try {
-    // MVP 5.8: Show welcome screen first
+    // MVP 5.8: STEP 1 - Show welcome screen (waits for walnut to load internally)
+    console.log('🌲 Step 1: Showing welcome screen...');
     const welcomeScreen = new WelcomeScreen();
-    await welcomeScreen.show();
+    await welcomeScreen.show(); // Waits for walnut model + user click
 
-    // Welcome screen waits for user to click "Enter the Forest"
-    // Once clicked, hide welcome screen with fade out
+    // MVP 5.8: STEP 2 - Hide welcome screen with smooth fade
+    console.log('🌲 Step 2: Hiding welcome screen...');
     await welcomeScreen.hide();
     welcomeScreen.destroy();
 
-    // MVP 5: Show loading screen with animated walnut
+    // MVP 5.8: STEP 3 - Show loading screen and load ALL assets
+    console.log('🌲 Step 3: Loading assets...');
     const loadingScreen = new LoadingScreen();
     await loadingScreen.show();
 
@@ -292,38 +294,36 @@ async function main() {
 
   canvas.classList.add('hidden');
 
-  // CRITICAL iOS FIX: Always load audio, even on mobile!
-  // Previous code skipped loading on mobile, causing sounds to not be ready
-  loadingScreen.updateProgress(0.3, 'Loading audio...');
+  // Load audio
+  loadingScreen.updateProgress(0.2, 'Loading audio...');
   const audioManager = new AudioManager();
-
-  // iOS Safari best practice: Load sounds before trying to play them
-  // The unlock() method handles the user interaction requirement
-  console.log('🎵 Waiting for audio to load...');
   await audioManager.waitForLoad();
-  console.log('✅ Audio fully loaded');
+  console.log('✅ Audio loaded');
 
-  // MVP 5: Load characters.json and populate dropdown
+  // Load characters
   loadingScreen.updateProgress(0.6, 'Loading characters...');
   await loadCharactersAndPopulateDropdown(charSelect);
+  console.log('✅ Characters loaded');
 
-  // Initialize character preview (works fine on mobile!)
-  loadingScreen.updateProgress(0.8, 'Preparing character preview...');
+  // Complete loading
+  loadingScreen.updateProgress(1.0, 'Ready!');
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  // MVP 5.8: STEP 4 - Hide loading and show character selection
+  console.log('🌲 Step 4: Showing character selection...');
+  loadingScreen.hide();
+  loadingScreen.destroy();
+
+  // Show character selection (was hidden by default)
+  selectDiv.classList.remove('hidden');
+
+  // Initialize character preview AFTER selection screen is shown
   let characterPreview: CharacterPreview | null = null;
   if (previewCanvas) {
     characterPreview = new CharacterPreview(previewCanvas);
     characterPreview.startAnimation();
-
-    // Load initial character (Squirrel by default)
     await characterPreview.loadCharacter(charSelect.value);
   }
-
-  // Hide loading screen and show character selection
-  loadingScreen.updateProgress(1.0, 'Ready!');
-  setTimeout(() => {
-    loadingScreen.hide();
-    loadingScreen.destroy();
-  }, 500);
 
   // MVP 5: Initialize settings manager
   const settingsManager = new SettingsManager(audioManager);
