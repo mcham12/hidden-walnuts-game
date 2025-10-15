@@ -1019,7 +1019,7 @@
         .mobile-action-btn {
           min-width: 35px !important; /* Ultra skinny to fit without overlap */
           max-width: 35px;
-          min-height: 20px; /* Shorter button height */
+          min-height: 16px; /* Even shorter button height - user reported 20px still too tall */
           padding: 2px 3px;
           font-size: 8px;
         }
@@ -1036,7 +1036,7 @@
 
         /* Leaderboard button - below hide button, skinny */
         #leaderboard-toggle {
-          top: calc(max(5px, env(safe-area-inset-top)) + 70px + 3px + 32px + 3px + 32px + 3px);
+          top: calc(max(5px, env(safe-area-inset-top)) + 70px + 3px + 32px + 3px + 16px + 3px);
           right: max(5px, env(safe-area-inset-right));
           bottom: auto; /* Override bottom positioning */
           padding: 4px 6px;
@@ -1466,13 +1466,6 @@
       </div>
       <div>
         📍 Location: <span id="grid-location">M13</span>
-      </div>
-      <hr style="margin: 8px 0; border: 0; border-top: 1px solid rgba(255,255,255,0.3);">
-      <div style="font-size: 12px; font-weight: normal; color: #FFE4B5;">
-        <strong>H</strong> to hide (near bush = 1pt, ground = 3pt)<br>
-        <strong>Click</strong> walnut to find<br>
-        <strong>Others' walnuts</strong> = points + walnut back<br>
-        <strong>Your walnuts</strong> = just walnut back
       </div>
     </div>
     <div id="debug-overlay" class="hidden">
