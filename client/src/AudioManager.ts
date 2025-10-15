@@ -26,8 +26,14 @@ export class AudioManager {
   private isUnlocked: boolean = false;
   private loadingPromises: Promise<void>[] = [];
   private isFullyLoaded: boolean = false;
+  private isMobile: boolean = false;
 
   constructor() {
+    // Detect mobile for iOS-specific audio handling
+    this.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+                    (typeof navigator.maxTouchPoints !== 'undefined' && navigator.maxTouchPoints > 2);
+
+    console.log('🎵 AudioManager: Mobile detected:', this.isMobile);
     this.initializeSounds();
   }
 
@@ -43,27 +49,65 @@ export class AudioManager {
 
   /**
    * Unlock audio context on first user interaction
-   * Modern browsers require user gesture before playing audio
+   * iOS Safari requires ACTUAL audio playback on user gesture to unlock
+   * This is the most critical method for iOS Safari audio support
    */
   async unlock(): Promise<void> {
-    if (this.isUnlocked) return;
+    if (this.isUnlocked) {
+      console.log('🎵 AudioManager: Already unlocked');
+      return;
+    }
 
-    // Check if Howler context exists, create if needed
-    if (!Howler.ctx) {
-      // Play a silent sound to create the context
-      const testSound = this.sounds.values().next().value;
-      if (testSound) {
-        const id = testSound.play();
-        testSound.stop(id);
+    console.log('🎵 AudioManager: Unlocking audio context...');
+
+    try {
+      // CRITICAL iOS FIX: Play a real sound (not just play+stop) to unlock
+      // iOS requires actual audio playback on first user gesture
+      const unlockSound = this.sounds.get('button_click');
+      if (unlockSound) {
+        // Play at very low volume so it's barely audible (iOS unlock primer)
+        const originalVolume = unlockSound.volume();
+        unlockSound.volume(0.01);
+
+        // Play and let it actually play (don't stop immediately!)
+        const soundId = unlockSound.play();
+
+        // Wait a tiny bit for the sound to actually start playing
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Stop after unlock
+        unlockSound.stop(soundId);
+        unlockSound.volume(originalVolume);
+
+        console.log('🎵 AudioManager: Unlock sound played');
       }
-    }
 
-    // Resume if suspended
-    if (Howler.ctx && Howler.ctx.state === 'suspended') {
-      await Howler.ctx.resume();
-    }
+      // Ensure Howler context is created
+      if (!Howler.ctx) {
+        console.warn('🎵 AudioManager: No audio context after unlock attempt');
+      }
 
-    this.isUnlocked = true;
+      // Resume AudioContext if suspended (iOS Safari requirement)
+      if (Howler.ctx && Howler.ctx.state === 'suspended') {
+        console.log('🎵 AudioManager: Resuming suspended context...');
+        await Howler.ctx.resume();
+        console.log('🎵 AudioManager: Context state:', Howler.ctx.state);
+      }
+
+      // Verify context is running
+      if (Howler.ctx && Howler.ctx.state === 'running') {
+        this.isUnlocked = true;
+        console.log('✅ AudioManager: Successfully unlocked!');
+      } else {
+        console.warn('⚠️ AudioManager: Context not running after unlock');
+        // Mark as unlocked anyway - user has interacted, so subsequent plays should work
+        this.isUnlocked = true;
+      }
+    } catch (error) {
+      console.error('❌ AudioManager: Unlock failed:', error);
+      // Mark as unlocked anyway to allow subsequent attempts
+      this.isUnlocked = true;
+    }
   }
 
   /**
@@ -151,26 +195,39 @@ export class AudioManager {
 
   /**
    * Load a sound into the manager
+   * iOS Safari best practice: Use HTML5 Audio for mobile, Web Audio for desktop
    */
   private loadSound(id: string, config: SoundConfig): void {
     try {
       // Create a Promise that resolves when the sound finishes loading
-      const loadPromise = new Promise<void>((resolve, reject) => {
+      const loadPromise = new Promise<void>((resolve) => {
         const sound = new Howl({
           src: config.src,
           volume: config.volume,
           loop: config.loop || false,
           sprite: config.sprite,
           preload: true,
-          html5: false,
+          // CRITICAL iOS FIX: Use HTML5 Audio on mobile for better compatibility
+          // Web Audio API has stricter restrictions on iOS Safari
+          html5: this.isMobile,
+          // iOS-specific optimization: Smaller pool on mobile (iOS limits concurrent audio)
+          pool: this.isMobile ? 3 : 5,
           onloaderror: (_soundId, error) => {
-            console.warn(`AudioManager: Failed to load sound "${id}":`, error);
-            reject(new Error(`Failed to load sound ${id}`));
+            console.warn(`🎵 AudioManager: Failed to load sound "${id}":`, error);
+            // Don't reject - allow game to continue without this sound
+            resolve();
           },
           onplayerror: (_soundId, error) => {
-            console.warn(`AudioManager: Failed to play sound "${id}":`, error);
+            console.warn(`🎵 AudioManager: Failed to play sound "${id}":`, error);
+            // Try to unlock and resume context on play error (iOS Safari quirk)
+            if (Howler.ctx && Howler.ctx.state === 'suspended') {
+              Howler.ctx.resume().then(() => {
+                console.log('🎵 AudioManager: Resumed context after play error');
+              });
+            }
           },
           onload: () => {
+            console.log(`🎵 AudioManager: Loaded sound "${id}"`);
             resolve();
           },
         });
@@ -181,15 +238,21 @@ export class AudioManager {
       // Track this loading promise
       this.loadingPromises.push(loadPromise);
     } catch (error) {
-      console.error(`AudioManager: Error creating sound "${id}":`, error);
+      console.error(`❌ AudioManager: Error creating sound "${id}":`, error);
     }
   }
 
   /**
    * Play a sound effect
+   * iOS Safari: This will only work after unlock() has been called
    */
   playSound(type: SoundType, variant?: string): void {
     if (this.isMuted) return;
+
+    // iOS Safari warning: Audio won't play until unlock() is called
+    if (!this.isUnlocked && this.isMobile) {
+      console.warn('🎵 AudioManager: Audio not unlocked yet (iOS requires user interaction)');
+    }
 
     let soundId: string;
 
@@ -210,7 +273,7 @@ export class AudioManager {
         this.playAmbient();
         return;
       default:
-        console.warn(`AudioManager: Unknown sound type "${type}"`);
+        console.warn(`🎵 AudioManager: Unknown sound type "${type}"`);
         return;
     }
 
@@ -221,10 +284,15 @@ export class AudioManager {
         sound.volume(effectiveVolume);
         sound.play();
       } catch (error) {
-        console.warn(`AudioManager: Error playing sound "${soundId}":`, error);
+        console.warn(`🎵 AudioManager: Error playing sound "${soundId}":`, error);
+        // iOS Safari: Try to auto-resume context on play error
+        if (this.isMobile && Howler.ctx && Howler.ctx.state !== 'running') {
+          console.log('🎵 AudioManager: Attempting to resume context...');
+          Howler.ctx.resume();
+        }
       }
     } else {
-      console.warn(`AudioManager: Sound "${soundId}" not found`);
+      console.warn(`🎵 AudioManager: Sound "${soundId}" not found`);
     }
   }
 

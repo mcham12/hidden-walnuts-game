@@ -282,15 +282,16 @@ async function main() {
 
   canvas.classList.add('hidden');
 
-  // CRITICAL: Create AudioManager but DON'T wait for audio on iOS (will hang)
+  // CRITICAL iOS FIX: Always load audio, even on mobile!
+  // Previous code skipped loading on mobile, causing sounds to not be ready
   loadingScreen.updateProgress(0.3, 'Loading audio...');
   const audioManager = new AudioManager();
 
-  // MVP 5.7: iOS FIX - Skip audio wait on mobile (iOS requires user interaction)
-  // Use TouchControls.isMobile() for consistent detection across devices
-  if (!TouchControls.isMobile()) {
-    await audioManager.waitForLoad();
-  }
+  // iOS Safari best practice: Load sounds before trying to play them
+  // The unlock() method handles the user interaction requirement
+  console.log('🎵 Waiting for audio to load...');
+  await audioManager.waitForLoad();
+  console.log('✅ Audio fully loaded');
 
   // MVP 5: Load characters.json and populate dropdown
   loadingScreen.updateProgress(0.6, 'Loading characters...');
