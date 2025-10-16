@@ -150,30 +150,234 @@
 
 ## 🐿️ MVP 7: NPC Characters & World Life
 
-**Goal**: Add 3-5 AI characters to make world feel alive
+**Goal**: Add ~10 AI characters to make world feel alive and provide gameplay challenge
 
-**Behaviors**:
-- **Wander** (70%) - Walk around randomly
-- **Rest** (15%) - Idle animation
-- **Hide Walnut** (10%) - Hide in bushes/ground
-- **Find Walnut** (5%) - Collect visible walnuts
+**Architecture**: Server-side authoritative NPCs (all players see same NPCs)
 
-**Characteristics**:
-- Name tags: "NPC - [Character]"
-- Slower movement than players
-- Contribute to leaderboard
-- Simple pathfinding (raycasting)
+### Implementation Plan
 
-**Balancing**:
-- Max 5 NPCs at once
-- Don't spawn if 10+ real players online
-- Scale down as player count increases
+**Phase 1: Server-Side NPC Infrastructure** (3-4 hours)
 
-**Success**:
-- NPCs spawn and wander
-- NPCs hide/find walnuts occasionally
-- NPCs on leaderboard
-- World feels more alive
+**1.1 NPC Data Structures** (workers/objects/ForestManager.ts)
+```typescript
+interface NPC {
+  id: string;                    // "npc-001", "npc-002", etc.
+  characterId: string;           // Random from 11 character types
+  position: { x, y, z };
+  rotationY: number;
+  velocity: { x, z };            // Current movement direction
+  currentBehavior: NPCBehavior;
+  behaviorTimer: number;         // Time in current behavior
+  targetPosition?: { x, y, z };  // Where NPC is walking to
+  targetEntityId?: string;       // Player/NPC being tracked
+  animation: string;             // Current animation state
+  walnutInventory: number;       // Walnuts carried (for throwing)
+  lastThrowTime: number;         // Cooldown tracking
+  aggressionLevel: number;       // 0-1 personality trait
+}
+
+enum NPCBehavior {
+  IDLE = 'idle',           // Standing still, resting
+  WANDER = 'wander',       // Random walking
+  APPROACH = 'approach',   // Moving toward player/NPC
+  GATHER = 'gather',       // Moving toward walnut
+  THROW = 'throw'          // Throwing walnut animation
+}
+```
+
+**1.2 NPCManager Class** (new file: workers/objects/NPCManager.ts)
+- Spawn NPCs on server start (~10 NPCs)
+- Despawn NPCs if player count exceeds threshold (>15 players)
+- Track all active NPCs in Map<string, NPC>
+- Main update loop: `updateNPCs(delta: number)` runs every 100ms
+- Assign random character types and aggression levels on spawn
+- Generate random NPC names: "NPC - [CharacterName]"
+
+**1.3 NPC Update Loop Integration**
+- Add Durable Object alarm for NPC updates (100ms tick rate)
+- Separate from player heartbeat system
+- Balance performance: 10 NPCs × 10 updates/sec = 100 updates/sec
+
+**Phase 2: NPC AI System** (4-5 hours)
+
+**2.1 Perception System**
+```typescript
+findNearbyPlayers(npc: NPC, radius: number): PlayerConnection[]
+findNearbyNPCs(npc: NPC, radius: number): NPC[]
+findNearbyWalnuts(npc: NPC, radius: number): Walnut[]
+```
+- Vision radius: 30 units for entities, 20 units for walnuts
+- Only detect entities within line-of-sight (no wall-hacking)
+- Cache perception results to reduce computation
+
+**2.2 Behavior State Machine**
+```
+IDLE (15% time)
+  ├─> WANDER (if bored, 70% probability)
+  ├─> GATHER (if walnut visible, 10% probability)
+  └─> APPROACH (if entity nearby, 5% probability)
+
+WANDER (random walk)
+  ├─> IDLE (reached destination or timeout)
+  ├─> GATHER (if walnut spotted)
+  └─> APPROACH (if aggressive + entity nearby)
+
+APPROACH (move toward target)
+  ├─> THROW (if has walnut + in range 5-15 units)
+  ├─> IDLE (if lost target)
+  └─> WANDER (if target too far)
+
+GATHER (move toward walnut)
+  ├─> IDLE (after collecting walnut)
+  └─> WANDER (if walnut taken by someone else)
+
+THROW (animation + projectile)
+  └─> IDLE (after throw completes, 1.5s cooldown)
+```
+
+**2.3 Decision Making Logic**
+- `selectBehavior(npc, nearbyPlayers, nearbyNPCs, nearbyWalnuts): NPCBehavior`
+- Weighted random decisions based on:
+  - Current behavior timer (don't change too fast)
+  - Aggression level (0.3 = passive, 0.7 = aggressive)
+  - Walnut inventory (gather more if low, throw if has walnuts)
+  - Nearby entity count (avoid large groups)
+- Min behavior duration: 2-5 seconds before switching
+
+**2.4 Movement & Pathfinding**
+- Simple navigation: move directly toward target (no A* yet)
+- Collision avoidance: raycast to detect obstacles
+- Speed: 80% of player movement speed (2.4 units/sec vs 3.0)
+- Rotation: smoothly turn toward movement direction
+- Stop if within 1 unit of destination
+
+**2.5 Throwing Behavior**
+- Check inventory: must have ≥1 walnut
+- Check distance: target must be 5-15 units away
+- Check cooldown: 3 seconds between throws
+- Calculate trajectory: aim at target's current position + prediction
+- Broadcast `npc_throw` message with projectile data
+- Decrement walnut inventory after throw
+
+**Phase 3: Client-Side NPC Rendering** (3-4 hours)
+
+**3.1 NPC Entity Management** (client/src/Game.ts)
+```typescript
+private npcs: Map<string, THREE.Group> = new Map();
+private npcNameLabels: Map<string, HTMLElement> = new Map();
+```
+
+**3.2 Message Handlers**
+- `npc_spawned`: Load character model, add to scene, create name tag
+- `npc_update`: Update position, rotation, animation (every 100ms)
+- `npc_despawned`: Remove from scene, cleanup resources
+- `npc_throw`: Play throw animation, spawn walnut projectile
+
+**3.3 NPC Rendering**
+- Reuse existing character loading system (same 11 models as players)
+- Name tags: "NPC - Colobus", "NPC - Mandrill", etc.
+- Position interpolation: smooth movement between server updates
+- Animation sync: same system as remote players
+- Visual distinction: Optional subtle shader effect (e.g., slight glow)
+
+**3.4 NPC Name Tag Styling**
+- Different color from player tags (e.g., cyan vs white)
+- Font style: italic to distinguish from real players
+- Position: above character head, same as player tags
+
+**Phase 4: NPC-Player Interactions** (3-4 hours)
+
+**4.1 Player → NPC Interactions**
+- Players can throw walnuts at NPCs (reuse existing throw system)
+- Hit detection: server validates hits, broadcasts to all clients
+- NPC reactions: briefly change to IDLE behavior when hit
+- For MVP 7: No damage/health (that's MVP 8), just interaction
+
+**4.2 NPC → Player Interactions**
+- NPCs track nearby players with perception system
+- Aggressive NPCs (aggression > 0.5) prioritize approaching players
+- NPCs throw walnuts at players within range
+- Projectile physics: same arc trajectory as player throws
+
+**4.3 Walnut Gathering**
+- NPCs detect visible walnuts (bush walnuts, golden walnuts)
+- Navigate to nearest walnut within 20 units
+- Server handles walnut collection: mark found, update inventory
+- Broadcast `walnut_found` message with NPC as finder
+- NPCs contribute to leaderboard (score for finding walnuts)
+
+**4.4 NPC Inventory Management**
+- Start with 0 walnuts
+- Max inventory: 5 walnuts (lower than player's 10 for MVP 8)
+- Gather walnut: +1 inventory
+- Throw walnut: -1 inventory
+- Behavior logic: prioritize gathering if inventory < 3
+
+**Phase 5: Testing, Balancing & Polish** (2-3 hours)
+
+**5.1 Performance Testing**
+- Test with 10 NPCs + 10 real players (20 entities total)
+- Monitor Durable Object CPU usage
+- Optimize perception system if needed (spatial partitioning)
+- Adjust update frequency if lag occurs (100ms → 150ms)
+
+**5.2 Behavior Tuning**
+- Balance aggression levels (50% passive, 30% neutral, 20% aggressive)
+- Adjust behavior probabilities for variety
+- Tune throw accuracy (80% accuracy, not perfect)
+- Test NPC gathering vs player competition
+
+**5.3 Visual Polish**
+- Ensure NPC animations transition smoothly
+- Test name tag visibility at various distances
+- Add subtle particle effect when NPC spawns (optional)
+- Verify NPC collision with trees and terrain
+
+**5.4 Edge Cases**
+- Handle NPC stuck in corners (teleport to random position after 10s)
+- Prevent NPC clumping (repulsion force from other NPCs)
+- NPC boundary handling (same soft push-back as players)
+- Server restart: respawn all NPCs
+
+### Technical Considerations
+
+**Server Performance**:
+- 10 NPCs × 10 updates/sec = 100 NPC updates/sec
+- Each update: perception check, behavior logic, movement
+- Estimated CPU: ~5-10ms per update cycle (acceptable for Durable Objects)
+
+**Network Bandwidth**:
+- Broadcast NPC updates to all players: 10 NPCs × N players
+- Each update: ~50 bytes (position, rotation, animation)
+- Bandwidth: 500 bytes/sec per player (negligible)
+
+**MVP 7 vs MVP 8 Split**:
+- MVP 7: Basic throwing (animation, projectile, no damage)
+- MVP 8: Health, damage, inventory limits, combat scoring
+
+### Success Criteria
+
+- ✅ ~10 NPCs spawn on server start
+- ✅ NPCs wander naturally around the world
+- ✅ NPCs detect and approach players/other NPCs
+- ✅ NPCs gather walnuts and contribute to leaderboard
+- ✅ NPCs throw walnuts at nearby entities (basic behavior)
+- ✅ All players see identical NPC behavior (authoritative server)
+- ✅ Name tags clearly identify NPCs vs real players
+- ✅ Performance stable with 10 NPCs + 10 players
+- ✅ World feels alive and dynamic
+
+### Files to Create/Modify
+
+**New Files**:
+- `workers/objects/NPCManager.ts` - NPC spawning, AI, updates
+
+**Modified Files**:
+- `workers/objects/ForestManager.ts` - Integrate NPCManager, add NPC messages
+- `client/src/Game.ts` - NPC rendering, message handlers
+- `client/src/types.ts` - NPC message types
+
+**Time Estimate**: 12-16 hours total
 
 ---
 
@@ -396,7 +600,7 @@ Prevent falling off edge with invisible walls, soft boundaries, or natural barri
 Simple username system for persistent identity. No passwords yet. (TBD)
 
 ### MVP 7: NPC Characters & World Life
-3-5 AI characters that wander and hide/find walnuts. Makes world feel alive. (TBD)
+~10 server-side AI characters with perception, behaviors (wander/approach/gather/throw), walnut throwing at players/NPCs. (12-16 hours)
 
 ### MVP 8: Combat, Health & Resource Management
 Triple-purpose walnuts (score/throw/eat), 100 HP system, 10-walnut inventory, T/E keys. (TBD)
