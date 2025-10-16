@@ -285,7 +285,7 @@ async function checkExistingUsername(username: string, sessionToken: string): Pr
     console.log('🔍 DEBUG: Response data:', data);
     const result = {
       exists: data.exists || false,
-      characterId: data.lastCharacterId
+      characterId: data.lastCharacterId || undefined // FIXED: Explicitly handle null
     };
     console.log('🔍 DEBUG: Returning:', result);
     return result;

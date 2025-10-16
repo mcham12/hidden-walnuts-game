@@ -87,7 +87,7 @@ export class PlayerIdentity extends DurableObject {
         exists: true,
         username: data.username,
         created: data.created,
-        lastCharacterId: data.lastCharacterId // Return saved character
+        lastCharacterId: data.lastCharacterId || null // FIXED: Explicitly return null if undefined
       };
       console.log(`✅ SERVER: Returning:`, response);
       return Response.json(response);
