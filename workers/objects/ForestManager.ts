@@ -346,6 +346,13 @@ export default class ForestManager {
       // Username is just a display name and can be shared by multiple people
       const savedPosition = await this.loadPlayerPosition(sessionToken);
 
+      // DEBUG MVP 6: Track position loading for brand new users
+      console.log(`🔍 DEBUG: New player connection`);
+      console.log(`   sessionToken: ${sessionToken.substring(0, 12)}...`);
+      console.log(`   username: ${username}`);
+      console.log(`   savedPosition: ${savedPosition ? JSON.stringify(savedPosition) : 'NULL (brand new user)'}`);
+      console.log(`   will spawn at: ${savedPosition ? JSON.stringify(savedPosition) : '{ x: 0, y: 2, z: 10 } (default)'}`);
+
       const playerConnection: PlayerConnection = {
         squirrelId,
         socket,
@@ -552,6 +559,9 @@ export default class ForestManager {
       this.mapState = filteredMapState;
       await this.storage.put('mapState', this.mapState);
     }
+
+    // DEBUG MVP 6: Log spawn position being sent
+    console.log(`🔍 DEBUG: Sending world_state with spawnPosition: ${JSON.stringify(spawnPosition)}, spawnRotationY: ${spawnRotationY}`);
 
     this.sendMessage(socket, {
       type: "world_state",
@@ -834,10 +844,15 @@ export default class ForestManager {
   // Username is just a display name - sessionToken is the actual identity
   private async loadPlayerPosition(sessionToken: string): Promise<{ x: number; y: number; z: number } | null> {
     try {
-      const savedData = await this.storage.get<{ position: { x: number; y: number; z: number } }>(`player:${sessionToken}`);
+      const storageKey = `player:${sessionToken}`;
+      console.log(`🔍 DEBUG: Loading position for key: ${storageKey.substring(0, 20)}...`);
+      const savedData = await this.storage.get<{ position: { x: number; y: number; z: number } }>(storageKey);
+      console.log(`🔍 DEBUG: Storage returned: ${savedData ? JSON.stringify(savedData) : 'NULL'}`);
       if (savedData?.position) {
+        console.log(`🔍 DEBUG: Returning saved position: ${JSON.stringify(savedData.position)}`);
         return savedData.position;
       } else {
+        console.log(`🔍 DEBUG: No saved position found, returning null`);
         return null;
       }
     } catch (error) {

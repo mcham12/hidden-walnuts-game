@@ -360,6 +360,7 @@ async function main() {
     const sessionManager = new SessionManager();
     const sessionToken = sessionManager.getToken();
     console.log('✅ Session token ready');
+    console.log(`🔍 DEBUG CLIENT: Using sessionToken: ${sessionToken.substring(0, 12)}...`);
 
     // MVP 6: STEP 1 - Try to load username from localStorage
     const storedUsername = loadStoredUsername();

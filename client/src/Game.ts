@@ -404,6 +404,9 @@ export class Game {
       this.character.castShadow = true;
       this.scene.add(this.character);
 
+      // DEBUG MVP 6: Track initial character position
+      console.log(`🔍 DEBUG CLIENT: Character created at initial position: ${JSON.stringify({x: this.character.position.x, y: this.character.position.y, z: this.character.position.z})}`);
+
       // MVP 5.5: Add local player collision
       if (this.collisionSystem) {
         this.collisionSystem.addPlayerCollider(
@@ -1373,6 +1376,13 @@ export class Game {
         }
 
         // MVP 6: Handle spawn position from server (for returning players)
+        // DEBUG MVP 6: Always log what we receive
+        console.log(`🔍 DEBUG CLIENT: Received world_state with spawnPosition:`, data.spawnPosition);
+        console.log(`🔍 DEBUG CLIENT: Character exists?`, !!this.character);
+        if (this.character) {
+          console.log(`🔍 DEBUG CLIENT: Character current position before spawn:`, JSON.stringify({x: this.character.position.x, y: this.character.position.y, z: this.character.position.z}));
+        }
+
         if (data.spawnPosition && this.character) {
           console.log(`🎯 Spawning at saved position:`, data.spawnPosition);
           this.character.position.set(
@@ -1383,6 +1393,9 @@ export class Game {
           if (typeof data.spawnRotationY === 'number') {
             this.character.rotation.y = data.spawnRotationY;
           }
+          console.log(`🔍 DEBUG CLIENT: Character position AFTER spawn:`, JSON.stringify({x: this.character.position.x, y: this.character.position.y, z: this.character.position.z}));
+        } else {
+          console.log(`🔍 DEBUG CLIENT: NOT applying spawn position (spawnPosition exists: ${!!data.spawnPosition}, character exists: ${!!this.character})`);
         }
         break;
 
