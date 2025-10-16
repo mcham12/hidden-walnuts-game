@@ -1809,15 +1809,31 @@ export class Game {
   }
 
   /**
-   * STANDARD: Position LOCAL player on ground using heightmap
-   * Uses the pre-calculated characterGroundOffset
+   * INDUSTRY STANDARD: Position LOCAL player on ground using raycasting
+   * Uses the same technique as remote players for consistency
    */
   private positionLocalPlayerOnGround(): number {
     const x = this.character.position.x;
     const z = this.character.position.z;
-    const y = getTerrainHeight(x, z) + this.characterGroundOffset;
-    console.log(`🎮 Local player ground: terrain=${getTerrainHeight(x, z).toFixed(2)}, offset=${this.characterGroundOffset.toFixed(2)}, final=${y.toFixed(2)}`);
-    return y;
+
+    if (!this.terrain) {
+      return getTerrainHeight(x, z) + this.characterGroundOffset;
+    }
+
+    // INDUSTRY STANDARD: Raycast from above downward to find terrain
+    const rayOrigin = new THREE.Vector3(x, 100, z);
+    const rayDirection = new THREE.Vector3(0, -1, 0);
+    this.raycaster.set(rayOrigin, rayDirection);
+
+    const intersects = this.raycaster.intersectObject(this.terrain, false);
+
+    if (intersects.length > 0) {
+      const groundY = intersects[0].point.y;
+      return groundY + this.characterGroundOffset;
+    }
+
+    // Fallback to heightmap
+    return getTerrainHeight(x, z) + this.characterGroundOffset;
   }
 
   /**
