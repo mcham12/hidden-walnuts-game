@@ -1525,9 +1525,19 @@ export class Game {
 
       await Promise.all(remoteAnimationPromises);
 
+      // BUGFIX: Calculate character-specific ground offset (same as local player)
+      // Different characters have different sizes - must calculate offset from bounding box
+      const box = new THREE.Box3().setFromObject(remoteCharacter);
+      const remoteGroundOffset = -box.min.y * char.scale + 0.3;
+
+      // Store ground offset in userData for later use
+      remoteCharacter.userData.groundOffset = remoteGroundOffset;
+
+      console.log(`📏 Remote player ${playerId} (${remoteCharacterId}) ground offset: ${remoteGroundOffset.toFixed(2)}`);
+
       // BUGFIX: Set initial position using local terrain height (industry standard)
       // Don't trust networked Y position - calculate locally to prevent floating
-      const terrainY = getTerrainHeight(position.x, position.z) + 0.3;
+      const terrainY = getTerrainHeight(position.x, position.z) + remoteGroundOffset;
       remoteCharacter.position.set(position.x, terrainY, position.z);
       const initialQuaternion = new THREE.Quaternion();
       initialQuaternion.setFromEuler(new THREE.Euler(0, rotationY, 0));
@@ -1570,9 +1580,10 @@ export class Game {
   private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, _moveType?: string, characterId?: string): void {
     const remotePlayer = this.remotePlayers.get(playerId);
     if (remotePlayer) {
-      // BUGFIX: Calculate correct terrain Y to prevent floating
+      // BUGFIX: Calculate correct terrain Y using character-specific ground offset
       // Industry standard: Don't trust networked Y, calculate locally
-      const terrainY = getTerrainHeight(position.x, position.z) + 0.3;
+      const groundOffset = remotePlayer.userData.groundOffset || 0.3; // Fallback to 0.3 if not set
+      const terrainY = getTerrainHeight(position.x, position.z) + groundOffset;
 
       // ENTITY INTERPOLATION: Add new state to buffer for smooth interpolation
       const newQuaternion = new THREE.Quaternion();
