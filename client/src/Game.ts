@@ -1333,7 +1333,6 @@ export class Game {
 
           // DEBUG: Count walnuts by type
           const goldenWalnuts = data.mapState.filter((w: any) => w.origin === 'game');
-          const foundWalnuts = data.mapState.filter((w: any) => w.found === true);
 
           if (goldenWalnuts.length > 0) {
             goldenWalnuts.forEach((gw: any) => {

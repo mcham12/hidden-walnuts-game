@@ -342,8 +342,9 @@ export default class ForestManager {
       }
 
       // New player connection
-      // MVP 6: Load position by username (persists across sessions), not squirrelId (changes each session)
-      const savedPosition = await this.loadPlayerPosition(username);
+      // MVP 6: Load position by sessionToken (true persistent identity across sessions)
+      // Username is just a display name and can be shared by multiple people
+      const savedPosition = await this.loadPlayerPosition(sessionToken);
 
       const playerConnection: PlayerConnection = {
         squirrelId,
@@ -436,8 +437,8 @@ export default class ForestManager {
           playerConnection.rotationY = data.rotationY;
         }
 
-        // MVP 6: Save position by username (persists across sessions), not squirrelId
-        await this.savePlayerPosition(playerConnection.username, playerConnection.position);
+        // MVP 6: Save position by sessionToken (true persistent identity), not username (just display name)
+        await this.savePlayerPosition(playerConnection.sessionToken, playerConnection.position);
 
         // INDUSTRY STANDARD: Forward animation state with timing for multiplayer sync
         this.broadcastToOthers(playerConnection.squirrelId, {
@@ -829,29 +830,30 @@ export default class ForestManager {
     return objects;
   }
 
-  // MVP 6: Player position management (by username for persistence across sessions)
-  private async loadPlayerPosition(username: string): Promise<{ x: number; y: number; z: number } | null> {
+  // MVP 6: Player position management (by sessionToken for true persistence)
+  // Username is just a display name - sessionToken is the actual identity
+  private async loadPlayerPosition(sessionToken: string): Promise<{ x: number; y: number; z: number } | null> {
     try {
-      const savedData = await this.storage.get<{ position: { x: number; y: number; z: number } }>(`player:${username}`);
+      const savedData = await this.storage.get<{ position: { x: number; y: number; z: number } }>(`player:${sessionToken}`);
       if (savedData?.position) {
         return savedData.position;
       } else {
         return null;
       }
     } catch (error) {
-      console.error(`❌ Failed to load position for ${username}:`, error);
+      console.error(`❌ Failed to load position for session ${sessionToken.substring(0, 8)}...:`, error);
       return null;
     }
   }
 
-  private async savePlayerPosition(username: string, position: { x: number; y: number; z: number }): Promise<void> {
+  private async savePlayerPosition(sessionToken: string, position: { x: number; y: number; z: number }): Promise<void> {
     try {
-      await this.storage.put(`player:${username}`, {
+      await this.storage.put(`player:${sessionToken}`, {
         position,
         lastUpdate: Date.now()
       });
     } catch (error) {
-      console.error(`❌ Failed to save position for ${username}:`, error);
+      console.error(`❌ Failed to save position for session ${sessionToken.substring(0, 8)}...:`, error);
     }
   }
 
