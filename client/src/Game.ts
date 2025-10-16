@@ -434,8 +434,18 @@ export class Game {
       // Add extra offset to prevent sinking (scale-adjusted + larger safety margin)
       this.characterGroundOffset = -box.min.y * char.scale + 0.3;
 
+      console.log(`📏 LOCAL PLAYER (${this.selectedCharacterId}):`);
+      console.log(`   - Scale: ${char.scale}`);
+      console.log(`   - BBox min.y: ${box.min.y.toFixed(3)}`);
+      console.log(`   - BBox max.y: ${box.max.y.toFixed(3)}`);
+      console.log(`   - Calculated ground offset: ${this.characterGroundOffset.toFixed(3)}`);
+      console.log(`   - Formula: -${box.min.y.toFixed(3)} * ${char.scale} + 0.3 = ${this.characterGroundOffset.toFixed(3)}`);
+
       this.setAction('idle');
-      this.character.position.y = getTerrainHeight(this.character.position.x, this.character.position.z) + this.characterGroundOffset;
+      const terrainHeight = getTerrainHeight(this.character.position.x, this.character.position.z);
+      this.character.position.y = terrainHeight + this.characterGroundOffset;
+      console.log(`   - Terrain height: ${terrainHeight.toFixed(3)}`);
+      console.log(`   - Final Y position: ${this.character.position.y.toFixed(3)}`);
     } catch (error) {
       console.error('❌ CRITICAL: Character loading failed:', error);
       console.error('❌ Game will not function properly without character');
@@ -1533,12 +1543,20 @@ export class Game {
       // Store ground offset in userData for later use
       remoteCharacter.userData.groundOffset = remoteGroundOffset;
 
-      console.log(`📏 Remote player ${playerId} (${remoteCharacterId}) ground offset: ${remoteGroundOffset.toFixed(2)}`);
+      console.log(`📏 REMOTE PLAYER ${playerId} (${remoteCharacterId}):`);
+      console.log(`   - Scale: ${char.scale}`);
+      console.log(`   - BBox min.y: ${box.min.y.toFixed(3)}`);
+      console.log(`   - BBox max.y: ${box.max.y.toFixed(3)}`);
+      console.log(`   - Calculated ground offset: ${remoteGroundOffset.toFixed(3)}`);
+      console.log(`   - Formula: -${box.min.y.toFixed(3)} * ${char.scale} + 0.3 = ${remoteGroundOffset.toFixed(3)}`);
 
       // BUGFIX: Set initial position using local terrain height (industry standard)
       // Don't trust networked Y position - calculate locally to prevent floating
-      const terrainY = getTerrainHeight(position.x, position.z) + remoteGroundOffset;
+      const terrainHeight = getTerrainHeight(position.x, position.z);
+      const terrainY = terrainHeight + remoteGroundOffset;
       remoteCharacter.position.set(position.x, terrainY, position.z);
+      console.log(`   - Terrain height: ${terrainHeight.toFixed(3)}`);
+      console.log(`   - Final Y position: ${terrainY.toFixed(3)}`);
       const initialQuaternion = new THREE.Quaternion();
       initialQuaternion.setFromEuler(new THREE.Euler(0, rotationY, 0));
       remoteCharacter.quaternion.copy(initialQuaternion);
