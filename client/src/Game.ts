@@ -579,7 +579,7 @@ export class Game {
 
       // MVP 5: Mute toggle with M key
       if (e.key === 'm' || e.key === 'M') {
-        const isMuted = this.audioManager.toggleMute();
+        this.audioManager.toggleMute();
       }
 
       // Debug: Teleport to nearest golden walnut with G key
@@ -1308,15 +1308,6 @@ export class Game {
 
         // Load existing walnuts from server
         if (Array.isArray(data.mapState)) {
-
-          // DEBUG: Count walnuts by type
-          const goldenWalnuts = data.mapState.filter((w: any) => w.origin === 'game');
-
-          if (goldenWalnuts.length > 0) {
-            goldenWalnuts.forEach((gw: any) => {
-            });
-          }
-
           for (const walnut of data.mapState) {
             // ALWAYS create golden walnuts (they respawn), only check found status for player walnuts
             const isGoldenWalnut = walnut.origin === 'game';
@@ -3229,10 +3220,6 @@ export class Game {
    */
   private teleportToNearestGoldenWalnut(): void {
     if (!this.character) return;
-
-    // Debug: list all walnuts and their types
-    for (const [id, walnutGroup] of this.walnuts) {
-    }
 
     let nearestGoldenWalnut: THREE.Group | null = null;
     let minDistance = Infinity;
