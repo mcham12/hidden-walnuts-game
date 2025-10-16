@@ -264,76 +264,60 @@ window.addEventListener('unhandledrejection', (event) => {
 
 async function main() {
   try {
-    // MVP 5.8: STEP 1 - Show welcome screen (waits for walnut to load internally)
+    // MVP 5.8: STEP 1 - Show welcome screen
     console.log('🌲 Step 1: Showing welcome screen...');
     const welcomeScreen = new WelcomeScreen();
-    await welcomeScreen.show(); // Waits for walnut model + user click
+    await welcomeScreen.show(); // Waits for user to click "Enter the Forest"
 
     // MVP 5.8: STEP 2 - Hide welcome screen with smooth fade
     console.log('🌲 Step 2: Hiding welcome screen...');
     await welcomeScreen.hide();
     welcomeScreen.destroy();
 
-    // MVP 5.8: STEP 3 - Show loading screen and load ALL assets
-    console.log('🌲 Step 3: Loading assets...');
-    const loadingScreen = new LoadingScreen();
-    await loadingScreen.show();
+    // MVP 5.8: STEP 3 - Show character selection immediately (no loading needed)
+    console.log('🌲 Step 3: Showing character selection...');
+    const selectDiv = document.getElementById('character-select') as HTMLDivElement;
+    const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
+    const previewCanvas = document.getElementById('character-preview-canvas') as HTMLCanvasElement;
+    const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
+    const charSelect = document.getElementById('char-select') as HTMLSelectElement;
+    const charDescription = document.getElementById('char-description') as HTMLDivElement;
+    const walnutHud = document.getElementById('walnut-hud') as HTMLDivElement;
 
-  const selectDiv = document.getElementById('character-select') as HTMLDivElement;
-  const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
-  const previewCanvas = document.getElementById('character-preview-canvas') as HTMLCanvasElement;
-  const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
-  const charSelect = document.getElementById('char-select') as HTMLSelectElement;
-  const charDescription = document.getElementById('char-description') as HTMLDivElement;
-  const walnutHud = document.getElementById('walnut-hud') as HTMLDivElement;
+    if (!canvas) {
+      console.error('Canvas not found');
+      return;
+    }
 
-  if (!canvas) {
-    console.error('Canvas not found');
-    return;
-  }
+    canvas.classList.add('hidden');
 
-  canvas.classList.add('hidden');
+    // Load characters.json (tiny, instant)
+    await loadCharactersAndPopulateDropdown(charSelect);
+    console.log('✅ Characters loaded');
 
-  // Load audio
-  loadingScreen.updateProgress(0.2, 'Loading audio...');
-  const audioManager = new AudioManager();
-  await audioManager.waitForLoad();
-  console.log('✅ Audio loaded');
+    // Initialize audio manager (don't load sounds yet - will load when game starts)
+    const audioManager = new AudioManager();
 
-  // Load characters
-  loadingScreen.updateProgress(0.6, 'Loading characters...');
-  await loadCharactersAndPopulateDropdown(charSelect);
-  console.log('✅ Characters loaded');
+    // Initialize settings manager
+    const settingsManager = new SettingsManager(audioManager);
 
-  // Complete loading
-  loadingScreen.updateProgress(1.0, 'Ready!');
-  await new Promise(resolve => setTimeout(resolve, 300));
+    // Show character selection
+    selectDiv.classList.remove('hidden');
 
-  // MVP 5.8: STEP 4 - Hide loading and show character selection
-  console.log('🌲 Step 4: Showing character selection...');
-  loadingScreen.hide();
-  loadingScreen.destroy();
-
-  // Show character selection (was hidden by default)
-  selectDiv.classList.remove('hidden');
-
-  // Initialize character preview AFTER selection screen is shown
-  let characterPreview: CharacterPreview | null = null;
-  if (previewCanvas) {
-    characterPreview = new CharacterPreview(previewCanvas);
-    characterPreview.startAnimation();
-    await characterPreview.loadCharacter(charSelect.value);
-  }
-
-  // MVP 5: Initialize settings manager
-  const settingsManager = new SettingsManager(audioManager);
+    // Initialize character preview
+    let characterPreview: CharacterPreview | null = null;
+    if (previewCanvas) {
+      characterPreview = new CharacterPreview(previewCanvas);
+      characterPreview.startAnimation();
+      await characterPreview.loadCharacter(charSelect.value);
+    }
 
   // Update character description and preview when selection changes
   const updateCharacter = async () => {
     const selectedId = charSelect.value;
     const charInfo = CHARACTER_DESCRIPTIONS[selectedId];
 
-    // MVP 5: Unlock audio on first user interaction (await to ensure context is ready)
+    // MVP 5: Unlock audio on first user interaction
     await audioManager.unlock();
 
     // MVP 5: Play UI sound for character selection
@@ -379,7 +363,31 @@ async function main() {
       characterPreview = null;
     }
 
+    // Hide character selection
     selectDiv.classList.add('hidden');
+
+    // MVP 5.8: STEP 4 - Show SINGLE loading screen and load ALL game assets
+    console.log('🌲 Step 4: Loading game assets...');
+    const loadingScreen = new LoadingScreen();
+    await loadingScreen.show();
+
+    // Load audio files
+    loadingScreen.updateProgress(0.3, 'Loading audio...');
+    await audioManager.waitForLoad();
+    console.log('✅ Audio loaded');
+
+    // Load game assets (terrain, models, etc.)
+    loadingScreen.updateProgress(0.6, 'Loading game world...');
+
+    // Complete loading
+    loadingScreen.updateProgress(1.0, 'Ready!');
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Hide loading screen
+    loadingScreen.hide();
+    loadingScreen.destroy();
+
+    // Show game
     canvas.classList.remove('hidden');
 
     // Show walnut HUD
