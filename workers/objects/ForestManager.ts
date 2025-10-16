@@ -1,5 +1,8 @@
 // Simplified ForestManager - Basic WebSocket and world state management
 // Updated for MVP 3.5 - Multiple character support
+// MVP 7: NPC System integration
+
+import { NPCManager } from './NPCManager';
 
 interface DurableObjectState {
   storage: DurableObjectStorage;
@@ -60,6 +63,34 @@ interface ForestObject {
   modelVariant?: number; // For rocks (1-5) and other models with variants
 }
 
+// MVP 7: NPC System - Behavior states for AI decision making
+enum NPCBehavior {
+  IDLE = 'idle',           // Standing still, resting
+  WANDER = 'wander',       // Random walking
+  APPROACH = 'approach',   // Moving toward player/NPC
+  GATHER = 'gather',       // Moving toward walnut
+  THROW = 'throw'          // Throwing walnut animation
+}
+
+// MVP 7: NPC System - Server-side NPC data structure
+interface NPC {
+  id: string;                    // "npc-001", "npc-002", etc.
+  characterId: string;           // Random from 11 character types
+  username: string;              // "NPC - [CharacterName]"
+  position: { x: number; y: number; z: number };
+  rotationY: number;
+  velocity: { x: number; z: number };  // Current movement direction
+  currentBehavior: NPCBehavior;
+  behaviorTimer: number;         // Time in current behavior (seconds)
+  behaviorDuration: number;      // How long to stay in current behavior
+  targetPosition?: { x: number; y: number; z: number };  // Where NPC is walking to
+  targetEntityId?: string;       // Player/NPC being tracked
+  animation: string;             // Current animation state ('idle', 'walk', 'run')
+  walnutInventory: number;       // Walnuts carried (for throwing)
+  lastThrowTime: number;         // Cooldown tracking (timestamp)
+  aggressionLevel: number;       // 0-1 personality trait (0.3=passive, 0.7=aggressive)
+}
+
 export default class ForestManager {
   state: DurableObjectState;
   storage: DurableObjectStorage;
@@ -73,59 +104,80 @@ export default class ForestManager {
   // Simple WebSocket management
   activePlayers: Map<string, PlayerConnection> = new Map();
 
+  // MVP 7: NPC System
+  npcManager: NPCManager;
+  private lastNPCUpdate: number = 0;
+  private readonly NPC_UPDATE_INTERVAL = 100; // 100ms = 10 updates/sec
+
   constructor(state: DurableObjectState, env: any) {
     this.state = state;
     this.storage = state.storage;
     this.env = env;
+
+    // MVP 7: Initialize NPC Manager
+    this.npcManager = new NPCManager(this);
   }
 
   /**
    * MVP 5.8: Durable Object Alarm for session management
-   * Runs every 10 seconds to check for disconnected/expired players
+   * MVP 7: Also handles NPC updates (100ms intervals)
+   * Runs every 100ms for NPCs, checks player disconnects less frequently
    */
   async alarm(): Promise<void> {
     const now = Date.now();
-    const DISCONNECT_TIMEOUT = 60 * 1000; // 60 seconds (heartbeat is 30s, allow 2x buffer)
+
+    // MVP 7: Update NPCs every 100ms
+    if (now - this.lastNPCUpdate >= this.NPC_UPDATE_INTERVAL) {
+      this.npcManager.update();
+      this.lastNPCUpdate = now;
+    }
+
+    // MVP 5.8: Check player disconnects every 10 seconds
+    const DISCONNECT_CHECK_INTERVAL = 10000; // 10 seconds
+    const DISCONNECT_TIMEOUT = 60 * 1000; // 60 seconds
     const REMOVAL_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
-    console.log(`⏰ Alarm: Checking ${this.activePlayers.size} players for disconnects...`);
+    // Only check disconnects every 10 seconds (not every 100ms)
+    if (now - this.lastDisconnectCheck >= DISCONNECT_CHECK_INTERVAL) {
+      this.lastDisconnectCheck = now;
 
-    for (const [playerId, player] of this.activePlayers.entries()) {
-      const timeSinceActivity = now - player.lastActivity;
+      for (const [playerId, player] of this.activePlayers.entries()) {
+        const timeSinceActivity = now - player.lastActivity;
 
-      // Remove player completely if inactive for 5+ minutes
-      if (timeSinceActivity > REMOVAL_TIMEOUT) {
-        console.log(`⏰ Removing player ${playerId} (inactive for ${Math.round(timeSinceActivity / 1000)}s)`);
-        this.activePlayers.delete(playerId);
-        this.broadcastToOthers(playerId, {
-          type: 'player_leave',
-          squirrelId: playerId,
-          username: player.username, // MVP 6: Include username
-          characterId: player.characterId // MVP 6: Include characterId
-        });
-      }
-      // Mark as disconnected if inactive for 60+ seconds (but not already disconnected)
-      else if (timeSinceActivity > DISCONNECT_TIMEOUT && !player.isDisconnected) {
-        console.log(`⚠️ Marking player ${playerId} as disconnected (inactive for ${Math.round(timeSinceActivity / 1000)}s)`);
-        player.isDisconnected = true;
-        player.disconnectedAt = now;
-        this.broadcastToOthers(playerId, {
-          type: 'player_disconnected',
-          squirrelId: playerId,
-          username: player.username, // MVP 6: Include username
-          characterId: player.characterId // MVP 6: Include characterId
-        });
+        // Remove player completely if inactive for 5+ minutes
+        if (timeSinceActivity > REMOVAL_TIMEOUT) {
+          console.log(`⏰ Removing player ${playerId} (inactive for ${Math.round(timeSinceActivity / 1000)}s)`);
+          this.activePlayers.delete(playerId);
+          this.broadcastToOthers(playerId, {
+            type: 'player_leave',
+            squirrelId: playerId,
+            username: player.username, // MVP 6: Include username
+            characterId: player.characterId // MVP 6: Include characterId
+          });
+        }
+        // Mark as disconnected if inactive for 60+ seconds (but not already disconnected)
+        else if (timeSinceActivity > DISCONNECT_TIMEOUT && !player.isDisconnected) {
+          console.log(`⚠️ Marking player ${playerId} as disconnected (inactive for ${Math.round(timeSinceActivity / 1000)}s)`);
+          player.isDisconnected = true;
+          player.disconnectedAt = now;
+          this.broadcastToOthers(playerId, {
+            type: 'player_disconnected',
+            squirrelId: playerId,
+            username: player.username, // MVP 6: Include username
+            characterId: player.characterId // MVP 6: Include characterId
+          });
+        }
       }
     }
 
-    // Reschedule alarm for next check (only if there are active players)
-    if (this.activePlayers.size > 0) {
-      await this.state.storage.setAlarm(Date.now() + 10000); // 10 seconds
-      console.log(`⏰ Alarm rescheduled for 10s (${this.activePlayers.size} players)`);
-    } else {
-      console.log(`⏰ No players, alarm not rescheduled`);
+    // Reschedule alarm for next NPC update (100ms)
+    // This runs frequently for smooth NPC movement
+    if (this.activePlayers.size > 0 || this.npcManager.getNPCCount() > 0) {
+      await this.state.storage.setAlarm(Date.now() + this.NPC_UPDATE_INTERVAL);
     }
   }
+
+  private lastDisconnectCheck: number = 0;
 
   /**
    * MVP 5.8: Schedule disconnect checker alarm if not already scheduled
@@ -587,15 +639,30 @@ export default class ForestManager {
   // Simple broadcasting
   private broadcastToOthers(excludeSquirrelId: string, message: any): void {
     const serializedMessage = JSON.stringify(message);
-    
+
     for (const [squirrelId, playerConnection] of this.activePlayers) {
       if (squirrelId === excludeSquirrelId) continue;
-      
+
       if (playerConnection.socket.readyState === WebSocket.OPEN) {
         try {
           playerConnection.socket.send(serializedMessage);
         } catch (error) {
           console.error(`Failed to send message to ${squirrelId}:`, error);
+        }
+      }
+    }
+  }
+
+  // MVP 7: Broadcast to ALL players (used by NPCManager)
+  broadcastToAll(message: any): void {
+    const serializedMessage = JSON.stringify(message);
+
+    for (const playerConnection of this.activePlayers.values()) {
+      if (playerConnection.socket.readyState === WebSocket.OPEN) {
+        try {
+          playerConnection.socket.send(serializedMessage);
+        } catch (error) {
+          console.error(`Failed to broadcast to ${playerConnection.squirrelId}:`, error);
         }
       }
     }
@@ -698,6 +765,10 @@ export default class ForestManager {
     console.log(`✅ SERVER: Total walnuts after adding golden: ${this.mapState.length} (3 golden + ${this.mapState.length - 3} player)`);
 
     await this.storage.put('mapState', this.mapState);
+
+    // MVP 7: Spawn NPCs
+    this.npcManager.spawnNPCs();
+    console.log(`🤖 Spawned ${this.npcManager.getNPCCount()} NPCs`);
 
     this.isInitialized = true;
     console.log('✅ SERVER: World initialization complete');
