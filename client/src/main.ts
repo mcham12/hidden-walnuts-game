@@ -33,13 +33,11 @@ const API_URL = import.meta.env.VITE_API_URL || '';
  */
 async function loadCharactersAndPopulateDropdown(charSelect: HTMLSelectElement): Promise<void> {
   try {
-    console.log('🎭 Loading characters.json...');
     const response = await fetch('/characters.json');
     if (!response.ok) {
       throw new Error(`Failed to fetch characters.json: ${response.status}`);
     }
     CHARACTERS = await response.json();
-    console.log('✅ Loaded', CHARACTERS.length, 'characters');
 
     // Populate CHARACTER_DESCRIPTIONS
     CHARACTERS.forEach(char => {
@@ -92,7 +90,6 @@ async function loadCharactersAndPopulateDropdown(charSelect: HTMLSelectElement):
       charSelect.value = CHARACTERS[0].id;
     }
 
-    console.log('✅ Character dropdown populated with', CHARACTERS.length, 'characters');
   } catch (error) {
     console.error('❌ Failed to load characters.json:', error);
     // Fallback to hardcoded Squirrel
@@ -169,7 +166,6 @@ class CharacterPreview {
       }
 
       const modelPath = char.modelPath;
-      console.log('🎨 Loading preview model:', modelPath);
 
       const gltf = await this.loader.loadAsync(modelPath);
 
@@ -194,7 +190,6 @@ class CharacterPreview {
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
 
-      console.log('📦 Model bounds - size:', size, 'center:', center);
 
       // Create a wrapper group for clean transforms
       this.currentModel = new THREE.Group();
@@ -209,7 +204,6 @@ class CharacterPreview {
       this.currentModel.scale.setScalar(scale);
 
       this.scene.add(this.currentModel);
-      console.log('✅ Preview model loaded:', characterId, 'scale:', scale);
     } catch (error) {
       console.error('❌ Failed to load preview model:', error);
     }
@@ -367,12 +361,10 @@ async function main() {
 
     if (storedUsername) {
       // Found username in localStorage - check if it still exists on server
-      console.log('📦 Found stored username:', storedUsername);
       const result = await checkExistingUsername(storedUsername, sessionToken);
 
       if (result.exists) {
         // Username exists on server - show welcome back and link sessionToken
-        console.log('✅ Username verified, linking session...');
         const welcomeScreen = new WelcomeScreen();
         await welcomeScreen.showWelcomeBack(storedUsername);
         await welcomeScreen.hide();
@@ -381,10 +373,8 @@ async function main() {
         savedCharacterId = result.characterId;
       } else {
         // Username doesn't exist on server anymore - prompt for new username
-        console.log('⚠️ Stored username not found on server, prompting for new username');
         const welcomeScreen = new WelcomeScreen();
         username = await welcomeScreen.show();
-        console.log('👤 Username entered:', username);
 
         // Check if this new username exists or create it
         const newResult = await checkExistingUsername(username, sessionToken);
@@ -401,22 +391,18 @@ async function main() {
       }
     } else {
       // No stored username (new user or private browsing) - prompt for username
-      console.log('🆕 No stored username - prompting...');
       const welcomeScreen = new WelcomeScreen();
       username = await welcomeScreen.show();
-      console.log('👤 Username entered:', username);
 
       // Check if username exists on server (private browsing case!)
       const result = await checkExistingUsername(username, sessionToken);
 
       if (result.exists) {
         // Username exists! This is a returning user in private browsing
-        console.log('✅ Username exists on server - linking session');
         savedCharacterId = result.characterId;
         // Session already linked by checkExistingUsername call
       } else {
         // New username - create identity
-        console.log('🆕 Creating new identity');
         await saveUsername(username, sessionToken);
       }
 
@@ -449,11 +435,9 @@ async function main() {
     // Check if user has saved character
     if (savedCharacterId) {
       // Returning user with saved character - skip selection!
-      console.log('✅ Using saved character, SKIPPING selection:', savedCharacterId);
       selectedCharacterId = savedCharacterId;
     } else {
       // New user or no saved character - show character selection
-      console.log('🌲 Step 2: SHOWING character selection (no saved character)...');
       const selectDiv = document.getElementById('character-select') as HTMLDivElement;
       const previewCanvas = document.getElementById('character-preview-canvas') as HTMLCanvasElement;
       const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
@@ -462,7 +446,6 @@ async function main() {
 
       // Load characters.json (tiny, instant)
       await loadCharactersAndPopulateDropdown(charSelect);
-      console.log('✅ Characters loaded');
 
       // Show character selection
       selectDiv.classList.remove('hidden');
@@ -536,14 +519,12 @@ async function main() {
     }
 
     // MVP 6: STEP 3 - Show SINGLE loading screen and load ALL game assets
-    console.log('🌲 Step 3: Loading game assets...');
     const loadingScreen = new LoadingScreen();
     await loadingScreen.show(); // Sets to 0% immediately
 
     // Start loading audio
     loadingScreen.updateProgress(0.1, 'Loading audio...');
     await audioManager.waitForLoad();
-    console.log('✅ Audio loaded');
 
     // Initialize game instance (this loads character models, sets up scene, etc.)
     loadingScreen.updateProgress(0.3, 'Loading game world...');
@@ -555,7 +536,6 @@ async function main() {
     // Run game.init() - this loads character model, connects to server, etc.
     loadingScreen.updateProgress(0.5, 'Connecting to server...');
     await game.init(canvas, audioManager, settingsManager);
-    console.log('✅ Game initialized');
 
     // Start render loop (but canvas still hidden)
     loadingScreen.updateProgress(0.8, 'Preparing scene...');
@@ -609,7 +589,6 @@ async function main() {
       const mobileActions = document.getElementById('mobile-actions');
       if (mobileActions) {
         mobileActions.classList.add('visible');
-        console.log('✅ Mobile action buttons shown');
       }
     } else {
       // Show desktop control guide

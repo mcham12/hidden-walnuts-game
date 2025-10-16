@@ -201,17 +201,6 @@ export class Game {
 
   async init(canvas: HTMLCanvasElement, audioManager: AudioManager, settingsManager: SettingsManager) {
     try {
-      // MVP 5.7: Log device info for debugging mobile issues
-      console.log('📱 Device detection:', {
-        userAgent: navigator.userAgent,
-        maxTouchPoints: navigator.maxTouchPoints,
-        hasTouch: 'ontouchstart' in window,
-        screenSize: `${window.innerWidth}x${window.innerHeight}`,
-        pixelRatio: window.devicePixelRatio,
-        isMobile: TouchControls.isMobile(),
-        pointerType: window.matchMedia('(pointer: coarse)').matches ? 'coarse (touch)' : 'fine (mouse)'
-      });
-
       // MVP 5: Set audio manager (reuse from main.ts with preloaded sounds)
       this.audioManager = audioManager;
 
@@ -242,8 +231,6 @@ export class Game {
       this.renderer.setSize(window.innerWidth, window.innerHeight);
       this.renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2)); // Lower pixel ratio on mobile
       this.renderer.shadowMap.enabled = !isMobile; // Disable shadows on mobile for performance
-
-      console.log(`🎮 Renderer initialized for ${isMobile ? 'mobile' : 'desktop'} (antialias: ${!isMobile}, shadows: ${!isMobile}, pixelRatio: ${this.renderer.getPixelRatio()})`);
 
       // Lights
       const ambient = new THREE.AmbientLight(0xffffff, 0.6);
@@ -309,7 +296,6 @@ export class Game {
 
       // MVP 5.5: Initialize Collision System BEFORE adding landmarks (so they can register collision)
       this.collisionSystem = new CollisionSystem(this.scene);
-      console.log('🔒 Collision system initialized');
 
       // Add landmark trees (now collision system is ready)
       await this.addLandmarks();
@@ -426,7 +412,6 @@ export class Game {
       // Calculate collision radius based on character size (use XZ plane for horizontal radius)
       this.characterCollisionRadius = Math.max(size.x, size.z) * 0.5;
 
-      console.log(`📏 Local player ${this.selectedCharacterId}: groundOffset = ${this.characterGroundOffset.toFixed(2)}, box.min.y = ${box.min.y.toFixed(2)}, scale = ${char.scale}`);
 
       this.setAction('idle');
       // MVP 6: DON'T position character here - wait for spawn position from server
@@ -595,7 +580,6 @@ export class Game {
       // MVP 5: Mute toggle with M key
       if (e.key === 'm' || e.key === 'M') {
         const isMuted = this.audioManager.toggleMute();
-        console.log(`Audio ${isMuted ? 'muted' : 'unmuted'}`);
       }
 
       // Debug: Teleport to nearest golden walnut with G key
@@ -695,7 +679,6 @@ export class Game {
       }
     }
 
-    console.log('✅ Mobile action buttons initialized');
   }
 
   private onResize() {
@@ -1325,14 +1308,12 @@ export class Game {
 
         // Load existing walnuts from server
         if (Array.isArray(data.mapState)) {
-          console.log(`📦 Received ${data.mapState.length} walnuts from server`);
 
           // DEBUG: Count walnuts by type
           const goldenWalnuts = data.mapState.filter((w: any) => w.origin === 'game');
 
           if (goldenWalnuts.length > 0) {
             goldenWalnuts.forEach((gw: any) => {
-              console.log(`  Golden ${gw.id}: found=${gw.found}`);
             });
           }
 
@@ -1354,7 +1335,6 @@ export class Game {
               const points = isGoldenWalnut ? 5 : (walnut.hiddenIn === 'buried' ? 3 : 1);
 
               if (isGoldenWalnut) {
-                console.log(`🌟 Creating GOLDEN walnut: ${walnut.id} at`, walnut.location, `(${points} pts, found=${walnut.found})`);
               }
 
               this.createRemoteWalnut({
@@ -1813,7 +1793,6 @@ export class Game {
   private markPlayerAsDisconnected(playerId: string, username?: string, characterId?: string): void {
     const remotePlayer = this.remotePlayers.get(playerId);
     if (remotePlayer) {
-      console.log(`⚠️ Marking player ${playerId} as disconnected (visual feedback)`);
 
       // Set opacity to 33% for more obvious disconnect indicator
       remotePlayer.traverse((child: any) => {
@@ -1844,7 +1823,6 @@ export class Game {
   private markPlayerAsReconnected(playerId: string): void {
     const remotePlayer = this.remotePlayers.get(playerId);
     if (remotePlayer) {
-      console.log(`✅ Marking player ${playerId} as reconnected (restore visual)`);
 
       // Restore opacity to 100%
       remotePlayer.traverse((child: any) => {
@@ -2063,7 +2041,6 @@ export class Game {
    * Add landmark trees for navigation
    */
   private async addLandmarks(): Promise<void> {
-    console.log('🏁 Adding landmark trees...');
 
     // Origin landmark at (0, 0)
     await this.createLandmark(0, 0, '/assets/models/environment/Dead_straight_tree.glb', 'Origin');
@@ -2080,7 +2057,6 @@ export class Game {
     // West landmark at (-80, 0)
     await this.createLandmark(-80, 0, '/assets/models/environment/W_branch_tree.glb', 'West');
 
-    console.log('✅ Landmarks added');
   }
 
   /**
@@ -2120,7 +2096,6 @@ export class Game {
           }
         }
       });
-      console.log(`   📊 Total meshes in ${name} (${modelPath}): ${meshCount}, using closest to origin`);
 
       if (!closestMesh) {
         console.error(`❌ No mesh found in landmark: ${modelPath}`);
@@ -2147,7 +2122,6 @@ export class Game {
       tree.receiveShadow = true;
 
       this.scene.add(tree);
-      console.log(`   ✅ ${name} landmark at (${x}, ${terrainY.toFixed(2)}, ${z}) - model: ${modelPath}`);
 
       // Register landmark in map for minimap display
       this.landmarks.set(name, new THREE.Vector3(x, terrainY, z));
@@ -3258,7 +3232,6 @@ export class Game {
 
     // Debug: list all walnuts and their types
     for (const [id, walnutGroup] of this.walnuts) {
-      console.log(`  - ${id}: type=${walnutGroup.userData.type}, pos=(${walnutGroup.position.x.toFixed(1)}, ${walnutGroup.position.z.toFixed(1)})`);
     }
 
     let nearestGoldenWalnut: THREE.Group | null = null;
@@ -3280,9 +3253,7 @@ export class Game {
       const offset = new THREE.Vector3(5, 0, 5);
       this.character.position.copy(nearestGoldenWalnut.position).add(offset);
       this.character.position.y = 2; // Keep player at proper height
-      console.log(`🔮 Teleported to golden walnut at ${nearestGoldenWalnut.position.x.toFixed(1)}, ${nearestGoldenWalnut.position.z.toFixed(1)}`);
     } else {
-      console.log('⚠️ No golden walnuts found in walnut map');
     }
   }
 
@@ -3550,11 +3521,9 @@ export class Game {
         break;
 
       case 'game':
-        console.log(`✨ Rendering GOLDEN walnut visual at`, position);
         // Adjust position to terrain level (walnut will be half-buried)
         const terrainHeight = getTerrainHeight(position.x, position.z);
         position.y = terrainHeight;
-        console.log(`🔧 Golden walnut at terrain level: ${terrainHeight.toFixed(2)}`);
         walnutGroup = this.createGameWalnutVisual(position);
         labelText = '🌟 Bonus Walnut (5 pts)';
         labelColor = '#FFD700';
@@ -3571,7 +3540,6 @@ export class Game {
     this.scene.add(walnutGroup);
     this.walnuts.set(data.walnutId, walnutGroup);
 
-    console.log(`✅ Added walnut to scene: ${data.walnutId}, type: ${data.walnutType}, position:`, walnutGroup.position, 'total walnuts:', this.walnuts.size);
 
     // Add label
     const label = this.createLabel(labelText, labelColor);
