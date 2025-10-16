@@ -25,6 +25,9 @@ interface Character {
 let CHARACTER_DESCRIPTIONS: Record<string, { name: string; description: string; category: string }> = {};
 let CHARACTERS: Character[] = [];
 
+// MVP 6: API URL from environment (for worker communication)
+const API_URL = import.meta.env.VITE_API_URL || '';
+
 /**
  * Load characters from characters.json and populate dropdown
  */
@@ -270,7 +273,7 @@ window.addEventListener('unhandledrejection', (event) => {
  */
 async function checkExistingUsername(username: string, sessionToken: string): Promise<{ exists: boolean; characterId?: string }> {
   try {
-    const response = await fetch(`/api/identity?action=check&username=${encodeURIComponent(username)}`, {
+    const response = await fetch(`${API_URL}/api/identity?action=check&username=${encodeURIComponent(username)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionToken })
@@ -296,7 +299,7 @@ async function checkExistingUsername(username: string, sessionToken: string): Pr
  */
 async function saveUsername(username: string, sessionToken: string): Promise<void> {
   try {
-    const response = await fetch(`/api/identity?action=set&username=${encodeURIComponent(username)}`, {
+    const response = await fetch(`${API_URL}/api/identity?action=set&username=${encodeURIComponent(username)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, sessionToken })
@@ -339,7 +342,7 @@ function storeUsername(username: string): void {
  */
 async function updateCharacterSelection(username: string, characterId: string): Promise<void> {
   try {
-    const response = await fetch(`/api/identity?action=updateCharacter&username=${encodeURIComponent(username)}`, {
+    const response = await fetch(`${API_URL}/api/identity?action=updateCharacter&username=${encodeURIComponent(username)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ characterId })
