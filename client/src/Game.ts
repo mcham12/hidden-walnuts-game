@@ -1524,21 +1524,23 @@ export class Game {
       });
 
       await Promise.all(remoteAnimationPromises);
-      
-      // Set initial position and rotation - will be managed by interpolation system
-      remoteCharacter.position.set(position.x, position.y, position.z);
+
+      // BUGFIX: Set initial position using local terrain height (industry standard)
+      // Don't trust networked Y position - calculate locally to prevent floating
+      const terrainY = getTerrainHeight(position.x, position.z) + 0.3;
+      remoteCharacter.position.set(position.x, terrainY, position.z);
       const initialQuaternion = new THREE.Quaternion();
       initialQuaternion.setFromEuler(new THREE.Euler(0, rotationY, 0));
       remoteCharacter.quaternion.copy(initialQuaternion);
-      
+
       // Store all character data
       this.remotePlayers.set(playerId, remoteCharacter);
       this.remotePlayerMixers.set(playerId, remoteMixer);
       this.remotePlayerActions.set(playerId, remoteActions);
-      
+
       // INDUSTRY STANDARD: Initialize interpolation buffer for newly created player
       const initialState = {
-        position: new THREE.Vector3(position.x, position.y, position.z),
+        position: new THREE.Vector3(position.x, terrainY, position.z),
         quaternion: initialQuaternion.clone(), // Use the same quaternion from character setup
         velocity: new THREE.Vector3(0, 0, 0),
         timestamp: Date.now()
@@ -1626,6 +1628,10 @@ export class Game {
         // Smooth lerp even for single state to reduce jitter
         player.position.lerp(state.position, 0.3);
         player.quaternion.slerp(state.quaternion, 0.3);
+
+        // BUGFIX: Apply local terrain height to prevent floating
+        // Industry standard: Don't trust networked Y, calculate locally
+        player.position.y = getTerrainHeight(player.position.x, player.position.z) + 0.3;
         continue;
       }
 
@@ -1655,6 +1661,10 @@ export class Game {
       // Simple interpolation between two states
       player.position.lerpVectors(fromState.position, toState.position, t);
       player.quaternion.slerpQuaternions(fromState.quaternion, toState.quaternion, t);
+
+      // BUGFIX: Apply local terrain height to prevent floating
+      // Industry standard: Don't trust networked Y, calculate locally
+      player.position.y = getTerrainHeight(player.position.x, player.position.z) + 0.3;
 
       // MVP 5.5: Update remote player collision position
       if (this.collisionSystem) {
