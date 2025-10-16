@@ -26,6 +26,10 @@ interface PlayerConnection {
   rotationY: number;
   lastActivity: number;
   characterId: string;
+
+  // MVP 5.8: Session management
+  isDisconnected: boolean;
+  disconnectedAt: number | null;
 }
 
 interface Walnut {
@@ -52,19 +56,62 @@ export default class ForestManager {
   state: DurableObjectState;
   storage: DurableObjectStorage;
   env: any;
-  
+
   // Simple state management
   mapState: Walnut[] = [];
   terrainSeed: number = 0;
   forestObjects: ForestObject[] = [];
-  
+
   // Simple WebSocket management
   activePlayers: Map<string, PlayerConnection> = new Map();
+
+  // MVP 5.8: Session management checker
+  private disconnectChecker: number | null = null;
 
   constructor(state: DurableObjectState, env: any) {
     this.state = state;
     this.storage = state.storage;
     this.env = env;
+
+    // MVP 5.8: Start periodic disconnect checker
+    this.startDisconnectChecker();
+  }
+
+  /**
+   * MVP 5.8: Periodically check for disconnected/expired players
+   * - Mark as disconnected if lastActivity > 30s
+   * - Remove completely if lastActivity > 5 minutes
+   */
+  private startDisconnectChecker(): void {
+    this.disconnectChecker = setInterval(() => {
+      const now = Date.now();
+      const DISCONNECT_TIMEOUT = 30 * 1000; // 30 seconds
+      const REMOVAL_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
+      for (const [playerId, player] of this.activePlayers.entries()) {
+        const timeSinceActivity = now - player.lastActivity;
+
+        // Remove player completely if inactive for 5+ minutes
+        if (timeSinceActivity > REMOVAL_TIMEOUT) {
+          console.log(`⏰ Removing player ${playerId} (inactive for ${Math.round(timeSinceActivity / 1000)}s)`);
+          this.activePlayers.delete(playerId);
+          this.broadcastToOthers(playerId, {
+            type: 'player_leave',
+            squirrelId: playerId
+          });
+        }
+        // Mark as disconnected if inactive for 30+ seconds (but not already disconnected)
+        else if (timeSinceActivity > DISCONNECT_TIMEOUT && !player.isDisconnected) {
+          console.log(`⚠️ Marking player ${playerId} as disconnected (inactive for ${Math.round(timeSinceActivity / 1000)}s)`);
+          player.isDisconnected = true;
+          player.disconnectedAt = now;
+          this.broadcastToOthers(playerId, {
+            type: 'player_disconnected',
+            squirrelId: playerId
+          });
+        }
+      }
+    }, 10000); // Check every 10 seconds
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -185,61 +232,131 @@ export default class ForestManager {
 
   // Simple player connection setup
   private async setupPlayerConnection(squirrelId: string, characterId: string, socket: WebSocket): Promise<void> {
-    // Get or create player position
-    const savedPosition = await this.loadPlayerPosition(squirrelId);
-    
-    const playerConnection: PlayerConnection = {
-      squirrelId,
-      socket,
-      position: savedPosition || { x: 0, y: 2, z: 10 },
-      rotationY: Math.PI, // Face north (-Z direction)
-      lastActivity: Date.now(),
-      characterId
-    };
+    // MVP 5.8: Check if player is reconnecting (still in active players but disconnected)
+    const existingPlayer = this.activePlayers.get(squirrelId);
+    const isReconnecting = existingPlayer && existingPlayer.isDisconnected;
 
-    this.activePlayers.set(squirrelId, playerConnection);
+    if (isReconnecting) {
+      // Player is reconnecting - reattach socket and mark as reconnected
+      console.log(`🔄 Player ${squirrelId} reconnecting after ${Math.round((Date.now() - existingPlayer.disconnectedAt!) / 1000)}s`);
+      existingPlayer.socket = socket;
+      existingPlayer.isDisconnected = false;
+      existingPlayer.disconnectedAt = null;
+      existingPlayer.lastActivity = Date.now();
 
-    // Setup message handlers
-    socket.onmessage = async (event) => {
-      try {
-        console.log('📨 RAW WebSocket data received:', event.data);
-        const message = JSON.parse(event.data as string);
-        console.log(`📨 SERVER DEBUG: Received message:`, message);
-        await this.handlePlayerMessage(playerConnection, message);
-      } catch (error) {
-        console.error('❌ Error processing WebSocket message:', error, 'Raw data:', event.data);
-      }
-    };
+      // Setup message handlers
+      socket.onmessage = async (event) => {
+        try {
+          console.log('📨 RAW WebSocket data received:', event.data);
+          const message = JSON.parse(event.data as string);
+          console.log(`📨 SERVER DEBUG: Received message:`, message);
+          await this.handlePlayerMessage(existingPlayer, message);
+        } catch (error) {
+          console.error('❌ Error processing WebSocket message:', error, 'Raw data:', event.data);
+        }
+      };
 
-    socket.onclose = () => {
-      this.activePlayers.delete(squirrelId);
+      // MVP 5.8: Mark as disconnected instead of removing on close
+      socket.onclose = () => {
+        console.log(`🔌 WebSocket closed for ${squirrelId}, marking as disconnected`);
+        existingPlayer.isDisconnected = true;
+        existingPlayer.disconnectedAt = Date.now();
+        this.broadcastToOthers(squirrelId, {
+          type: 'player_disconnected',
+          squirrelId: squirrelId
+        });
+      };
+
+      socket.onerror = (event) => {
+        console.error('WebSocket error:', event);
+      };
+
+      // Send current world state
+      await this.sendWorldState(socket);
+      await this.sendExistingPlayers(socket, squirrelId);
+
+      // Broadcast reconnection
       this.broadcastToOthers(squirrelId, {
-        type: 'player_leave',
-        squirrelId: squirrelId
+        type: 'player_reconnected',
+        squirrelId,
+        position: existingPlayer.position,
+        rotationY: existingPlayer.rotationY,
+        characterId: existingPlayer.characterId
       });
-    };
+    } else {
+      // New player connection
+      const savedPosition = await this.loadPlayerPosition(squirrelId);
 
-    socket.onerror = (event) => {
-      console.error('WebSocket error:', event);
-    };
+      const playerConnection: PlayerConnection = {
+        squirrelId,
+        socket,
+        position: savedPosition || { x: 0, y: 2, z: 10 },
+        rotationY: Math.PI, // Face north (-Z direction)
+        lastActivity: Date.now(),
+        characterId,
+        // MVP 5.8: Session management
+        isDisconnected: false,
+        disconnectedAt: null
+      };
 
-    // Send initial data
-    await this.sendWorldState(socket);
-    await this.sendExistingPlayers(socket, squirrelId);
-    
-    // Broadcast player join
-    this.broadcastToOthers(squirrelId, {
-      type: 'player_joined',
-      squirrelId,
-      position: playerConnection.position,
-      rotationY: playerConnection.rotationY,
-      characterId: playerConnection.characterId
-    });
+      this.activePlayers.set(squirrelId, playerConnection);
+
+      // Setup message handlers
+      socket.onmessage = async (event) => {
+        try {
+          console.log('📨 RAW WebSocket data received:', event.data);
+          const message = JSON.parse(event.data as string);
+          console.log(`📨 SERVER DEBUG: Received message:`, message);
+          await this.handlePlayerMessage(playerConnection, message);
+        } catch (error) {
+          console.error('❌ Error processing WebSocket message:', error, 'Raw data:', event.data);
+        }
+      };
+
+      // MVP 5.8: Mark as disconnected instead of removing on close
+      socket.onclose = () => {
+        console.log(`🔌 WebSocket closed for ${squirrelId}, marking as disconnected`);
+        playerConnection.isDisconnected = true;
+        playerConnection.disconnectedAt = Date.now();
+        this.broadcastToOthers(squirrelId, {
+          type: 'player_disconnected',
+          squirrelId: squirrelId
+        });
+      };
+
+      socket.onerror = (event) => {
+        console.error('WebSocket error:', event);
+      };
+
+      // Send initial data
+      await this.sendWorldState(socket);
+      await this.sendExistingPlayers(socket, squirrelId);
+
+      // Broadcast player join
+      this.broadcastToOthers(squirrelId, {
+        type: 'player_joined',
+        squirrelId,
+        position: playerConnection.position,
+        rotationY: playerConnection.rotationY,
+        characterId: playerConnection.characterId
+      });
+    }
   }
 
   // Simple message handling
   private async handlePlayerMessage(playerConnection: PlayerConnection, data: any): Promise<void> {
     playerConnection.lastActivity = Date.now();
+
+    // MVP 5.8: If player was disconnected and sends a message, mark as reconnected
+    if (playerConnection.isDisconnected) {
+      console.log(`🔄 Player ${playerConnection.squirrelId} reconnected (was disconnected, now sending messages)`);
+      playerConnection.isDisconnected = false;
+      playerConnection.disconnectedAt = null;
+      this.broadcastToOthers(playerConnection.squirrelId, {
+        type: 'player_reconnected',
+        squirrelId: playerConnection.squirrelId
+      });
+    }
 
     switch (data.type) {
       case "player_update":

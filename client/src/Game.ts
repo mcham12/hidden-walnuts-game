@@ -1186,10 +1186,10 @@ export class Game {
 
   private startHeartbeat(): void {
     this.heartbeatInterval = window.setInterval(() => {
-      // MVP 5: Send ping with timestamp for latency measurement
+      // MVP 5.8: Send heartbeat for session management
       this.lastPingSent = performance.now();
-      this.sendMessage({ type: 'ping', timestamp: this.lastPingSent });
-    }, 5000); // Ping every 5 seconds for better latency tracking
+      this.sendMessage({ type: 'heartbeat', timestamp: this.lastPingSent });
+    }, 10000); // Heartbeat every 10 seconds for session management
   }
 
   private stopIntervals(): void {
@@ -1395,7 +1395,21 @@ export class Game {
           this.toastManager.info(`${characterName} left the game`);
         }
         break;
-        
+
+      case 'player_disconnected':
+        // MVP 5.8: Mark player as disconnected (visual feedback)
+        if (data.squirrelId && data.squirrelId !== this.playerId) {
+          this.markPlayerAsDisconnected(data.squirrelId);
+        }
+        break;
+
+      case 'player_reconnected':
+        // MVP 5.8: Mark player as reconnected (restore visual)
+        if (data.squirrelId && data.squirrelId !== this.playerId) {
+          this.markPlayerAsReconnected(data.squirrelId);
+        }
+        break;
+
       case 'player_update':  // Server sends position updates as "player_update"
         if (this.validatePlayerData(data) && data.squirrelId !== this.playerId) {
           this.updateRemotePlayer(data.squirrelId, data.position, data.rotationY, data.animation, data.velocity, data.animationStartTime, data.moveType, data.characterId);
@@ -1665,7 +1679,7 @@ export class Game {
           }
         }
       });
-      
+
       this.scene.remove(remotePlayer);
       this.remotePlayers.delete(playerId);
 
@@ -1680,6 +1694,66 @@ export class Game {
       if (this.collisionSystem) {
         this.collisionSystem.removeCollider(playerId);
       }
+    }
+  }
+
+  /**
+   * MVP 5.8: Mark a remote player as disconnected (visual feedback)
+   */
+  private markPlayerAsDisconnected(playerId: string): void {
+    const remotePlayer = this.remotePlayers.get(playerId);
+    if (remotePlayer) {
+      console.log(`⚠️ Marking player ${playerId} as disconnected (visual feedback)`);
+
+      // Set opacity to 50%
+      remotePlayer.traverse((child: any) => {
+        if (child.isMesh && child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach((mat: any) => {
+              mat.transparent = true;
+              mat.opacity = 0.5;
+            });
+          } else {
+            child.material.transparent = true;
+            child.material.opacity = 0.5;
+          }
+        }
+      });
+
+      // Show disconnected toast
+      const characterId = remotePlayer.userData?.characterId || 'Player';
+      const characterName = characterId.charAt(0).toUpperCase() + characterId.slice(1);
+      this.toastManager.warning(`${characterName} disconnected`);
+    }
+  }
+
+  /**
+   * MVP 5.8: Mark a remote player as reconnected (restore visual)
+   */
+  private markPlayerAsReconnected(playerId: string): void {
+    const remotePlayer = this.remotePlayers.get(playerId);
+    if (remotePlayer) {
+      console.log(`✅ Marking player ${playerId} as reconnected (restore visual)`);
+
+      // Restore opacity to 100%
+      remotePlayer.traverse((child: any) => {
+        if (child.isMesh && child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach((mat: any) => {
+              mat.transparent = false;
+              mat.opacity = 1.0;
+            });
+          } else {
+            child.material.transparent = false;
+            child.material.opacity = 1.0;
+          }
+        }
+      });
+
+      // Show reconnected toast
+      const characterId = remotePlayer.userData?.characterId || 'Player';
+      const characterName = characterId.charAt(0).toUpperCase() + characterId.slice(1);
+      this.toastManager.success(`${characterName} reconnected`);
     }
   }
 
