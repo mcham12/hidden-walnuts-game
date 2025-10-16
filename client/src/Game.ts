@@ -1808,7 +1808,7 @@ export class Game {
 
     // Get character's bounding box to find where feet are
     const box = new THREE.Box3().setFromObject(character);
-    const feetOffset = -box.min.y; // Distance from pivot to feet
+    const feetOffset = -box.min.y + 0.3; // Distance from pivot to feet + safety margin to prevent sinking
 
     // Raycast from above downward to find terrain
     const rayOrigin = new THREE.Vector3(x, 100, z); // Start well above terrain
