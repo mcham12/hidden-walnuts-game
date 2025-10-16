@@ -51,6 +51,7 @@ export class Game {
   private characters: Character[] = [];
   public selectedCharacterId = 'squirrel';
   private characterGroundOffset = 0; // Offset from character pivot to feet
+  private characterCollisionRadius = 0.5; // Collision radius calculated from bounding box
 
   // STANDARD: Terrain and raycasting for ground detection
   private terrain: THREE.Mesh | null = null;
@@ -432,10 +433,15 @@ export class Game {
         console.error('❌ CRITICAL: Idle animation failed to load - character will not function properly');
       }
 
-      // Use model's actual bounding box for accurate ground positioning
+      // Use model's actual bounding box for accurate ground positioning and collision
       const box = new THREE.Box3().setFromObject(this.character);
+      const size = box.getSize(new THREE.Vector3());
+
       // Add extra offset to prevent sinking (scale-adjusted + larger safety margin)
       this.characterGroundOffset = -box.min.y * char.scale + 0.3;
+
+      // Calculate collision radius based on character size (use XZ plane for horizontal radius)
+      this.characterCollisionRadius = Math.max(size.x, size.z) * 0.5;
 
       this.setAction('idle');
       this.character.position.y = getTerrainHeight(this.character.position.x, this.character.position.z) + this.characterGroundOffset;
@@ -1080,7 +1086,7 @@ export class Game {
     // (Collision was registered with empty string '' before playerId was set)
     if (this.collisionSystem && this.character) {
       this.collisionSystem.removeCollider('');  // Remove old collider with empty ID
-      this.collisionSystem.addPlayerCollider(this.playerId, this.character.position, 0.5);
+      this.collisionSystem.addPlayerCollider(this.playerId, this.character.position, this.characterCollisionRadius);
     }
 
     // Attempt connection with retry logic
@@ -1502,9 +1508,6 @@ export class Game {
       remoteCharacter.scale.set(char.scale, char.scale, char.scale);
       remoteCharacter.castShadow = true;
 
-      // Store character ID in userData for emote animation mapping
-      remoteCharacter.userData.characterId = remoteCharacterId;
-
       // INDUSTRY STANDARD: Use cached animations for remote players
       const remoteMixer = new THREE.AnimationMixer(remoteCharacter);
       const remoteActions: { [key: string]: THREE.AnimationAction } = {};
@@ -1528,12 +1531,33 @@ export class Game {
 
       await Promise.all(remoteAnimationPromises);
 
+      // Calculate character bounding box for collision and ground positioning
+      const box = new THREE.Box3().setFromObject(remoteCharacter);
+      const size = box.getSize(new THREE.Vector3());
+
+      // Calculate collision radius based on character size (use XZ plane for horizontal radius)
+      const collisionRadius = Math.max(size.x, size.z) * 0.5;
+
+      // Store character metadata in userData
+      remoteCharacter.userData.characterId = remoteCharacterId;
+      remoteCharacter.userData.collisionRadius = collisionRadius;
+      remoteCharacter.userData.size = size;
+
       // STANDARD: Position character on ground using raycasting
       const groundY = this.positionCharacterOnGround(remoteCharacter, position.x, position.z);
       remoteCharacter.position.set(position.x, groundY, position.z);
       const initialQuaternion = new THREE.Quaternion();
       initialQuaternion.setFromEuler(new THREE.Euler(0, rotationY, 0));
       remoteCharacter.quaternion.copy(initialQuaternion);
+
+      // Ensure visibility
+      remoteCharacter.visible = true;
+      remoteCharacter.traverse((child: any) => {
+        child.visible = true;
+        if (child.isMesh) {
+          child.frustumCulled = true; // Enable frustum culling for performance
+        }
+      });
 
       // Store all character data
       this.remotePlayers.set(playerId, remoteCharacter);
@@ -1548,7 +1572,7 @@ export class Game {
         timestamp: Date.now()
       };
       this.remotePlayerBuffers.set(playerId, [initialState]);
-      
+
       // Start with idle animation
       if (remoteActions['idle']) {
         remoteActions['idle'].play();
@@ -1556,12 +1580,12 @@ export class Game {
 
       this.scene.add(remoteCharacter);
 
-      // MVP 5.5: Add remote player collision
+      // MVP 5.5: Add remote player collision with proper radius
       if (this.collisionSystem) {
         this.collisionSystem.addPlayerCollider(
           playerId,
           remoteCharacter.position,
-          0.5 // Character collision radius
+          collisionRadius
         );
       }
     } catch (error) {
