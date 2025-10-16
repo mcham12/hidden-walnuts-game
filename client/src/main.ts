@@ -270,22 +270,27 @@ window.addEventListener('unhandledrejection', (event) => {
  */
 async function checkExistingUsername(username: string, sessionToken: string): Promise<{ exists: boolean; characterId?: string }> {
   try {
+    console.log(`🔍 DEBUG: checkExistingUsername("${username}", "${sessionToken.substring(0, 8)}...")`);
     const response = await fetch(`/api/identity?action=check&username=${encodeURIComponent(username)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionToken })
     });
+    console.log('🔍 DEBUG: Response status:', response.status);
     if (!response.ok) {
-      console.error('Failed to check username:', response.status);
+      console.error('❌ Failed to check username:', response.status);
       return { exists: false };
     }
     const data = await response.json();
-    return {
+    console.log('🔍 DEBUG: Response data:', data);
+    const result = {
       exists: data.exists || false,
       characterId: data.lastCharacterId
     };
+    console.log('🔍 DEBUG: Returning:', result);
+    return result;
   } catch (error) {
-    console.error('Failed to check username:', error);
+    console.error('❌ Failed to check username:', error);
     return { exists: false };
   }
 }
@@ -296,19 +301,23 @@ async function checkExistingUsername(username: string, sessionToken: string): Pr
  */
 async function saveUsername(username: string, sessionToken: string): Promise<void> {
   try {
+    console.log(`💾 DEBUG: saveUsername("${username}", "${sessionToken.substring(0, 8)}...")`);
     const response = await fetch(`/api/identity?action=set&username=${encodeURIComponent(username)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, sessionToken })
     });
 
+    console.log('💾 DEBUG: Response status:', response.status);
     if (!response.ok) {
-      console.error('Failed to save username:', response.status);
+      console.error('❌ Failed to save username:', response.status);
     } else {
+      const data = await response.json();
+      console.log('💾 DEBUG: Response data:', data);
       console.log('✅ Username saved to server');
     }
   } catch (error) {
-    console.error('Failed to save username:', error);
+    console.error('❌ Failed to save username:', error);
   }
 }
 
@@ -318,7 +327,9 @@ async function saveUsername(username: string, sessionToken: string): Promise<voi
  */
 function loadStoredUsername(): string | null {
   try {
-    return localStorage.getItem('hw_username');
+    const username = localStorage.getItem('hw_username');
+    console.log(`📦 DEBUG: loadStoredUsername() returned: ${username ? `"${username}"` : 'null'}`);
+    return username;
   } catch (e) {
     console.warn('⚠️ localStorage not available (private browsing?)');
     return null;
@@ -331,6 +342,7 @@ function loadStoredUsername(): string | null {
 function storeUsername(username: string): void {
   try {
     localStorage.setItem('hw_username', username);
+    console.log(`💾 DEBUG: storeUsername("${username}") - saved to localStorage`);
   } catch (e) {
     console.warn('⚠️ localStorage not available (private browsing?)');
   }
@@ -341,19 +353,23 @@ function storeUsername(username: string): void {
  */
 async function updateCharacterSelection(username: string, characterId: string): Promise<void> {
   try {
+    console.log(`🎮 DEBUG: updateCharacterSelection("${username}", "${characterId}")`);
     const response = await fetch(`/api/identity?action=updateCharacter&username=${encodeURIComponent(username)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ characterId })
     });
 
+    console.log('🎮 DEBUG: Response status:', response.status);
     if (!response.ok) {
-      console.error('Failed to update character:', response.status);
+      console.error('❌ Failed to update character:', response.status);
     } else {
+      const data = await response.json();
+      console.log('🎮 DEBUG: Response data:', data);
       console.log('✅ Character selection saved to server:', characterId);
     }
   } catch (error) {
-    console.error('Failed to update character:', error);
+    console.error('❌ Failed to update character:', error);
   }
 }
 
@@ -380,12 +396,14 @@ async function main() {
       if (result.exists) {
         // Username exists on server - show welcome back and link sessionToken
         console.log('✅ Username verified, linking session...');
+        console.log(`🎮 DEBUG: savedCharacterId from server: ${result.characterId ? `"${result.characterId}"` : 'undefined'}`);
         const welcomeScreen = new WelcomeScreen();
         await welcomeScreen.showWelcomeBack(storedUsername);
         await welcomeScreen.hide();
         welcomeScreen.destroy();
         username = storedUsername;
         savedCharacterId = result.characterId;
+        console.log(`🎮 DEBUG: savedCharacterId assigned: ${savedCharacterId ? `"${savedCharacterId}"` : 'undefined'}`);
       } else {
         // Username doesn't exist on server anymore - prompt for new username
         console.log('⚠️ Stored username not found on server, prompting for new username');
@@ -454,13 +472,14 @@ async function main() {
     let selectedCharacterId: string;
 
     // Check if user has saved character
+    console.log(`🎮 DEBUG: Checking savedCharacterId: ${savedCharacterId ? `"${savedCharacterId}"` : 'undefined'}`);
     if (savedCharacterId) {
       // Returning user with saved character - skip selection!
-      console.log('🎮 Using saved character:', savedCharacterId);
+      console.log('✅ Using saved character, SKIPPING selection:', savedCharacterId);
       selectedCharacterId = savedCharacterId;
     } else {
       // New user or no saved character - show character selection
-      console.log('🌲 Step 2: Showing character selection...');
+      console.log('🌲 Step 2: SHOWING character selection (no saved character)...');
       const selectDiv = document.getElementById('character-select') as HTMLDivElement;
       const previewCanvas = document.getElementById('character-preview-canvas') as HTMLCanvasElement;
       const startBtn = document.getElementById('start-btn') as HTMLButtonElement;

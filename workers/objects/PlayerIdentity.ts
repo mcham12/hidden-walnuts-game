@@ -63,11 +63,14 @@ export class PlayerIdentity extends DurableObject {
     const body = await request.json() as { sessionToken: string };
     const sessionToken = body.sessionToken;
 
+    console.log(`🔍 SERVER: handleCheck - sessionToken: ${sessionToken?.substring(0, 8)}...`);
+
     if (!sessionToken) {
       return Response.json({ error: 'sessionToken required' }, { status: 400 });
     }
 
     const data = await this.ctx.storage.get<PlayerIdentityData>('player');
+    console.log(`🔍 SERVER: Storage data:`, data ? { username: data.username, lastCharacterId: data.lastCharacterId, sessionTokens: data.sessionTokens.length } : 'null');
 
     if (data) {
       // Username exists! Link this sessionToken if not already linked
@@ -80,14 +83,17 @@ export class PlayerIdentity extends DurableObject {
       data.lastSeen = Date.now();
       await this.ctx.storage.put('player', data);
 
-      return Response.json({
+      const response = {
         exists: true,
         username: data.username,
         created: data.created,
         lastCharacterId: data.lastCharacterId // Return saved character
-      });
+      };
+      console.log(`✅ SERVER: Returning:`, response);
+      return Response.json(response);
     }
 
+    console.log(`❌ SERVER: Player not found, returning exists=false`);
     return Response.json({ exists: false });
   }
 
@@ -99,6 +105,8 @@ export class PlayerIdentity extends DurableObject {
     const username = body.username?.trim().substring(0, 20);
     const sessionToken = body.sessionToken;
 
+    console.log(`💾 SERVER: handleSet - username: "${username}", sessionToken: ${sessionToken?.substring(0, 8)}...`);
+
     if (!username) {
       return Response.json({ error: 'Username required' }, { status: 400 });
     }
@@ -109,6 +117,8 @@ export class PlayerIdentity extends DurableObject {
 
     // Check if already exists (username already claimed)
     const existing = await this.ctx.storage.get<PlayerIdentityData>('player');
+    console.log(`💾 SERVER: Existing data:`, existing ? { username: existing.username, lastCharacterId: existing.lastCharacterId } : 'null');
+
     if (existing) {
       // Username already exists, link this sessionToken to it
       if (!existing.sessionTokens.includes(sessionToken)) {
@@ -117,7 +127,7 @@ export class PlayerIdentity extends DurableObject {
       existing.lastSeen = Date.now();
       await this.ctx.storage.put('player', existing);
 
-      console.log(`🔗 Username "${username}" already exists, linked new sessionToken`);
+      console.log(`🔗 SERVER: Username "${username}" already exists, linked new sessionToken`);
       return Response.json({
         success: true,
         username: existing.username,
@@ -135,7 +145,8 @@ export class PlayerIdentity extends DurableObject {
 
     await this.ctx.storage.put('player', data);
 
-    console.log('✅ New player identity created:', username);
+    console.log('✅ SERVER: New player identity created:', username);
+    console.log('✅ SERVER: Data saved:', { username: data.username, lastCharacterId: data.lastCharacterId });
     return Response.json({ success: true, username, alreadyExists: false });
   }
 
@@ -184,13 +195,17 @@ export class PlayerIdentity extends DurableObject {
     const body = await request.json() as { characterId: string };
     const characterId = body.characterId?.trim();
 
+    console.log(`🎮 SERVER: handleUpdateCharacter - characterId: ${characterId}`);
+
     if (!characterId) {
       return Response.json({ error: 'characterId required' }, { status: 400 });
     }
 
     const data = await this.ctx.storage.get<PlayerIdentityData>('player');
+    console.log(`🎮 SERVER: Current data:`, data ? { username: data.username, lastCharacterId: data.lastCharacterId } : 'null');
 
     if (!data) {
+      console.log(`❌ SERVER: Identity not found!`);
       return Response.json({ error: 'Identity not found' }, { status: 404 });
     }
 
@@ -199,7 +214,8 @@ export class PlayerIdentity extends DurableObject {
     data.lastSeen = Date.now();
     await this.ctx.storage.put('player', data);
 
-    console.log(`✅ Character updated for ${data.username}: ${characterId}`);
+    console.log(`✅ SERVER: Character updated for ${data.username}: ${characterId}`);
+    console.log(`✅ SERVER: Data saved:`, { username: data.username, lastCharacterId: data.lastCharacterId });
     return Response.json({ success: true, characterId });
   }
 }
