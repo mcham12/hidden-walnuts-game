@@ -12,6 +12,10 @@ interface DurableObjectStorage {
   delete(key: string): Promise<boolean>;
   deleteAll(): Promise<void>;
   list<T>(options?: { prefix?: string }): Promise<Map<string, T>>;
+  // MVP 5.8: Durable Object Alarms API
+  setAlarm(scheduledTime: number): Promise<void>;
+  getAlarm(): Promise<number | null>;
+  deleteAlarm(): Promise<void>;
 }
 
 interface DurableObjectId {
@@ -65,53 +69,66 @@ export default class ForestManager {
   // Simple WebSocket management
   activePlayers: Map<string, PlayerConnection> = new Map();
 
-  // MVP 5.8: Session management checker
-  private disconnectChecker: number | null = null;
-
   constructor(state: DurableObjectState, env: any) {
     this.state = state;
     this.storage = state.storage;
     this.env = env;
-
-    // MVP 5.8: Start periodic disconnect checker
-    this.startDisconnectChecker();
   }
 
   /**
-   * MVP 5.8: Periodically check for disconnected/expired players
-   * - Mark as disconnected if lastActivity > 30s
-   * - Remove completely if lastActivity > 5 minutes
+   * MVP 5.8: Durable Object Alarm for session management
+   * Runs every 10 seconds to check for disconnected/expired players
    */
-  private startDisconnectChecker(): void {
-    this.disconnectChecker = setInterval(() => {
-      const now = Date.now();
-      const DISCONNECT_TIMEOUT = 30 * 1000; // 30 seconds
-      const REMOVAL_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+  async alarm(): Promise<void> {
+    const now = Date.now();
+    const DISCONNECT_TIMEOUT = 30 * 1000; // 30 seconds
+    const REMOVAL_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
-      for (const [playerId, player] of this.activePlayers.entries()) {
-        const timeSinceActivity = now - player.lastActivity;
+    console.log(`⏰ Alarm: Checking ${this.activePlayers.size} players for disconnects...`);
 
-        // Remove player completely if inactive for 5+ minutes
-        if (timeSinceActivity > REMOVAL_TIMEOUT) {
-          console.log(`⏰ Removing player ${playerId} (inactive for ${Math.round(timeSinceActivity / 1000)}s)`);
-          this.activePlayers.delete(playerId);
-          this.broadcastToOthers(playerId, {
-            type: 'player_leave',
-            squirrelId: playerId
-          });
-        }
-        // Mark as disconnected if inactive for 30+ seconds (but not already disconnected)
-        else if (timeSinceActivity > DISCONNECT_TIMEOUT && !player.isDisconnected) {
-          console.log(`⚠️ Marking player ${playerId} as disconnected (inactive for ${Math.round(timeSinceActivity / 1000)}s)`);
-          player.isDisconnected = true;
-          player.disconnectedAt = now;
-          this.broadcastToOthers(playerId, {
-            type: 'player_disconnected',
-            squirrelId: playerId
-          });
-        }
+    for (const [playerId, player] of this.activePlayers.entries()) {
+      const timeSinceActivity = now - player.lastActivity;
+
+      // Remove player completely if inactive for 5+ minutes
+      if (timeSinceActivity > REMOVAL_TIMEOUT) {
+        console.log(`⏰ Removing player ${playerId} (inactive for ${Math.round(timeSinceActivity / 1000)}s)`);
+        this.activePlayers.delete(playerId);
+        this.broadcastToOthers(playerId, {
+          type: 'player_leave',
+          squirrelId: playerId
+        });
       }
-    }, 10000); // Check every 10 seconds
+      // Mark as disconnected if inactive for 30+ seconds (but not already disconnected)
+      else if (timeSinceActivity > DISCONNECT_TIMEOUT && !player.isDisconnected) {
+        console.log(`⚠️ Marking player ${playerId} as disconnected (inactive for ${Math.round(timeSinceActivity / 1000)}s)`);
+        player.isDisconnected = true;
+        player.disconnectedAt = now;
+        this.broadcastToOthers(playerId, {
+          type: 'player_disconnected',
+          squirrelId: playerId
+        });
+      }
+    }
+
+    // Reschedule alarm for next check (only if there are active players)
+    if (this.activePlayers.size > 0) {
+      await this.state.storage.setAlarm(Date.now() + 10000); // 10 seconds
+      console.log(`⏰ Alarm rescheduled for 10s (${this.activePlayers.size} players)`);
+    } else {
+      console.log(`⏰ No players, alarm not rescheduled`);
+    }
+  }
+
+  /**
+   * MVP 5.8: Schedule disconnect checker alarm if not already scheduled
+   */
+  private async ensureAlarmScheduled(): Promise<void> {
+    const currentAlarm = await this.state.storage.getAlarm();
+    if (currentAlarm === null) {
+      // No alarm scheduled, schedule one
+      await this.state.storage.setAlarm(Date.now() + 10000); // 10 seconds from now
+      console.log(`⏰ Alarm scheduled for disconnect checking`);
+    }
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -244,6 +261,9 @@ export default class ForestManager {
       existingPlayer.disconnectedAt = null;
       existingPlayer.lastActivity = Date.now();
 
+      // MVP 5.8: Ensure alarm is scheduled for disconnect checking
+      await this.ensureAlarmScheduled();
+
       // Setup message handlers
       socket.onmessage = async (event) => {
         try {
@@ -300,6 +320,9 @@ export default class ForestManager {
       };
 
       this.activePlayers.set(squirrelId, playerConnection);
+
+      // MVP 5.8: Ensure alarm is scheduled for disconnect checking
+      await this.ensureAlarmScheduled();
 
       // Setup message handlers
       socket.onmessage = async (event) => {
