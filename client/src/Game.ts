@@ -1705,17 +1705,17 @@ export class Game {
     if (remotePlayer) {
       console.log(`⚠️ Marking player ${playerId} as disconnected (visual feedback)`);
 
-      // Set opacity to 50%
+      // Set opacity to 33% for more obvious disconnect indicator
       remotePlayer.traverse((child: any) => {
         if (child.isMesh && child.material) {
           if (Array.isArray(child.material)) {
             child.material.forEach((mat: any) => {
               mat.transparent = true;
-              mat.opacity = 0.5;
+              mat.opacity = 0.33;
             });
           } else {
             child.material.transparent = true;
-            child.material.opacity = 0.5;
+            child.material.opacity = 0.33;
           }
         }
       });
