@@ -9,6 +9,7 @@ export interface PlayerIdentityData {
   created: number;
   lastSeen: number;
   lastUsernameChange?: number;
+  lastCharacterId?: string; // Last selected character (for returning users)
 }
 
 /**
@@ -41,6 +42,9 @@ export class PlayerIdentity extends DurableObject {
 
         case 'update':
           return await this.handleUpdate(request);
+
+        case 'updateCharacter':
+          return await this.handleUpdateCharacter(request);
 
         default:
           return new Response('Invalid action', { status: 400 });
@@ -79,7 +83,8 @@ export class PlayerIdentity extends DurableObject {
       return Response.json({
         exists: true,
         username: data.username,
-        created: data.created
+        created: data.created,
+        lastCharacterId: data.lastCharacterId // Return saved character
       });
     }
 
@@ -170,5 +175,31 @@ export class PlayerIdentity extends DurableObject {
 
     console.log(`✅ Username changed: ${oldUsername} → ${newUsername}`);
     return Response.json({ success: true, username: newUsername });
+  }
+
+  /**
+   * Update character selection for this username
+   */
+  private async handleUpdateCharacter(request: Request): Promise<Response> {
+    const body = await request.json() as { characterId: string };
+    const characterId = body.characterId?.trim();
+
+    if (!characterId) {
+      return Response.json({ error: 'characterId required' }, { status: 400 });
+    }
+
+    const data = await this.ctx.storage.get<PlayerIdentityData>('player');
+
+    if (!data) {
+      return Response.json({ error: 'Identity not found' }, { status: 404 });
+    }
+
+    // Update character
+    data.lastCharacterId = characterId;
+    data.lastSeen = Date.now();
+    await this.ctx.storage.put('player', data);
+
+    console.log(`✅ Character updated for ${data.username}: ${characterId}`);
+    return Response.json({ success: true, characterId });
   }
 }

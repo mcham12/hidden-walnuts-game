@@ -266,8 +266,9 @@ window.addEventListener('unhandledrejection', (event) => {
 /**
  * MVP 6: Check if username exists and link sessionToken
  * FIXED: Pass username as query param (not sessionToken)
+ * Returns: { exists: boolean, characterId?: string }
  */
-async function checkExistingUsername(username: string, sessionToken: string): Promise<boolean> {
+async function checkExistingUsername(username: string, sessionToken: string): Promise<{ exists: boolean; characterId?: string }> {
   try {
     const response = await fetch(`/api/identity?action=check&username=${encodeURIComponent(username)}`, {
       method: 'POST',
@@ -276,13 +277,16 @@ async function checkExistingUsername(username: string, sessionToken: string): Pr
     });
     if (!response.ok) {
       console.error('Failed to check username:', response.status);
-      return false;
+      return { exists: false };
     }
     const data = await response.json();
-    return data.exists || false;
+    return {
+      exists: data.exists || false,
+      characterId: data.lastCharacterId
+    };
   } catch (error) {
     console.error('Failed to check username:', error);
-    return false;
+    return { exists: false };
   }
 }
 
@@ -332,6 +336,27 @@ function storeUsername(username: string): void {
   }
 }
 
+/**
+ * MVP 6: Update character selection on server
+ */
+async function updateCharacterSelection(username: string, characterId: string): Promise<void> {
+  try {
+    const response = await fetch(`/api/identity?action=updateCharacter&username=${encodeURIComponent(username)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ characterId })
+    });
+
+    if (!response.ok) {
+      console.error('Failed to update character:', response.status);
+    } else {
+      console.log('✅ Character selection saved to server:', characterId);
+    }
+  } catch (error) {
+    console.error('Failed to update character:', error);
+  }
+}
+
 async function main() {
   try {
     // MVP 6: STEP 0 - Initialize session management
@@ -345,13 +370,14 @@ async function main() {
     const storedUsername = loadStoredUsername();
 
     let username: string;
+    let savedCharacterId: string | undefined;
 
     if (storedUsername) {
       // Found username in localStorage - check if it still exists on server
       console.log('📦 Found stored username:', storedUsername);
-      const exists = await checkExistingUsername(storedUsername, sessionToken);
+      const result = await checkExistingUsername(storedUsername, sessionToken);
 
-      if (exists) {
+      if (result.exists) {
         // Username exists on server - show welcome back and link sessionToken
         console.log('✅ Username verified, linking session...');
         const welcomeScreen = new WelcomeScreen();
@@ -359,6 +385,7 @@ async function main() {
         await welcomeScreen.hide();
         welcomeScreen.destroy();
         username = storedUsername;
+        savedCharacterId = result.characterId;
       } else {
         // Username doesn't exist on server anymore - prompt for new username
         console.log('⚠️ Stored username not found on server, prompting for new username');
@@ -367,10 +394,11 @@ async function main() {
         console.log('👤 Username entered:', username);
 
         // Check if this new username exists or create it
-        const newExists = await checkExistingUsername(username, sessionToken);
-        if (!newExists) {
+        const newResult = await checkExistingUsername(username, sessionToken);
+        if (!newResult.exists) {
           await saveUsername(username, sessionToken);
         }
+        savedCharacterId = newResult.characterId;
 
         // Store new username locally
         storeUsername(username);
@@ -386,11 +414,12 @@ async function main() {
       console.log('👤 Username entered:', username);
 
       // Check if username exists on server (private browsing case!)
-      const exists = await checkExistingUsername(username, sessionToken);
+      const result = await checkExistingUsername(username, sessionToken);
 
-      if (exists) {
+      if (result.exists) {
         // Username exists! This is a returning user in private browsing
         console.log('✅ Username exists on server - linking session');
+        savedCharacterId = result.characterId;
         // Session already linked by checkExistingUsername call
       } else {
         // New username - create identity
@@ -405,14 +434,8 @@ async function main() {
       welcomeScreen.destroy();
     }
 
-    // MVP 6: STEP 2 - Show character selection immediately (no loading needed)
-    console.log('🌲 Step 2: Showing character selection...');
-    const selectDiv = document.getElementById('character-select') as HTMLDivElement;
+    // MVP 6: STEP 2 - Character selection (skip if returning user with saved character)
     const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
-    const previewCanvas = document.getElementById('character-preview-canvas') as HTMLCanvasElement;
-    const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
-    const charSelect = document.getElementById('char-select') as HTMLSelectElement;
-    const charDescription = document.getElementById('char-description') as HTMLDivElement;
     const walnutHud = document.getElementById('walnut-hud') as HTMLDivElement;
 
     if (!canvas) {
@@ -422,80 +445,103 @@ async function main() {
 
     canvas.classList.add('hidden');
 
-    // Load characters.json (tiny, instant)
-    await loadCharactersAndPopulateDropdown(charSelect);
-    console.log('✅ Characters loaded');
-
     // Initialize audio manager (don't load sounds yet - will load when game starts)
     const audioManager = new AudioManager();
 
     // Initialize settings manager
     const settingsManager = new SettingsManager(audioManager);
 
-    // Show character selection
-    selectDiv.classList.remove('hidden');
+    let selectedCharacterId: string;
 
-    // Initialize character preview
-    let characterPreview: CharacterPreview | null = null;
-    if (previewCanvas) {
-      characterPreview = new CharacterPreview(previewCanvas);
-      characterPreview.startAnimation();
-      await characterPreview.loadCharacter(charSelect.value);
+    // Check if user has saved character
+    if (savedCharacterId) {
+      // Returning user with saved character - skip selection!
+      console.log('🎮 Using saved character:', savedCharacterId);
+      selectedCharacterId = savedCharacterId;
+    } else {
+      // New user or no saved character - show character selection
+      console.log('🌲 Step 2: Showing character selection...');
+      const selectDiv = document.getElementById('character-select') as HTMLDivElement;
+      const previewCanvas = document.getElementById('character-preview-canvas') as HTMLCanvasElement;
+      const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
+      const charSelect = document.getElementById('char-select') as HTMLSelectElement;
+      const charDescription = document.getElementById('char-description') as HTMLDivElement;
+
+      // Load characters.json (tiny, instant)
+      await loadCharactersAndPopulateDropdown(charSelect);
+      console.log('✅ Characters loaded');
+
+      // Show character selection
+      selectDiv.classList.remove('hidden');
+
+      // Initialize character preview
+      let characterPreview: CharacterPreview | null = null;
+      if (previewCanvas) {
+        characterPreview = new CharacterPreview(previewCanvas);
+        characterPreview.startAnimation();
+        await characterPreview.loadCharacter(charSelect.value);
+      }
+
+      // Update character description and preview when selection changes
+      const updateCharacter = async () => {
+        const selectedId = charSelect.value;
+        const charInfo = CHARACTER_DESCRIPTIONS[selectedId];
+
+        // MVP 5: Unlock audio on first user interaction
+        await audioManager.unlock();
+
+        // MVP 5: Play UI sound for character selection
+        audioManager.playSound('ui', 'button_click');
+
+        // Update description
+        if (charInfo && charDescription) {
+          charDescription.innerHTML = `<strong>${charInfo.name}</strong> ${charInfo.description}`;
+        }
+
+        // Update preview
+        if (characterPreview) {
+          await characterPreview.loadCharacter(selectedId);
+        }
+      };
+
+      // Set initial character description (before updateCharacter to avoid audio unlock)
+      const initialCharInfo = CHARACTER_DESCRIPTIONS[charSelect.value];
+      if (initialCharInfo && charDescription) {
+        charDescription.innerHTML = `<strong>${initialCharInfo.name}</strong> ${initialCharInfo.description}`;
+      }
+
+      // Update on change
+      charSelect.addEventListener('change', updateCharacter);
+
+      // Wait for user to click start button
+      selectedCharacterId = await new Promise<string>((resolve) => {
+        startBtn.addEventListener('click', async () => {
+          // Unlock audio on button click
+          await audioManager.unlock();
+
+          // Play start sound
+          audioManager.playSound('ui', 'button_click');
+
+          // Get selected character
+          const charId = charSelect.value;
+          console.log('🎮 Selected character:', charId);
+
+          // Save character selection to server
+          await updateCharacterSelection(username, charId);
+
+          // Clean up preview
+          if (characterPreview) {
+            characterPreview.destroy();
+            characterPreview = null;
+          }
+
+          // Hide character selection
+          selectDiv.classList.add('hidden');
+
+          resolve(charId);
+        });
+      });
     }
-
-  // Update character description and preview when selection changes
-  const updateCharacter = async () => {
-    const selectedId = charSelect.value;
-    const charInfo = CHARACTER_DESCRIPTIONS[selectedId];
-
-    // MVP 5: Unlock audio on first user interaction
-    await audioManager.unlock();
-
-    // MVP 5: Play UI sound for character selection
-    audioManager.playSound('ui', 'button_click');
-
-    // Update description
-    if (charInfo && charDescription) {
-      charDescription.innerHTML = `<strong>${charInfo.name}</strong> ${charInfo.description}`;
-    }
-
-    // Update preview
-    if (characterPreview) {
-      await characterPreview.loadCharacter(selectedId);
-    }
-  };
-
-  // Set initial character description (before updateCharacter to avoid audio unlock)
-  const initialCharInfo = CHARACTER_DESCRIPTIONS[charSelect.value];
-  if (initialCharInfo && charDescription) {
-    charDescription.innerHTML = `<strong>${initialCharInfo.name}</strong> ${initialCharInfo.description}`;
-  }
-
-  // Set initial character (note: skip audio unlock on first call)
-  // updateCharacter();
-
-  // Update on change
-  charSelect.addEventListener('change', updateCharacter);
-
-  startBtn.addEventListener('click', async () => {
-    // Unlock audio on button click
-    await audioManager.unlock();
-
-    // Play start sound
-    audioManager.playSound('ui', 'button_click');
-
-    // Get selected character
-    const selectedCharacterId = charSelect.value;
-    console.log('🎮 Selected character:', selectedCharacterId);
-
-    // Clean up preview
-    if (characterPreview) {
-      characterPreview.destroy();
-      characterPreview = null;
-    }
-
-    // Hide character selection
-    selectDiv.classList.add('hidden');
 
     // MVP 6: STEP 3 - Show SINGLE loading screen and load ALL game assets
     console.log('🌲 Step 3: Loading game assets...');
@@ -590,7 +636,6 @@ async function main() {
 
     // Show settings button after game starts
     settingsManager.show();
-  });
   } catch (error) {
     console.error('🚨 Fatal error in main():', error);
     // Show user-friendly error message
