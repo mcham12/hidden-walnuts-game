@@ -439,8 +439,8 @@ export class Game {
       const box = new THREE.Box3().setFromObject(this.character);
       const size = box.getSize(new THREE.Vector3());
 
-      // Add extra offset to prevent sinking (scale-adjusted + larger safety margin)
-      this.characterGroundOffset = -box.min.y * char.scale + 0.3;
+      // Calculate ground offset (same formula as remote players)
+      this.characterGroundOffset = -box.min.y + 0.3;
 
       // Calculate collision radius based on character size (use XZ plane for horizontal radius)
       this.characterCollisionRadius = Math.max(size.x, size.z) * 0.5;
@@ -1540,17 +1540,21 @@ export class Game {
 
       await Promise.all(remoteAnimationPromises);
 
-      // Calculate character bounding box for collision
+      // Calculate character bounding box for collision (in bind pose, before animations play)
       const box = new THREE.Box3().setFromObject(remoteCharacter);
       const size = box.getSize(new THREE.Vector3());
 
       // Calculate collision radius based on character size (use XZ plane for horizontal radius)
       const collisionRadius = Math.max(size.x, size.z) * 0.5;
 
+      // Calculate ground offset ONCE in bind pose (same formula that was working)
+      const remoteGroundOffset = -box.min.y + 0.3;
+
       // Store character metadata in userData
       remoteCharacter.userData.characterId = remoteCharacterId;
       remoteCharacter.userData.collisionRadius = collisionRadius;
       remoteCharacter.userData.size = size;
+      remoteCharacter.userData.groundOffset = remoteGroundOffset;
 
       // STANDARD: Position character on ground using raycasting
       const groundY = this.positionRemotePlayerOnGround(remoteCharacter, position.x, position.z);
@@ -1815,13 +1819,12 @@ export class Game {
    * Raycasts downward to find terrain, calculates feet offset from bounding box
    */
   private positionRemotePlayerOnGround(character: THREE.Group, x: number, z: number): number {
-    if (!this.terrain) {
-      return getTerrainHeight(x, z) + 0.3;
-    }
+    // Use stored ground offset (calculated once in bind pose)
+    const groundOffset = character.userData.groundOffset || 0.3;
 
-    // Get character's bounding box to find where feet are
-    const box = new THREE.Box3().setFromObject(character);
-    const feetOffset = -box.min.y + 0.3; // Distance from pivot to feet + safety margin
+    if (!this.terrain) {
+      return getTerrainHeight(x, z) + groundOffset;
+    }
 
     // Raycast from above downward to find terrain
     const rayOrigin = new THREE.Vector3(x, 100, z);
@@ -1832,11 +1835,11 @@ export class Game {
 
     if (intersects.length > 0) {
       const groundY = intersects[0].point.y;
-      return groundY + feetOffset;
+      return groundY + groundOffset;
     }
 
     // Fallback to heightmap
-    return getTerrainHeight(x, z) + feetOffset;
+    return getTerrainHeight(x, z) + groundOffset;
   }
 
   // Debug and utility methods
