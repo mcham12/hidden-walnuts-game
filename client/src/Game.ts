@@ -58,15 +58,6 @@ export class Game {
   private remotePlayers: Map<string, THREE.Group> = new Map();
   private connectionStatusElement: HTMLElement | null = null;
 
-  // MVP 5: Loading progress tracking
-  private loadingProgressBar: HTMLElement | null = null;
-  private loadingPercentage: HTMLElement | null = null;
-  private loadingText: HTMLElement | null = null;
-  private loadingScreen: HTMLElement | null = null;
-  private totalAssetsToLoad: number = 0;
-  private assetsLoaded: number = 0;
-  private loadingStartTime: number = 0;
-
   // Entity interpolation with velocity-based extrapolation - industry standard for smooth multiplayer
   private remotePlayerBuffers: Map<string, Array<{ position: THREE.Vector3; quaternion: THREE.Quaternion; velocity?: THREE.Vector3; timestamp: number }>> = new Map();
   private INTERPOLATION_DELAY = 50; // 50ms - 1x the update interval (lower latency)
@@ -211,9 +202,6 @@ export class Game {
         this.mouseSensitivity = e.detail.mouseSensitivity;
       }) as EventListener);
 
-      // MVP 5: Initialize loading progress UI
-      this.initLoadingProgress();
-
       // Scene
       this.scene = new THREE.Scene();
       this.scene.background = new THREE.Color(0x87ceeb);
@@ -292,14 +280,6 @@ export class Game {
       // INDUSTRY STANDARD: Add basic sanity check before character loading
       this.addSanityCheckCube();
 
-      // MVP 5: Calculate total assets to load (1 model + N animations)
-      const selectedChar = this.characters.find(c => c.id === this.selectedCharacterId);
-      if (selectedChar) {
-        const animationCount = Object.keys(selectedChar.animations).length;
-        this.totalAssetsToLoad = 1 + animationCount; // 1 model + N animations
-        console.log(`📦 Total assets to load: ${this.totalAssetsToLoad} (1 model + ${animationCount} animations)`);
-      }
-
       // Load selected character
       await this.loadCharacter();
 
@@ -350,112 +330,6 @@ export class Game {
       if (this.toastManager) {
         this.toastManager.error('Failed to initialize game. Please refresh.');
       }
-    } finally {
-      // ALWAYS hide loading screen, even if there was an error
-      this.hideLoadingScreen();
-    }
-  }
-
-  /**
-   * MVP 5: Initialize loading progress UI
-   */
-  private initLoadingProgress(): void {
-    this.loadingScreen = document.getElementById('loading-screen');
-    this.loadingProgressBar = document.getElementById('loading-progress-bar');
-    this.loadingPercentage = document.getElementById('loading-percentage');
-    this.loadingText = document.getElementById('loading-text');
-    this.loadingStartTime = Date.now();
-
-    // Show the loading screen
-    if (this.loadingScreen) {
-      this.loadingScreen.classList.remove('hidden');
-    }
-
-    // Start a fake progress animation to ensure smooth visual feedback
-    this.animateFakeProgress();
-  }
-
-  /**
-   * MVP 5: Animate progress bar smoothly regardless of actual loading
-   */
-  private animateFakeProgress(): void {
-    let currentProgress = 0;
-    const interval = setInterval(() => {
-      if (currentProgress < 90) {
-        // Gradually increase to 90%, then wait for actual completion
-        currentProgress += Math.random() * 15;
-        currentProgress = Math.min(90, currentProgress);
-
-        if (this.loadingProgressBar) {
-          this.loadingProgressBar.style.width = `${currentProgress}%`;
-        }
-        if (this.loadingPercentage) {
-          this.loadingPercentage.textContent = `${Math.floor(currentProgress)}%`;
-        }
-      } else {
-        clearInterval(interval);
-      }
-    }, 100);
-  }
-
-  /**
-   * MVP 5: Update loading progress
-   */
-  private updateLoadingProgress(message?: string): void {
-    if (this.totalAssetsToLoad === 0) {
-      console.warn('Cannot update progress: totalAssetsToLoad is 0');
-      return;
-    }
-
-    this.assetsLoaded++;
-    const percentage = Math.min(100, Math.floor((this.assetsLoaded / this.totalAssetsToLoad) * 100));
-
-    if (this.loadingProgressBar) {
-      this.loadingProgressBar.style.width = `${percentage}%`;
-    }
-
-    if (this.loadingPercentage) {
-      this.loadingPercentage.textContent = `${percentage}%`;
-    }
-
-    if (this.loadingText && message) {
-      this.loadingText.textContent = message;
-    }
-
-    console.log(`📦 Loading progress: ${this.assetsLoaded}/${this.totalAssetsToLoad} (${percentage}%)`);
-  }
-
-  /**
-   * MVP 5: Hide loading screen and show game
-   */
-  private hideLoadingScreen(): void {
-    // Ensure progress bar shows 100% before hiding
-    if (this.loadingProgressBar) {
-      this.loadingProgressBar.style.width = '100%';
-    }
-    if (this.loadingPercentage) {
-      this.loadingPercentage.textContent = '100%';
-    }
-    if (this.loadingText) {
-      this.loadingText.textContent = 'Ready!';
-    }
-
-    const elapsed = Date.now() - this.loadingStartTime;
-    const minDisplayTime = 800; // Minimum 800ms display time
-
-    if (elapsed < minDisplayTime) {
-      // Ensure loading screen is visible for minimum time
-      setTimeout(() => {
-        if (this.loadingScreen) {
-          this.loadingScreen.classList.add('hidden');
-        }
-        console.log('✅ Loading complete - game ready!');
-      }, minDisplayTime - elapsed);
-    } else {
-      if (this.loadingScreen) {
-        this.loadingScreen.classList.add('hidden');
-      }
-      console.log('✅ Loading complete - game ready!');
     }
   }
 
@@ -503,7 +377,7 @@ export class Game {
 
     try {
       // INDUSTRY STANDARD: Use cached assets with progress tracking
-      const characterModel = await this.loadCachedAsset(char.modelPath, true);
+      const characterModel = await this.loadCachedAsset(char.modelPath);
       if (!characterModel) {
         console.error('❌ Failed to load character model');
         return;
@@ -534,7 +408,7 @@ export class Game {
       // INDUSTRY STANDARD: Parallel animation loading with caching and validation
       const animationPromises = Object.entries(char.animations).map(async ([name, path]) => {
         try {
-          const clip = await this.loadCachedAnimation(path, true, name);
+          const clip = await this.loadCachedAnimation(path);
           if (clip) {
             this.actions[name] = this.mixer!.clipAction(clip);
             return { name, success: true };
@@ -1842,7 +1716,7 @@ export class Game {
   ): Promise<void> {
     try {
       // Load the tree model
-      const loadedModel = await this.loadCachedAsset(modelPath, false);
+      const loadedModel = await this.loadCachedAsset(modelPath);
       if (!loadedModel) {
         console.error(`❌ Failed to load landmark: ${modelPath}`);
         return;
@@ -1998,21 +1872,15 @@ export class Game {
   }
 
   // INDUSTRY STANDARD: Asset caching methods with proper SkinnedMesh cloning
-  private async loadCachedAsset(modelPath: string, trackProgress: boolean = false): Promise<THREE.Group | null> {
+  private async loadCachedAsset(modelPath: string): Promise<THREE.Group | null> {
     if (Game.assetCache.has(modelPath)) {
       const cachedModel = Game.assetCache.get(modelPath)!;
-      if (trackProgress) {
-        this.updateLoadingProgress('Loading character model...');
-      }
       return this.cloneGLTF(cachedModel); // Proper GLTF cloning for SkinnedMesh
     }
 
     try {
       const gltf = await Game.gltfLoader.loadAsync(modelPath);
       Game.assetCache.set(modelPath, gltf.scene); // Store original scene
-      if (trackProgress) {
-        this.updateLoadingProgress('Loading character model...');
-      }
       return this.cloneGLTF(gltf.scene); // Return proper clone
     } catch (error) {
       console.error(`❌ Failed to load model ${modelPath}:`, error);
@@ -2060,11 +1928,8 @@ export class Game {
     return clonedScene as THREE.Group;
   }
 
-  private async loadCachedAnimation(animPath: string, trackProgress: boolean = false, animName?: string): Promise<THREE.AnimationClip | null> {
+  private async loadCachedAnimation(animPath: string): Promise<THREE.AnimationClip | null> {
     if (Game.animationCache.has(animPath)) {
-      if (trackProgress) {
-        this.updateLoadingProgress(animName ? `Loading ${animName} animation...` : 'Loading animation...');
-      }
       return Game.animationCache.get(animPath)!;
     }
 
@@ -2073,9 +1938,6 @@ export class Game {
       if (gltf.animations && gltf.animations.length > 0) {
         const clip = gltf.animations[0];
         Game.animationCache.set(animPath, clip);
-        if (trackProgress) {
-          this.updateLoadingProgress(animName ? `Loading ${animName} animation...` : 'Loading animation...');
-        }
         return clip;
       } else {
         console.warn(`⚠️ No animations found in ${animPath}`);
