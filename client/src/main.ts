@@ -264,32 +264,38 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 /**
- * MVP 6: Check if username exists for this session token
+ * MVP 6: Check if username exists and link sessionToken
+ * FIXED: Pass username as query param (not sessionToken)
  */
-async function checkExistingUsername(sessionToken: string): Promise<string | null> {
+async function checkExistingUsername(username: string, sessionToken: string): Promise<boolean> {
   try {
-    const response = await fetch(`/api/identity?action=check&sessionToken=${sessionToken}`);
+    const response = await fetch(`/api/identity?action=check&username=${encodeURIComponent(username)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionToken })
+    });
     if (!response.ok) {
       console.error('Failed to check username:', response.status);
-      return null;
+      return false;
     }
     const data = await response.json();
-    return data.username || null;
+    return data.exists || false;
   } catch (error) {
     console.error('Failed to check username:', error);
-    return null;
+    return false;
   }
 }
 
 /**
- * MVP 6: Save username for this session token
+ * MVP 6: Create new username identity
+ * FIXED: Pass username as query param
  */
-async function saveUsername(sessionToken: string, username: string): Promise<void> {
+async function saveUsername(username: string, sessionToken: string): Promise<void> {
   try {
-    const response = await fetch(`/api/identity?action=set&sessionToken=${sessionToken}`, {
+    const response = await fetch(`/api/identity?action=set&username=${encodeURIComponent(username)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username })
+      body: JSON.stringify({ username, sessionToken })
     });
 
     if (!response.ok) {
@@ -302,6 +308,30 @@ async function saveUsername(sessionToken: string, username: string): Promise<voi
   }
 }
 
+/**
+ * MVP 6: Try to load username from localStorage
+ * Returns null if not available (private browsing or new user)
+ */
+function loadStoredUsername(): string | null {
+  try {
+    return localStorage.getItem('hw_username');
+  } catch (e) {
+    console.warn('⚠️ localStorage not available (private browsing?)');
+    return null;
+  }
+}
+
+/**
+ * MVP 6: Save username to localStorage (for convenience)
+ */
+function storeUsername(username: string): void {
+  try {
+    localStorage.setItem('hw_username', username);
+  } catch (e) {
+    console.warn('⚠️ localStorage not available (private browsing?)');
+  }
+}
+
 async function main() {
   try {
     // MVP 6: STEP 0 - Initialize session management
@@ -310,29 +340,66 @@ async function main() {
     const sessionToken = sessionManager.getToken();
     console.log('✅ Session token ready');
 
-    // MVP 6: STEP 1 - Check if user has existing username
-    console.log('🔍 Step 1: Checking for existing username...');
-    const existingUsername = await checkExistingUsername(sessionToken);
+    // MVP 6: STEP 1 - Try to load username from localStorage
+    console.log('🔍 Step 1: Checking for stored username...');
+    const storedUsername = loadStoredUsername();
 
     let username: string;
 
-    if (existingUsername) {
-      // Returning user - show welcome back message
-      console.log('👋 Welcome back:', existingUsername);
-      const welcomeScreen = new WelcomeScreen();
-      await welcomeScreen.showWelcomeBack(existingUsername);
-      await welcomeScreen.hide();
-      welcomeScreen.destroy();
-      username = existingUsername;
+    if (storedUsername) {
+      // Found username in localStorage - check if it still exists on server
+      console.log('📦 Found stored username:', storedUsername);
+      const exists = await checkExistingUsername(storedUsername, sessionToken);
+
+      if (exists) {
+        // Username exists on server - show welcome back and link sessionToken
+        console.log('✅ Username verified, linking session...');
+        const welcomeScreen = new WelcomeScreen();
+        await welcomeScreen.showWelcomeBack(storedUsername);
+        await welcomeScreen.hide();
+        welcomeScreen.destroy();
+        username = storedUsername;
+      } else {
+        // Username doesn't exist on server anymore - prompt for new username
+        console.log('⚠️ Stored username not found on server, prompting for new username');
+        const welcomeScreen = new WelcomeScreen();
+        username = await welcomeScreen.show();
+        console.log('👤 Username entered:', username);
+
+        // Check if this new username exists or create it
+        const newExists = await checkExistingUsername(username, sessionToken);
+        if (!newExists) {
+          await saveUsername(username, sessionToken);
+        }
+
+        // Store new username locally
+        storeUsername(username);
+
+        await welcomeScreen.hide();
+        welcomeScreen.destroy();
+      }
     } else {
-      // New user - prompt for username
-      console.log('🆕 New user - prompting for username');
+      // No stored username (new user or private browsing) - prompt for username
+      console.log('🆕 No stored username - prompting...');
       const welcomeScreen = new WelcomeScreen();
       username = await welcomeScreen.show();
       console.log('👤 Username entered:', username);
 
-      // Save username to server
-      await saveUsername(sessionToken, username);
+      // Check if username exists on server (private browsing case!)
+      const exists = await checkExistingUsername(username, sessionToken);
+
+      if (exists) {
+        // Username exists! This is a returning user in private browsing
+        console.log('✅ Username exists on server - linking session');
+        // Session already linked by checkExistingUsername call
+      } else {
+        // New username - create identity
+        console.log('🆕 Creating new identity');
+        await saveUsername(username, sessionToken);
+      }
+
+      // Store username locally (for convenience next time)
+      storeUsername(username);
 
       await welcomeScreen.hide();
       welcomeScreen.destroy();

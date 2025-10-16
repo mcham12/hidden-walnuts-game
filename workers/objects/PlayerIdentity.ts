@@ -1,25 +1,27 @@
 import { DurableObject } from 'cloudflare:workers';
 
 /**
- * PlayerIdentityData - Stored data for each session
+ * PlayerIdentityData - Stored data for each username
  */
 export interface PlayerIdentityData {
   username: string;
+  sessionTokens: string[]; // Multiple sessions (different browsers/devices)
   created: number;
   lastSeen: number;
   lastUsernameChange?: number;
 }
 
 /**
- * PlayerIdentity - Durable Object for session → username mapping
+ * PlayerIdentity - Durable Object for username → identity mapping
  *
- * MVP 6: Player Authentication & Identity
+ * MVP 6: Player Authentication & Identity (Fixed for Private Browsing)
  *
  * Design:
- * - One DO instance per sessionToken
- * - Stores: username, created, lastSeen, lastUsernameChange
- * - Rate limiting: 1 username change per hour
- * - Simple key-value storage (no uniqueness enforcement)
+ * - One DO instance per USERNAME (not sessionToken)
+ * - Stores: username, sessionTokens[], created, lastSeen
+ * - Multiple sessionTokens per username (different browsers/devices)
+ * - Works in private browsing: same username = same identity
+ * - Rate limiting: 1 username change per hour (not implemented yet)
  */
 export class PlayerIdentity extends DurableObject {
   /**
@@ -32,7 +34,7 @@ export class PlayerIdentity extends DurableObject {
     try {
       switch (action) {
         case 'check':
-          return await this.handleCheck();
+          return await this.handleCheck(request);
 
         case 'set':
           return await this.handleSet(request);
@@ -50,42 +52,78 @@ export class PlayerIdentity extends DurableObject {
   }
 
   /**
-   * Check if username exists for this session
+   * Check if username exists and link sessionToken
+   * This is called when player connects - if username exists, they get their data back
    */
-  private async handleCheck(): Promise<Response> {
+  private async handleCheck(request: Request): Promise<Response> {
+    const body = await request.json() as { sessionToken: string };
+    const sessionToken = body.sessionToken;
+
+    if (!sessionToken) {
+      return Response.json({ error: 'sessionToken required' }, { status: 400 });
+    }
+
     const data = await this.ctx.storage.get<PlayerIdentityData>('player');
 
     if (data) {
+      // Username exists! Link this sessionToken if not already linked
+      if (!data.sessionTokens.includes(sessionToken)) {
+        data.sessionTokens.push(sessionToken);
+        console.log(`🔗 Linked new sessionToken to username: ${data.username}`);
+      }
+
       // Update last seen timestamp
       data.lastSeen = Date.now();
       await this.ctx.storage.put('player', data);
 
-      return Response.json({ username: data.username });
+      return Response.json({
+        exists: true,
+        username: data.username,
+        created: data.created
+      });
     }
 
-    return Response.json({ username: null });
+    return Response.json({ exists: false });
   }
 
   /**
-   * Set username for new session
+   * Set username for new player (creates the identity)
    */
   private async handleSet(request: Request): Promise<Response> {
-    const body = await request.json() as { username: string };
+    const body = await request.json() as { username: string; sessionToken: string };
     const username = body.username?.trim().substring(0, 20);
+    const sessionToken = body.sessionToken;
 
     if (!username) {
       return Response.json({ error: 'Username required' }, { status: 400 });
     }
 
-    // Check if already exists (shouldn't happen, but handle gracefully)
-    const existing = await this.ctx.storage.get<PlayerIdentityData>('player');
-    if (existing) {
-      console.warn('Attempted to set username for existing session - updating instead');
-      return this.handleUpdate(request);
+    if (!sessionToken) {
+      return Response.json({ error: 'sessionToken required' }, { status: 400 });
     }
 
+    // Check if already exists (username already claimed)
+    const existing = await this.ctx.storage.get<PlayerIdentityData>('player');
+    if (existing) {
+      // Username already exists, link this sessionToken to it
+      if (!existing.sessionTokens.includes(sessionToken)) {
+        existing.sessionTokens.push(sessionToken);
+      }
+      existing.lastSeen = Date.now();
+      await this.ctx.storage.put('player', existing);
+
+      console.log(`🔗 Username "${username}" already exists, linked new sessionToken`);
+      return Response.json({
+        success: true,
+        username: existing.username,
+        alreadyExists: true
+      });
+    }
+
+    // Create new identity
     const data: PlayerIdentityData = {
       username,
+      sessionTokens: [sessionToken],
       created: Date.now(),
       lastSeen: Date.now()
     };
@@ -93,7 +131,7 @@ export class PlayerIdentity extends DurableObject {
     await this.ctx.storage.put('player', data);
 
     console.log('✅ New player identity created:', username);
-    return Response.json({ success: true, username });
+    return Response.json({ success: true, username, alreadyExists: false });
   }
 
   /**

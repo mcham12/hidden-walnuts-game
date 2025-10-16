@@ -58,18 +58,20 @@ export default {
       }
 
       // MVP 6: Handle /api/identity routes (player identity management)
+      // FIXED: Use username as DO ID (not sessionToken) for private browsing support
       if (pathname.startsWith("/api/identity")) {
-        const sessionToken = url.searchParams.get('sessionToken');
+        const username = url.searchParams.get('username');
 
-        if (!sessionToken) {
-          return new Response(JSON.stringify({ error: 'Missing sessionToken' }), {
+        if (!username) {
+          return new Response(JSON.stringify({ error: 'Missing username' }), {
             status: 400,
             headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
           });
         }
 
-        // Get PlayerIdentity Durable Object instance (one per sessionToken)
-        const id = env.PLAYER_IDENTITY.idFromName(sessionToken);
+        // Get PlayerIdentity Durable Object instance (one per username)
+        // This ensures same username = same identity, even across browser sessions
+        const id = env.PLAYER_IDENTITY.idFromName(username);
         const stub = env.PLAYER_IDENTITY.get(id);
 
         // Forward request to PlayerIdentity DO
