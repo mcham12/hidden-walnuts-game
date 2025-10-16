@@ -115,6 +115,7 @@
 - Username picker on first launch
 - Stored in localStorage + server
 - Persistent across sessions
+- Position persistence (spawn at last location)
 - Leaderboard shows real usernames
 - Can change username (with cooldown)
 
@@ -122,6 +123,7 @@
 - PlayerIdentity Durable Object
 - Username uniqueness check
 - Rate limiting on changes
+- Position storage by username
 
 **What's Saved for Later**:
 - Passwords/email (see MVP 11)
@@ -132,8 +134,14 @@
 **Success**:
 - Username system working
 - Persists across sessions
+- Returning users spawn at last position
 - Leaderboard shows usernames
 - Can change in settings
+
+**Cleanup (REQUIRED before completing MVP):**
+- Remove all debug console.log statements added during MVP 6
+- Keep only critical error logging (❌ prefix)
+- Search for: 📍, 💾, 🔍, 🎮 debug prefixes and remove
 
 ---
 

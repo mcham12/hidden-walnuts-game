@@ -196,7 +196,6 @@ export class Game {
   async init(canvas: HTMLCanvasElement, audioManager: AudioManager, settingsManager: SettingsManager) {
     try {
       // MVP 5.7: Log device info for debugging mobile issues
-      console.log('🎮 Game initialization starting...');
       console.log('📱 Device detection:', {
         userAgent: navigator.userAgent,
         maxTouchPoints: navigator.maxTouchPoints,
@@ -353,7 +352,6 @@ export class Game {
    * DIAGNOSTIC: Inspect model for morph targets/blendshapes
    */
   private inspectMorphTargets(model: THREE.Object3D, characterId: string): void {
-    console.log(`\n🔍 Inspecting morph targets for ${characterId}:`);
     let hasMorphTargets = false;
 
     model.traverse((child: any) => {
@@ -400,9 +398,7 @@ export class Game {
       }
 
       this.character = characterModel;
-      console.log(`🔍 Local player ${this.selectedCharacterId}: setting scale to ${char.scale}`);
       this.character.scale.set(char.scale, char.scale, char.scale);
-      console.log(`🔍 Local player ${this.selectedCharacterId}: actual scale is ${this.character.scale.x}`);
       this.character.position.set(0, 0, 0);
       this.character.rotation.y = Math.PI;
       this.character.castShadow = true;
@@ -1338,10 +1334,8 @@ export class Game {
           // DEBUG: Count walnuts by type
           const goldenWalnuts = data.mapState.filter((w: any) => w.origin === 'game');
           const foundWalnuts = data.mapState.filter((w: any) => w.found === true);
-          console.log(`🔍 DEBUG: ${goldenWalnuts.length} golden walnuts (origin=game), ${foundWalnuts.length} already found`);
 
           if (goldenWalnuts.length > 0) {
-            console.log(`🔍 DEBUG: Golden walnut details:`, goldenWalnuts);
             goldenWalnuts.forEach((gw: any) => {
               console.log(`  Golden ${gw.id}: found=${gw.found}`);
             });
@@ -1376,6 +1370,19 @@ export class Game {
                 points: points
               });
             }
+          }
+        }
+
+        // MVP 6: Handle spawn position from server (for returning players)
+        if (data.spawnPosition && this.character) {
+          console.log(`🎯 Spawning at saved position:`, data.spawnPosition);
+          this.character.position.set(
+            data.spawnPosition.x,
+            data.spawnPosition.y,
+            data.spawnPosition.z
+          );
+          if (typeof data.spawnRotationY === 'number') {
+            this.character.rotation.y = data.spawnRotationY;
           }
         }
         break;
@@ -1542,9 +1549,7 @@ export class Game {
         }
       });
 
-      console.log(`🔍 Remote player ${remoteCharacterId}: setting scale to ${char.scale}`);
       remoteCharacter.scale.set(char.scale, char.scale, char.scale);
-      console.log(`🔍 Remote player ${remoteCharacterId}: actual scale is ${remoteCharacter.scale.x}`);
       remoteCharacter.castShadow = true;
 
       // INDUSTRY STANDARD: Use cached animations for remote players
@@ -2101,7 +2106,6 @@ export class Game {
           const worldPos = new THREE.Vector3();
           child.getWorldPosition(worldPos);
           const distance = worldPos.length();
-          console.log(`   🔍 Found mesh in ${name}: ${child.name || 'unnamed'} at local pos (${worldPos.x.toFixed(2)}, ${worldPos.y.toFixed(2)}, ${worldPos.z.toFixed(2)}), distance from origin: ${distance.toFixed(2)}`);
 
           // Keep track of mesh closest to origin
           if (distance < closestDistance) {
@@ -3245,8 +3249,6 @@ export class Game {
    */
   private teleportToNearestGoldenWalnut(): void {
     if (!this.character) return;
-
-    console.log(`🔍 DEBUG TELEPORT: Total walnuts in map: ${this.walnuts.size}`);
 
     // Debug: list all walnuts and their types
     for (const [id, walnutGroup] of this.walnuts) {

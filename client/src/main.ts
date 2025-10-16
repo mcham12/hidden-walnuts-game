@@ -173,9 +173,6 @@ class CharacterPreview {
 
       const gltf = await this.loader.loadAsync(modelPath);
 
-      // DEBUG: Check what's in the scene before removal
-      console.log('🔍 Scene children before removal:', this.scene.children.length);
-
       // Remove ALL non-light objects from scene (nuclear option)
       const objectsToRemove: THREE.Object3D[] = [];
       this.scene.traverse((obj) => {
@@ -188,8 +185,6 @@ class CharacterPreview {
           obj.parent.remove(obj);
         }
       });
-
-      console.log('🔍 Scene children after removal:', this.scene.children.length);
 
       // Use SkeletonUtils.clone() for proper cloning of animated models
       const modelClone = clone(gltf.scene);
@@ -215,7 +210,6 @@ class CharacterPreview {
 
       this.scene.add(this.currentModel);
       console.log('✅ Preview model loaded:', characterId, 'scale:', scale);
-      console.log('🔍 Scene children after adding new model:', this.scene.children.length);
     } catch (error) {
       console.error('❌ Failed to load preview model:', error);
     }
@@ -368,7 +362,6 @@ async function main() {
     console.log('✅ Session token ready');
 
     // MVP 6: STEP 1 - Try to load username from localStorage
-    console.log('🔍 Step 1: Checking for stored username...');
     const storedUsername = loadStoredUsername();
 
     let username: string;
@@ -382,14 +375,12 @@ async function main() {
       if (result.exists) {
         // Username exists on server - show welcome back and link sessionToken
         console.log('✅ Username verified, linking session...');
-        console.log(`🎮 DEBUG: savedCharacterId from server: ${result.characterId ? `"${result.characterId}"` : 'undefined'}`);
         const welcomeScreen = new WelcomeScreen();
         await welcomeScreen.showWelcomeBack(storedUsername);
         await welcomeScreen.hide();
         welcomeScreen.destroy();
         username = storedUsername;
         savedCharacterId = result.characterId;
-        console.log(`🎮 DEBUG: savedCharacterId assigned: ${savedCharacterId ? `"${savedCharacterId}"` : 'undefined'}`);
       } else {
         // Username doesn't exist on server anymore - prompt for new username
         console.log('⚠️ Stored username not found on server, prompting for new username');
@@ -458,7 +449,6 @@ async function main() {
     let selectedCharacterId: string;
 
     // Check if user has saved character
-    console.log(`🎮 DEBUG: Checking savedCharacterId: ${savedCharacterId ? `"${savedCharacterId}"` : 'undefined'}`);
     if (savedCharacterId) {
       // Returning user with saved character - skip selection!
       console.log('✅ Using saved character, SKIPPING selection:', savedCharacterId);
@@ -529,7 +519,6 @@ async function main() {
 
           // Get selected character
           const charId = charSelect.value;
-          console.log('🎮 Selected character:', charId);
 
           // Save character selection to server
           await updateCharacterSelection(username, charId);

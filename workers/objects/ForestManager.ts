@@ -170,8 +170,6 @@ export default class ForestManager {
         return new Response("Missing squirrelId", { status: 400 });
       }
 
-      console.log(`🔐 MVP 6: Player connecting - sessionToken: ${sessionToken.substring(0, 8)}..., username: ${username}`);
-
       const webSocketPair = new WebSocketPair();
       const [client, server] = Object.values(webSocketPair);
 
@@ -282,9 +280,7 @@ export default class ForestManager {
       // Setup message handlers
       socket.onmessage = async (event) => {
         try {
-          console.log('📨 RAW WebSocket data received:', event.data);
           const message = JSON.parse(event.data as string);
-          console.log(`📨 SERVER DEBUG: Received message:`, message);
           await this.handlePlayerMessage(existingPlayer, message);
         } catch (error) {
           console.error('❌ Error processing WebSocket message:', error, 'Raw data:', event.data);
@@ -308,8 +304,8 @@ export default class ForestManager {
         console.error('WebSocket error:', event);
       };
 
-      // Send current world state
-      await this.sendWorldState(socket);
+      // Send current world state with saved position
+      await this.sendWorldState(socket, existingPlayer.position, existingPlayer.rotationY);
       await this.sendExistingPlayers(socket, squirrelId);
 
       // Broadcast reconnection
@@ -374,9 +370,7 @@ export default class ForestManager {
       // Setup message handlers
       socket.onmessage = async (event) => {
         try {
-          console.log('📨 RAW WebSocket data received:', event.data);
           const message = JSON.parse(event.data as string);
-          console.log(`📨 SERVER DEBUG: Received message:`, message);
           await this.handlePlayerMessage(playerConnection, message);
         } catch (error) {
           console.error('❌ Error processing WebSocket message:', error, 'Raw data:', event.data);
@@ -400,8 +394,8 @@ export default class ForestManager {
         console.error('WebSocket error:', event);
       };
 
-      // Send initial data
-      await this.sendWorldState(socket);
+      // Send initial data with spawn position (MVP 6: may be saved position or default)
+      await this.sendWorldState(socket, playerConnection.position, playerConnection.rotationY);
       await this.sendExistingPlayers(socket, squirrelId);
 
       // Broadcast player join
@@ -433,7 +427,6 @@ export default class ForestManager {
 
     switch (data.type) {
       case "player_update":
-        console.log(`🎭 SERVER DEBUG: Received player_update with animation: ${data.animation}`);
         if (data.position) {
           // Validate position is within world bounds
           const validatedPosition = this.validatePosition(data.position);
@@ -445,9 +438,8 @@ export default class ForestManager {
 
         // MVP 6: Save position by username (persists across sessions), not squirrelId
         await this.savePlayerPosition(playerConnection.username, playerConnection.position);
-        
+
         // INDUSTRY STANDARD: Forward animation state with timing for multiplayer sync
-        console.log(`🚀 SERVER DEBUG: Forwarding animation '${data.animation}' with start time to other clients`);
         this.broadcastToOthers(playerConnection.squirrelId, {
           type: 'player_update',
           squirrelId: playerConnection.squirrelId,
@@ -471,7 +463,6 @@ export default class ForestManager {
         break;
 
       case "walnut_hidden":
-        console.log(`🌰 SERVER: Player ${playerConnection.squirrelId} hid walnut ${data.walnutId}`);
         // Create new walnut in mapState
         const newWalnut: Walnut = {
           id: data.walnutId,
@@ -499,7 +490,6 @@ export default class ForestManager {
         break;
 
       case "walnut_found":
-        console.log(`🔍 SERVER: Player ${playerConnection.squirrelId} found walnut ${data.walnutId}`);
         // Mark walnut as found in mapState
         const walnutIndex = this.mapState.findIndex(w => w.id === data.walnutId);
         if (walnutIndex !== -1) {
@@ -521,7 +511,6 @@ export default class ForestManager {
         break;
 
       case "chat_message":
-        console.log(`💬 SERVER: Chat from ${playerConnection.squirrelId}: ${data.message}`);
         // Broadcast chat message to all other players
         this.broadcastToOthers(playerConnection.squirrelId, {
           type: 'chat_message',
@@ -531,7 +520,6 @@ export default class ForestManager {
         break;
 
       case "player_emote":
-        console.log(`👋 SERVER: Emote from ${playerConnection.squirrelId}: ${data.emote}`);
         // Broadcast emote to all other players
         this.broadcastToOthers(playerConnection.squirrelId, {
           type: 'player_emote',
@@ -548,7 +536,12 @@ export default class ForestManager {
   }
 
   // Simple world state initialization
-  private async sendWorldState(socket: WebSocket): Promise<void> {
+  // MVP 6: Now includes spawn position for returning players
+  private async sendWorldState(
+    socket: WebSocket,
+    spawnPosition: { x: number; y: number; z: number },
+    spawnRotationY: number
+  ): Promise<void> {
     await this.initializeWorld();
 
     // AGGRESSIVE FIX: Always filter out test-walnut before sending
@@ -559,18 +552,14 @@ export default class ForestManager {
       await this.storage.put('mapState', this.mapState);
     }
 
-    // DEBUG: Log what we're sending
-    const goldenWalnuts = this.mapState.filter(w => w.origin === 'game');
-    console.log(`📤 SERVER: Sending world_state with ${this.mapState.length} total walnuts, ${goldenWalnuts.length} golden walnuts`);
-    goldenWalnuts.forEach(gw => {
-      console.log(`  - ${gw.id} at (${gw.location.x}, ${gw.location.y}, ${gw.location.z})`);
-    });
-
     this.sendMessage(socket, {
       type: "world_state",
       terrainSeed: this.terrainSeed,
       mapState: this.mapState,
-      forestObjects: this.forestObjects
+      forestObjects: this.forestObjects,
+      // MVP 6: Send spawn position so returning players spawn at last location
+      spawnPosition,
+      spawnRotationY
     });
   }
 
@@ -654,22 +643,12 @@ export default class ForestManager {
 
     // Load or create map state with initial game walnuts
     const storedMapState = await this.storage.get('mapState');
-    console.log(`📦 SERVER: Loaded mapState from storage, count: ${storedMapState ? (Array.isArray(storedMapState) ? storedMapState.length : 'not array') : 'null'}`);
 
     if (storedMapState && Array.isArray(storedMapState)) {
       this.mapState = storedMapState;
-      // Debug: Log what we loaded
-      const gameWalnuts = this.mapState.filter(w => w.origin === 'game' || w.id === 'test-walnut');
-      if (gameWalnuts.length > 0) {
-        console.log(`🐛 SERVER DEBUG: Found ${gameWalnuts.length} game walnuts in storage:`);
-        gameWalnuts.forEach(w => {
-          console.log(`  - ${w.id} (origin: ${w.origin}, found: ${w.found})`);
-        });
-      }
     } else {
       this.mapState = [];
     }
-    console.log(`📦 SERVER: Current mapState count: ${this.mapState.length}`);
 
     // ALWAYS ensure golden walnuts exist (remove old ones, add fresh ones)
     // Remove ANY existing golden walnuts (found or not found) AND the old test walnut
@@ -853,13 +832,10 @@ export default class ForestManager {
   // MVP 6: Player position management (by username for persistence across sessions)
   private async loadPlayerPosition(username: string): Promise<{ x: number; y: number; z: number } | null> {
     try {
-      console.log(`📍 LOAD: Looking for position with key: player:${username}`);
       const savedData = await this.storage.get<{ position: { x: number; y: number; z: number } }>(`player:${username}`);
       if (savedData?.position) {
-        console.log(`📍 LOAD SUCCESS: Found position for ${username}:`, savedData.position);
         return savedData.position;
       } else {
-        console.log(`📍 LOAD: No saved position found for ${username}`);
         return null;
       }
     } catch (error) {
@@ -870,12 +846,10 @@ export default class ForestManager {
 
   private async savePlayerPosition(username: string, position: { x: number; y: number; z: number }): Promise<void> {
     try {
-      console.log(`💾 SAVE: Saving position for ${username}:`, position);
       await this.storage.put(`player:${username}`, {
         position,
         lastUpdate: Date.now()
       });
-      console.log(`✅ SAVE SUCCESS: Position saved for ${username}`);
     } catch (error) {
       console.error(`❌ Failed to save position for ${username}:`, error);
     }
