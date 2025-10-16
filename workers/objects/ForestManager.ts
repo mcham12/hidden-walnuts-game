@@ -321,6 +321,30 @@ export default class ForestManager {
         characterId: existingPlayer.characterId
       });
     } else {
+      // MVP 6: Check if there's already a player with this username (private browsing duplicate bug)
+      // If so, disconnect the old one (force logout previous session)
+      for (const [existingId, existingPlayerConn] of this.activePlayers.entries()) {
+        if (existingPlayerConn.username === username) {
+          console.log(`⚠️ Username "${username}" already connected with squirrelId ${existingId}, disconnecting old session`);
+          // Close the old socket
+          try {
+            existingPlayerConn.socket.close();
+          } catch (e) {
+            console.error('Failed to close old socket:', e);
+          }
+          // Remove from active players
+          this.activePlayers.delete(existingId);
+          // Broadcast player_leave
+          this.broadcastToOthers(existingId, {
+            type: 'player_leave',
+            squirrelId: existingId,
+            username: existingPlayerConn.username,
+            characterId: existingPlayerConn.characterId
+          });
+          break; // Only one match possible per username
+        }
+      }
+
       // New player connection
       // MVP 6: Load position by username (persists across sessions), not squirrelId (changes each session)
       const savedPosition = await this.loadPlayerPosition(username);
