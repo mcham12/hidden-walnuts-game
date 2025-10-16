@@ -270,27 +270,22 @@ window.addEventListener('unhandledrejection', (event) => {
  */
 async function checkExistingUsername(username: string, sessionToken: string): Promise<{ exists: boolean; characterId?: string }> {
   try {
-    console.log(`🔍 DEBUG: checkExistingUsername("${username}", "${sessionToken.substring(0, 8)}...")`);
     const response = await fetch(`/api/identity?action=check&username=${encodeURIComponent(username)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionToken })
     });
-    console.log('🔍 DEBUG: Response status:', response.status);
     if (!response.ok) {
-      console.error('❌ Failed to check username:', response.status);
+      console.error(`❌ Check username failed (${response.status}):`, await response.text());
       return { exists: false };
     }
     const data = await response.json();
-    console.log('🔍 DEBUG: Response data:', data);
-    const result = {
+    return {
       exists: data.exists || false,
-      characterId: data.lastCharacterId || undefined // FIXED: Explicitly handle null
+      characterId: data.lastCharacterId || undefined
     };
-    console.log('🔍 DEBUG: Returning:', result);
-    return result;
   } catch (error) {
-    console.error('❌ Failed to check username:', error);
+    console.error('❌ Check username error:', error);
     return { exists: false };
   }
 }
@@ -301,23 +296,17 @@ async function checkExistingUsername(username: string, sessionToken: string): Pr
  */
 async function saveUsername(username: string, sessionToken: string): Promise<void> {
   try {
-    console.log(`💾 DEBUG: saveUsername("${username}", "${sessionToken.substring(0, 8)}...")`);
     const response = await fetch(`/api/identity?action=set&username=${encodeURIComponent(username)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, sessionToken })
     });
 
-    console.log('💾 DEBUG: Response status:', response.status);
     if (!response.ok) {
-      console.error('❌ Failed to save username:', response.status);
-    } else {
-      const data = await response.json();
-      console.log('💾 DEBUG: Response data:', data);
-      console.log('✅ Username saved to server');
+      console.error(`❌ Save username failed (${response.status}):`, await response.text());
     }
   } catch (error) {
-    console.error('❌ Failed to save username:', error);
+    console.error('❌ Save username error:', error);
   }
 }
 
@@ -327,11 +316,9 @@ async function saveUsername(username: string, sessionToken: string): Promise<voi
  */
 function loadStoredUsername(): string | null {
   try {
-    const username = localStorage.getItem('hw_username');
-    console.log(`📦 DEBUG: loadStoredUsername() returned: ${username ? `"${username}"` : 'null'}`);
-    return username;
+    return localStorage.getItem('hw_username');
   } catch (e) {
-    console.warn('⚠️ localStorage not available (private browsing?)');
+    // Private browsing mode - localStorage unavailable
     return null;
   }
 }
@@ -342,9 +329,8 @@ function loadStoredUsername(): string | null {
 function storeUsername(username: string): void {
   try {
     localStorage.setItem('hw_username', username);
-    console.log(`💾 DEBUG: storeUsername("${username}") - saved to localStorage`);
   } catch (e) {
-    console.warn('⚠️ localStorage not available (private browsing?)');
+    // Private browsing mode - can't save
   }
 }
 
@@ -353,23 +339,20 @@ function storeUsername(username: string): void {
  */
 async function updateCharacterSelection(username: string, characterId: string): Promise<void> {
   try {
-    console.log(`🎮 DEBUG: updateCharacterSelection("${username}", "${characterId}")`);
     const response = await fetch(`/api/identity?action=updateCharacter&username=${encodeURIComponent(username)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ characterId })
     });
 
-    console.log('🎮 DEBUG: Response status:', response.status);
     if (!response.ok) {
-      console.error('❌ Failed to update character:', response.status);
-    } else {
-      const data = await response.json();
-      console.log('🎮 DEBUG: Response data:', data);
-      console.log('✅ Character selection saved to server:', characterId);
+      const errorText = await response.text();
+      console.error(`❌ Update character failed (${response.status}):`, errorText);
+      throw new Error(`Failed to save character: ${response.status} ${errorText}`);
     }
   } catch (error) {
-    console.error('❌ Failed to update character:', error);
+    console.error('❌ Update character error:', error);
+    throw error; // Re-throw so caller knows it failed
   }
 }
 
