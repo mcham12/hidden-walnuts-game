@@ -2031,7 +2031,6 @@ export class Game {
   private updateWalnutHUD(): void {
     const walnutCountSpan = document.getElementById('walnut-count');
     const playerScoreSpan = document.getElementById('player-score');
-    const gridLocationSpan = document.getElementById('grid-location');
 
     if (walnutCountSpan) {
       walnutCountSpan.textContent = `${this.playerWalnutCount}`;
@@ -2040,10 +2039,6 @@ export class Game {
     if (playerScoreSpan) {
       // MVP 5: Display animated score with tweening
       playerScoreSpan.textContent = `${Math.floor(this.displayedScore)}`;
-    }
-
-    if (gridLocationSpan && this.character) {
-      gridLocationSpan.textContent = this.calculateGridLocation(this.character.position);
     }
 
     // MVP 5.7: Update mobile hide button
@@ -2072,33 +2067,6 @@ export class Game {
     }
   }
 
-  /**
-   * MVP 3: Calculate grid location (A1-Z26 format)
-   * World space is approximately -90 to +90 (180 units total)
-   * We divide into 26x26 grid (A-Z columns, 1-26 rows)
-   */
-  private calculateGridLocation(position: THREE.Vector3): string {
-    // World bounds (adjust based on your terrain size)
-    const WORLD_MIN = -90;
-    const WORLD_MAX = 90;
-    const WORLD_SIZE = WORLD_MAX - WORLD_MIN; // 180 units
-    const GRID_SIZE = 26;
-
-    // Calculate grid coordinates
-    // Column (A-Z) from X position
-    const xNormalized = (position.x - WORLD_MIN) / WORLD_SIZE; // 0 to 1
-    const col = Math.floor(xNormalized * GRID_SIZE); // 0 to 25
-    const colClamped = Math.max(0, Math.min(GRID_SIZE - 1, col));
-    const colLetter = String.fromCharCode(65 + colClamped); // 'A' to 'Z'
-
-    // Row (1-26) from Z position
-    const zNormalized = (position.z - WORLD_MIN) / WORLD_SIZE; // 0 to 1
-    const row = Math.floor(zNormalized * GRID_SIZE); // 0 to 25
-    const rowClamped = Math.max(0, Math.min(GRID_SIZE - 1, row));
-    const rowNumber = rowClamped + 1; // 1 to 26
-
-    return `${colLetter}${rowNumber}`;
-  }
 
   // MVP 3: Label system for landmarks and walnuts
 
