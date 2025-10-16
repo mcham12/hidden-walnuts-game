@@ -354,39 +354,6 @@ export class Game {
     }
   }
 
-  /**
-   * DIAGNOSTIC: Inspect model for morph targets/blendshapes
-   */
-  private inspectMorphTargets(model: THREE.Object3D, characterId: string): void {
-    let hasMorphTargets = false;
-
-    model.traverse((child: any) => {
-      if (child.isMesh) {
-        const mesh = child as THREE.Mesh;
-
-        // Check if mesh has morph targets
-        if (mesh.morphTargetDictionary && mesh.morphTargetInfluences) {
-          const morphTargetNames = Object.keys(mesh.morphTargetDictionary);
-
-          if (morphTargetNames.length > 0) {
-            hasMorphTargets = true;
-            console.log(`  ✅ Mesh "${child.name || 'Unnamed'}" has ${morphTargetNames.length} morph targets:`);
-            morphTargetNames.forEach((name, index) => {
-              console.log(`    [${index}] ${name}`);
-            });
-          }
-        }
-      }
-    });
-
-    if (!hasMorphTargets) {
-      console.log(`  ❌ No morph targets found in ${characterId} model`);
-      console.log(`  ℹ️  This model does not support blendshape-based facial expressions`);
-    } else {
-      console.log(`  ✅ ${characterId} supports blendshape facial expressions!`);
-    }
-    console.log('');
-  }
 
   private async loadCharacter() {
     const char = this.characters.find(c => c.id === this.selectedCharacterId);
@@ -410,9 +377,6 @@ export class Game {
       this.character.castShadow = true;
       this.scene.add(this.character);
 
-      // DEBUG MVP 6: Track initial character position
-      console.log(`🔍 DEBUG CLIENT: Character created at initial position: ${JSON.stringify({x: this.character.position.x, y: this.character.position.y, z: this.character.position.z})}`);
-
       // MVP 5.5: Add local player collision
       if (this.collisionSystem) {
         this.collisionSystem.addPlayerCollider(
@@ -421,9 +385,6 @@ export class Game {
           0.5 // Character collision radius
         );
       }
-
-      // DIAGNOSTIC: Check for morph targets/blendshapes for facial expressions
-      this.inspectMorphTargets(this.character, this.selectedCharacterId);
 
       // INDUSTRY STANDARD: Animation mixer on character model
       this.mixer = new THREE.AnimationMixer(this.character);
@@ -474,7 +435,6 @@ export class Game {
 
       // MVP 6: Check if spawn position arrived before character finished loading
       if (this.pendingSpawnPosition) {
-        console.log(`✅ Applying pending spawn position:`, this.pendingSpawnPosition);
         this.character.position.set(
           this.pendingSpawnPosition.x,
           this.pendingSpawnPosition.y,
@@ -486,7 +446,6 @@ export class Game {
         this.pendingSpawnPosition = null;
         this.pendingSpawnRotationY = null;
         this.spawnPositionReceived = true;
-        console.log(`✅ Character updates now enabled (pending spawn applied)`);
       }
     } catch (error) {
       console.error('❌ CRITICAL: Character loading failed:', error);
@@ -1189,7 +1148,6 @@ export class Game {
         // MVP 6: Safety fallback - if spawn position never arrives within 5 seconds, enable movement anyway
         setTimeout(() => {
           if (!this.spawnPositionReceived) {
-            console.warn(`⚠️ Spawn position not received within 5s - enabling movement as fallback`);
             this.spawnPositionReceived = true;
           }
         }, 5000);
@@ -1411,17 +1369,9 @@ export class Game {
         }
 
         // MVP 6: Handle spawn position from server (for returning players)
-        // DEBUG MVP 6: Always log what we receive
-        console.log(`🔍 DEBUG CLIENT: Received world_state with spawnPosition:`, data.spawnPosition);
-        console.log(`🔍 DEBUG CLIENT: Character exists?`, !!this.character);
-        if (this.character) {
-          console.log(`🔍 DEBUG CLIENT: Character current position before spawn:`, JSON.stringify({x: this.character.position.x, y: this.character.position.y, z: this.character.position.z}));
-        }
-
         if (data.spawnPosition) {
           if (this.character) {
             // Character exists - apply spawn position immediately
-            console.log(`🎯 Spawning at saved position:`, data.spawnPosition);
             this.character.position.set(
               data.spawnPosition.x,
               data.spawnPosition.y,
@@ -1430,20 +1380,15 @@ export class Game {
             if (typeof data.spawnRotationY === 'number') {
               this.character.rotation.y = data.spawnRotationY;
             }
-            console.log(`🔍 DEBUG CLIENT: Character position AFTER spawn:`, JSON.stringify({x: this.character.position.x, y: this.character.position.y, z: this.character.position.z}));
-
             // MVP 6: Mark spawn position as received - now safe to update character in render loop
             this.spawnPositionReceived = true;
-            console.log(`✅ Spawn position applied, character updates now enabled`);
           } else {
             // Character not loaded yet - store spawn position for later
-            console.log(`⏳ Character not ready - storing spawn position for later application`);
             this.pendingSpawnPosition = data.spawnPosition;
             this.pendingSpawnRotationY = data.spawnRotationY;
           }
         } else {
           // No spawn position provided - enable movement anyway (fallback)
-          console.log(`⚠️ No spawn position in world_state - enabling movement as fallback`);
           this.spawnPositionReceived = true;
         }
         break;
