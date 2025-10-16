@@ -264,15 +264,20 @@ window.addEventListener('unhandledrejection', (event) => {
 
 async function main() {
   try {
-    // MVP 5.8: STEP 1 - Show welcome screen
+    // MVP 5.8: STEP 1 - Show welcome screen and get username
     console.log('🌲 Step 1: Showing welcome screen...');
     const welcomeScreen = new WelcomeScreen();
-    await welcomeScreen.show(); // Waits for user to click "Enter the Forest"
+    const username = await welcomeScreen.show(); // Waits for user to enter name and click "Enter the Forest"
+    console.log('👤 Username entered:', username);
 
     // MVP 5.8: STEP 2 - Hide welcome screen with smooth fade
     console.log('🌲 Step 2: Hiding welcome screen...');
     await welcomeScreen.hide();
     welcomeScreen.destroy();
+
+    // TODO: In MVP 6, send username to server to check if user exists
+    // For now, username is captured but not used (will be used in MVP 6)
+    // const playerUsername = username;
 
     // MVP 5.8: STEP 3 - Show character selection immediately (no loading needed)
     console.log('🌲 Step 3: Showing character selection...');
@@ -369,15 +374,20 @@ async function main() {
     // MVP 5.8: STEP 4 - Show SINGLE loading screen and load ALL game assets
     console.log('🌲 Step 4: Loading game assets...');
     const loadingScreen = new LoadingScreen();
-    await loadingScreen.show();
+    await loadingScreen.show(); // Sets to 0% immediately
 
-    // Load audio files
-    loadingScreen.updateProgress(0.3, 'Loading audio...');
+    // Start loading audio
+    loadingScreen.updateProgress(0.1, 'Loading audio...');
     await audioManager.waitForLoad();
     console.log('✅ Audio loaded');
 
-    // Load game assets (terrain, models, etc.)
-    loadingScreen.updateProgress(0.6, 'Loading game world...');
+    // Audio complete
+    loadingScreen.updateProgress(0.5, 'Preparing game world...');
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Almost ready
+    loadingScreen.updateProgress(0.9, 'Almost ready...');
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Complete loading
     loadingScreen.updateProgress(1.0, 'Ready!');

@@ -7,7 +7,7 @@
 
 export class WelcomeScreen {
   private container: HTMLDivElement | null = null;
-  private resolvePromise: (() => void) | null = null;
+  private resolvePromise: ((username: string) => void) | null = null;
 
   constructor() {
     this.createHTML();
@@ -22,14 +22,26 @@ export class WelcomeScreen {
     this.container.id = 'welcome-screen';
     this.container.innerHTML = `
       <div class="welcome-content">
-        <div class="welcome-walnut-emoji">🌰</div>
         <div class="welcome-text">
           <h1 class="welcome-title">Hidden Walnuts</h1>
           <p class="welcome-tagline">A Multiplayer Forest Adventure</p>
         </div>
-        <button id="welcome-button" class="welcome-button">
-          Enter the Forest
-        </button>
+
+        <div class="welcome-form">
+          <label for="welcome-username" class="welcome-label">What should we call you?</label>
+          <input
+            type="text"
+            id="welcome-username"
+            class="welcome-input"
+            placeholder="Enter your name"
+            maxlength="20"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="welcome-button" class="welcome-button">
+            Enter the Forest
+          </button>
+        </div>
       </div>
 
       <!-- Decorative elements -->
@@ -44,8 +56,17 @@ export class WelcomeScreen {
 
     // Setup button click handler
     const button = document.getElementById('welcome-button');
-    if (button) {
+    const input = document.getElementById('welcome-username') as HTMLInputElement;
+
+    if (button && input) {
       button.addEventListener('click', () => this.onButtonClick());
+
+      // Also allow Enter key to submit
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          this.onButtonClick();
+        }
+      });
     }
   }
 
@@ -53,15 +74,25 @@ export class WelcomeScreen {
    * Handle button click
    */
   private onButtonClick(): void {
+    const input = document.getElementById('welcome-username') as HTMLInputElement;
+    const username = input?.value.trim() || '';
+
+    // Require username (placeholder for now, will add validation later)
+    if (!username) {
+      input?.focus();
+      return;
+    }
+
     if (this.resolvePromise) {
-      this.resolvePromise();
+      this.resolvePromise(username);
     }
   }
 
   /**
    * Show welcome screen and wait for user interaction
+   * Returns the username entered by the user
    */
-  async show(): Promise<void> {
+  async show(): Promise<string> {
     return new Promise((resolve) => {
       this.resolvePromise = resolve;
 
@@ -74,6 +105,12 @@ export class WelcomeScreen {
           if (this.container) {
             this.container.style.transition = 'opacity 0.5s ease-in';
             this.container.style.opacity = '1';
+          }
+
+          // Auto-focus the username input
+          const input = document.getElementById('welcome-username') as HTMLInputElement;
+          if (input) {
+            setTimeout(() => input.focus(), 100);
           }
         });
       }

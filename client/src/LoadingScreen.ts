@@ -72,10 +72,13 @@ export class LoadingScreen {
   async show(): Promise<void> {
     this.container.classList.remove('hidden');
 
-    // Load walnut model
-    await this.loadWalnut();
+    // Initialize progress to 0%
+    this.updateProgress(0, 'Starting...');
 
-    // Start animation loop
+    // Load walnut model in background (don't block)
+    this.loadWalnut();
+
+    // Start animation loop immediately
     this.startAnimation();
   }
 
