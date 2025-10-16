@@ -51,7 +51,11 @@ export class Game {
   private characters: Character[] = [];
   public selectedCharacterId = 'squirrel';
   private characterGroundOffset = 0; // Offset from character pivot to feet
-  
+
+  // STANDARD: Terrain and raycasting for ground detection
+  private terrain: THREE.Mesh | null = null;
+  private raycaster = new THREE.Raycaster();
+
   // Multiplayer properties
   private websocket: WebSocket | null = null;
   private playerId: string = '';
@@ -116,7 +120,6 @@ export class Game {
   private playerWalnutCount: number = 3; // Player starts with 3 walnuts to hide
   private playerScore: number = 0; // Player's current score
   private displayedScore: number = 0; // MVP 5: Animated score for tweening effect
-  private raycaster: THREE.Raycaster = new THREE.Raycaster();
   private mouse: THREE.Vector2 = new THREE.Vector2();
   private walnutLabels: Map<string, HTMLElement> = new Map(); // Labels for walnuts
   private labelsContainer: HTMLElement | null = null;
@@ -246,8 +249,8 @@ export class Game {
       this.scene.add(directional);
 
       // Terrain
-      const terrain = await createTerrain();
-      this.scene.add(terrain);
+      this.terrain = await createTerrain();
+      this.scene.add(this.terrain);
 
       // Forest will be created from server data when we receive world_state
 
@@ -434,18 +437,8 @@ export class Game {
       // Add extra offset to prevent sinking (scale-adjusted + larger safety margin)
       this.characterGroundOffset = -box.min.y * char.scale + 0.3;
 
-      console.log(`📏 LOCAL PLAYER (${this.selectedCharacterId}):`);
-      console.log(`   - Scale: ${char.scale}`);
-      console.log(`   - BBox min.y: ${box.min.y.toFixed(3)}`);
-      console.log(`   - BBox max.y: ${box.max.y.toFixed(3)}`);
-      console.log(`   - Calculated ground offset: ${this.characterGroundOffset.toFixed(3)}`);
-      console.log(`   - Formula: -${box.min.y.toFixed(3)} * ${char.scale} + 0.3 = ${this.characterGroundOffset.toFixed(3)}`);
-
       this.setAction('idle');
-      const terrainHeight = getTerrainHeight(this.character.position.x, this.character.position.z);
-      this.character.position.y = terrainHeight + this.characterGroundOffset;
-      console.log(`   - Terrain height: ${terrainHeight.toFixed(3)}`);
-      console.log(`   - Final Y position: ${this.character.position.y.toFixed(3)}`);
+      this.character.position.y = getTerrainHeight(this.character.position.x, this.character.position.z) + this.characterGroundOffset;
     } catch (error) {
       console.error('❌ CRITICAL: Character loading failed:', error);
       console.error('❌ Game will not function properly without character');
@@ -1535,8 +1528,9 @@ export class Game {
 
       await Promise.all(remoteAnimationPromises);
 
-      // STANDARD: Use server position directly (server is authoritative for remote players)
-      remoteCharacter.position.set(position.x, position.y, position.z);
+      // STANDARD: Position character on ground using raycasting
+      const groundY = this.positionCharacterOnGround(remoteCharacter, position.x, position.z);
+      remoteCharacter.position.set(position.x, groundY, position.z);
       const initialQuaternion = new THREE.Quaternion();
       initialQuaternion.setFromEuler(new THREE.Euler(0, rotationY, 0));
       remoteCharacter.quaternion.copy(initialQuaternion);
@@ -1548,7 +1542,7 @@ export class Game {
 
       // INDUSTRY STANDARD: Initialize interpolation buffer for newly created player
       const initialState = {
-        position: new THREE.Vector3(position.x, position.y, position.z),
+        position: new THREE.Vector3(position.x, groundY, position.z),
         quaternion: initialQuaternion.clone(),
         velocity: new THREE.Vector3(0, 0, 0),
         timestamp: Date.now()
@@ -1578,11 +1572,13 @@ export class Game {
   private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, _moveType?: string, characterId?: string): void {
     const remotePlayer = this.remotePlayers.get(playerId);
     if (remotePlayer) {
-      // STANDARD: Use server position directly (server authoritative)
+      // STANDARD: Calculate ground position using raycasting
+      const groundY = this.positionCharacterOnGround(remotePlayer, position.x, position.z);
+
       const newQuaternion = new THREE.Quaternion();
       newQuaternion.setFromEuler(new THREE.Euler(0, rotationY, 0));
       const newState = {
-        position: new THREE.Vector3(position.x, position.y, position.z),
+        position: new THREE.Vector3(position.x, groundY, position.z),
         quaternion: newQuaternion.clone(),
         velocity: velocity ? new THREE.Vector3(velocity.x, velocity.y, velocity.z) : new THREE.Vector3(0, 0, 0),
         timestamp: Date.now()
@@ -1767,6 +1763,37 @@ export class Game {
       const characterName = characterId.charAt(0).toUpperCase() + characterId.slice(1);
       this.toastManager.success(`${characterName} reconnected`);
     }
+  }
+
+  /**
+   * STANDARD: Position character on ground using raycasting
+   * Raycasts downward to find terrain, positions character so feet touch ground
+   */
+  private positionCharacterOnGround(character: THREE.Group, x: number, z: number): number {
+    if (!this.terrain) {
+      // Fallback to heightmap if terrain mesh not available
+      return getTerrainHeight(x, z) + this.characterGroundOffset;
+    }
+
+    // Get character's bounding box to find where feet are
+    const box = new THREE.Box3().setFromObject(character);
+    const feetOffset = -box.min.y; // Distance from pivot to feet
+
+    // Raycast from above downward to find terrain
+    const rayOrigin = new THREE.Vector3(x, 100, z); // Start well above terrain
+    const rayDirection = new THREE.Vector3(0, -1, 0); // Point straight down
+    this.raycaster.set(rayOrigin, rayDirection);
+
+    const intersects = this.raycaster.intersectObject(this.terrain, false);
+
+    if (intersects.length > 0) {
+      // Found terrain! Position character so feet are at intersection point
+      const groundY = intersects[0].point.y;
+      return groundY + feetOffset;
+    }
+
+    // Fallback to heightmap if raycast missed
+    return getTerrainHeight(x, z) + feetOffset;
   }
 
   // Debug and utility methods
