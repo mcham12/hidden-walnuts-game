@@ -55,6 +55,10 @@ export class Game {
   private characterGroundOffset = 0; // Offset from character pivot to feet
   private characterCollisionRadius = 0.5; // Collision radius calculated from bounding box
 
+  // MVP 6: Spawn coordination - prevent character updates until spawn position received from server
+  // This fixes race condition where render loop starts before world_state arrives
+  private spawnPositionReceived: boolean = false;
+
   // STANDARD: Terrain and raycasting for ground detection
   private terrain: THREE.Mesh | null = null;
   private raycaster = new THREE.Raycaster();
@@ -462,8 +466,9 @@ export class Game {
       console.log(`📏 Local player ${this.selectedCharacterId}: groundOffset = ${this.characterGroundOffset.toFixed(2)}, box.min.y = ${box.min.y.toFixed(2)}, scale = ${char.scale}`);
 
       this.setAction('idle');
-      // STANDARD: Use heightmap for local player ground positioning
-      this.character.position.y = this.positionLocalPlayerOnGround();
+      // MVP 6: DON'T position character here - wait for spawn position from server
+      // Character stays at (0, 0, 0) until world_state message arrives with spawn position
+      // this.character.position.y = this.positionLocalPlayerOnGround(); // REMOVED - causes race condition
     } catch (error) {
       console.error('❌ CRITICAL: Character loading failed:', error);
       console.error('❌ Game will not function properly without character');
@@ -784,10 +789,15 @@ export class Game {
     }
 
     // Update player physics
-    if (this.character) {
+    // MVP 6: Only update player after spawn position received (prevents race condition)
+    if (this.character && this.spawnPositionReceived) {
       this.updatePlayer(delta);
       this.updateCamera();
       // MVP 5.5: Update camera shake effect
+      this.updateCameraShake(delta);
+    } else if (this.character) {
+      // Character exists but spawn position not received yet - just update camera
+      this.updateCamera();
       this.updateCameraShake(delta);
     }
 
@@ -1394,6 +1404,10 @@ export class Game {
             this.character.rotation.y = data.spawnRotationY;
           }
           console.log(`🔍 DEBUG CLIENT: Character position AFTER spawn:`, JSON.stringify({x: this.character.position.x, y: this.character.position.y, z: this.character.position.z}));
+
+          // MVP 6: Mark spawn position as received - now safe to update character in render loop
+          this.spawnPositionReceived = true;
+          console.log(`✅ Spawn position applied, character updates now enabled`);
         } else {
           console.log(`🔍 DEBUG CLIENT: NOT applying spawn position (spawnPosition exists: ${!!data.spawnPosition}, character exists: ${!!this.character})`);
         }
