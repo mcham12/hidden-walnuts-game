@@ -1570,11 +1570,15 @@ export class Game {
   private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, _moveType?: string, characterId?: string): void {
     const remotePlayer = this.remotePlayers.get(playerId);
     if (remotePlayer) {
+      // BUGFIX: Calculate correct terrain Y to prevent floating
+      // Industry standard: Don't trust networked Y, calculate locally
+      const terrainY = getTerrainHeight(position.x, position.z) + 0.3;
+
       // ENTITY INTERPOLATION: Add new state to buffer for smooth interpolation
       const newQuaternion = new THREE.Quaternion();
       newQuaternion.setFromEuler(new THREE.Euler(0, rotationY, 0));
       const newState = {
-        position: new THREE.Vector3(position.x, position.y, position.z),
+        position: new THREE.Vector3(position.x, terrainY, position.z),
         quaternion: newQuaternion.clone(),
         velocity: velocity ? new THREE.Vector3(velocity.x, velocity.y, velocity.z) : new THREE.Vector3(0, 0, 0),
         timestamp: Date.now()
@@ -1628,10 +1632,6 @@ export class Game {
         // Smooth lerp even for single state to reduce jitter
         player.position.lerp(state.position, 0.3);
         player.quaternion.slerp(state.quaternion, 0.3);
-
-        // BUGFIX: Apply local terrain height to prevent floating
-        // Industry standard: Don't trust networked Y, calculate locally
-        player.position.y = getTerrainHeight(player.position.x, player.position.z) + 0.3;
         continue;
       }
 
@@ -1661,10 +1661,6 @@ export class Game {
       // Simple interpolation between two states
       player.position.lerpVectors(fromState.position, toState.position, t);
       player.quaternion.slerpQuaternions(fromState.quaternion, toState.quaternion, t);
-
-      // BUGFIX: Apply local terrain height to prevent floating
-      // Industry standard: Don't trust networked Y, calculate locally
-      player.position.y = getTerrainHeight(player.position.x, player.position.z) + 0.3;
 
       // MVP 5.5: Update remote player collision position
       if (this.collisionSystem) {
