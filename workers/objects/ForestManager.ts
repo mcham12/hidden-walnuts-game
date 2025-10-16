@@ -34,6 +34,10 @@ interface PlayerConnection {
   // MVP 5.8: Session management
   isDisconnected: boolean;
   disconnectedAt: number | null;
+
+  // MVP 6: Player identity
+  sessionToken: string;
+  username: string;
 }
 
 interface Walnut {
@@ -95,7 +99,9 @@ export default class ForestManager {
         this.activePlayers.delete(playerId);
         this.broadcastToOthers(playerId, {
           type: 'player_leave',
-          squirrelId: playerId
+          squirrelId: playerId,
+          username: player.username, // MVP 6: Include username
+          characterId: player.characterId // MVP 6: Include characterId
         });
       }
       // Mark as disconnected if inactive for 60+ seconds (but not already disconnected)
@@ -105,7 +111,9 @@ export default class ForestManager {
         player.disconnectedAt = now;
         this.broadcastToOthers(playerId, {
           type: 'player_disconnected',
-          squirrelId: playerId
+          squirrelId: playerId,
+          username: player.username, // MVP 6: Include username
+          characterId: player.characterId // MVP 6: Include characterId
         });
       }
     }
@@ -155,16 +163,20 @@ export default class ForestManager {
       const url = new URL(request.url);
       const squirrelId = url.searchParams.get("squirrelId");
       const characterId = url.searchParams.get("characterId") || "colobus";
-      
+      const sessionToken = url.searchParams.get("sessionToken") || ""; // MVP 6: Player session
+      const username = url.searchParams.get("username") || "Anonymous"; // MVP 6: Player username
+
       if (!squirrelId) {
         return new Response("Missing squirrelId", { status: 400 });
       }
 
+      console.log(`🔐 MVP 6: Player connecting - sessionToken: ${sessionToken.substring(0, 8)}..., username: ${username}`);
+
       const webSocketPair = new WebSocketPair();
       const [client, server] = Object.values(webSocketPair);
-      
+
       server.accept();
-      await this.setupPlayerConnection(squirrelId, characterId, server);
+      await this.setupPlayerConnection(squirrelId, characterId, server, sessionToken, username);
 
       return new Response(null, {
         status: 101,
@@ -248,18 +260,21 @@ export default class ForestManager {
   }
 
   // Simple player connection setup
-  private async setupPlayerConnection(squirrelId: string, characterId: string, socket: WebSocket): Promise<void> {
+  private async setupPlayerConnection(squirrelId: string, characterId: string, socket: WebSocket, sessionToken: string, username: string): Promise<void> {
     // MVP 5.8: Check if player is reconnecting (still in active players but disconnected)
     const existingPlayer = this.activePlayers.get(squirrelId);
     const isReconnecting = existingPlayer && existingPlayer.isDisconnected;
 
     if (isReconnecting) {
       // Player is reconnecting - reattach socket and mark as reconnected
-      console.log(`🔄 Player ${squirrelId} reconnecting after ${Math.round((Date.now() - existingPlayer.disconnectedAt!) / 1000)}s`);
+      console.log(`🔄 Player ${squirrelId} (${username}) reconnecting after ${Math.round((Date.now() - existingPlayer.disconnectedAt!) / 1000)}s`);
       existingPlayer.socket = socket;
       existingPlayer.isDisconnected = false;
       existingPlayer.disconnectedAt = null;
       existingPlayer.lastActivity = Date.now();
+      // MVP 6: Update session token and username (may have changed)
+      existingPlayer.sessionToken = sessionToken;
+      existingPlayer.username = username;
 
       // MVP 5.8: Ensure alarm is scheduled for disconnect checking
       await this.ensureAlarmScheduled();
@@ -283,7 +298,9 @@ export default class ForestManager {
         existingPlayer.disconnectedAt = Date.now();
         this.broadcastToOthers(squirrelId, {
           type: 'player_disconnected',
-          squirrelId: squirrelId
+          squirrelId: squirrelId,
+          username: existingPlayer.username, // MVP 6: Include username
+          characterId: existingPlayer.characterId // MVP 6: Include characterId
         });
       };
 
@@ -316,8 +333,13 @@ export default class ForestManager {
         characterId,
         // MVP 5.8: Session management
         isDisconnected: false,
-        disconnectedAt: null
+        disconnectedAt: null,
+        // MVP 6: Player identity
+        sessionToken,
+        username
       };
+
+      console.log(`✅ New player ${squirrelId} (${username}) connected`);
 
       this.activePlayers.set(squirrelId, playerConnection);
 
@@ -343,7 +365,9 @@ export default class ForestManager {
         playerConnection.disconnectedAt = Date.now();
         this.broadcastToOthers(squirrelId, {
           type: 'player_disconnected',
-          squirrelId: squirrelId
+          squirrelId: squirrelId,
+          username: playerConnection.username, // MVP 6: Include username
+          characterId: playerConnection.characterId // MVP 6: Include characterId
         });
       };
 
@@ -361,7 +385,8 @@ export default class ForestManager {
         squirrelId,
         position: playerConnection.position,
         rotationY: playerConnection.rotationY,
-        characterId: playerConnection.characterId
+        characterId: playerConnection.characterId,
+        username: playerConnection.username // MVP 6: Send username
       });
     }
   }
@@ -532,7 +557,8 @@ export default class ForestManager {
         squirrelId: player.squirrelId,
         position: player.position,
         rotationY: player.rotationY,
-        characterId: player.characterId
+        characterId: player.characterId,
+        username: player.username // MVP 6: Include username
       }));
 
     if (existingPlayers.length > 0) {

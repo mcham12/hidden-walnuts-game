@@ -50,6 +50,8 @@ export class Game {
   private isJumping = false;
   private characters: Character[] = [];
   public selectedCharacterId = 'squirrel';
+  public sessionToken: string = ''; // MVP 6: Player session token
+  public username: string = ''; // MVP 6: Player username
   private characterGroundOffset = 0; // Offset from character pivot to feet
   private characterCollisionRadius = 0.5; // Collision radius calculated from bounding box
 
@@ -98,6 +100,9 @@ export class Game {
 
   // MVP 5: Enhanced character animations (Squirrel-first)
   private lastIdleVariationTime: number = 0;
+
+  // MVP 6: Remote player username labels (Map playerId → HTML label element)
+  private remotePlayerNameLabels: Map<string, HTMLElement> = new Map();
   private idleVariationInterval: number = 10000; // 10 seconds between idle variations
   private availableIdleAnimations: string[] = ['idle', 'idle_b', 'idle_c'];
   private isPlayingOneShotAnimation: boolean = false;
@@ -818,6 +823,9 @@ export class Game {
     // MVP 3: Update walnut labels
     this.updateWalnutLabels();
 
+    // MVP 6: Update remote player username labels
+    this.updateRemotePlayerNameLabels();
+
     // MVP 3: Update proximity indicators
     this.updateProximityIndicators();
 
@@ -1123,8 +1131,9 @@ export class Game {
 
     // Get WebSocket URL - check environment or use default
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:50569';
+    // MVP 6: Include sessionToken and username in WebSocket URL
     const wsUrl = apiUrl.replace('http:', 'ws:').replace('https:', 'wss:') +
-                  `/ws?squirrelId=${this.playerId}&characterId=${this.selectedCharacterId}`;
+                  `/ws?squirrelId=${this.playerId}&characterId=${this.selectedCharacterId}&sessionToken=${this.sessionToken}&username=${encodeURIComponent(this.username)}`;
     
     try {
       this.websocket = new WebSocket(wsUrl);
@@ -1395,7 +1404,8 @@ export class Game {
         if (Array.isArray(data.players)) {
           for (const player of data.players) {
             if (this.validatePlayerData(player) && player.squirrelId !== this.playerId) {
-              this.createRemotePlayer(player.squirrelId, player.position, player.rotationY, player.characterId);
+              // MVP 6: Pass username when creating remote player
+              this.createRemotePlayer(player.squirrelId, player.position, player.rotationY, player.characterId, player.username);
             }
           }
         }
@@ -1403,32 +1413,31 @@ export class Game {
 
       case 'player_joined':
         if (this.validatePlayerData(data) && data.squirrelId !== this.playerId) {
-          this.createRemotePlayer(data.squirrelId, data.position, data.rotationY, data.characterId);
+          this.createRemotePlayer(data.squirrelId, data.position, data.rotationY, data.characterId, data.username);
 
-          // MVP 5: Show player joined toast
-          const characterName = data.characterId ? data.characterId.charAt(0).toUpperCase() + data.characterId.slice(1) : 'Player';
-          this.toastManager.info(`${characterName} joined the game`);
+          // MVP 6: Show player joined toast with format "username - Character"
+          const characterName = data.characterId ? this.getCharacterName(data.characterId) : 'Player';
+          const username = data.username || 'Anonymous';
+          this.toastManager.info(`${username} - ${characterName} joined the game`);
         }
         break;
 
       case 'player_leave':  // Server sends "player_leave" not "player_left"
         if (data.squirrelId && data.squirrelId !== this.playerId) {
-          // Get character info before removing
-          const remotePlayer = this.remotePlayers.get(data.squirrelId);
-          const characterId = remotePlayer?.userData?.characterId || 'Player';
-          const characterName = characterId.charAt(0).toUpperCase() + characterId.slice(1);
-
           this.removeRemotePlayer(data.squirrelId);
 
-          // MVP 5: Show player left toast
-          this.toastManager.info(`${characterName} left the game`);
+          // MVP 6: Show player left toast with format "username - Character"
+          const characterName = data.characterId ? this.getCharacterName(data.characterId) : 'Player';
+          const username = data.username || 'Anonymous';
+          this.toastManager.info(`${username} - ${characterName} left the game`);
         }
         break;
 
       case 'player_disconnected':
         // MVP 5.8: Mark player as disconnected (visual feedback)
         if (data.squirrelId && data.squirrelId !== this.playerId) {
-          this.markPlayerAsDisconnected(data.squirrelId);
+          // MVP 6: Pass username and characterId for proper toast message
+          this.markPlayerAsDisconnected(data.squirrelId, data.username, data.characterId);
         }
         break;
 
@@ -1477,16 +1486,24 @@ export class Game {
   }
 
   private validatePlayerData(data: any): boolean {
-    return data && 
-           typeof data.squirrelId === 'string' && 
-           data.position && 
-           typeof data.position.x === 'number' && 
-           typeof data.position.y === 'number' && 
-           typeof data.position.z === 'number' && 
+    return data &&
+           typeof data.squirrelId === 'string' &&
+           data.position &&
+           typeof data.position.x === 'number' &&
+           typeof data.position.y === 'number' &&
+           typeof data.position.z === 'number' &&
            typeof data.rotationY === 'number';
   }
 
-  private async createRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, characterId?: string): Promise<void> {
+  /**
+   * MVP 6: Get character display name from character ID
+   */
+  private getCharacterName(characterId: string): string {
+    const char = this.characters.find(c => c.id === characterId);
+    return char ? char.name : characterId.charAt(0).toUpperCase() + characterId.slice(1);
+  }
+
+  private async createRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, characterId?: string, username?: string): Promise<void> {
     if (this.remotePlayers.has(playerId)) {
       // Player already exists, just update position
       this.updateRemotePlayer(playerId, position, rotationY, undefined, undefined, undefined);
@@ -1608,6 +1625,20 @@ export class Game {
       }
 
       this.scene.add(remoteCharacter);
+
+      // MVP 6: Create username label for remote player (styled like landmark labels)
+      if (username) {
+        const usernameLabel = this.createLabel(username, '#FFFFFF');
+        usernameLabel.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        usernameLabel.style.padding = '4px 10px';
+        usernameLabel.style.borderRadius = '12px';
+        usernameLabel.style.fontSize = '13px';
+        usernameLabel.style.fontWeight = 'bold';
+        usernameLabel.style.whiteSpace = 'nowrap';
+        usernameLabel.style.pointerEvents = 'none';
+        usernameLabel.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+        this.remotePlayerNameLabels.set(playerId, usernameLabel);
+      }
 
       // MVP 5.5: Add remote player collision with proper radius
       if (this.collisionSystem) {
@@ -1753,13 +1784,21 @@ export class Game {
       if (this.collisionSystem) {
         this.collisionSystem.removeCollider(playerId);
       }
+
+      // MVP 6: Remove username label
+      const nameLabel = this.remotePlayerNameLabels.get(playerId);
+      if (nameLabel && this.labelsContainer) {
+        this.labelsContainer.removeChild(nameLabel);
+        this.remotePlayerNameLabels.delete(playerId);
+      }
     }
   }
 
   /**
    * MVP 5.8: Mark a remote player as disconnected (visual feedback)
+   * MVP 6: Add username and characterId parameters for proper toast message
    */
-  private markPlayerAsDisconnected(playerId: string): void {
+  private markPlayerAsDisconnected(playerId: string, username?: string, characterId?: string): void {
     const remotePlayer = this.remotePlayers.get(playerId);
     if (remotePlayer) {
       console.log(`⚠️ Marking player ${playerId} as disconnected (visual feedback)`);
@@ -1779,10 +1818,11 @@ export class Game {
         }
       });
 
-      // Show disconnected toast
-      const characterId = remotePlayer.userData?.characterId || 'Player';
-      const characterName = characterId.charAt(0).toUpperCase() + characterId.slice(1);
-      this.toastManager.warning(`${characterName} disconnected`);
+      // MVP 6: Show disconnected toast with format "username - Character"
+      const charId = characterId || remotePlayer.userData?.characterId || 'Player';
+      const characterName = charId ? this.getCharacterName(charId) : 'Player';
+      const displayUsername = username || 'Anonymous';
+      this.toastManager.warning(`${displayUsername} - ${characterName} disconnected`);
     }
   }
 
@@ -2411,6 +2451,21 @@ export class Game {
     // Hide label if behind camera
     const isBehindCamera = vector.z > 1;
     label.style.display = isBehindCamera ? 'none' : 'block';
+  }
+
+  /**
+   * MVP 6: Update remote player username labels (always visible, positioned above player)
+   */
+  private updateRemotePlayerNameLabels(): void {
+    for (const [playerId, label] of this.remotePlayerNameLabels) {
+      const player = this.remotePlayers.get(playerId);
+      if (player) {
+        // Position label above player's head (2.5 units up)
+        const labelPos = player.position.clone();
+        labelPos.y += 2.5;
+        this.updateLabelPosition(label, labelPos);
+      }
+    }
   }
 
   /**
@@ -3703,8 +3758,10 @@ export class Game {
    */
   private getMockLeaderboardData(): Array<{ playerId: string; displayName: string; score: number }> {
     // Create mock data including current player
+    // MVP 6: Show actual username instead of just "You"
+    const displayName = this.username ? `You (${this.username})` : 'You';
     const mockData = [
-      { playerId: this.playerId, displayName: 'You', score: this.playerScore }
+      { playerId: this.playerId, displayName, score: this.playerScore }
     ];
 
     // Add some mock players for testing

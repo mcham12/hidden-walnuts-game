@@ -35,6 +35,10 @@ class_name = "WalnutRegistry"
 name = "LEADERBOARD"
 class_name = "Leaderboard"
 
+[[durable_objects.bindings]]
+name = "PLAYER_IDENTITY"
+class_name = "PlayerIdentity"
+
 # Durable Objects migrations
 [[migrations]]
 tag = "v1"
@@ -50,6 +54,11 @@ tag = "v2"
 # v2 migration - maintaining consistency with deployed version
 # No changes needed as classes already exist
 
+[[migrations]]
+tag = "v3"
+# MVP 6: Player Identity - Session token → username mapping
+new_sqlite_classes = ["PlayerIdentity"]
+
 # Environment configurations
 [env.preview]
 workers_dev = true
@@ -61,7 +70,8 @@ bindings = [
   { name = "FOREST", class_name = "ForestManager" },
   { name = "SQUIRREL", class_name = "SquirrelSession" },
   { name = "WALNUTS", class_name = "WalnutRegistry" },
-  { name = "LEADERBOARD", class_name = "Leaderboard" }
+  { name = "LEADERBOARD", class_name = "Leaderboard" },
+  { name = "PLAYER_IDENTITY", class_name = "PlayerIdentity" }
 ]
 
 [env.production]
@@ -74,5 +84,6 @@ bindings = [
   { name = "FOREST", class_name = "ForestManager" },
   { name = "SQUIRREL", class_name = "SquirrelSession" },
   { name = "WALNUTS", class_name = "WalnutRegistry" },
-  { name = "LEADERBOARD", class_name = "Leaderboard" }
+  { name = "LEADERBOARD", class_name = "Leaderboard" },
+  { name = "PLAYER_IDENTITY", class_name = "PlayerIdentity" }
 ]

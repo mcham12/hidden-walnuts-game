@@ -4,6 +4,7 @@ import { LoadingScreen } from './LoadingScreen';
 import { WelcomeScreen } from './WelcomeScreen';
 import { SettingsManager } from './SettingsManager';
 import { TouchControls } from './TouchControls';
+import { SessionManager } from './SessionManager'; // MVP 6: Player identity
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
@@ -262,25 +263,83 @@ window.addEventListener('unhandledrejection', (event) => {
   });
 });
 
+/**
+ * MVP 6: Check if username exists for this session token
+ */
+async function checkExistingUsername(sessionToken: string): Promise<string | null> {
+  try {
+    const response = await fetch(`/api/identity?action=check&sessionToken=${sessionToken}`);
+    if (!response.ok) {
+      console.error('Failed to check username:', response.status);
+      return null;
+    }
+    const data = await response.json();
+    return data.username || null;
+  } catch (error) {
+    console.error('Failed to check username:', error);
+    return null;
+  }
+}
+
+/**
+ * MVP 6: Save username for this session token
+ */
+async function saveUsername(sessionToken: string, username: string): Promise<void> {
+  try {
+    const response = await fetch(`/api/identity?action=set&sessionToken=${sessionToken}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username })
+    });
+
+    if (!response.ok) {
+      console.error('Failed to save username:', response.status);
+    } else {
+      console.log('✅ Username saved to server');
+    }
+  } catch (error) {
+    console.error('Failed to save username:', error);
+  }
+}
+
 async function main() {
   try {
-    // MVP 5.8: STEP 1 - Show welcome screen and get username
-    console.log('🌲 Step 1: Showing welcome screen...');
-    const welcomeScreen = new WelcomeScreen();
-    const username = await welcomeScreen.show(); // Waits for user to enter name and click "Enter the Forest"
-    console.log('👤 Username entered:', username);
+    // MVP 6: STEP 0 - Initialize session management
+    console.log('🔐 Step 0: Initializing session...');
+    const sessionManager = new SessionManager();
+    const sessionToken = sessionManager.getToken();
+    console.log('✅ Session token ready');
 
-    // MVP 5.8: STEP 2 - Hide welcome screen with smooth fade
-    console.log('🌲 Step 2: Hiding welcome screen...');
-    await welcomeScreen.hide();
-    welcomeScreen.destroy();
+    // MVP 6: STEP 1 - Check if user has existing username
+    console.log('🔍 Step 1: Checking for existing username...');
+    const existingUsername = await checkExistingUsername(sessionToken);
 
-    // TODO: In MVP 6, send username to server to check if user exists
-    // For now, username is captured but not used (will be used in MVP 6)
-    // const playerUsername = username;
+    let username: string;
 
-    // MVP 5.8: STEP 3 - Show character selection immediately (no loading needed)
-    console.log('🌲 Step 3: Showing character selection...');
+    if (existingUsername) {
+      // Returning user - show welcome back message
+      console.log('👋 Welcome back:', existingUsername);
+      const welcomeScreen = new WelcomeScreen();
+      await welcomeScreen.showWelcomeBack(existingUsername);
+      await welcomeScreen.hide();
+      welcomeScreen.destroy();
+      username = existingUsername;
+    } else {
+      // New user - prompt for username
+      console.log('🆕 New user - prompting for username');
+      const welcomeScreen = new WelcomeScreen();
+      username = await welcomeScreen.show();
+      console.log('👤 Username entered:', username);
+
+      // Save username to server
+      await saveUsername(sessionToken, username);
+
+      await welcomeScreen.hide();
+      welcomeScreen.destroy();
+    }
+
+    // MVP 6: STEP 2 - Show character selection immediately (no loading needed)
+    console.log('🌲 Step 2: Showing character selection...');
     const selectDiv = document.getElementById('character-select') as HTMLDivElement;
     const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
     const previewCanvas = document.getElementById('character-preview-canvas') as HTMLCanvasElement;
@@ -371,8 +430,8 @@ async function main() {
     // Hide character selection
     selectDiv.classList.add('hidden');
 
-    // MVP 5.8: STEP 4 - Show SINGLE loading screen and load ALL game assets
-    console.log('🌲 Step 4: Loading game assets...');
+    // MVP 6: STEP 3 - Show SINGLE loading screen and load ALL game assets
+    console.log('🌲 Step 3: Loading game assets...');
     const loadingScreen = new LoadingScreen();
     await loadingScreen.show(); // Sets to 0% immediately
 
@@ -457,6 +516,8 @@ async function main() {
 
     const game = new Game();
     game.selectedCharacterId = selectedCharacterId;
+    game.sessionToken = sessionToken; // MVP 6: Pass session token
+    game.username = username; // MVP 6: Pass username
     await game.init(canvas, audioManager, settingsManager);
     game.start();
 

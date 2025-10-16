@@ -230,6 +230,43 @@
 
 ---
 
+## 🏆 MVP 9.5: Leaderboard Management & Polish
+
+**Goal**: Real leaderboard system with server persistence and management
+
+**Features**:
+- Server-side leaderboard storage (replace mock data)
+- Real-time score updates from all players
+- Persistent leaderboard across sessions
+- Top 10 players displayed
+- Player rank shown even if not in top 10
+- Username display (already implemented in MVP 6)
+
+**Management**:
+- Admin endpoint to reset leaderboard
+- Leaderboard archives (daily/weekly/all-time)
+- Anti-cheat: Server-side score validation
+- Rate limiting on score updates
+
+**Polish**:
+- Smooth score animations
+- Rank change indicators (↑↓)
+- Player highlighting in leaderboard
+- Medal icons for top 3 players
+
+**Deferred from MVP 6**:
+- MVP 6 implemented username display in leaderboard
+- MVP 6 implemented username labels for remote players
+- MVP 6 implemented "username - Character" format for connection messages
+
+**Success**:
+- Leaderboard persists across server restarts
+- Scores update in real-time for all players
+- Admin can reset/manage leaderboard
+- No cheating via client-side score manipulation
+
+---
+
 ## 🐺 MVP 10: Predators & Polish
 
 **Goal**: Add predators, power-ups, final polish
@@ -355,6 +392,9 @@ Triple-purpose walnuts (score/throw/eat), 100 HP system, 10-walnut inventory, T/
 
 ### MVP 9: Advanced Animation & Visual Polish (Optional)
 AAA polish: Hermite interpolation, narrator voiceover, NPC voices. Optional. (TBD)
+
+### MVP 9.5: Leaderboard Management & Polish
+Real server-side leaderboard with persistence, admin management, anti-cheat validation. (TBD)
 
 ### MVP 10: Predators & Polish
 Hawks/wolves as threats, power-ups (Scent/Fast Dig/Decoy), weather effects. (TBD)

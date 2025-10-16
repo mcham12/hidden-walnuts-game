@@ -118,6 +118,53 @@ export class WelcomeScreen {
   }
 
   /**
+   * MVP 6: Show "Welcome Back" message for returning users
+   * Auto-continues after 2 seconds or on button click
+   */
+  async showWelcomeBack(username: string): Promise<void> {
+    if (!this.container) return;
+
+    // Update HTML to show welcome back message
+    const welcomeContent = this.container.querySelector('.welcome-content');
+    if (welcomeContent) {
+      welcomeContent.innerHTML = `
+        <div class="welcome-text">
+          <h1 class="welcome-title">Welcome Back!</h1>
+          <p class="welcome-tagline">Hey <strong>${username}</strong>, ready for more adventure?</p>
+        </div>
+        <button id="welcome-continue-button" class="welcome-button">
+          Continue to Forest
+        </button>
+      `;
+    }
+
+    // Show with fade in
+    this.container.style.opacity = '0';
+    this.container.style.display = 'flex';
+
+    requestAnimationFrame(() => {
+      if (this.container) {
+        this.container.style.transition = 'opacity 0.5s ease-in';
+        this.container.style.opacity = '1';
+      }
+    });
+
+    // Auto-continue after 2 seconds OR click button
+    return new Promise((resolve) => {
+      const button = document.getElementById('welcome-continue-button');
+
+      const continueToGame = () => {
+        clearTimeout(timeout);
+        button?.removeEventListener('click', continueToGame);
+        resolve();
+      };
+
+      const timeout = setTimeout(continueToGame, 2000);
+      button?.addEventListener('click', continueToGame);
+    });
+  }
+
+  /**
    * Hide welcome screen with fade out
    */
   async hide(): Promise<void> {

@@ -8,7 +8,8 @@ export interface EnvWithBindings {
   SQUIRREL: DurableObjectNamespace;
   WALNUTS: DurableObjectNamespace;
   LEADERBOARD: DurableObjectNamespace;
-  
+  PLAYER_IDENTITY: DurableObjectNamespace; // MVP 6: Player identity management
+
   // Environment variables from wrangler.toml
   ENVIRONMENT: string;
   CYCLE_DURATION_SECONDS: string;

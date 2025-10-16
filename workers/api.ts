@@ -8,9 +8,10 @@ import ForestManager from "./objects/ForestManager";
 import SquirrelSession from "./objects/SquirrelSession";
 import WalnutRegistry from "./objects/WalnutRegistry";
 import Leaderboard from "./objects/Leaderboard";
+import { PlayerIdentity } from "./objects/PlayerIdentity";
 
 // Export the Durable Objects so they can be used by the worker
-export { ForestManager, SquirrelSession, WalnutRegistry, Leaderboard };
+export { ForestManager, SquirrelSession, WalnutRegistry, Leaderboard, PlayerIdentity };
 
 // Cloudflare Workers ExecutionContext type
 interface ExecutionContext {
@@ -54,6 +55,34 @@ export default {
         // Forward the WebSocket request to the ForestManager DO
         const forest = getObjectInstance(env, "forest", "daily-forest");
         return forest.fetch(request);
+      }
+
+      // MVP 6: Handle /api/identity routes (player identity management)
+      if (pathname.startsWith("/api/identity")) {
+        const sessionToken = url.searchParams.get('sessionToken');
+
+        if (!sessionToken) {
+          return new Response(JSON.stringify({ error: 'Missing sessionToken' }), {
+            status: 400,
+            headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Get PlayerIdentity Durable Object instance (one per sessionToken)
+        const id = env.PLAYER_IDENTITY.idFromName(sessionToken);
+        const stub = env.PLAYER_IDENTITY.get(id);
+
+        // Forward request to PlayerIdentity DO
+        const response = await stub.fetch(request);
+
+        // Add CORS headers
+        return new Response(response.body, {
+          status: response.status,
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "application/json"
+          }
+        });
       }
 
       // Handle /join route
