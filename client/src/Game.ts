@@ -448,8 +448,8 @@ export class Game {
       console.log(`📏 Local player ${this.selectedCharacterId}: groundOffset = ${this.characterGroundOffset.toFixed(2)}, box.min.y = ${box.min.y.toFixed(2)}, scale = ${char.scale}`);
 
       this.setAction('idle');
-      // STANDARD: Use raycasting for ground positioning (same as remote players)
-      this.character.position.y = this.positionCharacterOnGround(this.character, this.character.position.x, this.character.position.z);
+      // STANDARD: Use heightmap for local player ground positioning
+      this.character.position.y = this.positionLocalPlayerOnGround();
     } catch (error) {
       console.error('❌ CRITICAL: Character loading failed:', error);
       console.error('❌ Game will not function properly without character');
@@ -950,8 +950,8 @@ export class Game {
     if (this.isJumping) {
       this.velocity.y += this.gravity * delta;
       this.character.position.y += this.velocity.y * delta;
-      // STANDARD: Use raycasting to check ground position
-      const groundY = this.positionCharacterOnGround(this.character, this.character.position.x, this.character.position.z);
+      // STANDARD: Check ground position using heightmap
+      const groundY = this.positionLocalPlayerOnGround();
       if (this.character.position.y <= groundY) {
         this.character.position.y = groundY;
         this.isJumping = false;
@@ -1058,12 +1058,12 @@ export class Game {
     }
   }
 
-  // STANDARD: Snap character to ground using raycasting (same as remote players)
+  // STANDARD: Snap local player to ground using heightmap
   private snapToGround() {
     if (!this.character) return;
 
-    // Use raycasting for consistent ground positioning with remote players
-    this.character.position.y = this.positionCharacterOnGround(this.character, this.character.position.x, this.character.position.z);
+    // Use heightmap for fast local player ground positioning
+    this.character.position.y = this.positionLocalPlayerOnGround();
   }
 
   private updateCamera() {
@@ -1540,26 +1540,20 @@ export class Game {
 
       await Promise.all(remoteAnimationPromises);
 
-      // Calculate character bounding box for collision and ground positioning
+      // Calculate character bounding box for collision
       const box = new THREE.Box3().setFromObject(remoteCharacter);
       const size = box.getSize(new THREE.Vector3());
 
       // Calculate collision radius based on character size (use XZ plane for horizontal radius)
       const collisionRadius = Math.max(size.x, size.z) * 0.5;
 
-      // Calculate ground offset (same formula as local player)
-      const groundOffset = -box.min.y * char.scale + 0.3;
-
       // Store character metadata in userData
       remoteCharacter.userData.characterId = remoteCharacterId;
       remoteCharacter.userData.collisionRadius = collisionRadius;
-      remoteCharacter.userData.groundOffset = groundOffset;
       remoteCharacter.userData.size = size;
 
-      console.log(`📏 Remote player ${remoteCharacterId}: groundOffset = ${groundOffset.toFixed(2)}`);
-
       // STANDARD: Position character on ground using raycasting
-      const groundY = this.positionCharacterOnGround(remoteCharacter, position.x, position.z);
+      const groundY = this.positionRemotePlayerOnGround(remoteCharacter, position.x, position.z);
       remoteCharacter.position.set(position.x, groundY, position.z);
       const initialQuaternion = new THREE.Quaternion();
       initialQuaternion.setFromEuler(new THREE.Euler(0, rotationY, 0));
@@ -1612,7 +1606,7 @@ export class Game {
     const remotePlayer = this.remotePlayers.get(playerId);
     if (remotePlayer) {
       // STANDARD: Calculate ground position using raycasting
-      const groundY = this.positionCharacterOnGround(remotePlayer, position.x, position.z);
+      const groundY = this.positionRemotePlayerOnGround(remotePlayer, position.x, position.z);
 
       const newQuaternion = new THREE.Quaternion();
       newQuaternion.setFromEuler(new THREE.Euler(0, rotationY, 0));
@@ -1805,42 +1799,44 @@ export class Game {
   }
 
   /**
-   * STANDARD: Position character on ground using raycasting
-   * Raycasts downward to find terrain, positions character so feet touch ground
+   * STANDARD: Position LOCAL player on ground using heightmap
+   * Uses the pre-calculated characterGroundOffset
    */
-  private positionCharacterOnGround(character: THREE.Group, x: number, z: number): number {
-    // Get the character's ground offset (stored in userData or use local player's)
-    const groundOffset = character === this.character
-      ? this.characterGroundOffset
-      : (character.userData.groundOffset || this.characterGroundOffset);
+  private positionLocalPlayerOnGround(): number {
+    const x = this.character.position.x;
+    const z = this.character.position.z;
+    const y = getTerrainHeight(x, z) + this.characterGroundOffset;
+    console.log(`🎮 Local player ground: terrain=${getTerrainHeight(x, z).toFixed(2)}, offset=${this.characterGroundOffset.toFixed(2)}, final=${y.toFixed(2)}`);
+    return y;
+  }
 
+  /**
+   * STANDARD: Position REMOTE player on ground using raycasting
+   * Raycasts downward to find terrain, calculates feet offset from bounding box
+   */
+  private positionRemotePlayerOnGround(character: THREE.Group, x: number, z: number): number {
     if (!this.terrain) {
-      // Fallback to heightmap if terrain mesh not available
-      const fallbackY = getTerrainHeight(x, z) + groundOffset;
-      console.log(`⚠️ No terrain mesh, using heightmap: ${fallbackY.toFixed(2)}`);
-      return fallbackY;
+      return getTerrainHeight(x, z) + 0.3;
     }
 
+    // Get character's bounding box to find where feet are
+    const box = new THREE.Box3().setFromObject(character);
+    const feetOffset = -box.min.y + 0.3; // Distance from pivot to feet + safety margin
+
     // Raycast from above downward to find terrain
-    const rayOrigin = new THREE.Vector3(x, 100, z); // Start well above terrain
-    const rayDirection = new THREE.Vector3(0, -1, 0); // Point straight down
+    const rayOrigin = new THREE.Vector3(x, 100, z);
+    const rayDirection = new THREE.Vector3(0, -1, 0);
     this.raycaster.set(rayOrigin, rayDirection);
 
     const intersects = this.raycaster.intersectObject(this.terrain, false);
 
     if (intersects.length > 0) {
-      // Found terrain! Use the character's pre-calculated ground offset
       const groundY = intersects[0].point.y;
-      const finalY = groundY + groundOffset;
-
-      console.log(`✅ Raycast hit - groundY: ${groundY.toFixed(2)}, offset: ${groundOffset.toFixed(2)}, finalY: ${finalY.toFixed(2)}`);
-      return finalY;
+      return groundY + feetOffset;
     }
 
-    // Fallback to heightmap if raycast missed
-    const fallbackY = getTerrainHeight(x, z) + groundOffset;
-    console.log(`⚠️ Raycast missed, using heightmap: ${fallbackY.toFixed(2)}`);
-    return fallbackY;
+    // Fallback to heightmap
+    return getTerrainHeight(x, z) + feetOffset;
   }
 
   // Debug and utility methods
