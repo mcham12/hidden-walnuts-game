@@ -81,7 +81,7 @@ export default class ForestManager {
    */
   async alarm(): Promise<void> {
     const now = Date.now();
-    const DISCONNECT_TIMEOUT = 30 * 1000; // 30 seconds
+    const DISCONNECT_TIMEOUT = 60 * 1000; // 60 seconds (heartbeat is 30s, allow 2x buffer)
     const REMOVAL_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
     console.log(`⏰ Alarm: Checking ${this.activePlayers.size} players for disconnects...`);
@@ -98,7 +98,7 @@ export default class ForestManager {
           squirrelId: playerId
         });
       }
-      // Mark as disconnected if inactive for 30+ seconds (but not already disconnected)
+      // Mark as disconnected if inactive for 60+ seconds (but not already disconnected)
       else if (timeSinceActivity > DISCONNECT_TIMEOUT && !player.isDisconnected) {
         console.log(`⚠️ Marking player ${playerId} as disconnected (inactive for ${Math.round(timeSinceActivity / 1000)}s)`);
         player.isDisconnected = true;

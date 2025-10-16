@@ -1181,7 +1181,7 @@ export class Game {
   private startPositionUpdates(): void {
     this.positionSendInterval = window.setInterval(() => {
       this.sendPositionUpdate();
-    }, 50); // 20 updates per second - industry standard for smooth movement
+    }, 100); // 10 updates per second - optimized for Cloudflare free tier
   }
 
   private startHeartbeat(): void {
@@ -1189,7 +1189,7 @@ export class Game {
       // MVP 5.8: Send heartbeat for session management
       this.lastPingSent = performance.now();
       this.sendMessage({ type: 'heartbeat', timestamp: this.lastPingSent });
-    }, 10000); // Heartbeat every 10 seconds for session management
+    }, 30000); // Heartbeat every 30 seconds - optimized for Cloudflare free tier
   }
 
   private stopIntervals(): void {
