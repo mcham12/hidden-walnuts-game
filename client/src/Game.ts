@@ -436,11 +436,14 @@ export class Game {
       }
 
       // Use model's actual bounding box for accurate ground positioning and collision
+      // INDUSTRY STANDARD: Update transforms before calculating bounds
+      this.character.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(this.character);
       const size = box.getSize(new THREE.Vector3());
 
-      // Calculate ground offset (same formula as remote players)
-      this.characterGroundOffset = -box.min.y + 0.3;
+      // INDUSTRY STANDARD: Ground offset = distance from pivot to feet (no margin needed)
+      // Formula: position.y = groundY - box.min.y places feet exactly on ground
+      this.characterGroundOffset = -box.min.y;
 
       // Calculate collision radius based on character size (use XZ plane for horizontal radius)
       this.characterCollisionRadius = Math.max(size.x, size.z) * 0.5;
@@ -1541,14 +1544,17 @@ export class Game {
       await Promise.all(remoteAnimationPromises);
 
       // Calculate character bounding box for collision (in bind pose, before animations play)
+      // INDUSTRY STANDARD: Update transforms before calculating bounds
+      remoteCharacter.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(remoteCharacter);
       const size = box.getSize(new THREE.Vector3());
 
       // Calculate collision radius based on character size (use XZ plane for horizontal radius)
       const collisionRadius = Math.max(size.x, size.z) * 0.5;
 
-      // Calculate ground offset ONCE in bind pose (same formula that was working)
-      const remoteGroundOffset = -box.min.y + 0.3;
+      // INDUSTRY STANDARD: Ground offset = distance from pivot to feet (no margin)
+      // Formula: position.y = groundY - box.min.y places feet exactly on ground
+      const remoteGroundOffset = -box.min.y;
 
       // Store character metadata in userData
       remoteCharacter.userData.characterId = remoteCharacterId;
@@ -1820,7 +1826,7 @@ export class Game {
    */
   private positionRemotePlayerOnGround(character: THREE.Group, x: number, z: number): number {
     // Use stored ground offset (calculated once in bind pose)
-    const groundOffset = character.userData.groundOffset || 0.3;
+    const groundOffset = character.userData.groundOffset || 0;
 
     if (!this.terrain) {
       return getTerrainHeight(x, z) + groundOffset;
