@@ -1,6 +1,6 @@
 # 🎮 Hidden Walnuts - MVP Development Plan
 
-**Current Status**: MVP 5.9 (World Boundaries) - ✅ **COMPLETE**
+**Current Status**: MVP 6 (Player Authentication & Identity) - ✅ **COMPLETE**
 
 ---
 
@@ -17,6 +17,7 @@
 - **MVP 5.7**: Mobile/Touch Controls - Drag-to-move, iOS Safari audio, iPhone landscape fixes
 - **MVP 5.8**: Startup UX + Arrow Keys + Session Management - Welcome screen, arrow keys, heartbeat/disconnect system
 - **MVP 5.9**: World Boundaries - Soft push-back system with visual feedback
+- **MVP 6**: Player Authentication & Identity - Username system, session tokens, position persistence
 
 ---
 
@@ -107,41 +108,43 @@
 
 ---
 
-## 🔐 MVP 6: Player Authentication & Identity
+## 🔐 MVP 6: Player Authentication & Identity ✅ **COMPLETE**
 
 **Goal**: Simple username system for persistent identity
 
-**Features**:
-- Username picker on first launch
-- Stored in localStorage + server
-- Persistent across sessions
-- Position persistence (spawn at last location)
-- Leaderboard shows real usernames
-- Can change username (with cooldown)
+**Implemented**:
+- ✅ Username picker on first launch (PlayerIdentity Durable Object)
+- ✅ SessionManager with cookie + localStorage (30-day persistence)
+- ✅ Position persistence by sessionToken (spawn at last location)
+- ✅ Username system with collision handling
+- ✅ Leaderboard shows real usernames
+- ✅ Username change with cooldown (5 minutes)
 
-**Server**:
-- PlayerIdentity Durable Object
-- Username uniqueness check
-- Rate limiting on changes
-- Position storage by username
+**Server Architecture**:
+- PlayerIdentity Durable Object for username management
+- SessionToken = true identity (unique per browser)
+- Username = display name (can be shared, like Discord)
+- Position/character data tied to sessionToken (not username)
+- Rate limiting on username changes (5 min cooldown)
+
+**Critical Bugs Fixed**:
+- Position persistence server → client communication
+- Username collision design flaw (identity theft prevention)
+- Loading screen race condition (blank canvas)
+- Upside-down camera flash during spawn
+- Connection loop from spawn position race condition
+
+**Cleanup Completed**:
+- ✅ Removed ALL client-side debug logging (Game.ts, main.ts, SessionManager.ts)
+- ✅ Removed verbose loading logs (audio, models, walnuts)
+- ✅ Removed unused variables from build
+- ✅ Kept only console.error/warn for critical issues
 
 **What's Saved for Later**:
 - Passwords/email (see MVP 11)
 - Account recovery
 - OAuth
 - Cross-device sync
-
-**Success**:
-- Username system working
-- Persists across sessions
-- Returning users spawn at last position
-- Leaderboard shows usernames
-- Can change in settings
-
-**Cleanup (REQUIRED before completing MVP):**
-- Remove all debug console.log statements added during MVP 6
-- Keep only critical error logging (❌ prefix)
-- Search for: 📍, 💾, 🔍, 🎮 debug prefixes and remove
 
 ---
 
@@ -370,8 +373,8 @@
 | MVP | Focus | Status |
 |-----|-------|--------|
 | 1.5-5.9 | Core Game & Polish | ✅ Complete |
-| **6** | **Player Identity (Simple)** | 🎯 **NEXT** |
-| 7 | NPC Characters | Pending |
+| 6 | Player Identity (Simple) | ✅ Complete |
+| **7** | **NPC Characters** | 🎯 **NEXT** |
 | 8 | Combat & Health | Pending |
 | 9 | Animation Polish (Optional) | Pending |
 | 10 | Predators & Polish | Pending |
@@ -418,4 +421,4 @@ Remove unused ECS code. Do last when features stable. (TBD)
 
 ---
 
-**Next Step**: Begin MVP 5.8 implementation 🚀
+**Next Step**: Begin MVP 7 (NPC Characters) 🐿️
