@@ -1535,28 +1535,8 @@ export class Game {
 
       await Promise.all(remoteAnimationPromises);
 
-      // BUGFIX: Calculate character-specific ground offset (same as local player)
-      // Different characters have different sizes - must calculate offset from bounding box
-      const box = new THREE.Box3().setFromObject(remoteCharacter);
-      const remoteGroundOffset = -box.min.y * char.scale + 0.3;
-
-      // Store ground offset in userData for later use
-      remoteCharacter.userData.groundOffset = remoteGroundOffset;
-
-      console.log(`📏 REMOTE PLAYER ${playerId} (${remoteCharacterId}):`);
-      console.log(`   - Scale: ${char.scale}`);
-      console.log(`   - BBox min.y: ${box.min.y.toFixed(3)}`);
-      console.log(`   - BBox max.y: ${box.max.y.toFixed(3)}`);
-      console.log(`   - Calculated ground offset: ${remoteGroundOffset.toFixed(3)}`);
-      console.log(`   - Formula: -${box.min.y.toFixed(3)} * ${char.scale} + 0.3 = ${remoteGroundOffset.toFixed(3)}`);
-
-      // BUGFIX: Set initial position using local terrain height (industry standard)
-      // Don't trust networked Y position - calculate locally to prevent floating
-      const terrainHeight = getTerrainHeight(position.x, position.z);
-      const terrainY = terrainHeight + remoteGroundOffset;
-      remoteCharacter.position.set(position.x, terrainY, position.z);
-      console.log(`   - Terrain height: ${terrainHeight.toFixed(3)}`);
-      console.log(`   - Final Y position: ${terrainY.toFixed(3)}`);
+      // STANDARD: Use server position directly (server is authoritative for remote players)
+      remoteCharacter.position.set(position.x, position.y, position.z);
       const initialQuaternion = new THREE.Quaternion();
       initialQuaternion.setFromEuler(new THREE.Euler(0, rotationY, 0));
       remoteCharacter.quaternion.copy(initialQuaternion);
@@ -1568,8 +1548,8 @@ export class Game {
 
       // INDUSTRY STANDARD: Initialize interpolation buffer for newly created player
       const initialState = {
-        position: new THREE.Vector3(position.x, terrainY, position.z),
-        quaternion: initialQuaternion.clone(), // Use the same quaternion from character setup
+        position: new THREE.Vector3(position.x, position.y, position.z),
+        quaternion: initialQuaternion.clone(),
         velocity: new THREE.Vector3(0, 0, 0),
         timestamp: Date.now()
       };
@@ -1598,16 +1578,11 @@ export class Game {
   private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, _moveType?: string, characterId?: string): void {
     const remotePlayer = this.remotePlayers.get(playerId);
     if (remotePlayer) {
-      // BUGFIX: Calculate correct terrain Y using character-specific ground offset
-      // Industry standard: Don't trust networked Y, calculate locally
-      const groundOffset = remotePlayer.userData.groundOffset || 0.3; // Fallback to 0.3 if not set
-      const terrainY = getTerrainHeight(position.x, position.z) + groundOffset;
-
-      // ENTITY INTERPOLATION: Add new state to buffer for smooth interpolation
+      // STANDARD: Use server position directly (server authoritative)
       const newQuaternion = new THREE.Quaternion();
       newQuaternion.setFromEuler(new THREE.Euler(0, rotationY, 0));
       const newState = {
-        position: new THREE.Vector3(position.x, terrainY, position.z),
+        position: new THREE.Vector3(position.x, position.y, position.z),
         quaternion: newQuaternion.clone(),
         velocity: velocity ? new THREE.Vector3(velocity.x, velocity.y, velocity.z) : new THREE.Vector3(0, 0, 0),
         timestamp: Date.now()
