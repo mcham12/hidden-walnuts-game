@@ -2062,6 +2062,11 @@ export class Game {
       npcNameLabel.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
       this.npcNameLabels.set(npcId, npcNameLabel);
 
+      // Add label to DOM
+      if (this.labelsContainer) {
+        this.labelsContainer.appendChild(npcNameLabel);
+      }
+
       console.log(`🤖 Created NPC: ${username} (${characterId}) at (${position.x.toFixed(1)}, ${position.z.toFixed(1)})`);
     } catch (error) {
       console.error('❌ Failed to create NPC:', npcId, error);
