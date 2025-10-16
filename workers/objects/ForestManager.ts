@@ -322,7 +322,8 @@ export default class ForestManager {
       });
     } else {
       // New player connection
-      const savedPosition = await this.loadPlayerPosition(squirrelId);
+      // MVP 6: Load position by username (persists across sessions), not squirrelId (changes each session)
+      const savedPosition = await this.loadPlayerPosition(username);
 
       const playerConnection: PlayerConnection = {
         squirrelId,
@@ -417,9 +418,9 @@ export default class ForestManager {
         if (typeof data.rotationY === 'number') {
           playerConnection.rotationY = data.rotationY;
         }
-        
-        // Save position
-        await this.savePlayerPosition(playerConnection.squirrelId, playerConnection.position);
+
+        // MVP 6: Save position by username (persists across sessions), not squirrelId
+        await this.savePlayerPosition(playerConnection.username, playerConnection.position);
         
         // INDUSTRY STANDARD: Forward animation state with timing for multiplayer sync
         console.log(`🚀 SERVER DEBUG: Forwarding animation '${data.animation}' with start time to other clients`);
@@ -825,25 +826,25 @@ export default class ForestManager {
     return objects;
   }
 
-  // Simple player position management
-  private async loadPlayerPosition(squirrelId: string): Promise<{ x: number; y: number; z: number } | null> {
+  // MVP 6: Player position management (by username for persistence across sessions)
+  private async loadPlayerPosition(username: string): Promise<{ x: number; y: number; z: number } | null> {
     try {
-      const savedData = await this.storage.get<{ position: { x: number; y: number; z: number } }>(`player:${squirrelId}`);
+      const savedData = await this.storage.get<{ position: { x: number; y: number; z: number } }>(`player:${username}`);
       return savedData?.position || null;
     } catch (error) {
-      console.error(`Failed to load position for ${squirrelId}:`, error);
+      console.error(`Failed to load position for ${username}:`, error);
       return null;
     }
   }
 
-  private async savePlayerPosition(squirrelId: string, position: { x: number; y: number; z: number }): Promise<void> {
+  private async savePlayerPosition(username: string, position: { x: number; y: number; z: number }): Promise<void> {
     try {
-      await this.storage.put(`player:${squirrelId}`, {
+      await this.storage.put(`player:${username}`, {
         position,
         lastUpdate: Date.now()
       });
     } catch (error) {
-      console.error(`Failed to save position for ${squirrelId}:`, error);
+      console.error(`Failed to save position for ${username}:`, error);
     }
   }
 
