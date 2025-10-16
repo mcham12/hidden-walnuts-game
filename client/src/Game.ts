@@ -57,6 +57,13 @@ export class Game {
   private terrain: THREE.Mesh | null = null;
   private raycaster = new THREE.Raycaster();
 
+  // MVP 5.9: World boundaries (soft push-back system)
+  private readonly WORLD_RADIUS = 200; // Terrain is 400x400 (-200 to 200 on X and Z)
+  private readonly BOUNDARY_PUSH_ZONE = 10; // Start pushing 10 units from edge
+  private readonly BOUNDARY_PUSH_STRENGTH = 8; // Push force (units per second)
+  private boundaryWarningElement: HTMLElement | null = null;
+  private boundaryVignetteElement: HTMLElement | null = null;
+
   // Multiplayer properties
   private websocket: WebSocket | null = null;
   private playerId: string = '';
@@ -989,6 +996,9 @@ export class Game {
 
     this.character.position.copy(collisionResult.position);
 
+    // MVP 5.9: Apply soft boundary push-back (prevent falling off world edge)
+    this.applyBoundaryPushBack(delta);
+
     // Update actual velocity (units per second) for accurate network transmission
     this.actualVelocity.x = this.velocity.x;
     this.actualVelocity.y = this.velocity.y;
@@ -1862,6 +1872,126 @@ export class Game {
 
     // Fallback to heightmap
     return getTerrainHeight(x, z) + groundOffset;
+  }
+
+  /**
+   * MVP 5.9: Apply soft boundary push-back (prevents walking off world edge)
+   * INDUSTRY STANDARD: Gradual push toward center (no jarring collision)
+   */
+  private applyBoundaryPushBack(delta: number): void {
+    if (!this.character) return;
+
+    const pos = this.character.position;
+    const distanceFromCenter = Math.sqrt(pos.x * pos.x + pos.z * pos.z);
+    const pushStartDistance = this.WORLD_RADIUS - this.BOUNDARY_PUSH_ZONE;
+
+    // Check if player is in push zone
+    if (distanceFromCenter > pushStartDistance) {
+      // Calculate push strength (0 at start of zone, 1 at edge)
+      const pushProgress = (distanceFromCenter - pushStartDistance) / this.BOUNDARY_PUSH_ZONE;
+      const pushStrength = Math.min(1, pushProgress); // Clamp to [0, 1]
+
+      // Calculate direction from player to center
+      const angle = Math.atan2(pos.z, pos.x);
+      const pushForce = this.BOUNDARY_PUSH_STRENGTH * pushStrength * delta;
+
+      // Push toward center
+      pos.x -= Math.cos(angle) * pushForce;
+      pos.z -= Math.sin(angle) * pushForce;
+
+      // Update visual feedback
+      this.updateBoundaryWarning(pushStrength);
+    } else {
+      // Hide warning when not near boundary
+      this.updateBoundaryWarning(0);
+    }
+  }
+
+  /**
+   * MVP 5.9: Update boundary warning visual feedback
+   * Shows vignette and message when approaching edge
+   */
+  private updateBoundaryWarning(intensity: number): void {
+    // Create elements on first use
+    if (!this.boundaryVignetteElement) {
+      this.createBoundaryWarningElements();
+    }
+
+    if (!this.boundaryVignetteElement || !this.boundaryWarningElement) return;
+
+    if (intensity > 0) {
+      // Show and update intensity
+      const opacity = Math.min(0.6, intensity * 0.6); // Max 60% opacity
+      this.boundaryVignetteElement.style.opacity = opacity.toString();
+      this.boundaryVignetteElement.style.display = 'block';
+
+      // Show warning text when getting close (>50% into push zone)
+      if (intensity > 0.5) {
+        this.boundaryWarningElement.style.opacity = ((intensity - 0.5) * 2).toString();
+        this.boundaryWarningElement.style.display = 'block';
+      } else {
+        this.boundaryWarningElement.style.display = 'none';
+      }
+    } else {
+      // Hide everything
+      this.boundaryVignetteElement.style.display = 'none';
+      this.boundaryWarningElement.style.display = 'none';
+    }
+  }
+
+  /**
+   * MVP 5.9: Create boundary warning UI elements
+   */
+  private createBoundaryWarningElements(): void {
+    // Create vignette overlay
+    this.boundaryVignetteElement = document.createElement('div');
+    this.boundaryVignetteElement.id = 'boundary-vignette';
+    this.boundaryVignetteElement.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 500;
+      display: none;
+      background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.8) 100%);
+    `;
+    document.body.appendChild(this.boundaryVignetteElement);
+
+    // Create warning text
+    this.boundaryWarningElement = document.createElement('div');
+    this.boundaryWarningElement.id = 'boundary-warning';
+    this.boundaryWarningElement.textContent = '⚠️ Turn Back';
+    this.boundaryWarningElement.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #ff4444;
+      font-size: 32px;
+      font-weight: bold;
+      font-family: Arial, sans-serif;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+      pointer-events: none;
+      z-index: 501;
+      display: none;
+      animation: pulse 1s ease-in-out infinite;
+    `;
+    document.body.appendChild(this.boundaryWarningElement);
+
+    // Add pulse animation if not already present
+    if (!document.getElementById('boundary-animation-style')) {
+      const style = document.createElement('style');
+      style.id = 'boundary-animation-style';
+      style.textContent = `
+        @keyframes pulse {
+          0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+          50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
   }
 
   // Debug and utility methods
