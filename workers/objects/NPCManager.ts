@@ -618,7 +618,7 @@ export class NPCManager {
         walnutId: walnut.id,
         finderId: npc.id,
         finderName: npc.username,
-        points: walnut.origin === 'game' ? 5 : (walnut.hiddenIn === 'buried' ? 3 : 1),
+        points: walnut.origin === 'game' ? 5 : 1,
         isNPC: true
       });
 

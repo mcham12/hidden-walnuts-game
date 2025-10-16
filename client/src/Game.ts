@@ -109,6 +109,14 @@ export class Game {
 
   // MVP 6: Remote player username labels (Map playerId → HTML label element)
   private remotePlayerNameLabels: Map<string, HTMLElement> = new Map();
+
+  // MVP 7: NPC System - AI characters rendered on client
+  private npcs: Map<string, THREE.Group> = new Map();
+  private npcMixers: Map<string, THREE.AnimationMixer> = new Map();
+  private npcActions: Map<string, { [key: string]: THREE.AnimationAction }> = new Map();
+  private npcNameLabels: Map<string, HTMLElement> = new Map();
+  private npcInterpolationBuffers: Map<string, Array<{ position: THREE.Vector3; quaternion: THREE.Quaternion; timestamp: number }>> = new Map();
+
   private idleVariationInterval: number = 10000; // 10 seconds between idle variations
   private availableIdleAnimations: string[] = ['idle', 'idle_b', 'idle_c'];
   private isPlayingOneShotAnimation: boolean = false;
@@ -769,8 +777,16 @@ export class Game {
       mixer.update(delta);
     }
 
+    // MVP 7: Update NPC animations
+    for (const mixer of this.npcMixers.values()) {
+      mixer.update(delta);
+    }
+
     // Update remote player interpolation
     this.updateRemotePlayerInterpolation(delta);
+
+    // MVP 7: Update NPC interpolation
+    this.updateNPCInterpolation(delta);
 
     // MVP 3: Animate walnuts
     this.animateWalnuts(delta);
@@ -793,6 +809,9 @@ export class Game {
 
     // MVP 6: Update remote player username labels
     this.updateRemotePlayerNameLabels();
+
+    // MVP 7: Update NPC name labels
+    this.updateNPCNameLabels();
 
     // MVP 3: Update proximity indicators
     this.updateProximityIndicators();
@@ -1456,6 +1475,34 @@ export class Game {
         }
         break;
 
+      case 'npc_spawned':
+        // MVP 7: NPC spawned on server, create NPC entity on client
+        if (data.npc && data.npc.id) {
+          this.createNPC(data.npc.id, data.npc.position, data.npc.rotationY, data.npc.characterId, data.npc.username, data.npc.animation);
+        }
+        break;
+
+      case 'npc_update':
+        // MVP 7: NPC position/animation update from server
+        if (data.npcId) {
+          this.updateNPC(data.npcId, data.position, data.rotationY, data.animation, data.velocity, data.behavior);
+        }
+        break;
+
+      case 'npc_despawned':
+        // MVP 7: NPC despawned on server, remove from client
+        if (data.npcId) {
+          this.removeNPC(data.npcId);
+        }
+        break;
+
+      case 'npc_throw':
+        // MVP 7: NPC threw walnut, spawn projectile animation
+        if (data.npcId && data.fromPosition && data.toPosition) {
+          this.handleNPCThrow(data.npcId, data.fromPosition, data.toPosition, data.targetId);
+        }
+        break;
+
       case 'pong':
         // MVP 5: Calculate network latency from ping/pong
         if (data.timestamp && this.lastPingSent > 0) {
@@ -1736,6 +1783,67 @@ export class Game {
     }
   }
 
+  /**
+   * MVP 7: Buffered interpolation for NPCs (same as remote players)
+   */
+  private updateNPCInterpolation(_deltaTime: number): void {
+    const currentTime = Date.now();
+    const renderTime = currentTime - this.INTERPOLATION_DELAY;
+
+    for (const [npcId, buffer] of this.npcInterpolationBuffers) {
+      const npc = this.npcs.get(npcId);
+      if (!npc || buffer.length < 1) continue;
+
+      // Single state - use it directly
+      if (buffer.length === 1) {
+        const state = buffer[0];
+        npc.position.lerp(state.position, 0.3);
+        npc.quaternion.slerp(state.quaternion, 0.3);
+        continue;
+      }
+
+      // Find two states to interpolate between
+      let fromState = buffer[0];
+      let toState = buffer[buffer.length - 1];
+
+      for (let i = 0; i < buffer.length - 1; i++) {
+        if (buffer[i].timestamp <= renderTime && buffer[i + 1].timestamp >= renderTime) {
+          fromState = buffer[i];
+          toState = buffer[i + 1];
+          break;
+        }
+      }
+
+      // Calculate interpolation factor
+      const timeDelta = toState.timestamp - fromState.timestamp;
+      let t = 0;
+
+      if (timeDelta > 0) {
+        t = (renderTime - fromState.timestamp) / timeDelta;
+        t = Math.max(0, Math.min(1, t));
+      }
+
+      // Interpolate position and rotation
+      npc.position.lerpVectors(fromState.position, toState.position, t);
+      npc.quaternion.slerpQuaternions(fromState.quaternion, toState.quaternion, t);
+    }
+  }
+
+  /**
+   * MVP 7: Update NPC name labels (position above NPC heads)
+   */
+  private updateNPCNameLabels(): void {
+    for (const [npcId, label] of this.npcNameLabels) {
+      const npc = this.npcs.get(npcId);
+      if (npc) {
+        // Position label above NPC's head (2.5 units up, same as players)
+        const labelPos = npc.position.clone();
+        labelPos.y += 2.5;
+        this.updateLabelPosition(label, labelPos);
+      }
+    }
+  }
+
   private removeRemotePlayer(playerId: string): void {
     const remotePlayer = this.remotePlayers.get(playerId);
     if (remotePlayer) {
@@ -1836,6 +1944,241 @@ export class Game {
       const characterId = remotePlayer.userData?.characterId || 'Player';
       const characterName = characterId.charAt(0).toUpperCase() + characterId.slice(1);
       this.toastManager.success(`${characterName} reconnected`);
+    }
+  }
+
+  /**
+   * MVP 7: Create NPC entity on client (server-spawned AI character)
+   */
+  private async createNPC(npcId: string, position: { x: number; y: number; z: number }, rotationY: number, characterId: string, username: string, animation: string): Promise<void> {
+    if (this.npcs.has(npcId)) {
+      // NPC already exists, just update position
+      this.updateNPC(npcId, position, rotationY, animation, undefined, undefined);
+      return;
+    }
+
+    try {
+      // Load character model (same as remote players)
+      const char = this.characters.find(c => c.id === characterId);
+      if (!char) {
+        console.error('❌ Character config not found for NPC:', characterId);
+        return;
+      }
+
+      const npcCharacter = await this.loadCachedAsset(char.modelPath);
+      if (!npcCharacter) {
+        console.error('❌ Failed to load NPC model');
+        return;
+      }
+
+      // NPCs keep full brightness (unlike remote players which are darkened)
+      npcCharacter.scale.set(char.scale, char.scale, char.scale);
+      npcCharacter.castShadow = true;
+
+      // Load animations
+      const npcMixer = new THREE.AnimationMixer(npcCharacter);
+      const npcActions: { [key: string]: THREE.AnimationAction } = {};
+
+      const npcAnimationPromises = Object.entries(char.animations).map(async ([name, path]) => {
+        try {
+          const clip = await this.loadCachedAnimation(path);
+          if (clip) {
+            npcActions[name] = npcMixer.clipAction(clip);
+            return { name, success: true };
+          } else {
+            console.error(`❌ Failed to load NPC animation ${name}: clip not found`);
+            return { name, success: false };
+          }
+        } catch (error) {
+          console.error(`❌ Failed to load NPC animation ${name}:`, error);
+          return { name, success: false };
+        }
+      });
+
+      await Promise.all(npcAnimationPromises);
+
+      // Calculate character bounding box
+      npcCharacter.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(npcCharacter);
+      const size = box.getSize(new THREE.Vector3());
+      const collisionRadius = Math.max(size.x, size.z) * 0.5;
+      const npcGroundOffset = -box.min.y;
+
+      // Store metadata
+      npcCharacter.userData.characterId = characterId;
+      npcCharacter.userData.collisionRadius = collisionRadius;
+      npcCharacter.userData.size = size;
+      npcCharacter.userData.groundOffset = npcGroundOffset;
+      npcCharacter.userData.isNPC = true; // Mark as NPC
+
+      // Position on ground
+      const groundY = this.positionRemotePlayerOnGround(npcCharacter, position.x, position.z);
+      npcCharacter.position.set(position.x, groundY, position.z);
+      const initialQuaternion = new THREE.Quaternion();
+      initialQuaternion.setFromEuler(new THREE.Euler(0, rotationY, 0));
+      npcCharacter.quaternion.copy(initialQuaternion);
+
+      // Ensure visibility
+      npcCharacter.visible = true;
+      npcCharacter.traverse((child: any) => {
+        child.visible = true;
+        if (child.isMesh) {
+          child.frustumCulled = true;
+        }
+      });
+
+      // Store NPC data
+      this.npcs.set(npcId, npcCharacter);
+      this.npcMixers.set(npcId, npcMixer);
+      this.npcActions.set(npcId, npcActions);
+
+      // Initialize interpolation buffer
+      const initialState = {
+        position: new THREE.Vector3(position.x, groundY, position.z),
+        quaternion: initialQuaternion.clone(),
+        timestamp: Date.now()
+      };
+      this.npcInterpolationBuffers.set(npcId, [initialState]);
+
+      // Start with animation
+      if (npcActions[animation]) {
+        npcActions[animation].play();
+      } else if (npcActions['idle']) {
+        npcActions['idle'].play();
+      }
+
+      this.scene.add(npcCharacter);
+
+      // MVP 7: Create NPC name label with cyan/yellow color + italic styling
+      const npcNameLabel = this.createLabel(username, '#00FFFF'); // Cyan color
+      npcNameLabel.style.background = 'linear-gradient(90deg, rgba(0,255,255,0.8), rgba(255,255,0,0.8))'; // Cyan to yellow gradient
+      npcNameLabel.style.padding = '4px 10px';
+      npcNameLabel.style.borderRadius = '12px';
+      npcNameLabel.style.fontSize = '13px';
+      npcNameLabel.style.fontWeight = 'bold';
+      npcNameLabel.style.fontStyle = 'italic'; // Italic for NPCs
+      npcNameLabel.style.whiteSpace = 'nowrap';
+      npcNameLabel.style.pointerEvents = 'none';
+      npcNameLabel.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+      this.npcNameLabels.set(npcId, npcNameLabel);
+
+      console.log(`🤖 Created NPC: ${username} (${characterId}) at (${position.x.toFixed(1)}, ${position.z.toFixed(1)})`);
+    } catch (error) {
+      console.error('❌ Failed to create NPC:', npcId, error);
+    }
+  }
+
+  /**
+   * MVP 7: Update NPC position and animation from server
+   */
+  private updateNPC(npcId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, _velocity?: { x: number; z: number }, _behavior?: string): void {
+    const npc = this.npcs.get(npcId);
+    if (npc) {
+      // Calculate ground position
+      const groundY = this.positionRemotePlayerOnGround(npc, position.x, position.z);
+
+      const newQuaternion = new THREE.Quaternion();
+      newQuaternion.setFromEuler(new THREE.Euler(0, rotationY, 0));
+      const newState = {
+        position: new THREE.Vector3(position.x, groundY, position.z),
+        quaternion: newQuaternion.clone(),
+        timestamp: Date.now()
+      };
+
+      // Get or create buffer
+      let buffer = this.npcInterpolationBuffers.get(npcId);
+      if (!buffer) {
+        buffer = [];
+        this.npcInterpolationBuffers.set(npcId, buffer);
+      }
+
+      // Add new state and maintain buffer
+      buffer.push(newState);
+
+      // Remove old states
+      const cutoffTime = newState.timestamp - (this.INTERPOLATION_DELAY + 100);
+      while (buffer.length > 2 && buffer[0].timestamp < cutoffTime) {
+        buffer.shift();
+      }
+
+      // Safety: limit buffer size
+      while (buffer.length > this.MAX_BUFFER_SIZE) {
+        buffer.shift();
+      }
+
+      // Update animation if provided
+      if (animation) {
+        const actions = this.npcActions.get(npcId);
+        if (actions && actions[animation]) {
+          // Stop current animation
+          Object.values(actions).forEach(action => action.stop());
+          // Play new animation
+          actions[animation].reset().play();
+        }
+      }
+    } else {
+      console.warn(`⚠️ Received update for unknown NPC ${npcId}, ignoring`);
+    }
+  }
+
+  /**
+   * MVP 7: Remove NPC from client (server despawn)
+   */
+  private removeNPC(npcId: string): void {
+    const npc = this.npcs.get(npcId);
+    if (npc) {
+      // Clean up geometry and materials
+      npc.traverse((child: any) => {
+        if (child.isMesh) {
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach((mat: any) => mat.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        }
+      });
+
+      this.scene.remove(npc);
+      this.npcs.delete(npcId);
+
+      // Clean up animation system
+      this.npcMixers.delete(npcId);
+      this.npcActions.delete(npcId);
+
+      // Clean up interpolation buffer
+      this.npcInterpolationBuffers.delete(npcId);
+
+      // Remove name label
+      const nameLabel = this.npcNameLabels.get(npcId);
+      if (nameLabel && this.labelsContainer) {
+        this.labelsContainer.removeChild(nameLabel);
+        this.npcNameLabels.delete(npcId);
+      }
+
+      console.log(`🤖 Removed NPC: ${npcId}`);
+    }
+  }
+
+  /**
+   * MVP 7: Handle NPC throwing walnut at target
+   */
+  private handleNPCThrow(npcId: string, fromPosition: { x: number; y: number; z: number }, toPosition: { x: number; y: number; z: number }, targetId: string): void {
+    const npc = this.npcs.get(npcId);
+    if (npc) {
+      // Play throw animation if available
+      const actions = this.npcActions.get(npcId);
+      if (actions && actions['throw']) {
+        actions['throw'].reset().play();
+      }
+
+      // TODO: Spawn walnut projectile visual (placeholder for now)
+      console.log(`🤖 NPC ${npcId} threw walnut at ${targetId} from (${fromPosition.x.toFixed(1)}, ${fromPosition.z.toFixed(1)}) to (${toPosition.x.toFixed(1)}, ${toPosition.z.toFixed(1)})`);
+
+      // Future: Create walnut mesh, animate trajectory from fromPosition to toPosition
+      // For now, we'll just log the event
     }
   }
 
