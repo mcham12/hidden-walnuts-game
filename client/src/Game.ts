@@ -58,6 +58,8 @@ export class Game {
   // MVP 6: Spawn coordination - prevent character updates until spawn position received from server
   // This fixes race condition where render loop starts before world_state arrives
   private spawnPositionReceived: boolean = false;
+  private pendingSpawnPosition: { x: number; y: number; z: number } | null = null;
+  private pendingSpawnRotationY: number | null = null;
 
   // STANDARD: Terrain and raycasting for ground detection
   private terrain: THREE.Mesh | null = null;
@@ -469,6 +471,23 @@ export class Game {
       // MVP 6: DON'T position character here - wait for spawn position from server
       // Character stays at (0, 0, 0) until world_state message arrives with spawn position
       // this.character.position.y = this.positionLocalPlayerOnGround(); // REMOVED - causes race condition
+
+      // MVP 6: Check if spawn position arrived before character finished loading
+      if (this.pendingSpawnPosition) {
+        console.log(`✅ Applying pending spawn position:`, this.pendingSpawnPosition);
+        this.character.position.set(
+          this.pendingSpawnPosition.x,
+          this.pendingSpawnPosition.y,
+          this.pendingSpawnPosition.z
+        );
+        if (this.pendingSpawnRotationY !== null) {
+          this.character.rotation.y = this.pendingSpawnRotationY;
+        }
+        this.pendingSpawnPosition = null;
+        this.pendingSpawnRotationY = null;
+        this.spawnPositionReceived = true;
+        console.log(`✅ Character updates now enabled (pending spawn applied)`);
+      }
     } catch (error) {
       console.error('❌ CRITICAL: Character loading failed:', error);
       console.error('❌ Game will not function properly without character');
@@ -1166,6 +1185,14 @@ export class Game {
         // Start position updates and heartbeat
         this.startPositionUpdates();
         this.startHeartbeat();
+
+        // MVP 6: Safety fallback - if spawn position never arrives within 5 seconds, enable movement anyway
+        setTimeout(() => {
+          if (!this.spawnPositionReceived) {
+            console.warn(`⚠️ Spawn position not received within 5s - enabling movement as fallback`);
+            this.spawnPositionReceived = true;
+          }
+        }, 5000);
       };
       
       this.websocket.onmessage = (event) => {
@@ -1391,23 +1418,33 @@ export class Game {
           console.log(`🔍 DEBUG CLIENT: Character current position before spawn:`, JSON.stringify({x: this.character.position.x, y: this.character.position.y, z: this.character.position.z}));
         }
 
-        if (data.spawnPosition && this.character) {
-          console.log(`🎯 Spawning at saved position:`, data.spawnPosition);
-          this.character.position.set(
-            data.spawnPosition.x,
-            data.spawnPosition.y,
-            data.spawnPosition.z
-          );
-          if (typeof data.spawnRotationY === 'number') {
-            this.character.rotation.y = data.spawnRotationY;
-          }
-          console.log(`🔍 DEBUG CLIENT: Character position AFTER spawn:`, JSON.stringify({x: this.character.position.x, y: this.character.position.y, z: this.character.position.z}));
+        if (data.spawnPosition) {
+          if (this.character) {
+            // Character exists - apply spawn position immediately
+            console.log(`🎯 Spawning at saved position:`, data.spawnPosition);
+            this.character.position.set(
+              data.spawnPosition.x,
+              data.spawnPosition.y,
+              data.spawnPosition.z
+            );
+            if (typeof data.spawnRotationY === 'number') {
+              this.character.rotation.y = data.spawnRotationY;
+            }
+            console.log(`🔍 DEBUG CLIENT: Character position AFTER spawn:`, JSON.stringify({x: this.character.position.x, y: this.character.position.y, z: this.character.position.z}));
 
-          // MVP 6: Mark spawn position as received - now safe to update character in render loop
-          this.spawnPositionReceived = true;
-          console.log(`✅ Spawn position applied, character updates now enabled`);
+            // MVP 6: Mark spawn position as received - now safe to update character in render loop
+            this.spawnPositionReceived = true;
+            console.log(`✅ Spawn position applied, character updates now enabled`);
+          } else {
+            // Character not loaded yet - store spawn position for later
+            console.log(`⏳ Character not ready - storing spawn position for later application`);
+            this.pendingSpawnPosition = data.spawnPosition;
+            this.pendingSpawnRotationY = data.spawnRotationY;
+          }
         } else {
-          console.log(`🔍 DEBUG CLIENT: NOT applying spawn position (spawnPosition exists: ${!!data.spawnPosition}, character exists: ${!!this.character})`);
+          // No spawn position provided - enable movement anyway (fallback)
+          console.log(`⚠️ No spawn position in world_state - enabling movement as fallback`);
+          this.spawnPositionReceived = true;
         }
         break;
 
