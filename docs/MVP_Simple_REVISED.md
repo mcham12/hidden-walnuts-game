@@ -1,6 +1,6 @@
 # 🎮 Hidden Walnuts - MVP Development Plan
 
-**Current Status**: MVP 5.7 (Mobile/Touch Controls) - ✅ **COMPLETE**
+**Current Status**: MVP 5.9 (World Boundaries) - ✅ **COMPLETE**
 
 ---
 
@@ -15,6 +15,8 @@
 - **MVP 5**: Game Feel & Polish - Audio, particles, animations, loading screen, settings menu
 - **MVP 5.5**: Physics & Collision - Tree collision, smooth sliding, spatial partitioning
 - **MVP 5.7**: Mobile/Touch Controls - Drag-to-move, iOS Safari audio, iPhone landscape fixes
+- **MVP 5.8**: Startup UX + Arrow Keys + Session Management - Welcome screen, arrow keys, heartbeat/disconnect system
+- **MVP 5.9**: World Boundaries - Soft push-back system with visual feedback
 
 ---
 
@@ -76,20 +78,32 @@
 
 ---
 
-## 🛡️ MVP 5.9: World Boundaries
+## 🛡️ MVP 5.9: World Boundaries ✅ **COMPLETE**
 
 **Goal**: Prevent players from falling off world edge
 
-**Options**:
-1. **Invisible Walls** (30 min) - Box colliders at edges
-2. **Soft Boundaries** (1 hour) - Gradual push-back system
-3. **Natural Barriers** (2 hours) - Dense trees at forest edge
+**Implemented**: Soft Boundaries (Option 2)
 
-**Success**:
-- Players can't walk past boundaries
-- Smooth collision (no jarring stops)
-- Works in all directions (N/S/E/W)
-- Subtle warning before edge
+**Features**:
+- Soft push-back system (gentle force toward center)
+- Push zone: 10 units from edge (starts at 190 units from center)
+- Push strength: Gradual increase from 0% → 100%
+- Visual feedback: Radial vignette darkens screen edges
+- Warning text: "⚠️ Turn Back" appears when close to edge
+- Smooth, AAA-quality feel (no jarring collision)
+- Works in all directions (radial distance calculation)
+
+**Deferred to MVP 9 (Audio Polish)**:
+- Audio cue: Wind rustling/ambient change when approaching boundary
+- Reason: Prioritizing core gameplay first, audio polish comes later
+
+**Success Criteria** ✅:
+- ✅ Players can't walk past boundaries
+- ✅ Smooth collision (no jarring stops)
+- ✅ Works in all directions (N/S/E/W)
+- ✅ Subtle warning before edge (vignette + text)
+
+**Time**: ~1 hour
 
 ---
 
@@ -212,6 +226,7 @@
 - Audio pooling for instant playback
 - Narrator voiceover (~50 lines)
 - NPC voiceovers with position-based audio
+- **Boundary audio cue** (deferred from MVP 5.9): Wind rustling/ambient change when approaching world edge
 
 ---
 
@@ -309,10 +324,8 @@
 
 | MVP | Focus | Status |
 |-----|-------|--------|
-| 1.5-5.7 | Core Game | ✅ Complete |
-| **5.8** | **Startup UX + Arrow Keys + Session Mgmt** | 🎯 **NEXT** |
-| 5.9 | World Boundaries | Pending |
-| 6 | Player Identity (Simple) | Pending |
+| 1.5-5.9 | Core Game & Polish | ✅ Complete |
+| **6** | **Player Identity (Simple)** | 🎯 **NEXT** |
 | 7 | NPC Characters | Pending |
 | 8 | Combat & Health | Pending |
 | 9 | Animation Polish (Optional) | Pending |
