@@ -853,22 +853,31 @@ export default class ForestManager {
   // MVP 6: Player position management (by username for persistence across sessions)
   private async loadPlayerPosition(username: string): Promise<{ x: number; y: number; z: number } | null> {
     try {
+      console.log(`📍 LOAD: Looking for position with key: player:${username}`);
       const savedData = await this.storage.get<{ position: { x: number; y: number; z: number } }>(`player:${username}`);
-      return savedData?.position || null;
+      if (savedData?.position) {
+        console.log(`📍 LOAD SUCCESS: Found position for ${username}:`, savedData.position);
+        return savedData.position;
+      } else {
+        console.log(`📍 LOAD: No saved position found for ${username}`);
+        return null;
+      }
     } catch (error) {
-      console.error(`Failed to load position for ${username}:`, error);
+      console.error(`❌ Failed to load position for ${username}:`, error);
       return null;
     }
   }
 
   private async savePlayerPosition(username: string, position: { x: number; y: number; z: number }): Promise<void> {
     try {
+      console.log(`💾 SAVE: Saving position for ${username}:`, position);
       await this.storage.put(`player:${username}`, {
         position,
         lastUpdate: Date.now()
       });
+      console.log(`✅ SAVE SUCCESS: Position saved for ${username}`);
     } catch (error) {
-      console.error(`Failed to save position for ${username}:`, error);
+      console.error(`❌ Failed to save position for ${username}:`, error);
     }
   }
 
