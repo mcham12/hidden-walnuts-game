@@ -446,7 +446,8 @@ export class Game {
       this.characterCollisionRadius = Math.max(size.x, size.z) * 0.5;
 
       this.setAction('idle');
-      this.character.position.y = getTerrainHeight(this.character.position.x, this.character.position.z) + this.characterGroundOffset;
+      // STANDARD: Use raycasting for ground positioning (same as remote players)
+      this.character.position.y = this.positionCharacterOnGround(this.character, this.character.position.x, this.character.position.z);
     } catch (error) {
       console.error('❌ CRITICAL: Character loading failed:', error);
       console.error('❌ Game will not function properly without character');
@@ -947,8 +948,10 @@ export class Game {
     if (this.isJumping) {
       this.velocity.y += this.gravity * delta;
       this.character.position.y += this.velocity.y * delta;
-      if (this.character.position.y <= getTerrainHeight(this.character.position.x, this.character.position.z) + this.characterGroundOffset) {
-        this.character.position.y = getTerrainHeight(this.character.position.x, this.character.position.z) + this.characterGroundOffset;
+      // STANDARD: Use raycasting to check ground position
+      const groundY = this.positionCharacterOnGround(this.character, this.character.position.x, this.character.position.z);
+      if (this.character.position.y <= groundY) {
+        this.character.position.y = groundY;
         this.isJumping = false;
         this.velocity.y = 0;
         // STANDARD: Use correct animation after landing
@@ -1053,12 +1056,12 @@ export class Game {
     }
   }
 
-  // Optimized ground detection using height function instead of expensive raycasting
+  // STANDARD: Snap character to ground using raycasting (same as remote players)
   private snapToGround() {
     if (!this.character) return;
 
-    // Use fast heightmap lookup instead of raycasting every frame
-    this.character.position.y = getTerrainHeight(this.character.position.x, this.character.position.z) + this.characterGroundOffset;
+    // Use raycasting for consistent ground positioning with remote players
+    this.character.position.y = this.positionCharacterOnGround(this.character, this.character.position.x, this.character.position.z);
   }
 
   private updateCamera() {
