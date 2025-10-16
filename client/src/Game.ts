@@ -388,7 +388,9 @@ export class Game {
       }
 
       this.character = characterModel;
+      console.log(`🔍 Local player ${this.selectedCharacterId}: setting scale to ${char.scale}`);
       this.character.scale.set(char.scale, char.scale, char.scale);
+      console.log(`🔍 Local player ${this.selectedCharacterId}: actual scale is ${this.character.scale.x}`);
       this.character.position.set(0, 0, 0);
       this.character.rotation.y = Math.PI;
       this.character.castShadow = true;
@@ -1505,7 +1507,9 @@ export class Game {
         }
       });
 
+      console.log(`🔍 Remote player ${remoteCharacterId}: setting scale to ${char.scale}`);
       remoteCharacter.scale.set(char.scale, char.scale, char.scale);
+      console.log(`🔍 Remote player ${remoteCharacterId}: actual scale is ${remoteCharacter.scale.x}`);
       remoteCharacter.castShadow = true;
 
       // INDUSTRY STANDARD: Use cached animations for remote players
