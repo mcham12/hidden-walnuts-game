@@ -1752,10 +1752,12 @@ export class Game {
             child.material.forEach((mat: any) => {
               mat.transparent = false;
               mat.opacity = 1.0;
+              mat.needsUpdate = true; // Force shader recompilation
             });
           } else {
             child.material.transparent = false;
             child.material.opacity = 1.0;
+            child.material.needsUpdate = true; // Force shader recompilation
           }
         }
       });
