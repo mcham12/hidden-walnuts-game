@@ -789,17 +789,15 @@ export class Game {
     }
 
     // Update player physics
-    // MVP 6: Only update player after spawn position received (prevents race condition)
+    // MVP 6: Only update player AND camera after spawn position received (prevents race condition)
+    // Don't update camera before spawn position arrives - prevents upside-down flash when character teleports
     if (this.character && this.spawnPositionReceived) {
       this.updatePlayer(delta);
       this.updateCamera();
       // MVP 5.5: Update camera shake effect
       this.updateCameraShake(delta);
-    } else if (this.character) {
-      // Character exists but spawn position not received yet - just update camera
-      this.updateCamera();
-      this.updateCameraShake(delta);
     }
+    // If character exists but spawn position not received yet, do nothing - let camera stay at initial position
 
     // Update animations
     if (this.mixer) {
