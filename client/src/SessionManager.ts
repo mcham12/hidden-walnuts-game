@@ -28,7 +28,6 @@ export class SessionManager {
     // 1. Try cookie first (most reliable for persistence)
     const cookieToken = this.getCookie(SessionManager.COOKIE_NAME);
     if (cookieToken) {
-      console.log('📝 Session token loaded from cookie');
       this.token = cookieToken;
       this.tryPromoteToLocalStorage(cookieToken);
       return cookieToken;
@@ -38,7 +37,6 @@ export class SessionManager {
     try {
       const storedToken = localStorage.getItem(SessionManager.STORAGE_KEY);
       if (storedToken) {
-        console.log('📝 Session token loaded from localStorage');
         this.token = storedToken;
         this.setCookie(SessionManager.COOKIE_NAME, storedToken);
         return storedToken;
@@ -49,7 +47,6 @@ export class SessionManager {
 
     // 3. Generate new token
     const newToken = crypto.randomUUID();
-    console.log('🆕 Generated new session token');
     this.token = newToken;
     this.saveToken(newToken);
     return newToken;
@@ -118,6 +115,5 @@ export class SessionManager {
     } catch (e) {
       // Silently fail
     }
-    console.log('🗑️ Session cleared');
   }
 }
