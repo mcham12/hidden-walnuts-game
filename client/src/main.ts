@@ -547,23 +547,34 @@ async function main() {
     await audioManager.waitForLoad();
     console.log('✅ Audio loaded');
 
-    // Audio complete
-    loadingScreen.updateProgress(0.5, 'Preparing game world...');
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Initialize game instance (this loads character models, sets up scene, etc.)
+    loadingScreen.updateProgress(0.3, 'Loading game world...');
+    const game = new Game();
+    game.selectedCharacterId = selectedCharacterId;
+    game.sessionToken = sessionToken; // MVP 6: Pass session token
+    game.username = username; // MVP 6: Pass username
 
-    // Almost ready
-    loadingScreen.updateProgress(0.9, 'Almost ready...');
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Run game.init() - this loads character model, connects to server, etc.
+    loadingScreen.updateProgress(0.5, 'Connecting to server...');
+    await game.init(canvas, audioManager, settingsManager);
+    console.log('✅ Game initialized');
 
-    // Complete loading
+    // Start render loop (but canvas still hidden)
+    loadingScreen.updateProgress(0.8, 'Preparing scene...');
+    game.start();
+
+    // Wait 2 render frames to ensure scene is actually rendered
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+    // NOW everything is ready - show the game!
     loadingScreen.updateProgress(1.0, 'Ready!');
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     // Hide loading screen
     loadingScreen.hide();
     loadingScreen.destroy();
 
-    // Show game
+    // Show game canvas (now guaranteed to have content)
     canvas.classList.remove('hidden');
 
     // Show walnut HUD
@@ -620,13 +631,6 @@ async function main() {
         }
       }
     }
-
-    const game = new Game();
-    game.selectedCharacterId = selectedCharacterId;
-    game.sessionToken = sessionToken; // MVP 6: Pass session token
-    game.username = username; // MVP 6: Pass username
-    await game.init(canvas, audioManager, settingsManager);
-    game.start();
 
     // Show settings button after game starts
     settingsManager.show();
