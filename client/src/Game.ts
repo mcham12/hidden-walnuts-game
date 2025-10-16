@@ -548,7 +548,14 @@ export class Game {
 
   private setupEvents() {
     document.addEventListener('keydown', (e) => {
-      this.keys.add(e.key.toLowerCase());
+      // MVP 5.8: Normalize arrow keys to WASD for accessibility
+      let key = e.key.toLowerCase();
+      if (key === 'arrowup') key = 'w';
+      if (key === 'arrowdown') key = 's';
+      if (key === 'arrowleft') key = 'a';
+      if (key === 'arrowright') key = 'd';
+
+      this.keys.add(key);
 
       // Jump with space
       if (e.key === ' ' && !this.isJumping) {
@@ -591,7 +598,16 @@ export class Game {
       }
     });
 
-    document.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
+    document.addEventListener('keyup', (e) => {
+      // MVP 5.8: Normalize arrow keys to WASD for accessibility
+      let key = e.key.toLowerCase();
+      if (key === 'arrowup') key = 'w';
+      if (key === 'arrowdown') key = 's';
+      if (key === 'arrowleft') key = 'a';
+      if (key === 'arrowright') key = 'd';
+
+      this.keys.delete(key);
+    });
 
     // MVP 3: Mouse click for walnut finding
     window.addEventListener('click', (event) => {
