@@ -1653,7 +1653,7 @@ export class Game {
     }
   }
 
-  private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, _moveType?: string, characterId?: string): void {
+  private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, _moveType?: string, _characterId?: string): void {
     const remotePlayer = this.remotePlayers.get(playerId);
     if (remotePlayer) {
       // STANDARD: Calculate ground position using raycasting
@@ -1696,8 +1696,9 @@ export class Game {
         this.setRemotePlayerAction(playerId, animation, animationStartTime);
       }
     } else {
-      // Player doesn't exist yet, create them with their characterId
-      this.createRemotePlayer(playerId, position, rotationY, characterId);
+      // MVP 6: Don't create players from player_update messages (no username)
+      // Players should only be created from player_joined and existing_players
+      console.warn(`⚠️ Received update for unknown player ${playerId}, ignoring (will be created on player_joined)`);
     }
   }
 
