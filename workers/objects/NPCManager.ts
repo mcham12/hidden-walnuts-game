@@ -301,6 +301,7 @@ export class NPCManager {
       const newBehavior = this.selectNewBehavior(npc, nearbyPlayers, nearbyNPCs, nearbyWalnuts);
 
       if (newBehavior !== npc.currentBehavior) {
+        console.log(`🤖 ${npc.username} changing behavior: ${npc.currentBehavior} → ${newBehavior}`);
         npc.currentBehavior = newBehavior;
         npc.behaviorTimer = 0;
         npc.behaviorDuration = this.getRandomBehaviorDuration(newBehavior);

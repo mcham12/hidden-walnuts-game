@@ -1655,10 +1655,10 @@ export class Game {
 
       this.scene.add(remoteCharacter);
 
-      // MVP 6: Create username label for remote player (styled like landmark labels)
+      // MVP 6: Create username label for remote player (styled to match NPCs but with solid color)
       if (username) {
-        const usernameLabel = this.createLabel(username, '#FFFFFF');
-        usernameLabel.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        const usernameLabel = this.createLabel(username, '#FFFFFF'); // White text
+        usernameLabel.style.backgroundColor = 'rgba(100, 100, 255, 0.9)'; // Blue background for players
         usernameLabel.style.padding = '4px 10px';
         usernameLabel.style.borderRadius = '12px';
         usernameLabel.style.fontSize = '13px';
@@ -1666,6 +1666,10 @@ export class Game {
         usernameLabel.style.whiteSpace = 'nowrap';
         usernameLabel.style.pointerEvents = 'none';
         usernameLabel.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+        usernameLabel.style.position = 'absolute'; // Ensure absolute positioning
+        usernameLabel.style.visibility = 'visible'; // Explicitly set visibility
+        usernameLabel.style.display = 'block'; // Ensure display is block
+        usernameLabel.style.zIndex = '1000'; // Ensure it's above other elements
         this.remotePlayerNameLabels.set(playerId, usernameLabel);
       }
 
