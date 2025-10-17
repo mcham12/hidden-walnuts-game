@@ -22,6 +22,9 @@ interface PlayerConnection {
   // MVP 6: Player identity
   sessionToken: string;
   username: string;
+
+  // MVP 7.1: Position save throttling
+  lastPositionSave: number;
 }
 
 interface Walnut {
@@ -88,7 +91,8 @@ export default class ForestManager extends DurableObject {
   // MVP 7: NPC System
   npcManager: NPCManager;
   private lastNPCUpdate: number = 0;
-  private readonly NPC_UPDATE_INTERVAL = 150; // 150ms = ~7 updates/sec (smoother network performance)
+  // MVP 7.1: Reduced from 150ms to 200ms (7Hz → 5Hz) for 25% cost reduction while maintaining smooth movement
+  private readonly NPC_UPDATE_INTERVAL = 200; // 200ms = 5 updates/sec (cost-optimized)
 
   constructor(ctx: any, env: any) {
     super(ctx, env);
@@ -101,16 +105,16 @@ export default class ForestManager extends DurableObject {
 
   /**
    * MVP 5.8: Durable Object Alarm for session management
-   * MVP 7: Also handles NPC updates (150ms intervals)
-   * Runs every 150ms for NPCs, checks player disconnects less frequently
+   * MVP 7: Also handles NPC updates (200ms intervals)
+   * MVP 7.1: Reduced from 150ms to 200ms for 25% cost reduction
+   * Runs every 200ms for NPCs, checks player disconnects less frequently
    */
   async alarm(): Promise<void> {
-    console.log(`⏰ ALARM FIRED - Players: ${this.activePlayers.size}, NPCs: ${this.npcManager.getNPCCount()}`);
+    // MVP 7.1: Removed frequent alarm logging to reduce DO CPU usage
     const now = Date.now();
 
-    // MVP 7: Update NPCs every 150ms (~7 Hz for smooth network performance)
+    // MVP 7.1: Update NPCs every 200ms (5 Hz for cost-optimized performance)
     if (now - this.lastNPCUpdate >= this.NPC_UPDATE_INTERVAL) {
-      console.log(`🔄 Updating NPCs (lastUpdate was ${now - this.lastNPCUpdate}ms ago)`);
       this.npcManager.update();
       this.lastNPCUpdate = now;
     }
@@ -153,13 +157,10 @@ export default class ForestManager extends DurableObject {
       }
     }
 
-    // Reschedule alarm for next NPC update (150ms)
-    // This runs at ~7 Hz for smooth network-friendly updates
+    // Reschedule alarm for next NPC update (200ms)
+    // MVP 7.1: Reduced to 5 Hz for cost-optimized updates, removed logging to reduce DO CPU usage
     if (this.activePlayers.size > 0 || this.npcManager.getNPCCount() > 0) {
       await this.storage.setAlarm(Date.now() + this.NPC_UPDATE_INTERVAL);
-      console.log(`⏰ ALARM RESCHEDULED for ${this.NPC_UPDATE_INTERVAL}ms from now`);
-    } else {
-      console.log(`⏰ ALARM NOT RESCHEDULED (no players, no NPCs)`);
     }
   }
 
@@ -167,7 +168,7 @@ export default class ForestManager extends DurableObject {
 
   /**
    * MVP 5.8 + MVP 7: Schedule alarm if not already scheduled OR if expired
-   * MVP 7: Use 150ms interval for NPC updates (~7 Hz for network-friendly performance)
+   * MVP 7.1: Use 200ms interval for NPC updates (5 Hz for cost-optimized performance)
    * FIX: Check if alarm is in the past and reschedule if so
    */
   private async ensureAlarmScheduled(): Promise<void> {
@@ -175,17 +176,10 @@ export default class ForestManager extends DurableObject {
     const now = Date.now();
 
     // Schedule alarm if it doesn't exist OR is in the past (expired/never fired)
+    // MVP 7.1: Removed logging to reduce DO CPU usage
     if (currentAlarm === null || currentAlarm <= now) {
       const scheduleTime = now + this.NPC_UPDATE_INTERVAL;
       await this.storage.setAlarm(scheduleTime);
-
-      if (currentAlarm === null) {
-        console.log(`⏰ INITIAL ALARM SCHEDULED at ${new Date(scheduleTime).toISOString()} (${this.NPC_UPDATE_INTERVAL}ms from now)`);
-      } else {
-        console.log(`⏰ EXPIRED ALARM RESCHEDULED at ${new Date(scheduleTime).toISOString()} (was: ${new Date(currentAlarm).toISOString()}, ${Math.round((now - currentAlarm) / 1000)}s ago)`);
-      }
-    } else {
-      console.log(`⏰ Alarm already exists, scheduled for ${new Date(currentAlarm).toISOString()} (${Math.round((currentAlarm - now) / 1000)}s from now)`);
     }
   }
 
@@ -325,9 +319,7 @@ export default class ForestManager extends DurableObject {
       existingPlayer.username = username;
 
       // MVP 5.8: Ensure alarm is scheduled for disconnect checking
-      console.log(`🔧 About to call ensureAlarmScheduled() for reconnecting player`);
       await this.ensureAlarmScheduled();
-      console.log(`🔧 ensureAlarmScheduled() completed for reconnecting player`);
 
       // Setup message handlers
       socket.onmessage = async (event) => {
@@ -413,7 +405,9 @@ export default class ForestManager extends DurableObject {
         disconnectedAt: null,
         // MVP 6: Player identity
         sessionToken,
-        username
+        username,
+        // MVP 7.1: Position save throttling
+        lastPositionSave: 0
       };
 
       console.log(`✅ New player ${squirrelId} (${username}) connected`);
@@ -421,9 +415,7 @@ export default class ForestManager extends DurableObject {
       this.activePlayers.set(squirrelId, playerConnection);
 
       // MVP 5.8: Ensure alarm is scheduled for disconnect checking
-      console.log(`🔧 About to call ensureAlarmScheduled() for new player`);
       await this.ensureAlarmScheduled();
-      console.log(`🔧 ensureAlarmScheduled() completed for new player`);
 
       // Setup message handlers
       socket.onmessage = async (event) => {
@@ -497,8 +489,15 @@ export default class ForestManager extends DurableObject {
           playerConnection.rotationY = data.rotationY;
         }
 
-        // MVP 6: Save position by sessionToken (true persistent identity), not username (just display name)
-        await this.savePlayerPosition(playerConnection.sessionToken, playerConnection.position);
+        // MVP 7.1: Throttle position saves to once every 30 seconds (was 10 Hz = 180k saves/hour!)
+        // This reduces storage operations by 99% while still persisting position reasonably often
+        const now = Date.now();
+        const timeSinceLastSave = now - playerConnection.lastPositionSave;
+        const POSITION_SAVE_INTERVAL = 30000; // 30 seconds
+        if (timeSinceLastSave >= POSITION_SAVE_INTERVAL) {
+          await this.savePlayerPosition(playerConnection.sessionToken, playerConnection.position);
+          playerConnection.lastPositionSave = now;
+        }
 
         // INDUSTRY STANDARD: Forward animation state with timing for multiplayer sync
         this.broadcastToOthers(playerConnection.squirrelId, {

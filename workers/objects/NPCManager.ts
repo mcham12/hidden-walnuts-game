@@ -63,7 +63,8 @@ export class NPCManager {
   private readonly MAX_NPCS = 3; // Reduced for testing
   private readonly DESPAWN_PLAYER_THRESHOLD = 15; // Despawn NPCs if >15 real players
   private readonly NPC_SPEED = 2.4; // 80% of player speed (3.0 units/sec)
-  private readonly UPDATE_DELTA = 0.15; // 150ms update interval (~7 Hz for smoother network performance)
+  // MVP 7.1: Increased from 0.15 to 0.20 (150ms → 200ms) for 25% cost reduction
+  private readonly UPDATE_DELTA = 0.20; // 200ms update interval (5 Hz for cost-optimized performance)
 
   // Perception radii
   private readonly ENTITY_VISION_RADIUS = 30;
@@ -95,8 +96,8 @@ export class NPCManager {
     const playerCount = this.forestManager.activePlayers.size;
 
     // Don't spawn if too many players
+    // MVP 7.1: Removed logging to reduce DO CPU usage
     if (playerCount >= this.DESPAWN_PLAYER_THRESHOLD) {
-      console.log(`🤖 NPC spawn skipped: ${playerCount} players (threshold: ${this.DESPAWN_PLAYER_THRESHOLD})`);
       return;
     }
 
@@ -108,9 +109,8 @@ export class NPCManager {
       this.npcs.set(npc.id, npc);
 
       // Broadcast NPC spawn to all players
+      // MVP 7.1: Removed logging to reduce DO CPU usage
       this.broadcastNPCSpawn(npc);
-
-      console.log(`🤖 Spawned NPC: ${npc.username} (${npc.characterId}) at (${npc.position.x.toFixed(1)}, ${npc.position.z.toFixed(1)}) - Aggression: ${npc.aggressionLevel.toFixed(2)}`);
     }
   }
 
@@ -120,9 +120,8 @@ export class NPCManager {
   despawnNPCsIfNeeded(): void {
     const playerCount = this.forestManager.activePlayers.size;
 
+    // MVP 7.1: Removed logging to reduce DO CPU usage
     if (playerCount >= this.DESPAWN_PLAYER_THRESHOLD && this.npcs.size > 0) {
-      console.log(`🤖 Despawning all NPCs: ${playerCount} players (threshold: ${this.DESPAWN_PLAYER_THRESHOLD})`);
-
       for (const [npcId, npc] of this.npcs.entries()) {
         this.broadcastNPCDespawn(npcId);
         this.npcs.delete(npcId);
@@ -204,10 +203,13 @@ export class NPCManager {
   }
 
   /**
-   * Main update loop - called every 150ms (~7 Hz) from ForestManager
+   * Main update loop - called every 200ms (5 Hz) from ForestManager
+   * MVP 7.1: Batch all NPC updates into single broadcast for efficiency
+   * MVP 7.1: Reduced from 150ms to 200ms for 25% cost reduction
    */
   update(): void {
     const delta = this.UPDATE_DELTA;
+    const npcUpdates: any[] = [];
 
     for (const [npcId, npc] of this.npcs.entries()) {
       // Update behavior timer
@@ -224,8 +226,24 @@ export class NPCManager {
       // Movement
       this.updateMovement(npc, delta);
 
-      // Broadcast NPC state to all players
-      this.broadcastNPCUpdate(npc);
+      // Collect NPC state for batched broadcast
+      npcUpdates.push({
+        npcId: npc.id,
+        position: npc.position,
+        rotationY: npc.rotationY,
+        velocity: npc.velocity,
+        animation: npc.animation,
+        behavior: npc.currentBehavior
+      });
+    }
+
+    // MVP 7.1: Batch broadcast all NPC updates in single message
+    // Reduces broadcasts from N messages to 1 message (~90% reduction)
+    if (npcUpdates.length > 0) {
+      this.forestManager.broadcastToAll({
+        type: 'npc_updates_batch',
+        npcs: npcUpdates
+      });
     }
 
     // Check if we need to despawn NPCs (player count check)
@@ -300,8 +318,8 @@ export class NPCManager {
     if (shouldChangeBehavior) {
       const newBehavior = this.selectNewBehavior(npc, nearbyPlayers, nearbyNPCs, nearbyWalnuts);
 
+      // MVP 7.1: Removed behavior logging to reduce DO CPU usage
       if (newBehavior !== npc.currentBehavior) {
-        console.log(`🤖 ${npc.username} changing behavior: ${npc.currentBehavior} → ${newBehavior}`);
         npc.currentBehavior = newBehavior;
         npc.behaviorTimer = 0;
         npc.behaviorDuration = this.getRandomBehaviorDuration(newBehavior);
@@ -614,6 +632,7 @@ export class NPCManager {
       this.forestManager.storage.put('mapState', this.forestManager.mapState);
 
       // Broadcast walnut found
+      // MVP 7.1: Removed logging to reduce DO CPU usage
       this.forestManager.broadcastToAll({
         type: 'walnut_found',
         walnutId: walnut.id,
@@ -622,8 +641,6 @@ export class NPCManager {
         points: walnut.origin === 'game' ? 5 : 1,
         isNPC: true
       });
-
-      console.log(`🤖 ${npc.username} collected walnut ${walnut.id} (inventory: ${npc.walnutInventory}/${this.MAX_INVENTORY})`);
     }
   }
 
@@ -645,6 +662,7 @@ export class NPCManager {
     const distance = Math.sqrt(dx * dx + dz * dz);
 
     // Broadcast throw message
+    // MVP 7.1: Removed logging to reduce DO CPU usage
     this.forestManager.broadcastToAll({
       type: 'npc_throw',
       npcId: npc.id,
@@ -654,8 +672,6 @@ export class NPCManager {
       targetId: 'squirrelId' in target ? target.squirrelId : target.id,
       timestamp: Date.now()
     });
-
-    console.log(`🤖 ${npc.username} threw walnut at ${target.username || target.id} (inventory: ${npc.walnutInventory})`);
   }
 
   /**

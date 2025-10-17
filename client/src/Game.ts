@@ -1485,9 +1485,18 @@ export class Game {
         break;
 
       case 'npc_update':
-        // MVP 7: NPC position/animation update from server
+        // MVP 7: NPC position/animation update from server (legacy single update)
         if (data.npcId) {
           this.updateNPC(data.npcId, data.position, data.rotationY, data.animation, data.velocity, data.behavior);
+        }
+        break;
+
+      case 'npc_updates_batch':
+        // MVP 7.1: Batched NPC updates (all NPCs in single message for efficiency)
+        if (data.npcs && Array.isArray(data.npcs)) {
+          for (const npcData of data.npcs) {
+            this.updateNPC(npcData.npcId, npcData.position, npcData.rotationY, npcData.animation, npcData.velocity, npcData.behavior);
+          }
         }
         break;
 
