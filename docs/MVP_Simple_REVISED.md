@@ -1,6 +1,6 @@
 # 🎮 Hidden Walnuts - MVP Development Plan
 
-**Current Status**: MVP 6 (Player Authentication & Identity) - ✅ **COMPLETE**
+**Current Status**: MVP 7 (NPC Characters & World Life) - ✅ **COMPLETE**
 
 ---
 
@@ -18,6 +18,7 @@
 - **MVP 5.8**: Startup UX + Arrow Keys + Session Management - Welcome screen, arrow keys, heartbeat/disconnect system
 - **MVP 5.9**: World Boundaries - Soft push-back system with visual feedback
 - **MVP 6**: Player Authentication & Identity - Username system, session tokens, position persistence
+- **MVP 7**: NPC Characters & World Life - Server-side AI with behaviors, walnut gathering, animation/collision fixes
 
 ---
 
@@ -148,7 +149,32 @@
 
 ---
 
-## 🐿️ MVP 7: NPC Characters & World Life
+## 🐿️ MVP 7: NPC Characters & World Life ✅ **COMPLETE**
+
+**Goal**: Add ~10 AI characters to make world feel alive and provide gameplay challenge
+
+**Architecture**: Server-side authoritative NPCs (all players see same NPCs)
+
+**Implemented**:
+- ✅ Server-side NPC spawning/despawning (~3 NPCs, configurable)
+- ✅ AI behavior system (IDLE, WANDER, APPROACH, GATHER, THROW)
+- ✅ Perception system (vision radius for players, NPCs, walnuts)
+- ✅ Walnut gathering with inventory management (0-5 walnuts)
+- ✅ Client-side NPC rendering with smooth interpolation
+- ✅ Name tags with cyan/yellow gradient + italic styling
+- ✅ Animation synchronization (fixed timing bugs)
+- ✅ Collision detection (fixed missing colliders + position updates)
+- ✅ Throw behavior (server-side logic, broadcasts npc_throw events)
+- ✅ Performance stable with multiple NPCs + players
+
+**Deferred to MVP 8**:
+- Projectile visuals (walnut flying through air)
+- Hit detection and damage
+- Player throwing at NPCs
+
+---
+
+## 🐿️ MVP 7: NPC Characters & World Life - Implementation Details
 
 **Goal**: Add ~10 AI characters to make world feel alive and provide gameplay challenge
 
@@ -383,28 +409,95 @@ private npcNameLabels: Map<string, HTMLElement> = new Map();
 
 ## 🥊 MVP 8: Combat, Health & Resource Management
 
-**Goal**: Triple-purpose walnuts (score, throw, eat) with survival mechanics
+**Goal**: Triple-purpose walnuts (score, throw, eat) with survival mechanics + complete projectile system
 
-### Core Systems
+### Phase 1: Projectile System (3-4 hours)
 
-**Health**:
+**1.1 ProjectileManager Class** (new file: client/src/ProjectileManager.ts)
+- Manages all active projectiles (walnuts in flight)
+- Updates positions each frame with arc physics
+- Handles collision detection (raycasting vs all entities)
+- Cleans up on impact or timeout
+- Visual effects: flying walnut mesh, rotation, trail (optional)
+
+**1.2 Arc Physics**
+```typescript
+// Calculate launch velocity to hit target
+velocity = calculateArcVelocity(from, to, flightTime: 1.0s)
+// Update each frame
+position += velocity * delta
+velocity.y += gravity * delta  // -9.8 m/s²
+```
+
+**1.3 Hit Detection**
+- Raycast from projectile toward movement direction
+- Check distance to all players/NPCs (hit radius: 0.5 units)
+- On hit: Spawn VFX particles, play sound, apply damage, remove projectile
+- On miss: Remove after 3-5 seconds or hitting ground
+
+**1.4 NPC Throwing Integration** (from MVP 7)
+- Wire up `npc_throw` message handler to spawn projectile
+- Use same ProjectileManager for NPC→Player, NPC→NPC throws
+- NPCs already have throw behavior logic (inventory, cooldown, targeting)
+
+**1.5 Visual Polish**
+- Walnut mesh (reuse existing walnut model or simple sphere)
+- Spinning animation during flight
+- Impact particles (dirt/sparkle from VFXManager)
+- Hit sound effect (AudioManager)
+- Optional: Trail effect for better visibility
+
+### Phase 2: Player Throwing (2-3 hours)
+
+**2.1 Input Handling**
+- Desktop: T key to throw (instant throw, no charging in MVP 8)
+- Mobile: THROW button
+- Throw at cursor/camera direction
+- 1.5s cooldown visualization
+- Requires ≥1 walnut in inventory
+
+**2.2 Server Validation**
+- Client sends `player_throw` message with target position
+- Server validates: has walnut, cooldown expired, in valid range
+- Server broadcasts throw to all clients for projectile spawn
+- Server decrements inventory, tracks cooldown
+
+**2.3 Targeting System**
+- Desktop: Aim with mouse/camera direction
+- Mobile: Auto-aim to nearest entity within cone
+- Max throw range: 15 units (same as NPCs)
+- Visual indicator: Crosshair changes when entity in range
+
+### Phase 3: Health & Combat (3-4 hours)
+
+**Health System**:
 - Start with 100 HP
 - Natural regen: +1 HP per 10s
-- Eating walnut: +25 HP
+- Eating walnut: +25 HP (E key)
 - Hit by thrown walnut: -20 HP
 - Death at 0 HP: 3s respawn, lose all walnuts, -5 points
+- UI: Health bar above character + HUD element
+
+**Damage System**:
+- Hit detection triggers damage on server
+- Server broadcasts `entity_hit` message (damage amount, attacker, victim)
+- Client plays hit animation, shows damage number pop-up
+- Knockback effect (optional): small push-back on hit
+
+**Death & Respawn**:
+- At 0 HP: Play death animation, freeze controls
+- Drop all walnuts at death location (ground loot for 60s)
+- 3s countdown, then respawn at random spawn point
+- Respawn with 100 HP, 0 walnuts
+
+### Phase 4: Inventory & Resources (1-2 hours)
 
 **Inventory**:
-- Max 10 walnuts carried
+- Max 10 walnuts carried (players)
+- Max 5 walnuts carried (NPCs, already implemented)
 - Can't pickup when full
 - Death drops all walnuts (ground loot)
-
-**Throwing**:
-- Desktop: T key (hold to charge)
-- Mobile: THROW button
-- 1.5s cooldown
-- 20 HP damage on hit
-- Arc trajectory physics
+- UI: Walnut count display
 
 **Eating**:
 - Desktop: E key
@@ -412,21 +505,48 @@ private npcNameLabels: Map<string, HTMLElement> = new Map();
 - 2s cooldown
 - +25 HP restore
 - Can't eat at full HP
+- Eating animation (optional)
 
-### Scoring Updates
-- Find walnut: +1 (bush) / +3 (buried)
+**Walnut Drops**:
+- Death: Drop all walnuts at death position
+- Dropped walnuts become pickable (60s lifetime)
+- Same visual as bush walnuts (already exist)
+
+### Phase 5: Scoring Updates (1 hour)
+
+**New Scoring Rules**:
+- Find walnut: +1 (bush) / +3 (buried) [existing]
 - Hit opponent: +3 points
 - Knockout opponent: +5 points
 - Get hit: -1 point
 - Die: -5 points + lose all walnuts
 
-**Success**:
-- Health system working (damage, heal, die, respawn)
-- Can throw walnuts (physics + hit detection)
-- Can eat walnuts (with cooldown)
-- Inventory limited to 10 walnuts
-- Low health prompts eating
-- Works on desktop (T/E) and mobile (buttons)
+**Leaderboard Integration**:
+- Combat stats tracked server-side
+- Update leaderboard on kills/deaths
+- Show kill/death ratio (optional)
+
+### Success Criteria
+
+**Projectiles**:
+- ✅ Walnuts fly through air with arc physics
+- ✅ NPCs and players can throw at each other
+- ✅ Hit detection works accurately
+- ✅ Visual effects on impact (particles, sound)
+
+**Combat**:
+- ✅ Health system working (damage, heal, die, respawn)
+- ✅ Players can throw walnuts (T key + mobile button)
+- ✅ Damage numbers and feedback
+- ✅ Death drops walnuts
+
+**Resources**:
+- ✅ Players can eat walnuts (E key + mobile button)
+- ✅ Inventory limited to 10 walnuts
+- ✅ Low health prompts eating
+- ✅ Works on desktop and mobile
+
+**Time Estimate**: 10-14 hours total
 
 ---
 
@@ -578,8 +698,8 @@ private npcNameLabels: Map<string, HTMLElement> = new Map();
 |-----|-------|--------|
 | 1.5-5.9 | Core Game & Polish | ✅ Complete |
 | 6 | Player Identity (Simple) | ✅ Complete |
-| **7** | **NPC Characters** | 🎯 **NEXT** |
-| 8 | Combat & Health | Pending |
+| 7 | NPC Characters | ✅ Complete |
+| **8** | **Combat & Health** | 🎯 **NEXT** |
 | 9 | Animation Polish (Optional) | Pending |
 | 10 | Predators & Polish | Pending |
 | 11 | Full Authentication | Pending |
@@ -603,7 +723,7 @@ Simple username system for persistent identity. No passwords yet. (TBD)
 ~10 server-side AI characters with perception, behaviors (wander/approach/gather/throw), walnut throwing at players/NPCs. (12-16 hours)
 
 ### MVP 8: Combat, Health & Resource Management
-Triple-purpose walnuts (score/throw/eat), 100 HP system, 10-walnut inventory, T/E keys. (TBD)
+Complete projectile system (arc physics, hit detection), player throwing (T key), health/damage (100 HP), eating (E key), inventory (10 walnuts), NPC throwing integration. (10-14 hours)
 
 ### MVP 9: Advanced Animation & Visual Polish (Optional)
 AAA polish: Hermite interpolation, narrator voiceover, NPC voices. Optional. (TBD)
@@ -625,4 +745,4 @@ Remove unused ECS code. Do last when features stable. (TBD)
 
 ---
 
-**Next Step**: Begin MVP 7 (NPC Characters) 🐿️
+**Next Step**: Begin MVP 8 (Combat, Health & Resource Management) 🥊
