@@ -2083,6 +2083,15 @@ export class Game {
 
       this.scene.add(npcCharacter);
 
+      // MVP 7: Add NPC collision
+      if (this.collisionSystem) {
+        this.collisionSystem.addPlayerCollider(
+          npcId,
+          npcCharacter.position,
+          collisionRadius
+        );
+      }
+
       // MVP 7: Create NPC name label with cyan/yellow color + italic styling
       const npcNameLabel = this.createLabel(username, '#000000'); // Black text for readability
       npcNameLabel.style.background = 'linear-gradient(90deg, rgba(0,255,255,0.9), rgba(255,255,0,0.9))'; // Cyan to yellow gradient
@@ -2227,6 +2236,11 @@ export class Game {
       this.npcMixers.delete(npcId);
       this.npcActions.delete(npcId);
       this.npcCurrentAnimations.delete(npcId);
+
+      // Clean up collision
+      if (this.collisionSystem) {
+        this.collisionSystem.removeCollider(npcId);
+      }
 
       // Clean up interpolation buffer
       this.npcInterpolationBuffers.delete(npcId);
