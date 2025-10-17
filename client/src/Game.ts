@@ -114,6 +114,7 @@ export class Game {
   private npcs: Map<string, THREE.Group> = new Map();
   private npcMixers: Map<string, THREE.AnimationMixer> = new Map();
   private npcActions: Map<string, { [key: string]: THREE.AnimationAction }> = new Map();
+  private npcCurrentAnimations: Map<string, string> = new Map(); // Track current animation to prevent unnecessary resets
   private npcNameLabels: Map<string, HTMLElement> = new Map();
   private npcInterpolationBuffers: Map<string, Array<{ position: THREE.Vector3; quaternion: THREE.Quaternion; timestamp: number }>> = new Map();
   private npcPendingUpdates: Map<string, Array<{ position: any; rotationY: number; animation?: string; velocity?: any; behavior?: string; timestamp: number }>> = new Map();
@@ -2068,12 +2069,16 @@ export class Game {
       this.npcInterpolationBuffers.set(npcId, [initialState]);
 
       // Start with animation - configure properly to match player animation behavior
-      const initialAnimation = npcActions[animation] || npcActions['idle'];
+      const initialAnimationName = animation || 'idle';
+      const initialAnimation = npcActions[initialAnimationName];
       if (initialAnimation) {
         initialAnimation.reset();
         initialAnimation.setLoop(THREE.LoopRepeat, Infinity);
         initialAnimation.clampWhenFinished = false;
         initialAnimation.play();
+
+        // Track current animation to prevent unnecessary resets
+        this.npcCurrentAnimations.set(npcId, initialAnimationName);
       }
 
       this.scene.add(npcCharacter);
@@ -2157,18 +2162,26 @@ export class Game {
         buffer.shift();
       }
 
-      // Update animation if provided
+      // Update animation ONLY if it has changed (prevent constant resets)
       if (animation) {
-        const actions = this.npcActions.get(npcId);
-        if (actions && actions[animation]) {
-          // Stop current animation
-          Object.values(actions).forEach(action => action.stop());
-          // Play new animation with proper loop configuration (match player animation setup)
-          const action = actions[animation];
-          action.reset();
-          action.setLoop(THREE.LoopRepeat, Infinity);
-          action.clampWhenFinished = false;
-          action.play();
+        const currentAnimation = this.npcCurrentAnimations.get(npcId);
+
+        // Only reset and play if animation name has actually changed
+        if (currentAnimation !== animation) {
+          const actions = this.npcActions.get(npcId);
+          if (actions && actions[animation]) {
+            // Stop current animation
+            Object.values(actions).forEach(action => action.stop());
+            // Play new animation with proper loop configuration
+            const action = actions[animation];
+            action.reset();
+            action.setLoop(THREE.LoopRepeat, Infinity);
+            action.clampWhenFinished = false;
+            action.play();
+
+            // Update tracked animation
+            this.npcCurrentAnimations.set(npcId, animation);
+          }
         }
       }
     } else {
@@ -2213,6 +2226,7 @@ export class Game {
       // Clean up animation system
       this.npcMixers.delete(npcId);
       this.npcActions.delete(npcId);
+      this.npcCurrentAnimations.delete(npcId);
 
       // Clean up interpolation buffer
       this.npcInterpolationBuffers.delete(npcId);
