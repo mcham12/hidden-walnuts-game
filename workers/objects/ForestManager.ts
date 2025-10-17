@@ -166,19 +166,26 @@ export default class ForestManager extends DurableObject {
   private lastDisconnectCheck: number = 0;
 
   /**
-   * MVP 5.8 + MVP 7: Schedule alarm if not already scheduled
+   * MVP 5.8 + MVP 7: Schedule alarm if not already scheduled OR if expired
    * MVP 7: Use 100ms interval for NPC updates (not 10 seconds)
+   * FIX: Check if alarm is in the past and reschedule if so
    */
   private async ensureAlarmScheduled(): Promise<void> {
     const currentAlarm = await this.storage.getAlarm();
-    console.log(`⏰ ensureAlarmScheduled() - currentAlarm: ${currentAlarm}, will schedule: ${currentAlarm === null}`);
-    if (currentAlarm === null) {
-      // No alarm scheduled, schedule one for NPC updates (100ms)
-      const scheduleTime = Date.now() + this.NPC_UPDATE_INTERVAL;
+    const now = Date.now();
+
+    // Schedule alarm if it doesn't exist OR is in the past (expired/never fired)
+    if (currentAlarm === null || currentAlarm <= now) {
+      const scheduleTime = now + this.NPC_UPDATE_INTERVAL;
       await this.storage.setAlarm(scheduleTime);
-      console.log(`⏰ INITIAL ALARM SCHEDULED at ${new Date(scheduleTime).toISOString()} (${this.NPC_UPDATE_INTERVAL}ms from now)`);
+
+      if (currentAlarm === null) {
+        console.log(`⏰ INITIAL ALARM SCHEDULED at ${new Date(scheduleTime).toISOString()} (${this.NPC_UPDATE_INTERVAL}ms from now)`);
+      } else {
+        console.log(`⏰ EXPIRED ALARM RESCHEDULED at ${new Date(scheduleTime).toISOString()} (was: ${new Date(currentAlarm).toISOString()}, ${Math.round((now - currentAlarm) / 1000)}s ago)`);
+      }
     } else {
-      console.log(`⏰ Alarm already exists, scheduled for ${new Date(currentAlarm).toISOString()}`);
+      console.log(`⏰ Alarm already exists, scheduled for ${new Date(currentAlarm).toISOString()} (${Math.round((currentAlarm - now) / 1000)}s from now)`);
     }
   }
 
