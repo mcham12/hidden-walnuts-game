@@ -2,29 +2,10 @@
 // Updated for MVP 3.5 - Multiple character support
 // MVP 7: NPC System integration
 
+import { DurableObject } from 'cloudflare:workers';
 import { NPCManager } from './NPCManager';
 
-interface DurableObjectState {
-  storage: DurableObjectStorage;
-  id: DurableObjectId;
-}
-
-interface DurableObjectStorage {
-  get<T>(key: string): Promise<T | null>;
-  put<T>(key: string, value: T): Promise<void>;
-  delete(key: string): Promise<boolean>;
-  deleteAll(): Promise<void>;
-  list<T>(options?: { prefix?: string }): Promise<Map<string, T>>;
-  // MVP 5.8: Durable Object Alarms API
-  setAlarm(scheduledTime: number): Promise<void>;
-  getAlarm(): Promise<number | null>;
-  deleteAlarm(): Promise<void>;
-}
-
-interface DurableObjectId {
-  toString(): string;
-  equals(other: DurableObjectId): boolean;
-}
+// Use Cloudflare's built-in types - no need to redefine interfaces
 
 interface PlayerConnection {
   squirrelId: string;
@@ -91,9 +72,9 @@ interface NPC {
   aggressionLevel: number;       // 0-1 personality trait (0.3=passive, 0.7=aggressive)
 }
 
-export default class ForestManager {
-  state: DurableObjectState;
-  storage: DurableObjectStorage;
+export default class ForestManager extends DurableObject {
+  // state and ctx are inherited from DurableObject base class
+  storage: any; // Reference to ctx.storage for convenience
   env: any;
 
   // Simple state management
@@ -109,9 +90,9 @@ export default class ForestManager {
   private lastNPCUpdate: number = 0;
   private readonly NPC_UPDATE_INTERVAL = 100; // 100ms = 10 updates/sec
 
-  constructor(state: DurableObjectState, env: any) {
-    this.state = state;
-    this.storage = state.storage;
+  constructor(ctx: any, env: any) {
+    super(ctx, env);
+    this.storage = ctx.storage;
     this.env = env;
 
     // MVP 7: Initialize NPC Manager
@@ -175,7 +156,7 @@ export default class ForestManager {
     // Reschedule alarm for next NPC update (100ms)
     // This runs frequently for smooth NPC movement
     if (this.activePlayers.size > 0 || this.npcManager.getNPCCount() > 0) {
-      await this.state.storage.setAlarm(Date.now() + this.NPC_UPDATE_INTERVAL);
+      await this.storage.setAlarm(Date.now() + this.NPC_UPDATE_INTERVAL);
       console.log(`⏰ ALARM RESCHEDULED for ${this.NPC_UPDATE_INTERVAL}ms from now`);
     } else {
       console.log(`⏰ ALARM NOT RESCHEDULED (no players, no NPCs)`);
@@ -189,12 +170,12 @@ export default class ForestManager {
    * MVP 7: Use 100ms interval for NPC updates (not 10 seconds)
    */
   private async ensureAlarmScheduled(): Promise<void> {
-    const currentAlarm = await this.state.storage.getAlarm();
+    const currentAlarm = await this.storage.getAlarm();
     console.log(`⏰ ensureAlarmScheduled() - currentAlarm: ${currentAlarm}, will schedule: ${currentAlarm === null}`);
     if (currentAlarm === null) {
       // No alarm scheduled, schedule one for NPC updates (100ms)
       const scheduleTime = Date.now() + this.NPC_UPDATE_INTERVAL;
-      await this.state.storage.setAlarm(scheduleTime);
+      await this.storage.setAlarm(scheduleTime);
       console.log(`⏰ INITIAL ALARM SCHEDULED at ${new Date(scheduleTime).toISOString()} (${this.NPC_UPDATE_INTERVAL}ms from now)`);
     } else {
       console.log(`⏰ Alarm already exists, scheduled for ${new Date(currentAlarm).toISOString()}`);
@@ -337,7 +318,9 @@ export default class ForestManager {
       existingPlayer.username = username;
 
       // MVP 5.8: Ensure alarm is scheduled for disconnect checking
+      console.log(`🔧 About to call ensureAlarmScheduled() for reconnecting player`);
       await this.ensureAlarmScheduled();
+      console.log(`🔧 ensureAlarmScheduled() completed for reconnecting player`);
 
       // Setup message handlers
       socket.onmessage = async (event) => {
@@ -431,7 +414,9 @@ export default class ForestManager {
       this.activePlayers.set(squirrelId, playerConnection);
 
       // MVP 5.8: Ensure alarm is scheduled for disconnect checking
+      console.log(`🔧 About to call ensureAlarmScheduled() for new player`);
       await this.ensureAlarmScheduled();
+      console.log(`🔧 ensureAlarmScheduled() completed for new player`);
 
       // Setup message handlers
       socket.onmessage = async (event) => {
@@ -808,8 +793,16 @@ export default class ForestManager {
     await this.storage.put('mapState', this.mapState);
 
     // MVP 7: Spawn NPCs
+    console.log(`🔧 About to spawn NPCs...`);
     this.npcManager.spawnNPCs();
-    console.log(`🤖 Spawned ${this.npcManager.getNPCCount()} NPCs`);
+    const npcCount = this.npcManager.getNPCCount();
+    console.log(`🤖 Spawned ${npcCount} NPCs`);
+
+    if (npcCount > 0) {
+      console.log(`✅ NPCs spawned successfully, alarm should handle updates`);
+    } else {
+      console.log(`⚠️ WARNING: No NPCs spawned!`);
+    }
 
     this.isInitialized = true;
     console.log('✅ SERVER: World initialization complete');
@@ -946,7 +939,7 @@ export default class ForestManager {
   // Username is just a display name - sessionToken is the actual identity
   private async loadPlayerPosition(sessionToken: string): Promise<{ x: number; y: number; z: number } | null> {
     try {
-      const savedData = await this.storage.get<{ position: { x: number; y: number; z: number } }>(`player:${sessionToken}`);
+      const savedData = await this.storage.get(`player:${sessionToken}`);
       return savedData?.position || null;
     } catch (error) {
       console.error(`❌ Failed to load position for session ${sessionToken.substring(0, 8)}...:`, error);
