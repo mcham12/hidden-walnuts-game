@@ -88,7 +88,7 @@ export default class ForestManager extends DurableObject {
   // MVP 7: NPC System
   npcManager: NPCManager;
   private lastNPCUpdate: number = 0;
-  private readonly NPC_UPDATE_INTERVAL = 100; // 100ms = 10 updates/sec
+  private readonly NPC_UPDATE_INTERVAL = 150; // 150ms = ~7 updates/sec (smoother network performance)
 
   constructor(ctx: any, env: any) {
     super(ctx, env);
@@ -101,14 +101,14 @@ export default class ForestManager extends DurableObject {
 
   /**
    * MVP 5.8: Durable Object Alarm for session management
-   * MVP 7: Also handles NPC updates (100ms intervals)
-   * Runs every 100ms for NPCs, checks player disconnects less frequently
+   * MVP 7: Also handles NPC updates (150ms intervals)
+   * Runs every 150ms for NPCs, checks player disconnects less frequently
    */
   async alarm(): Promise<void> {
     console.log(`⏰ ALARM FIRED - Players: ${this.activePlayers.size}, NPCs: ${this.npcManager.getNPCCount()}`);
     const now = Date.now();
 
-    // MVP 7: Update NPCs every 100ms
+    // MVP 7: Update NPCs every 150ms (~7 Hz for smooth network performance)
     if (now - this.lastNPCUpdate >= this.NPC_UPDATE_INTERVAL) {
       console.log(`🔄 Updating NPCs (lastUpdate was ${now - this.lastNPCUpdate}ms ago)`);
       this.npcManager.update();
@@ -153,8 +153,8 @@ export default class ForestManager extends DurableObject {
       }
     }
 
-    // Reschedule alarm for next NPC update (100ms)
-    // This runs frequently for smooth NPC movement
+    // Reschedule alarm for next NPC update (150ms)
+    // This runs at ~7 Hz for smooth network-friendly updates
     if (this.activePlayers.size > 0 || this.npcManager.getNPCCount() > 0) {
       await this.storage.setAlarm(Date.now() + this.NPC_UPDATE_INTERVAL);
       console.log(`⏰ ALARM RESCHEDULED for ${this.NPC_UPDATE_INTERVAL}ms from now`);
@@ -167,7 +167,7 @@ export default class ForestManager extends DurableObject {
 
   /**
    * MVP 5.8 + MVP 7: Schedule alarm if not already scheduled OR if expired
-   * MVP 7: Use 100ms interval for NPC updates (not 10 seconds)
+   * MVP 7: Use 150ms interval for NPC updates (~7 Hz for network-friendly performance)
    * FIX: Check if alarm is in the past and reschedule if so
    */
   private async ensureAlarmScheduled(): Promise<void> {

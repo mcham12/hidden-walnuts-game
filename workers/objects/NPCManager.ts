@@ -63,7 +63,7 @@ export class NPCManager {
   private readonly MAX_NPCS = 3; // Reduced for testing
   private readonly DESPAWN_PLAYER_THRESHOLD = 15; // Despawn NPCs if >15 real players
   private readonly NPC_SPEED = 2.4; // 80% of player speed (3.0 units/sec)
-  private readonly UPDATE_DELTA = 0.1; // 100ms update interval
+  private readonly UPDATE_DELTA = 0.15; // 150ms update interval (~7 Hz for smoother network performance)
 
   // Perception radii
   private readonly ENTITY_VISION_RADIUS = 30;
@@ -200,11 +200,11 @@ export class NPCManager {
     };
 
     const baseName = nameMap[characterId] || 'Critter';
-    return `NPC - ${baseName}`;
+    return baseName; // Just the character type, no "NPC - " prefix
   }
 
   /**
-   * Main update loop - called every 100ms from ForestManager
+   * Main update loop - called every 150ms (~7 Hz) from ForestManager
    */
   update(): void {
     const delta = this.UPDATE_DELTA;
@@ -356,34 +356,34 @@ export class NPCManager {
       }
     }
 
-    // Default behavior distribution
+    // Default behavior distribution (favor idling for more natural/calm NPCs)
     const rand = Math.random();
 
-    if (rand < 0.15) {
-      return NPCBehavior.IDLE; // 15% idle
-    } else if (rand < 0.85) {
-      return NPCBehavior.WANDER; // 70% wander
+    if (rand < 0.60) {
+      return NPCBehavior.IDLE; // 60% idle - NPCs spend most time resting
+    } else if (rand < 0.90) {
+      return NPCBehavior.WANDER; // 30% wander - occasional exploration
     } else {
-      // 15% split between gather/approach
+      // 10% split between gather/approach - rare active behaviors
       if (nearbyWalnuts.length > 0) {
         return NPCBehavior.GATHER;
       } else if (nearbyEntities.length > 0) {
         return NPCBehavior.APPROACH;
       } else {
-        return NPCBehavior.WANDER;
+        return NPCBehavior.IDLE; // Default to idle if no targets
       }
     }
   }
 
   /**
-   * Get random behavior duration
+   * Get random behavior duration (increased idle time for more natural NPCs)
    */
   private getRandomBehaviorDuration(behavior: NPCBehavior): number {
     switch (behavior) {
       case NPCBehavior.IDLE:
-        return 2 + Math.random() * 3; // 2-5 seconds
+        return 5 + Math.random() * 10; // 5-15 seconds - NPCs rest longer
       case NPCBehavior.WANDER:
-        return 3 + Math.random() * 4; // 3-7 seconds
+        return 4 + Math.random() * 6; // 4-10 seconds - longer walks
       case NPCBehavior.APPROACH:
         return 2 + Math.random() * 3; // 2-5 seconds
       case NPCBehavior.GATHER:
@@ -391,7 +391,7 @@ export class NPCManager {
       case NPCBehavior.THROW:
         return 1.5; // Throw animation duration
       default:
-        return 3;
+        return 5;
     }
   }
 
