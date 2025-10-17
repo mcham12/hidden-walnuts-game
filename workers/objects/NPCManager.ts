@@ -75,10 +75,10 @@ export class NPCManager {
   private readonly THROW_COOLDOWN = 3000; // 3 seconds
   private readonly MAX_INVENTORY = 5;
 
-  // Character types (all 11 available)
+  // Character types (all 11 available from characters.json)
   private readonly CHARACTER_TYPES = [
-    'colobus', 'squirrel-monkey', 'proboscis-monkey', 'mandrill',
-    'capuchin', 'tarsier', 'tamarin', 'marmoset', 'howler', 'spider-monkey', 'macaque'
+    'squirrel', 'lynx', 'goat', 'hare', 'moose', 'bear',
+    'skunk', 'badger', 'chipmunk', 'turkey', 'mallard'
   ];
 
   // Reference to ForestManager for accessing game state
@@ -186,20 +186,20 @@ export class NPCManager {
    */
   private generateNPCUsername(characterId: string): string {
     const nameMap: Record<string, string> = {
-      'colobus': 'Colobus',
-      'squirrel-monkey': 'Squirrel Monkey',
-      'proboscis-monkey': 'Proboscis',
-      'mandrill': 'Mandrill',
-      'capuchin': 'Capuchin',
-      'tarsier': 'Tarsier',
-      'tamarin': 'Tamarin',
-      'marmoset': 'Marmoset',
-      'howler': 'Howler',
-      'spider-monkey': 'Spider Monkey',
-      'macaque': 'Macaque'
+      'squirrel': 'Squirrel',
+      'lynx': 'Lynx',
+      'goat': 'Goat',
+      'hare': 'Hare',
+      'moose': 'Moose',
+      'bear': 'Bear',
+      'skunk': 'Skunk',
+      'badger': 'Badger',
+      'chipmunk': 'Chipmunk',
+      'turkey': 'Turkey',
+      'mallard': 'Mallard'
     };
 
-    const baseName = nameMap[characterId] || 'Monkey';
+    const baseName = nameMap[characterId] || 'Critter';
     return `NPC - ${baseName}`;
   }
 

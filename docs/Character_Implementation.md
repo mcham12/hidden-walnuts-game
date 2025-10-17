@@ -1,19 +1,32 @@
 # Character Implementation Guide ✅ **WORKING**
 
 ## Overview
-**Status: COMPLETED** - Fully animated Colobus character with terrain-following movement, gravity physics, and proper ground positioning.
+**Status: COMPLETED** - Fully animated character system with 11 playable characters. All characters have terrain-following movement, gravity physics, and proper ground positioning.
 
-## Available Assets
+## Available Characters
 
-### Colobus Character ✅
-- **Model**: `/assets/animations/characters/Colobus_Animations.glb` (combined model + animations)
-- **Animations**: idle, run, jump (automatic state switching)  
-- **Scale**: 0.5 (reduced from 0.3 for better visibility)
-- **Features**: 
-  - Bounding box positioning (feet on ground)
-  - Terrain height following
-  - Gravity and jumping physics
-  - Smooth animation transitions
+### Character Configuration
+All available characters are defined in **`/client/public/characters.json`** - this is the single source of truth for character models, animations, and metadata.
+
+**Current Characters** (11 total):
+1. **Squirrel** - Agile forest dweller (default character)
+2. **Lynx** - Stealthy wildcat
+3. **Goat** - Sure-footed climber
+4. **Hare** - Swift speedster
+5. **Moose** - Majestic forest giant
+6. **Bear** - Powerful guardian
+7. **Skunk** - Charismatic woodland creature
+8. **Badger** - Tenacious burrower
+9. **Chipmunk** - Energetic hoarder
+10. **Turkey** - Proud woodland bird
+11. **Mallard** - Graceful waterfowl
+
+Each character includes:
+- **Model**: LOD0 mesh (e.g., `/assets/models/characters/Squirrel_LOD0.glb`)
+- **Animations**: Complete set (idle, walk, run, jump, eat, attack, sit, bounce, spin, clicked, roll, hit, fear, death, fly, swim)
+- **Scale**: 0.5 for proper world proportions
+- **Category**: mammal or bird
+- **Emotes**: Wave, Point, Celebrate animations
 
 ## Implementation in Code ✅
 
@@ -45,12 +58,37 @@ this.characterGroundOffset = -box.min.y;
 this.character.position.y = getTerrainHeight(x, z) + this.characterGroundOffset;
 ```
 
-Expansion Steps
+## Adding New Characters
 
-Add to characters.json: New entries with model/animations.
-UI: Enhance select in main.ts for multi-choice.
-Multiplayer: Sync character ID/animation state via WebSocket.
-NPCs: Add wandering logic with random animations.
+To add a new character to the game:
+
+1. **Add model files** to `/client/public/assets/models/characters/`:
+   - `CharacterName_LOD0.glb` (base model)
+
+2. **Add animation files** to `/client/public/assets/models/characters/Animations/Single/`:
+   - `CharacterName_Idle_A.glb`, `CharacterName_Walk.glb`, etc.
+
+3. **Update `/client/public/characters.json`**:
+   ```json
+   {
+     "id": "character-name",
+     "name": "Display Name",
+     "modelPath": "/assets/models/characters/CharacterName_LOD0.glb",
+     "animations": { ... },
+     "scale": 0.5,
+     "category": "mammal",
+     "description": "Character description"
+   }
+   ```
+
+4. **Update NPC character list** in `/workers/objects/NPCManager.ts`:
+   - Add the new character ID to the `CHARACTER_TYPES` array
+   - Add the name mapping in `generateNPCUsername()`
+
+The character will automatically appear in:
+- Character selection screen
+- Multiplayer player characters
+- NPC random selection pool
 
 Testing
 
