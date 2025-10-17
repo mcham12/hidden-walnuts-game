@@ -124,10 +124,12 @@ export default class ForestManager {
    * Runs every 100ms for NPCs, checks player disconnects less frequently
    */
   async alarm(): Promise<void> {
+    console.log(`⏰ ALARM FIRED - Players: ${this.activePlayers.size}, NPCs: ${this.npcManager.getNPCCount()}`);
     const now = Date.now();
 
     // MVP 7: Update NPCs every 100ms
     if (now - this.lastNPCUpdate >= this.NPC_UPDATE_INTERVAL) {
+      console.log(`🔄 Updating NPCs (lastUpdate was ${now - this.lastNPCUpdate}ms ago)`);
       this.npcManager.update();
       this.lastNPCUpdate = now;
     }
@@ -174,6 +176,9 @@ export default class ForestManager {
     // This runs frequently for smooth NPC movement
     if (this.activePlayers.size > 0 || this.npcManager.getNPCCount() > 0) {
       await this.state.storage.setAlarm(Date.now() + this.NPC_UPDATE_INTERVAL);
+      console.log(`⏰ ALARM RESCHEDULED for ${this.NPC_UPDATE_INTERVAL}ms from now`);
+    } else {
+      console.log(`⏰ ALARM NOT RESCHEDULED (no players, no NPCs)`);
     }
   }
 
@@ -185,10 +190,14 @@ export default class ForestManager {
    */
   private async ensureAlarmScheduled(): Promise<void> {
     const currentAlarm = await this.state.storage.getAlarm();
+    console.log(`⏰ ensureAlarmScheduled() - currentAlarm: ${currentAlarm}, will schedule: ${currentAlarm === null}`);
     if (currentAlarm === null) {
       // No alarm scheduled, schedule one for NPC updates (100ms)
-      await this.state.storage.setAlarm(Date.now() + this.NPC_UPDATE_INTERVAL);
-      console.log(`⏰ Alarm scheduled for NPC updates (${this.NPC_UPDATE_INTERVAL}ms intervals)`);
+      const scheduleTime = Date.now() + this.NPC_UPDATE_INTERVAL;
+      await this.state.storage.setAlarm(scheduleTime);
+      console.log(`⏰ INITIAL ALARM SCHEDULED at ${new Date(scheduleTime).toISOString()} (${this.NPC_UPDATE_INTERVAL}ms from now)`);
+    } else {
+      console.log(`⏰ Alarm already exists, scheduled for ${new Date(currentAlarm).toISOString()}`);
     }
   }
 
