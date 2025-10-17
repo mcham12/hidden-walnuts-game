@@ -1,6 +1,6 @@
 # 🎮 Hidden Walnuts - MVP Development Plan
 
-**Current Status**: MVP 7 (NPC Characters & World Life) - ✅ **COMPLETE**
+**Current Status**: MVP 7.1 (Cloudflare Cost Mitigation) - 🎯 **IN PROGRESS**
 
 ---
 
@@ -407,6 +407,130 @@ private npcNameLabels: Map<string, HTMLElement> = new Map();
 
 ---
 
+## 💰 MVP 7.1: Cloudflare Cost Mitigation
+
+**Goal**: Minimize Cloudflare Workers/Durable Objects costs before adding more load
+
+**Objectives**:
+1. Understand Cloudflare cost drivers (requests, CPU time, Durable Objects operations)
+2. Research common mitigation techniques (rate limiting, caching, batching, compression)
+3. Identify cost optimization opportunities in this game's architecture
+4. Select high-value optimizations based on risk/benefit/complexity
+5. Remove any debug console.log statements added in MVP 7
+6. Implement selected optimizations
+
+### Phase 1: Cost Analysis (1-2 hours)
+
+**1.1 Review Cloudflare Pricing**
+- Workers: $5/month for 10M requests, $0.50/million after
+- Durable Objects: $5/month for 1M requests, $0.15/million after
+- Durable Objects: $12.50/GB-month storage
+- WebSocket connections: Included in request count
+- Identify our current usage patterns
+
+**1.2 Identify Cost Drivers in Current Implementation**
+- NPC update loops (150ms intervals = ~7 Hz)
+- Player heartbeat (10s intervals)
+- Position sync broadcasts (every frame? or throttled?)
+- WebSocket message frequency
+- Durable Object alarm usage
+- Storage operations (position persistence, username lookups)
+
+**1.3 Measure Current Costs**
+- Check Cloudflare dashboard for actual usage
+- Estimate monthly costs at current scale
+- Project costs at 10x, 100x scale
+
+### Phase 2: Optimization Opportunities (1-2 hours)
+
+**2.1 Message Batching**
+- Batch multiple NPC updates into single broadcast
+- Reduce WebSocket message count
+- Example: Send 3 NPC updates in one message vs 3 separate messages
+
+**2.2 Update Rate Tuning**
+- NPC updates: 150ms → 200ms? (7 Hz → 5 Hz)
+- Position sync: Evaluate if we're sending too frequently
+- Find sweet spot: performance vs cost
+
+**2.3 Compression**
+- Use binary encoding for position updates (vs JSON)
+- Delta compression (send only changed values)
+- Example: 50 byte JSON → 12 byte binary
+
+**2.4 Caching & Deduplication**
+- Cache username lookups (avoid repeated DO fetches)
+- Cache character selection data
+- Deduplicate identical messages
+
+**2.5 Rate Limiting**
+- Prevent spam from malicious clients
+- Limit position update frequency from client
+- Protect against DDoS
+
+### Phase 3: Implementation (2-4 hours)
+
+**Selected Optimizations** (prioritized by impact/complexity):
+
+**3.1 Remove Debug Logging** (5 min)
+- Remove console.log statements added in MVP 7
+- Keep only console.error/warn for critical issues
+- Reduces Workers CPU time slightly
+
+**3.2 NPC Update Batching** (30 min)
+- Batch all NPC updates into single broadcast per tick
+- Current: N separate messages per update cycle
+- After: 1 message with array of N NPC states
+- **Impact**: Reduce DO requests by ~90% for NPC updates
+
+**3.3 Optimize NPC Update Frequency** (15 min)
+- Change from 150ms to 200ms (7 Hz → 5 Hz)
+- Still smooth, 30% fewer DO alarms
+- **Impact**: 30% reduction in DO requests
+
+**3.4 Position Update Throttling** (1 hour)
+- Client-side: Don't send position if player hasn't moved
+- Server-side: Don't broadcast if position change < threshold
+- **Impact**: 50-70% reduction in message traffic
+
+**3.5 Binary Position Encoding** (Optional, 1-2 hours)
+- Encode position updates as binary (Float32Array)
+- Reduce bandwidth, not direct cost savings
+- **Defer if time constrained**
+
+### Phase 4: Testing & Validation (1 hour)
+
+**4.1 Verify Functionality**
+- Test with multiple players
+- Verify NPC behavior still smooth
+- Check for any regressions
+
+**4.2 Measure Cost Impact**
+- Monitor Cloudflare dashboard after deploy
+- Calculate estimated monthly savings
+- Document actual results
+
+### Success Criteria
+
+- ✅ Understand Cloudflare cost model
+- ✅ Remove MVP 7 debug logging
+- ✅ Implement at least 2 high-impact optimizations
+- ✅ No gameplay regressions
+- ✅ Measurable cost reduction (target: 30-50% fewer requests)
+- ✅ Document findings and future optimization opportunities
+
+### Future Optimizations (Deferred)
+
+- Binary protocol for all messages
+- Message compression (gzip)
+- Smart interpolation (reduce update frequency)
+- Spatial partitioning for broadcasts (only send nearby entities)
+- WebRTC for P2P communication (bypass Workers for some traffic)
+
+**Time Estimate**: 4-8 hours total
+
+---
+
 ## 🥊 MVP 8: Combat, Health & Resource Management
 
 **Goal**: Triple-purpose walnuts (score, throw, eat) with survival mechanics + complete projectile system
@@ -699,7 +823,8 @@ velocity.y += gravity * delta  // -9.8 m/s²
 | 1.5-5.9 | Core Game & Polish | ✅ Complete |
 | 6 | Player Identity (Simple) | ✅ Complete |
 | 7 | NPC Characters | ✅ Complete |
-| **8** | **Combat & Health** | 🎯 **NEXT** |
+| **7.1** | **Cloudflare Cost Mitigation** | 🎯 **IN PROGRESS** |
+| 8 | Combat & Health | Pending |
 | 9 | Animation Polish (Optional) | Pending |
 | 10 | Predators & Polish | Pending |
 | 11 | Full Authentication | Pending |
@@ -721,6 +846,9 @@ Simple username system for persistent identity. No passwords yet. (TBD)
 
 ### MVP 7: NPC Characters & World Life
 ~10 server-side AI characters with perception, behaviors (wander/approach/gather/throw), walnut throwing at players/NPCs. (12-16 hours)
+
+### MVP 7.1: Cloudflare Cost Mitigation
+Minimize Workers/Durable Objects costs: understand pricing, analyze cost drivers, implement optimizations (message batching, update rate tuning, position throttling), remove debug logging. (4-8 hours)
 
 ### MVP 8: Combat, Health & Resource Management
 Complete projectile system (arc physics, hit detection), player throwing (T key), health/damage (100 HP), eating (E key), inventory (10 walnuts), NPC throwing integration. (10-14 hours)
@@ -745,4 +873,4 @@ Remove unused ECS code. Do last when features stable. (TBD)
 
 ---
 
-**Next Step**: Begin MVP 8 (Combat, Health & Resource Management) 🥊
+**Next Step**: Begin MVP 7.1 (Cloudflare Cost Mitigation) 💰
