@@ -1649,9 +1649,13 @@ export class Game {
       };
       this.remotePlayerBuffers.set(playerId, [initialState]);
 
-      // Start with idle animation
+      // Start with idle animation - configure properly to match player animation behavior
       if (remoteActions['idle']) {
-        remoteActions['idle'].play();
+        const idleAction = remoteActions['idle'];
+        idleAction.reset();
+        idleAction.setLoop(THREE.LoopRepeat, Infinity);
+        idleAction.clampWhenFinished = false;
+        idleAction.play();
       }
 
       this.scene.add(remoteCharacter);
@@ -2063,11 +2067,13 @@ export class Game {
       };
       this.npcInterpolationBuffers.set(npcId, [initialState]);
 
-      // Start with animation
-      if (npcActions[animation]) {
-        npcActions[animation].play();
-      } else if (npcActions['idle']) {
-        npcActions['idle'].play();
+      // Start with animation - configure properly to match player animation behavior
+      const initialAnimation = npcActions[animation] || npcActions['idle'];
+      if (initialAnimation) {
+        initialAnimation.reset();
+        initialAnimation.setLoop(THREE.LoopRepeat, Infinity);
+        initialAnimation.clampWhenFinished = false;
+        initialAnimation.play();
       }
 
       this.scene.add(npcCharacter);
@@ -2157,8 +2163,12 @@ export class Game {
         if (actions && actions[animation]) {
           // Stop current animation
           Object.values(actions).forEach(action => action.stop());
-          // Play new animation
-          actions[animation].reset().play();
+          // Play new animation with proper loop configuration (match player animation setup)
+          const action = actions[animation];
+          action.reset();
+          action.setLoop(THREE.LoopRepeat, Infinity);
+          action.clampWhenFinished = false;
+          action.play();
         }
       }
     } else {
