@@ -80,8 +80,8 @@ export class Game {
 
   // Entity interpolation with velocity-based extrapolation - industry standard for smooth multiplayer
   private remotePlayerBuffers: Map<string, Array<{ position: THREE.Vector3; quaternion: THREE.Quaternion; velocity?: THREE.Vector3; timestamp: number }>> = new Map();
-  private INTERPOLATION_DELAY = 50; // 50ms - 1x the update interval (lower latency)
-  private MAX_BUFFER_SIZE = 5; // Increased buffer for smoother interpolation
+  private INTERPOLATION_DELAY = 150; // 150ms - Render 1.5x behind server updates (100ms) for smooth interpolation
+  private MAX_BUFFER_SIZE = 10; // Larger buffer for smoother interpolation (10 updates = 1 second history)
   private remotePlayerMixers: Map<string, THREE.AnimationMixer> = new Map();
   private remotePlayerActions: Map<string, { [key: string]: THREE.AnimationAction }> = new Map();
   private lastPositionSent = { x: 0, y: 0, z: 0, rotation: 0, animation: '', moveType: 'idle' };
@@ -116,6 +116,7 @@ export class Game {
   private npcActions: Map<string, { [key: string]: THREE.AnimationAction }> = new Map();
   private npcNameLabels: Map<string, HTMLElement> = new Map();
   private npcInterpolationBuffers: Map<string, Array<{ position: THREE.Vector3; quaternion: THREE.Quaternion; timestamp: number }>> = new Map();
+  private npcPendingUpdates: Map<string, Array<{ position: any; rotationY: number; animation?: string; velocity?: any; behavior?: string; timestamp: number }>> = new Map();
 
   private idleVariationInterval: number = 10000; // 10 seconds between idle variations
   private availableIdleAnimations: string[] = ['idle', 'idle_b', 'idle_c'];
@@ -1788,7 +1789,8 @@ export class Game {
   }
 
   /**
-   * MVP 7: Buffered interpolation for NPCs (same as remote players)
+   * MVP 7: Buffered interpolation for NPCs (industry standard approach)
+   * Based on Gabriel Gambetta's Entity Interpolation guide
    */
   private updateNPCInterpolation(_deltaTime: number): void {
     const currentTime = Date.now();
@@ -1798,18 +1800,29 @@ export class Game {
       const npc = this.npcs.get(npcId);
       if (!npc || buffer.length < 1) continue;
 
-      // Single state - use it directly
+      // Single state - smoothly move toward it (avoids cumulative lerp drift)
       if (buffer.length === 1) {
         const state = buffer[0];
-        npc.position.lerp(state.position, 0.3);
-        npc.quaternion.slerp(state.quaternion, 0.3);
+        const distance = npc.position.distanceTo(state.position);
+
+        // If close enough, snap to position
+        if (distance < 0.01) {
+          npc.position.copy(state.position);
+          npc.quaternion.copy(state.quaternion);
+        } else {
+          // Smooth lerp with frame-rate independent factor
+          const alpha = Math.min(1, _deltaTime * 10); // 10x per second
+          npc.position.lerp(state.position, alpha);
+          npc.quaternion.slerp(state.quaternion, alpha);
+        }
         continue;
       }
 
-      // Find two states to interpolate between
+      // Find two states to interpolate between for the render time
       let fromState = buffer[0];
-      let toState = buffer[buffer.length - 1];
+      let toState = buffer[1];
 
+      // Find the bracket: fromState.timestamp <= renderTime < toState.timestamp
       for (let i = 0; i < buffer.length - 1; i++) {
         if (buffer[i].timestamp <= renderTime && buffer[i + 1].timestamp >= renderTime) {
           fromState = buffer[i];
@@ -1818,13 +1831,19 @@ export class Game {
         }
       }
 
+      // If renderTime is beyond latest state, use the last two states
+      if (renderTime >= buffer[buffer.length - 1].timestamp) {
+        fromState = buffer[buffer.length - 2];
+        toState = buffer[buffer.length - 1];
+      }
+
       // Calculate interpolation factor
       const timeDelta = toState.timestamp - fromState.timestamp;
       let t = 0;
 
       if (timeDelta > 0) {
         t = (renderTime - fromState.timestamp) / timeDelta;
-        t = Math.max(0, Math.min(1, t));
+        t = Math.max(0, Math.min(1, t)); // Clamp to [0, 1]
       }
 
       // Interpolate position and rotation
@@ -2079,6 +2098,16 @@ export class Game {
       }
 
       console.log(`🤖 Created NPC: ${username} (${characterId}) at (${position.x.toFixed(1)}, ${position.z.toFixed(1)})`);
+
+      // Process any pending updates that arrived while NPC was loading
+      const pendingQueue = this.npcPendingUpdates.get(npcId);
+      if (pendingQueue && pendingQueue.length > 0) {
+        console.log(`📦 Processing ${pendingQueue.length} queued updates for ${npcId}`);
+        for (const update of pendingQueue) {
+          this.updateNPC(npcId, update.position, update.rotationY, update.animation, update.velocity, update.behavior);
+        }
+        this.npcPendingUpdates.delete(npcId);
+      }
     } catch (error) {
       console.error('❌ Failed to create NPC:', npcId, error);
     }
@@ -2087,7 +2116,7 @@ export class Game {
   /**
    * MVP 7: Update NPC position and animation from server
    */
-  private updateNPC(npcId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, _velocity?: { x: number; z: number }, _behavior?: string): void {
+  private updateNPC(npcId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; z: number }, behavior?: string): void {
     const npc = this.npcs.get(npcId);
     if (npc) {
       // Calculate ground position
@@ -2111,8 +2140,8 @@ export class Game {
       // Add new state and maintain buffer
       buffer.push(newState);
 
-      // Remove old states
-      const cutoffTime = newState.timestamp - (this.INTERPOLATION_DELAY + 100);
+      // Remove old states (keep recent history for interpolation)
+      const cutoffTime = newState.timestamp - (this.INTERPOLATION_DELAY + 200);
       while (buffer.length > 2 && buffer[0].timestamp < cutoffTime) {
         buffer.shift();
       }
@@ -2133,7 +2162,18 @@ export class Game {
         }
       }
     } else {
-      console.warn(`⚠️ Received update for unknown NPC ${npcId}, ignoring`);
+      // NPC not loaded yet - queue the update for when it's ready
+      let pendingQueue = this.npcPendingUpdates.get(npcId);
+      if (!pendingQueue) {
+        pendingQueue = [];
+        this.npcPendingUpdates.set(npcId, pendingQueue);
+      }
+
+      // Add update to queue (limit queue size to prevent memory issues)
+      pendingQueue.push({ position, rotationY, animation, velocity, behavior, timestamp: Date.now() });
+      if (pendingQueue.length > 20) {
+        pendingQueue.shift(); // Remove oldest
+      }
     }
   }
 
@@ -2166,6 +2206,9 @@ export class Game {
 
       // Clean up interpolation buffer
       this.npcInterpolationBuffers.delete(npcId);
+
+      // Clean up pending updates queue
+      this.npcPendingUpdates.delete(npcId);
 
       // Remove name label
       const nameLabel = this.npcNameLabels.get(npcId);
