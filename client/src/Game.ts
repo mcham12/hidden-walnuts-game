@@ -1820,6 +1820,11 @@ export class Game {
           npc.position.lerp(state.position, alpha);
           npc.quaternion.slerp(state.quaternion, alpha);
         }
+
+        // Update NPC collision position
+        if (this.collisionSystem) {
+          this.collisionSystem.updateColliderPosition(npcId, npc.position);
+        }
         continue;
       }
 
@@ -1854,6 +1859,11 @@ export class Game {
       // Interpolate position and rotation
       npc.position.lerpVectors(fromState.position, toState.position, t);
       npc.quaternion.slerpQuaternions(fromState.quaternion, toState.quaternion, t);
+
+      // Update NPC collision position
+      if (this.collisionSystem) {
+        this.collisionSystem.updateColliderPosition(npcId, npc.position);
+      }
     }
   }
 
