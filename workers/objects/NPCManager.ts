@@ -60,7 +60,7 @@ export class NPCManager {
   private npcCounter: number = 0;
 
   // Configuration
-  private readonly MAX_NPCS = 10;
+  private readonly MAX_NPCS = 3; // Reduced for testing
   private readonly DESPAWN_PLAYER_THRESHOLD = 15; // Despawn NPCs if >15 real players
   private readonly NPC_SPEED = 2.4; // 80% of player speed (3.0 units/sec)
   private readonly UPDATE_DELTA = 0.1; // 100ms update interval
