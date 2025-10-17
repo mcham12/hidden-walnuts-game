@@ -180,14 +180,15 @@ export default class ForestManager {
   private lastDisconnectCheck: number = 0;
 
   /**
-   * MVP 5.8: Schedule disconnect checker alarm if not already scheduled
+   * MVP 5.8 + MVP 7: Schedule alarm if not already scheduled
+   * MVP 7: Use 100ms interval for NPC updates (not 10 seconds)
    */
   private async ensureAlarmScheduled(): Promise<void> {
     const currentAlarm = await this.state.storage.getAlarm();
     if (currentAlarm === null) {
-      // No alarm scheduled, schedule one
-      await this.state.storage.setAlarm(Date.now() + 10000); // 10 seconds from now
-      console.log(`⏰ Alarm scheduled for disconnect checking`);
+      // No alarm scheduled, schedule one for NPC updates (100ms)
+      await this.state.storage.setAlarm(Date.now() + this.NPC_UPDATE_INTERVAL);
+      console.log(`⏰ Alarm scheduled for NPC updates (${this.NPC_UPDATE_INTERVAL}ms intervals)`);
     }
   }
 
@@ -360,6 +361,9 @@ export default class ForestManager {
       await this.sendWorldState(socket, existingPlayer.position, existingPlayer.rotationY);
       await this.sendExistingPlayers(socket, squirrelId);
 
+      // MVP 7: Send existing NPCs to reconnecting player
+      await this.sendExistingNPCs(socket);
+
       // Broadcast reconnection
       this.broadcastToOthers(squirrelId, {
         type: 'player_reconnected',
@@ -450,6 +454,9 @@ export default class ForestManager {
       // Send initial data with spawn position (MVP 6: may be saved position or default)
       await this.sendWorldState(socket, playerConnection.position, playerConnection.rotationY);
       await this.sendExistingPlayers(socket, squirrelId);
+
+      // MVP 7: Send existing NPCs to new player
+      await this.sendExistingNPCs(socket);
 
       // Broadcast player join
       this.broadcastToOthers(squirrelId, {
@@ -633,6 +640,31 @@ export default class ForestManager {
         type: "existing_players",
         players: existingPlayers
       });
+    }
+  }
+
+  /**
+   * MVP 7: Send existing NPCs to new player
+   */
+  private async sendExistingNPCs(socket: WebSocket): Promise<void> {
+    const existingNPCs = this.npcManager.getNPCs();
+
+    if (existingNPCs.length > 0) {
+      // Send each NPC as an npc_spawned message
+      for (const npc of existingNPCs) {
+        this.sendMessage(socket, {
+          type: 'npc_spawned',
+          npc: {
+            id: npc.id,
+            characterId: npc.characterId,
+            username: npc.username,
+            position: npc.position,
+            rotationY: npc.rotationY,
+            animation: npc.animation
+          }
+        });
+      }
+      console.log(`📤 Sent ${existingNPCs.length} existing NPCs to new player`);
     }
   }
 
