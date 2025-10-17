@@ -2050,8 +2050,8 @@ export class Game {
       this.scene.add(npcCharacter);
 
       // MVP 7: Create NPC name label with cyan/yellow color + italic styling
-      const npcNameLabel = this.createLabel(username, '#00FFFF'); // Cyan color
-      npcNameLabel.style.background = 'linear-gradient(90deg, rgba(0,255,255,0.8), rgba(255,255,0,0.8))'; // Cyan to yellow gradient
+      const npcNameLabel = this.createLabel(username, '#000000'); // Black text for readability
+      npcNameLabel.style.background = 'linear-gradient(90deg, rgba(0,255,255,0.9), rgba(255,255,0,0.9))'; // Cyan to yellow gradient
       npcNameLabel.style.padding = '4px 10px';
       npcNameLabel.style.borderRadius = '12px';
       npcNameLabel.style.fontSize = '13px';
@@ -2060,11 +2060,18 @@ export class Game {
       npcNameLabel.style.whiteSpace = 'nowrap';
       npcNameLabel.style.pointerEvents = 'none';
       npcNameLabel.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+      npcNameLabel.style.position = 'absolute'; // Ensure absolute positioning
+      npcNameLabel.style.visibility = 'visible'; // Explicitly set visibility
+      npcNameLabel.style.display = 'block'; // Ensure display is block
+      npcNameLabel.style.zIndex = '1000'; // Ensure it's above other elements
       this.npcNameLabels.set(npcId, npcNameLabel);
 
       // Add label to DOM
       if (this.labelsContainer) {
         this.labelsContainer.appendChild(npcNameLabel);
+        console.log(`🏷️ Added NPC label to DOM: ${username}`);
+      } else {
+        console.error('❌ No labels container found for NPC label');
       }
 
       console.log(`🤖 Created NPC: ${username} (${characterId}) at (${position.x.toFixed(1)}, ${position.z.toFixed(1)})`);
@@ -3353,6 +3360,28 @@ export class Game {
         ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
         ctx.fill();
 
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+
+    // MVP 7: Draw NPCs on minimap (cyan/yellow gradient)
+    for (const [_npcId, npc] of this.npcs) {
+      const pos = worldToMinimap(npc.position.x, npc.position.z);
+
+      // Only draw if within minimap bounds
+      if (pos.x >= 0 && pos.x <= size && pos.y >= 0 && pos.y <= size) {
+        // Draw gradient circle for NPCs (cyan to yellow)
+        const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 5);
+        gradient.addColorStop(0, '#00FFFF'); // Cyan center
+        gradient.addColorStop(1, '#FFFF00'); // Yellow edge
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // White border
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1;
         ctx.stroke();
