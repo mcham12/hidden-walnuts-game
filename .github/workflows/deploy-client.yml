@@ -29,6 +29,8 @@ jobs:
       - name: Build Client
         run: npm run build
         working-directory: client
+        env:
+          VITE_API_URL: ${{ github.ref == 'refs/heads/main' && 'https://api.hiddenwalnuts.com' || 'https://hidden-walnuts-api-preview.mcham12.workers.dev' }}
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
