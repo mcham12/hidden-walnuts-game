@@ -16,6 +16,9 @@ export class LoadingScreen {
   private progressBar: HTMLElement;
   private progressText: HTMLElement;
   private progressPercentage: HTMLElement;
+  // MVP 7.1: Turnstile bot protection
+  private turnstileContainer: HTMLElement | null = null;
+  private turnstileToken: string | null = null;
 
   constructor() {
     // Get DOM elements
@@ -68,18 +71,83 @@ export class LoadingScreen {
 
   /**
    * Show the loading screen and start animation
+   * MVP 7.1: Added Turnstile verification before loading
    */
   async show(): Promise<void> {
     this.container.classList.remove('hidden');
 
     // Initialize progress to 0%
-    this.updateProgress(0, 'Starting...');
+    this.updateProgress(0, 'Verifying you are human...');
+
+    // MVP 7.1: Create Turnstile widget container
+    if (!this.turnstileContainer) {
+      this.turnstileContainer = document.createElement('div');
+      this.turnstileContainer.id = 'turnstile-container';
+      this.turnstileContainer.style.marginTop = '20px';
+      this.turnstileContainer.style.marginBottom = '20px';
+      this.turnstileContainer.style.display = 'flex';
+      this.turnstileContainer.style.justifyContent = 'center';
+      this.container.insertBefore(this.turnstileContainer, this.progressText);
+    }
+
+    // MVP 7.1: Render Turnstile widget
+    await this.renderTurnstile();
 
     // Load walnut model in background (don't block)
     this.loadWalnut();
 
     // Start animation loop immediately
     this.startAnimation();
+  }
+
+  /**
+   * MVP 7.1: Render Cloudflare Turnstile widget
+   */
+  private async renderTurnstile(): Promise<void> {
+    return new Promise((resolve) => {
+      // Wait for Turnstile script to load
+      const checkTurnstile = () => {
+        if (typeof (window as any).turnstile !== 'undefined') {
+          const turnstile = (window as any).turnstile;
+
+          // IMPORTANT: Replace with your Turnstile site key from Cloudflare dashboard
+          // Get your key at: https://dash.cloudflare.com/?to=/:account/turnstile
+          const TURNSTILE_SITE_KEY = '1x00000000000000000000AA'; // PLACEHOLDER - Replace with real key
+
+          try {
+            // Render Turnstile widget (widget ID not needed for basic usage)
+            turnstile.render(this.turnstileContainer, {
+              sitekey: TURNSTILE_SITE_KEY,
+              callback: (token: string) => {
+                this.turnstileToken = token;
+                this.updateProgress(0.1, 'Verification successful! Loading assets...');
+                resolve();
+              },
+              'error-callback': () => {
+                console.error('Turnstile verification failed');
+                this.updateProgress(0, 'Verification failed. Please refresh the page.');
+              },
+              theme: 'dark',
+            });
+          } catch (error) {
+            console.error('Failed to render Turnstile:', error);
+            // Continue without verification in development
+            resolve();
+          }
+        } else {
+          // Retry in 100ms
+          setTimeout(checkTurnstile, 100);
+        }
+      };
+      checkTurnstile();
+    });
+  }
+
+  /**
+   * MVP 7.1: Get Turnstile token (null if not verified)
+   */
+  getTurnstileToken(): string | null {
+    return this.turnstileToken;
   }
 
   /**

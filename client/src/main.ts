@@ -532,6 +532,7 @@ async function main() {
     game.selectedCharacterId = selectedCharacterId;
     game.sessionToken = sessionToken; // MVP 6: Pass session token
     game.username = username; // MVP 6: Pass username
+    game.turnstileToken = loadingScreen.getTurnstileToken(); // MVP 7.1: Pass Turnstile token for bot protection
 
     // Run game.init() - this loads character model, connects to server, etc.
     loadingScreen.updateProgress(0.5, 'Connecting to server...');

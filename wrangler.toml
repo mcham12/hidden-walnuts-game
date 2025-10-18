@@ -18,6 +18,17 @@ enabled = true
 ENVIRONMENT = "development"
 CYCLE_DURATION_SECONDS = "86400"  # 24 hours in seconds
 
+# MVP 7.1: Rate Limiting for bot protection
+# NOTE: After deployment, create namespace with: wrangler ratelimit namespace create hw-rate-limit
+# Then replace REPLACE_WITH_GENERATED_ID with the namespace ID from the command output
+[[unsafe.bindings]]
+name = "RATE_LIMITER"
+type = "ratelimit"
+# Namespace ID - generate with: wrangler ratelimit namespace create hw-rate-limit
+namespace_id = "REPLACE_WITH_GENERATED_ID"
+# Simple mode - 100 requests per 60 seconds per key
+simple = { limit = 100, period = 60 }
+
 # Durable Objects configuration (matching preview/production names)
 [[durable_objects.bindings]]
 name = "SQUIRREL"

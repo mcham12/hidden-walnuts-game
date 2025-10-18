@@ -1,9 +1,11 @@
 // Simplified ForestManager - Basic WebSocket and world state management
 // Updated for MVP 3.5 - Multiple character support
 // MVP 7: NPC System integration
+// MVP 7.1: Turnstile bot protection and rate limiting
 
 import { DurableObject } from 'cloudflare:workers';
 import { NPCManager } from './NPCManager';
+import { Env } from '../types';
 
 // Use Cloudflare's built-in types - no need to redefine interfaces
 
@@ -78,7 +80,7 @@ interface NPC {
 export default class ForestManager extends DurableObject {
   // state and ctx are inherited from DurableObject base class
   storage: any; // Reference to ctx.storage for convenience
-  env: any;
+  env: Env; // MVP 7.1: Typed environment bindings
 
   // Simple state management
   mapState: Walnut[] = [];
@@ -94,13 +96,140 @@ export default class ForestManager extends DurableObject {
   // MVP 7.1: Reduced from 150ms to 200ms (7Hz → 5Hz) for 25% cost reduction while maintaining smooth movement
   private readonly NPC_UPDATE_INTERVAL = 200; // 200ms = 5 updates/sec (cost-optimized)
 
-  constructor(ctx: any, env: any) {
+  // MVP 7.1: Rate limiting state
+  private connectionAttempts: Map<string, number[]> = new Map(); // IP -> timestamps
+  private messageRateLimits: Map<string, {
+    position: number[];
+    walnutHide: number[];
+    walnutFind: number[];
+    chat: number[];
+  }> = new Map(); // squirrelId -> action timestamps
+
+  constructor(ctx: any, env: Env) {
     super(ctx, env);
     this.storage = ctx.storage;
     this.env = env;
 
     // MVP 7: Initialize NPC Manager
     this.npcManager = new NPCManager(this);
+  }
+
+  /**
+   * MVP 7.1: Validate Cloudflare Turnstile token
+   * Returns true if token is valid, false otherwise
+   */
+  private async validateTurnstileToken(token: string): Promise<boolean> {
+    // Skip validation in development mode or if no secret configured
+    if (!this.env.TURNSTILE_SECRET || this.env.TURNSTILE_SECRET === '') {
+      console.log('⚠️ Turnstile validation skipped (no secret configured)');
+      return true;
+    }
+
+    try {
+      const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          secret: this.env.TURNSTILE_SECRET,
+          response: token,
+        }),
+      });
+
+      const data = await response.json() as any;
+
+      if (data.success) {
+        console.log('✅ Turnstile validation successful');
+        return true;
+      } else {
+        console.warn('❌ Turnstile validation failed:', data['error-codes']);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Turnstile validation error:', error);
+      // Fail open in case of network issues (better UX, but log for monitoring)
+      return true;
+    }
+  }
+
+  /**
+   * MVP 7.1: Check connection rate limit (per IP address)
+   * Limits: 5 connections per 5 minutes per IP
+   */
+  private async checkConnectionRateLimit(request: Request): Promise<boolean> {
+    // Skip rate limiting if binding not configured (local dev)
+    if (!this.env.RATE_LIMITER) {
+      return true;
+    }
+
+    // Get client IP from CF-Connecting-IP header
+    const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+
+    try {
+      const result = await this.env.RATE_LIMITER.limit({
+        key: `connection:${clientIP}`,
+        limit: 5,        // 5 connections
+        period: 300,     // per 5 minutes (300 seconds)
+      });
+
+      if (!result.success) {
+        console.warn(`🚫 Connection rate limit exceeded for IP ${clientIP}, retry after ${result.retryAfter}s`);
+        return false;
+      }
+
+      console.log(`✅ Connection rate limit OK for IP ${clientIP} (${result.remaining}/${result.limit} remaining)`);
+      return true;
+    } catch (error) {
+      console.error('❌ Rate limit check error:', error);
+      // Fail open on error
+      return true;
+    }
+  }
+
+  /**
+   * MVP 7.1: Check message rate limit for specific action types
+   * Returns true if rate limit allows, false if exceeded
+   */
+  private checkMessageRateLimit(squirrelId: string, actionType: 'position' | 'walnutHide' | 'walnutFind' | 'chat'): boolean {
+    const now = Date.now();
+
+    // Get or create rate limit tracking for this player
+    if (!this.messageRateLimits.has(squirrelId)) {
+      this.messageRateLimits.set(squirrelId, {
+        position: [],
+        walnutHide: [],
+        walnutFind: [],
+        chat: []
+      });
+    }
+
+    const limits = this.messageRateLimits.get(squirrelId)!;
+
+    // Define rate limits for each action type
+    const rateLimitConfig = {
+      position: { limit: 20, window: 1000 },      // 20 updates per second
+      walnutHide: { limit: 10, window: 60000 },   // 10 hides per minute
+      walnutFind: { limit: 20, window: 60000 },   // 20 finds per minute
+      chat: { limit: 5, window: 10000 }           // 5 messages per 10 seconds
+    };
+
+    const config = rateLimitConfig[actionType];
+    const timestamps = limits[actionType];
+
+    // Remove timestamps outside the window
+    const validTimestamps = timestamps.filter(ts => now - ts < config.window);
+    limits[actionType] = validTimestamps;
+
+    // Check if limit exceeded
+    if (validTimestamps.length >= config.limit) {
+      console.warn(`🚫 Rate limit exceeded for ${squirrelId} action=${actionType} (${validTimestamps.length}/${config.limit})`);
+      return false;
+    }
+
+    // Add current timestamp
+    validTimestamps.push(now);
+    return true;
   }
 
   /**
@@ -209,9 +338,33 @@ export default class ForestManager extends DurableObject {
       const characterId = url.searchParams.get("characterId") || "colobus";
       const sessionToken = url.searchParams.get("sessionToken") || ""; // MVP 6: Player session
       const username = url.searchParams.get("username") || "Anonymous"; // MVP 6: Player username
+      const turnstileToken = url.searchParams.get("turnstileToken"); // MVP 7.1: Bot protection
 
       if (!squirrelId) {
         return new Response("Missing squirrelId", { status: 400 });
+      }
+
+      // MVP 7.1: Check connection rate limit (per IP)
+      const rateLimitOK = await this.checkConnectionRateLimit(request);
+      if (!rateLimitOK) {
+        return new Response('Too many connection attempts. Please try again later.', {
+          status: 429,
+          headers: {
+            'Retry-After': '300' // 5 minutes
+          }
+        });
+      }
+
+      // MVP 7.1: Validate Turnstile token (if provided)
+      if (turnstileToken) {
+        const isValidTurnstile = await this.validateTurnstileToken(turnstileToken);
+        if (!isValidTurnstile) {
+          console.warn(`❌ Turnstile validation failed for ${squirrelId}, rejecting connection`);
+          return new Response('Turnstile verification failed. Please refresh the page.', { status: 403 });
+        }
+      } else {
+        // No token provided - log but allow (for backwards compatibility during rollout)
+        console.warn(`⚠️ No Turnstile token provided for ${squirrelId} (${username})`);
       }
 
       const webSocketPair = new WebSocketPair();
@@ -480,6 +633,12 @@ export default class ForestManager extends DurableObject {
 
     switch (data.type) {
       case "player_update":
+        // MVP 7.1: Rate limit position updates
+        if (!this.checkMessageRateLimit(playerConnection.squirrelId, 'position')) {
+          // Drop message silently (don't disconnect, just ignore)
+          return;
+        }
+
         if (data.position) {
           // Validate position is within world bounds
           const validatedPosition = this.validatePosition(data.position);
@@ -523,6 +682,12 @@ export default class ForestManager extends DurableObject {
         break;
 
       case "walnut_hidden":
+        // MVP 7.1: Rate limit walnut hiding
+        if (!this.checkMessageRateLimit(playerConnection.squirrelId, 'walnutHide')) {
+          console.warn(`🚫 Walnut hide rate limit exceeded for ${playerConnection.squirrelId}`);
+          return;
+        }
+
         // Create new walnut in mapState
         const newWalnut: Walnut = {
           id: data.walnutId,
@@ -550,6 +715,12 @@ export default class ForestManager extends DurableObject {
         break;
 
       case "walnut_found":
+        // MVP 7.1: Rate limit walnut finding
+        if (!this.checkMessageRateLimit(playerConnection.squirrelId, 'walnutFind')) {
+          console.warn(`🚫 Walnut find rate limit exceeded for ${playerConnection.squirrelId}`);
+          return;
+        }
+
         // Mark walnut as found in mapState
         const walnutIndex = this.mapState.findIndex(w => w.id === data.walnutId);
         if (walnutIndex !== -1) {
@@ -571,6 +742,12 @@ export default class ForestManager extends DurableObject {
         break;
 
       case "chat_message":
+        // MVP 7.1: Rate limit chat messages
+        if (!this.checkMessageRateLimit(playerConnection.squirrelId, 'chat')) {
+          console.warn(`🚫 Chat rate limit exceeded for ${playerConnection.squirrelId}`);
+          return;
+        }
+
         // Broadcast chat message to all other players
         this.broadcastToOthers(playerConnection.squirrelId, {
           type: 'chat_message',
@@ -580,6 +757,12 @@ export default class ForestManager extends DurableObject {
         break;
 
       case "player_emote":
+        // MVP 7.1: Rate limit emotes (same as chat)
+        if (!this.checkMessageRateLimit(playerConnection.squirrelId, 'chat')) {
+          console.warn(`🚫 Emote rate limit exceeded for ${playerConnection.squirrelId}`);
+          return;
+        }
+
         // Broadcast emote to all other players
         this.broadcastToOthers(playerConnection.squirrelId, {
           type: 'player_emote',

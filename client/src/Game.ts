@@ -52,6 +52,7 @@ export class Game {
   public selectedCharacterId = 'squirrel';
   public sessionToken: string = ''; // MVP 6: Player session token
   public username: string = ''; // MVP 6: Player username
+  public turnstileToken: string | null = null; // MVP 7.1: Cloudflare Turnstile bot protection token
   private characterGroundOffset = 0; // Offset from character pivot to feet
   private characterCollisionRadius = 0.5; // Collision radius calculated from bounding box
 
@@ -1120,9 +1121,11 @@ export class Game {
 
     // Get WebSocket URL - check environment or use default
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:50569';
+    // MVP 7.1: Include Turnstile token for bot protection (optional parameter - null if not verified)
+    const turnstileParam = this.turnstileToken ? `&turnstileToken=${this.turnstileToken}` : '';
     // MVP 6: Include sessionToken and username in WebSocket URL
     const wsUrl = apiUrl.replace('http:', 'ws:').replace('https:', 'wss:') +
-                  `/ws?squirrelId=${this.playerId}&characterId=${this.selectedCharacterId}&sessionToken=${this.sessionToken}&username=${encodeURIComponent(this.username)}`;
+                  `/ws?squirrelId=${this.playerId}&characterId=${this.selectedCharacterId}&sessionToken=${this.sessionToken}&username=${encodeURIComponent(this.username)}${turnstileParam}`;
     
     try {
       this.websocket = new WebSocket(wsUrl);

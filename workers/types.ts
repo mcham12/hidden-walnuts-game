@@ -92,3 +92,28 @@ export interface ForestObject {
   z: number;
   scale: number;
 }
+
+// MVP 7.1: Rate Limiting types
+export interface RateLimitBinding {
+  limit(options: {
+    key: string;
+    limit?: number;
+    period?: number;
+  }): Promise<{
+    success: boolean;
+    limit: number;
+    remaining: number;
+    retryAfter?: number;
+  }>;
+}
+
+// MVP 7.1: Environment bindings
+export interface Env {
+  FOREST: DurableObjectNamespace;
+  SQUIRREL: DurableObjectNamespace;
+  WALNUTS: DurableObjectNamespace;
+  LEADERBOARD: DurableObjectNamespace;
+  PLAYER_IDENTITY: DurableObjectNamespace;
+  TURNSTILE_SECRET: string; // Cloudflare Turnstile secret key
+  RATE_LIMITER?: RateLimitBinding; // Rate limiting binding (optional for local dev)
+}
