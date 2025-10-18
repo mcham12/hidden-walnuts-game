@@ -42,9 +42,9 @@ jobs:
       - name: Deploy Worker
         run: |
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            npx wrangler deploy dist/worker/api.js --name hidden-walnuts-api --env production
+            npx wrangler deploy --name hidden-walnuts-api
           else
-            npx wrangler deploy dist/worker/api.js --name hidden-walnuts-api --env preview
+            npx wrangler deploy --name hidden-walnuts-api-preview
           fi
         working-directory: workers
         env:
