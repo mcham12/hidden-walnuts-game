@@ -68,43 +68,10 @@ tag = "v3"
 # MVP 6: Player Identity - Session token → username mapping
 new_sqlite_classes = ["PlayerIdentity"]
 
-# Environment configurations
-[env.preview]
-workers_dev = true
-[env.preview.vars]
-ENVIRONMENT = "preview"
-CYCLE_DURATION_SECONDS = "86400"
-[env.preview.durable_objects]
-bindings = [
-  { name = "FOREST", class_name = "ForestManager" },
-  { name = "SQUIRREL", class_name = "SquirrelSession" },
-  { name = "WALNUTS", class_name = "WalnutRegistry" },
-  { name = "LEADERBOARD", class_name = "Leaderboard" },
-  { name = "PLAYER_IDENTITY", class_name = "PlayerIdentity" }
-]
-# MVP 7.1: Rate limiting for preview
-[[env.preview.unsafe.bindings]]
-name = "RATE_LIMITER"
-type = "ratelimit"
-namespace_id = "1001"
-simple = { limit = 100, period = 60 }
-
-[env.production]
-workers_dev = false
-[env.production.vars]
-ENVIRONMENT = "production"
-CYCLE_DURATION_SECONDS = "86400"
-[env.production.durable_objects]
-bindings = [
-  { name = "FOREST", class_name = "ForestManager" },
-  { name = "SQUIRREL", class_name = "SquirrelSession" },
-  { name = "WALNUTS", class_name = "WalnutRegistry" },
-  { name = "LEADERBOARD", class_name = "Leaderboard" },
-  { name = "PLAYER_IDENTITY", class_name = "PlayerIdentity" }
-]
-# MVP 7.1: Rate limiting for production
-[[env.production.unsafe.bindings]]
-name = "RATE_LIMITER"
-type = "ratelimit"
-namespace_id = "1001"
-simple = { limit = 100, period = 60 }
+# Note: No environment-specific config needed
+# Separate workers (hidden-walnuts-api and hidden-walnuts-api-preview)
+# both use the base configuration above
+# Differences handled via:
+# - Separate worker names in deployment
+# - Separate secrets (TURNSTILE_SECRET) per worker
+# - Custom domain (api.hiddenwalnuts.com) only on production worker
