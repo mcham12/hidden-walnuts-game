@@ -5,6 +5,7 @@ import { createForestFromServer, bushPositions } from './forest.js';
 import { getTerrainHeight } from './terrain.js';
 import { AudioManager } from './AudioManager.js';
 import { VFXManager } from './VFXManager.js';
+import { ProjectileManager } from './ProjectileManager.js'; // MVP 8: Projectile system
 import { ToastManager } from './ToastManager.js';
 import { SettingsManager } from './SettingsManager.js';
 import { CollisionSystem } from './CollisionSystem.js';
@@ -199,6 +200,9 @@ export class Game {
   // MVP 5: Visual effects system
   private vfxManager: VFXManager | null = null;
 
+  // MVP 8: Projectile system (flying walnuts)
+  private projectileManager: ProjectileManager | null = null;
+
   // MVP 5: Toast notification system
   private toastManager: ToastManager = new ToastManager();
 
@@ -313,6 +317,9 @@ export class Game {
 
       // MVP 5: Initialize VFX Manager
       this.vfxManager = new VFXManager(this.scene, this.camera);
+
+      // MVP 8: Initialize Projectile Manager
+      this.projectileManager = new ProjectileManager(this.scene, this.vfxManager, this.audioManager);
 
       // MVP 3: Initialize minimap
       this.initMinimap();
@@ -625,6 +632,11 @@ export class Game {
       this.onMouseMove(event);
     });
 
+    // MVP 8: Projectile hit detection events
+    window.addEventListener('projectile-hit', ((e: CustomEvent) => {
+      this.onProjectileHit(e.detail);
+    }) as EventListener);
+
     // MVP 5.7: Touch controls for mobile
     this.touchControls = new TouchControls(this.renderer.domElement);
 
@@ -790,6 +802,29 @@ export class Game {
 
     // MVP 7: Update NPC interpolation
     this.updateNPCInterpolation(delta);
+
+    // MVP 8: Update projectiles (flying walnuts)
+    if (this.projectileManager) {
+      // Build entity map for hit detection
+      const entities = new Map<string, { position: THREE.Vector3, isInvulnerable?: boolean }>();
+
+      // Add local player
+      if (this.character) {
+        entities.set(this.playerId, { position: this.character.position.clone() });
+      }
+
+      // Add remote players
+      this.remotePlayers.forEach((player, id) => {
+        entities.set(id, { position: player.position.clone() });
+      });
+
+      // Add NPCs
+      this.npcs.forEach((npc, id) => {
+        entities.set(id, { position: npc.position.clone() });
+      });
+
+      this.projectileManager.update(delta, entities);
+    }
 
     // MVP 3: Animate walnuts
     this.animateWalnuts(delta);
@@ -2293,12 +2328,27 @@ export class Game {
         actions['throw'].reset().play();
       }
 
-      // TODO: Spawn walnut projectile visual (placeholder for now)
-      console.log(`🤖 NPC ${npcId} threw walnut at ${targetId} from (${fromPosition.x.toFixed(1)}, ${fromPosition.z.toFixed(1)}) to (${toPosition.x.toFixed(1)}, ${toPosition.z.toFixed(1)})`);
-
-      // Future: Create walnut mesh, animate trajectory from fromPosition to toPosition
-      // For now, we'll just log the event
+      // MVP 8: Spawn flying walnut projectile
+      if (this.projectileManager) {
+        const from = new THREE.Vector3(fromPosition.x, fromPosition.y + 1.5, fromPosition.z); // Add height for throw origin
+        const to = new THREE.Vector3(toPosition.x, toPosition.y + 1.0, toPosition.z); // Aim at chest height
+        this.projectileManager.spawnProjectile(from, to, npcId, targetId);
+      }
     }
+  }
+
+  /**
+   * MVP 8: Handle projectile hitting an entity
+   * This is called when ProjectileManager detects a hit
+   */
+  private onProjectileHit(data: { projectileId: string; ownerId: string; targetId: string; position: THREE.Vector3 }): void {
+    console.log(`🌰 Projectile hit! Owner: ${data.ownerId}, Target: ${data.targetId}`);
+
+    // TODO Phase 3: Apply damage to target
+    // TODO Phase 3: Send hit message to server for validation
+    // TODO Phase 3: Visual feedback (damage number, hit effect)
+
+    // For now, just log the hit - full implementation in Phase 3 (Health & Damage)
   }
 
   /**
