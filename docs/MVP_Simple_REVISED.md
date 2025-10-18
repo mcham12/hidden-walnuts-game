@@ -1,6 +1,6 @@
 # 🎮 Hidden Walnuts - MVP Development Plan
 
-**Current Status**: MVP 7.1 (Cloudflare Cost Mitigation) - 🎯 **IN PROGRESS**
+**Current Status**: MVP 8 (Combat & Health) - 🎯 **READY TO START**
 
 ---
 
@@ -19,6 +19,7 @@
 - **MVP 5.9**: World Boundaries - Soft push-back system with visual feedback
 - **MVP 6**: Player Authentication & Identity - Username system, session tokens, position persistence
 - **MVP 7**: NPC Characters & World Life - Server-side AI with behaviors, walnut gathering, animation/collision fixes
+- **MVP 7.1**: Cloudflare Cost Mitigation & Bot Protection - Turnstile, rate limiting, cost optimizations
 
 ---
 
@@ -407,7 +408,50 @@ private npcNameLabels: Map<string, HTMLElement> = new Map();
 
 ---
 
-## 💰 MVP 7.1: Cloudflare Cost Mitigation
+## 💰 MVP 7.1: Cloudflare Cost Mitigation & Bot Protection ✅ **COMPLETE**
+
+**Goal**: Minimize Cloudflare Workers/Durable Objects costs + protect against bot abuse
+
+**Implemented** (BONUS: Added comprehensive bot protection beyond original scope):
+
+**Bot Protection** (Bonus features):
+- ✅ Cloudflare Turnstile integration (client-side widget + server validation)
+- ✅ Production & testing site keys configured
+- ✅ Hostname-based key selection (game.hiddenwalnuts.com vs preview)
+- ✅ Server-side token validation before WebSocket connections
+- ✅ Turnstile script integration in index.html
+- ✅ Complete documentation (TURNSTILE_RATE_LIMITING_SETUP.md, BOT_PREVENTION_OPTIONS.md)
+
+**Rate Limiting** (Bonus features):
+- ✅ Cloudflare Workers Rate Limiter binding configured
+- ✅ Connection rate limiting (5 per IP per 5 minutes)
+- ✅ Message rate limiting by action type:
+  - Position updates: 20/second
+  - Walnut hiding: 10/minute
+  - Walnut finding: 20/minute
+  - Chat/emotes: 5/10 seconds
+- ✅ Active in production and preview environments
+
+**Cost Optimizations** (Original plan):
+- ✅ Debug logging removed from ForestManager
+- ✅ NPC update frequency optimized (150ms → 200ms = 30% reduction)
+- ✅ Position save throttling (every 30s = 99% reduction in storage ops)
+- ✅ Alarm logging reduced to minimize CPU usage
+
+**Architecture Updates**:
+- ✅ Separate workers for preview/production (hidden-walnuts-api vs hidden-walnuts-api-preview)
+- ✅ Environment-based configuration (.env files)
+- ✅ GitHub Actions deployment validation
+- ✅ Complete architecture documentation updates
+
+**Deferred** (Low priority):
+- NPC update batching (would reduce messages ~90%, but current performance is good)
+
+**Time Spent**: ~8 hours (exceeded estimate due to bonus features, but high value delivered)
+
+---
+
+## 💰 MVP 7.1: Cloudflare Cost Mitigation (Original Plan - For Reference)
 
 **Goal**: Minimize Cloudflare Workers/Durable Objects costs before adding more load
 
@@ -823,8 +867,8 @@ velocity.y += gravity * delta  // -9.8 m/s²
 | 1.5-5.9 | Core Game & Polish | ✅ Complete |
 | 6 | Player Identity (Simple) | ✅ Complete |
 | 7 | NPC Characters | ✅ Complete |
-| **7.1** | **Cloudflare Cost Mitigation** | 🎯 **IN PROGRESS** |
-| 8 | Combat & Health | Pending |
+| 7.1 | Cost Mitigation & Bot Protection | ✅ Complete |
+| **8** | **Combat & Health** | 🎯 **NEXT** |
 | 9 | Animation Polish (Optional) | Pending |
 | 10 | Predators & Polish | Pending |
 | 11 | Full Authentication | Pending |
@@ -873,4 +917,4 @@ Remove unused ECS code. Do last when features stable. (TBD)
 
 ---
 
-**Next Step**: Begin MVP 7.1 (Cloudflare Cost Mitigation) 💰
+**Next Step**: Begin MVP 8 (Combat & Health) 🥊
