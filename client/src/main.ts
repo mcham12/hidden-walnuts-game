@@ -1,3 +1,4 @@
+// MVP 7.1: Bot protection with Turnstile verification before game connection
 import { Game } from './Game';
 import { AudioManager } from './AudioManager';
 import { LoadingScreen } from './LoadingScreen';

@@ -82,7 +82,14 @@ The backend remains functional with Durable Objects (multiplayer-ready, but curr
 
 **Development**
 - `.gitignore` - Git ignore patterns
-- Environment files for different stages
+
+**Environment Files** (`client/` directory):
+- `.env` - Local development (default, used by `npm run dev`)
+- `.env.development` - Local development (explicit)
+- `.env.preview` - Preview deployments (mvp-* branches, points to `hidden-walnuts-api-preview`)
+- `.env.production` - Production deployments (main branch, points to `api.hiddenwalnuts.com`)
+
+Each contains `VITE_API_URL` pointing to the appropriate Worker endpoint
 
 ## Development Workflow
 ### Local Development

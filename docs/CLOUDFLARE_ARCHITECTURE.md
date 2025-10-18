@@ -38,9 +38,13 @@
 - **WebSocket**: `wss://api.hiddenwalnuts.com/ws` → Same Workers endpoint
 
 ### **Development Domains**
-- **Frontend**: `<branch>.hidden-walnuts.pages.dev` → Pages preview
-- **Backend API**: `<worker>.workers.dev` → Workers preview
+- **Frontend Preview**: `<branch>.hidden-walnuts-game.pages.dev` → Pages preview (e.g., `mvp-simple-7-1.hidden-walnuts-game.pages.dev`)
+- **Backend Preview**: `hidden-walnuts-api-preview.mattmcarroll.workers.dev` → Workers preview
 - **Local Dev**: `localhost:5173` (Pages) + `localhost:8787` (Workers)
+
+**Note**: Preview and production use **separate Workers instances** (not environment configs):
+- **Production**: `hidden-walnuts-api` (deployed from `main` branch)
+- **Preview**: `hidden-walnuts-api-preview` (deployed from `mvp-*` branches)
 
 ### **Branch Deployment Strategy**
 - **`main` branch** → Production deployment
@@ -158,15 +162,35 @@ npm run dev                    # Vite dev server on :5173
 ```
 
 ### **Environment Variables**
-```bash
-# Development (.env)
-VITE_API_URL=http://localhost:8787
-VITE_WS_URL=ws://localhost:8787/ws
 
-# Production (auto-injected by Cloudflare)
-VITE_API_URL=https://api.hiddenwalnuts.com  
-VITE_WS_URL=wss://api.hiddenwalnuts.com/ws
+**Client Environment Files** (`client/` directory):
+```bash
+# .env - Local development (default)
+VITE_API_URL=http://localhost:8787
+
+# .env.development - Local development (explicit)
+VITE_API_URL=http://localhost:8787
+
+# .env.preview - Preview deployments (mvp-* branches)
+VITE_API_URL=https://hidden-walnuts-api-preview.mattmcarroll.workers.dev
+
+# .env.production - Production deployments (main branch)
+VITE_API_URL=https://api.hiddenwalnuts.com
 ```
+
+**Worker Environment Variables** (set via `wrangler secret put`):
+```bash
+# TURNSTILE_SECRET - Cloudflare Turnstile secret key (MVP 7.1)
+# Set separately for each worker:
+wrangler secret put TURNSTILE_SECRET --name hidden-walnuts-api-preview
+wrangler secret put TURNSTILE_SECRET --name hidden-walnuts-api
+```
+
+**Note**: Environment files are selected automatically by Vite based on build mode:
+- `npm run dev` uses `.env` / `.env.development`
+- `npm run build` (in GitHub Actions for preview) uses `.env.preview`
+- `npm run build:preview` uses `.env.preview`
+- `npm run build:production` uses `.env.production`
 
 ### **Deployment Pipeline**
 1. **Push to git** → Triggers auto-deployment
@@ -241,6 +265,63 @@ new_classes = ["ForestManager", "WalnutRegistry", "PlayerSession", "Leaderboard"
 - **Caching**: Cloudflare CDN caches static assets globally
 - **Workers efficiency**: Sub-10ms response times at edge
 - **Durable Objects**: In-memory state with persistent storage
+
+---
+
+## 🛡️ **MVP 7.1: Bot Protection & Rate Limiting**
+
+### **Cloudflare Turnstile Integration**
+**Purpose**: Prevent bot abuse and automated attacks without degrading user experience
+
+**Architecture**:
+```
+User connects → Turnstile verification → Token sent to Worker → Server validates → WebSocket connection
+```
+
+**Site Keys** (public, safe to commit):
+- **Production**: `0x4AAAAAAB7S9YhTOdtQjCTu` (domain: `game.hiddenwalnuts.com`)
+- **Preview/Localhost**: `1x00000000000000000000AA` (Cloudflare testing key)
+
+**Secret Keys** (stored in Workers secrets):
+- Set separately per worker using `wrangler secret put TURNSTILE_SECRET --name <worker-name>`
+- Production secret: From Cloudflare Turnstile dashboard
+- Preview secret: `1x0000000000000000000000000000000AA` (testing secret)
+
+**Client Implementation** (`client/src/LoadingScreen.ts:115-125`):
+- Determines site key based on hostname
+- Renders Turnstile widget during loading screen
+- Passes verification token to game initialization
+
+**Server Validation** (`workers/objects/ForestManager.ts:247-263`):
+- Validates token with Cloudflare Turnstile API
+- Rejects connections with invalid tokens (403 Forbidden)
+- Required for all WebSocket connections
+
+### **Rate Limiting Configuration**
+**Purpose**: Prevent abuse and control Worker costs
+
+**Namespace Configuration** (`wrangler.toml:22-28`):
+```toml
+[[unsafe.bindings]]
+name = "RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"  # Unique integer ID
+simple = { limit = 100, period = 60 }  # 100 requests per 60 seconds
+```
+
+**Rate Limits** (`workers/objects/ForestManager.ts:210-214`):
+- **Connection**: 5 connections per IP per 5 minutes
+- **Position updates**: 20 per second per player
+- **Walnut hiding**: 10 per minute per player
+- **Walnut finding**: 20 per minute per player
+- **Chat/emotes**: 5 per 10 seconds per player
+
+**Implementation**:
+- Uses Cloudflare Workers Rate Limiting API (experimental)
+- Namespace created automatically on deployment
+- No CLI commands required (namespace_id is just an integer)
+
+**See Also**: `/docs/TURNSTILE_RATE_LIMITING_SETUP.md` for complete setup instructions
 
 ---
 
