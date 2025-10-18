@@ -54,12 +54,12 @@ if (hostname === 'game.hiddenwalnuts.com') {
 ```bash
 cd /path/to/hidden-walnuts-game
 
-# Preview environment - testing secret (always passes)
-wrangler secret put TURNSTILE_SECRET --env preview
+# Preview worker (hidden-walnuts-api-preview)
+wrangler secret put TURNSTILE_SECRET --name hidden-walnuts-api-preview
 # Paste when prompted: 1x0000000000000000000000000000000AA
 
-# Production environment - real secret
-wrangler secret put TURNSTILE_SECRET --env production
+# Production worker (hidden-walnuts-api)
+wrangler secret put TURNSTILE_SECRET --name hidden-walnuts-api
 # Paste PROD_SECRET when prompted (from Part 1)
 ```
 
@@ -68,23 +68,19 @@ wrangler secret put TURNSTILE_SECRET --env production
 ### Verify Secrets
 
 ```bash
-wrangler secret list --env preview
-wrangler secret list --env production
+wrangler secret list --name hidden-walnuts-api-preview
+wrangler secret list --name hidden-walnuts-api
 ```
 
 ---
 
-## Part 4: Create Rate Limit Namespace
+## Part 4: Configure Rate Limiting
 
-```bash
-wrangler ratelimit namespace create hw-rate-limit
-```
+Rate limiting is already configured in `wrangler.toml` with `namespace_id = "1001"`. This is a unique integer identifier for your rate limiting configuration.
 
-**Copy the namespace ID** from output, then update `wrangler.toml` line 28:
+**No CLI command needed** - the namespace is created automatically when you deploy.
 
-```toml
-namespace_id = "YOUR_NAMESPACE_ID_HERE"
-```
+If you see wrangler.toml warnings about "unsafe" bindings, that's expected - rate limiting uses experimental features.
 
 ---
 
@@ -98,8 +94,11 @@ npm run build
 
 ### Deploy to Preview
 
+Your GitHub Actions will auto-deploy when you push. Or manually:
+
 ```bash
-wrangler deploy --env preview
+cd workers
+wrangler deploy --name hidden-walnuts-api --env preview
 ```
 
 ### Test Preview
@@ -112,7 +111,7 @@ wrangler deploy --env preview
 ### Monitor Preview
 
 ```bash
-wrangler tail --env preview
+wrangler tail --name hidden-walnuts-api-preview
 ```
 
 Watch for:
@@ -154,15 +153,16 @@ Test immediately at `game.hiddenwalnuts.com`.
 ### Turnstile Fails
 
 1. Check hostname in widget settings matches your domain
-2. Verify secret key is set: `wrangler secret list --env preview`
+2. Verify secret key is set: `wrangler secret list --name hidden-walnuts-api-preview`
 3. Check browser console for error messages
 4. Try switching widget mode: Dashboard → Turnstile → Widget → Settings → Mode → Non-interactive
 
 ### Rate Limiting Not Working
 
-1. Verify namespace ID in `wrangler.toml`
-2. Redeploy: `wrangler deploy --env preview`
-3. Check binding exists: Dashboard → Workers → hidden-walnuts-api → Settings → Variables
+1. Check for wrangler.toml errors during build
+2. Redeploy: `cd workers && wrangler deploy --name hidden-walnuts-api --env preview`
+3. Check binding exists: Dashboard → Workers → hidden-walnuts-api-preview → Settings → Variables
+4. Check logs: `wrangler tail --name hidden-walnuts-api-preview` for rate limit messages
 
 ### Players Getting Blocked
 
@@ -182,8 +182,10 @@ If issues occur in production:
 #   return new Response('Turnstile verification failed', { status: 403 });
 # }
 
-npm run build
-wrangler deploy --env production
+# Then commit and push to main (GitHub Actions will deploy)
+git add workers/objects/ForestManager.ts
+git commit -m "Temporarily disable Turnstile validation"
+git push
 ```
 
 Or revert git commit:

@@ -19,13 +19,11 @@ ENVIRONMENT = "development"
 CYCLE_DURATION_SECONDS = "86400"  # 24 hours in seconds
 
 # MVP 7.1: Rate Limiting for bot protection
-# NOTE: After deployment, create namespace with: wrangler ratelimit namespace create hw-rate-limit
-# Then replace REPLACE_WITH_GENERATED_ID with the namespace ID from the command output
 [[unsafe.bindings]]
 name = "RATE_LIMITER"
 type = "ratelimit"
-# Namespace ID - generate with: wrangler ratelimit namespace create hw-rate-limit
-namespace_id = "REPLACE_WITH_GENERATED_ID"
+# Namespace ID - any unique positive integer for your account
+namespace_id = "1001"
 # Simple mode - 100 requests per 60 seconds per key
 simple = { limit = 100, period = 60 }
 
@@ -84,6 +82,12 @@ bindings = [
   { name = "LEADERBOARD", class_name = "Leaderboard" },
   { name = "PLAYER_IDENTITY", class_name = "PlayerIdentity" }
 ]
+# MVP 7.1: Rate limiting for preview
+[[env.preview.unsafe.bindings]]
+name = "RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 100, period = 60 }
 
 [env.production]
 workers_dev = false
@@ -98,3 +102,9 @@ bindings = [
   { name = "LEADERBOARD", class_name = "Leaderboard" },
   { name = "PLAYER_IDENTITY", class_name = "PlayerIdentity" }
 ]
+# MVP 7.1: Rate limiting for production
+[[env.production.unsafe.bindings]]
+name = "RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 100, period = 60 }

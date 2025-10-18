@@ -112,7 +112,17 @@ export class LoadingScreen {
 
           // IMPORTANT: Replace with your Turnstile site key from Cloudflare dashboard
           // Get your key at: https://dash.cloudflare.com/?to=/:account/turnstile
-          const TURNSTILE_SITE_KEY = '1x00000000000000000000AA'; // PLACEHOLDER - Replace with real key
+          // Determine site key based on hostname
+          const hostname = window.location.hostname;
+          let TURNSTILE_SITE_KEY: string;
+
+          if (hostname === 'game.hiddenwalnuts.com') {
+            // Production: Real site key
+            TURNSTILE_SITE_KEY = '0x4AAAAAAB7S9YhTOdtQjCTu'; // From Part 1
+          } else {
+            // Preview/localhost: Testing key (always passes)
+            TURNSTILE_SITE_KEY = '1x00000000000000000000AA'; // Cloudflare testing key
+          }
 
           try {
             // Render Turnstile widget (widget ID not needed for basic usage)
