@@ -4509,7 +4509,7 @@ export class Game {
 
     const PICKUP_RANGE = 1.5; // Distance in units to auto-collect walnut
     const playerPos = this.character.position.clone();
-    const now = performance.now();
+    const now = Date.now(); // MVP 8 FIX: Must match Date.now() used for settlingUntil
 
     // Check each walnut for proximity
     this.walnuts.forEach((walnutGroup, walnutId) => {
