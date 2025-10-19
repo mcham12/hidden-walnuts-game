@@ -47,8 +47,7 @@ export class Game {
   private static assetCache = new Map<string, THREE.Group>();
   private static animationCache = new Map<string, THREE.AnimationClip>();
   // Note: isJumping removed - jump feature disabled in favor of throwing
-  private isEatingWalnut = false; // MVP 8: Block movement during eat animation
-  private isStunned = false; // MVP 8: Block movement when hit by walnut
+  // PHASE 3 CLEANUP: isEatingWalnut and isStunned removed - now handled by animState.blocksMovement
   private characters: Character[] = [];
   public selectedCharacterId = 'squirrel';
   public sessionToken: string = ''; // MVP 6: Player session token
@@ -105,7 +104,7 @@ export class Game {
   // INDUSTRY STANDARD: Animation state machine with hysteresis (prevents rapid state oscillation)
   private lastAnimationChangeTime: number = 0;
   private animationChangeDelay: number = 0.1; // Minimum 100ms between animation changes
-  private lastFlagCheckTime: number = 0; // BEST PRACTICE: Watchdog for stuck animation flags
+  // PHASE 3 CLEANUP: lastFlagCheckTime removed - old flag watchdog no longer needed
 
   // MVP 5: Enhanced character animations (Squirrel-first)
   private lastIdleVariationTime: number = 0;
@@ -124,7 +123,7 @@ export class Game {
 
   private idleVariationInterval: number = 10000; // 10 seconds between idle variations
   private availableIdleAnimations: string[] = ['idle', 'idle_b', 'idle_c'];
-  private isPlayingOneShotAnimation: boolean = false;
+  // PHASE 3 CLEANUP: isPlayingOneShotAnimation removed - now handled by animState.overrideAnimation
 
   // MVP 5: Footstep particle effects
   private lastFootstepTime: number = 0;
@@ -197,7 +196,7 @@ export class Game {
 
   // MVP 4: Chat and Emotes
   private playerChatLabels: Map<string, HTMLElement> = new Map(); // Chat labels for players
-  private emoteInProgress: boolean = false; // Prevent emote spam (local player)
+  // PHASE 3 CLEANUP: emoteInProgress removed - now handled by animState.overrideAnimation
   private remotePlayerEmotes: Map<string, boolean> = new Map(); // Track which remote players are emoting
 
   // BEST PRACTICE: Two-Layer Animation State Machine (replaces boolean flags)
@@ -545,11 +544,11 @@ export class Game {
   private resetAnimationState(): void {
     console.log('🔧 EMERGENCY: Resetting animation state machine');
 
-    // Clear ALL animation control flags
-    this.isPlayingOneShotAnimation = false;
-    this.emoteInProgress = false;
-    this.isStunned = false;
-    this.isEatingWalnut = false;
+    // PHASE 3 CLEANUP: Reset state machine (single source of truth)
+    this.animState.overrideAnimation = null;
+    this.animState.overrideEndTime = null;
+    this.animState.overridePriority = -1;
+    this.animState.blocksMovement = false;
 
     // Stop ALL running animations
     for (const action of Object.values(this.actions)) {
@@ -570,6 +569,9 @@ export class Game {
         targetAnimation = isRunning ? 'run' : 'walk';
       }
 
+      // Update base animation in state machine
+      this.animState.baseAnimation = targetAnimation;
+
       // Start fresh with correct animation
       if (this.actions[targetAnimation]) {
         const action = this.actions[targetAnimation];
@@ -586,10 +588,10 @@ export class Game {
   /**
    * BEST PRACTICE: Request an animation to play (NEW state machine)
    * @param name Animation name
-   * @param priority Priority level (higher can interrupt lower)
+   * @param priority Priority level (higher can interrupt lower, equal priority blocks)
    * @param duration Duration in milliseconds
    * @param blocksMovement Whether this animation blocks movement input
-   * @returns true if animation was started, false if blocked by higher priority
+   * @returns true if animation was started, false if blocked by higher/equal priority
    */
   // @ts-ignore - unused until Phase 2 migration
   private requestAnimation(name: string, priority: number, duration: number, blocksMovement: boolean = false): boolean {
@@ -597,9 +599,9 @@ export class Game {
 
     // Check if we can interrupt current override
     if (this.animState.overrideAnimation !== null) {
-      if (priority < this.animState.overridePriority) {
-        console.log(`🚫 Animation '${name}' blocked by higher priority '${this.animState.overrideAnimation}' (${priority} < ${this.animState.overridePriority})`);
-        return false; // Can't interrupt higher priority
+      if (priority <= this.animState.overridePriority) {
+        console.log(`🚫 Animation '${name}' blocked by higher/equal priority '${this.animState.overrideAnimation}' (${priority} <= ${this.animState.overridePriority})`);
+        return false; // Can't interrupt higher or equal priority (prevents spam)
       }
     }
 
@@ -686,69 +688,7 @@ export class Game {
     this.currentAnimationName = name;
   }
 
-  /**
-   * MVP 5: Play a one-shot animation (like eating, spinning) that returns to idle when finished
-   * MVP 8 FIX: Improved state management to prevent stuck animations
-   * BEST PRACTICE: Returns to APPROPRIATE animation based on movement state
-   * NOTE: Will be DEPRECATED in favor of requestAnimation()
-   * @param name Animation name to play
-   * @param returnToIdleDelay Optional delay before returning to idle (default: auto-detect from animation duration)
-   */
-  private playOneShotAnimation(name: string, returnToIdleDelay?: number): void {
-    const newAction = this.actions[name];
-    if (!newAction) {
-      console.warn(`Animation "${name}" not found, cannot play one-shot animation`);
-      return;
-    }
-
-    // Mark that we're playing a one-shot animation (prevents idle variation from interrupting)
-    this.isPlayingOneShotAnimation = true;
-
-    // Stop current animation
-    if (this.currentAction) {
-      this.currentAction.stop();
-    }
-
-    // MVP 8 FIX: Reset timeScale to normal before playing (prevents stuck slow/fast animations)
-    newAction.timeScale = 1.0;
-
-    // Configure animation to play once and stop
-    newAction.reset();
-    newAction.setLoop(THREE.LoopOnce, 1);
-    newAction.clampWhenFinished = true;
-    newAction.play();
-
-    this.currentAction = newAction;
-    this.currentAnimationName = name;
-
-    // Calculate when to return to idle
-    const duration = returnToIdleDelay ?? newAction.getClip().duration * 1000; // Convert to ms
-
-    console.log(`🎬 Playing one-shot animation: ${name}, duration: ${duration}ms`);
-
-    // MVP 8 FIX: Return to APPROPRIATE animation after completion (not always idle!)
-    setTimeout(() => {
-      this.isPlayingOneShotAnimation = false;
-
-      // Only transition if we're still playing this animation (prevent race conditions)
-      if (this.currentAnimationName === name && !this.isDead && this.character) {
-        // Calculate current horizontal speed to determine correct animation
-        const horizontalSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
-
-        // Determine appropriate animation based on movement state
-        let targetAnimation = 'idle';
-        if (horizontalSpeed > 0.5) {
-          const isRunning = this.keys.has('shift');
-          targetAnimation = isRunning ? 'run' : 'walk';
-          console.log(`🔄 Returning to ${targetAnimation} after ${name} (moving: ${horizontalSpeed.toFixed(2)} units/s)`);
-        } else {
-          console.log(`🔄 Returning to idle after ${name} (stationary)`);
-        }
-
-        this.setAction(targetAnimation);
-      }
-    }, duration);
-  }
+  // PHASE 3 CLEANUP: playOneShotAnimation() removed - replaced by requestAnimation() state machine
 
   private setRemotePlayerAction(playerId: string, animationName: string, animationStartTime?: number) {
     // Don't override animation if remote player is emoting
@@ -1209,8 +1149,9 @@ export class Game {
     let moving = false;
     let rotating = false;
 
-    // MVP 8: Block all movement input during eat animation or when stunned from hit
-    if (!this.isEatingWalnut && !this.isStunned) {
+    // MIGRATION PHASE 2.5: Only check state machine for movement blocking
+    // State machine is now the single source of truth (handles eat, stun, death, etc.)
+    if (!this.animState.blocksMovement) {
       // STANDARD: Character rotation (not camera rotation)
       if (this.keys.has('a')) {
         this.character.rotation.y += this.rotationSpeed * delta;
@@ -1337,13 +1278,12 @@ export class Game {
       animation = isRunning ? 'run' : 'walk';
     }
 
-    // BEST PRACTICE: Watchdog - detect stuck animations and force reset
-    // If we should be in a different animation but flags are preventing it for too long, reset
+    // MIGRATION PHASE 2.6: Watchdog simplified - only check state machine
+    // State machine is self-recovering, but keep watchdog for edge cases
     const STUCK_ANIMATION_THRESHOLD = 5.0; // 5 seconds
-    if (!this.emoteInProgress &&
-        !this.isPlayingOneShotAnimation &&
-        animation !== this.currentAnimationName) {
-
+    const hasOverride = this.animState.overrideAnimation !== null;
+    if (!hasOverride && animation !== this.currentAnimationName) {
+      // No override active, so we should be able to change to base animation
       // Check if enough time has passed to change animation
       if ((animationTime - this.lastAnimationChangeTime) >= this.animationChangeDelay) {
         this.setAction(animation);
@@ -1356,29 +1296,15 @@ export class Game {
       }
     }
 
-    // BEST PRACTICE: Detect if flags are stuck (safety check)
-    if (this.isPlayingOneShotAnimation || this.emoteInProgress) {
-      // These flags should only be true during animations
-      // If they're stuck true for too long, something went wrong
-      if (!this.lastFlagCheckTime) {
-        this.lastFlagCheckTime = animationTime;
-      } else if ((animationTime - this.lastFlagCheckTime) >= 10.0) {
-        // Flags have been stuck for 10+ seconds - definitely a bug
-        console.error(`🚨 Animation flags stuck for 10+ seconds! isPlayingOneShotAnimation: ${this.isPlayingOneShotAnimation}, emoteInProgress: ${this.emoteInProgress}`);
-        this.resetAnimationState();
-        this.lastFlagCheckTime = animationTime;
-      }
-    } else {
-      // Flags are clear, reset the timer
-      this.lastFlagCheckTime = animationTime;
-    }
+    // PHASE 3 CLEANUP: Old flag watchdog removed - state machine is self-recovering
 
     // MVP 5: Idle variation system (Squirrel-first feature)
     // Randomly cycle between idle animations when character is standing still
+    // MIGRATION PHASE 2.4: Use state machine for idle variations (IDLE_VARIANT priority)
+    const hasOverrideForIdle = this.animState.overrideAnimation !== null;
     if (animation === 'idle' &&
         this.currentAnimationName === 'idle' &&
-        !this.emoteInProgress &&
-        !this.isPlayingOneShotAnimation) {
+        !hasOverrideForIdle) {
       const timeSinceLastVariation = performance.now() - this.lastIdleVariationTime;
       if (timeSinceLastVariation >= this.idleVariationInterval) {
         // Filter idle animations that exist in the current character
@@ -1387,9 +1313,15 @@ export class Game {
           // Pick a random idle animation (including the current one for variety)
           const randomIdle = availableIdles[Math.floor(Math.random() * availableIdles.length)];
           if (randomIdle !== 'idle' && this.actions[randomIdle]) {
-            // Play the idle variation as a one-shot that returns to 'idle'
-            this.playOneShotAnimation(randomIdle);
+            // Get animation duration
+            const idleAction = this.actions[randomIdle];
+            const duration = idleAction.getClip().duration * 1000; // Convert to ms
+
+            // Use lowest priority (IDLE_VARIANT) - any action can interrupt
+            this.requestAnimation(randomIdle, this.ANIM_PRIORITY_IDLE_VARIANT, duration, false);
             this.lastIdleVariationTime = performance.now();
+
+            // No need for old flags - state machine handles everything!
           }
         }
       }
@@ -1707,8 +1639,9 @@ export class Game {
         timestamp: performance.now()
       };
 
-      // Only include animation if no emote is playing (prevents emote override)
-      if (!this.emoteInProgress) {
+      // MIGRATION PHASE 2.1: Only include animation if no override is playing (prevents override on remote)
+      // Check state machine instead of emoteInProgress flag
+      if (this.animState.overrideAnimation === null) {
         messageData.animation = this.currentAnimationName;
         messageData.animationStartTime = this.animationStartTime;
       }
@@ -2873,21 +2806,17 @@ export class Game {
       // MVP 8 FIX: Add intense visual effects when hit
       this.triggerHitEffects();
 
-      // Local player was hit - force hit animation and block movement for 1.5s
+      // MIGRATION PHASE 2.3: Use state machine for hit animation (STUN priority, blocks movement)
       if (this.actions && this.actions['hit']) {
         const hitAction = this.actions['hit'];
-        const normalDuration = hitAction.getClip().duration * 1000; // ms
         hitAction.timeScale = 0.65; // Slow down to 65% speed (54% longer)
 
-        this.isStunned = true;
         this.velocity.set(0, 0, 0); // Stop current movement
 
-        this.playOneShotAnimation('hit', normalDuration * 1.54); // 1/0.65 = 1.54x longer
+        // Use STUN priority with movement blocking for 1.5s (fixed duration)
+        this.requestAnimation('hit', this.ANIM_PRIORITY_STUN, 1500, true);
 
-        // Clear stunned flag after 1.5 seconds
-        setTimeout(() => {
-          this.isStunned = false;
-        }, 1500);
+        // No need for isStunned flag or setTimeout - state machine handles it!
       }
     }
 
@@ -3037,14 +2966,15 @@ export class Game {
   private onProjectileNearMiss(data: { projectileId: string; ownerId: string; entityId: string; position: THREE.Vector3 }): void {
     console.log(`😨 Projectile near-miss! Entity: ${data.entityId}`);
 
-    // Play fear animation for the entity that experienced the near miss
+    // MIGRATION PHASE 2.3: Use state machine for fear animation (STUN priority, doesn't block movement)
     if (data.entityId === this.playerId) {
       // Local player had near miss - slower for emphasis
       if (this.actions && this.actions['fear']) {
         const fearAction = this.actions['fear'];
         const normalDuration = fearAction.getClip().duration * 1000; // ms
         fearAction.timeScale = 0.65; // Slow down to 65% speed (54% longer)
-        this.playOneShotAnimation('fear', normalDuration * 1.54); // 1/0.65 = 1.54x longer
+        // Use STUN priority but don't block movement (just visual reaction)
+        this.requestAnimation('fear', this.ANIM_PRIORITY_STUN, normalDuration * 1.54, false);
       }
     } else {
       // Check if it's a remote player
@@ -3221,11 +3151,11 @@ export class Game {
 
     // Stop all movement
     this.velocity.set(0, 0, 0);
-    this.isStunned = true; // Prevent input during death
 
-    // Play death animation if available
+    // MIGRATION PHASE 2.3: Use state machine for death animation (DEAD priority, blocks everything)
     if (this.actions && this.actions['death']) {
-      this.playOneShotAnimation('death', 3000);
+      this.requestAnimation('death', this.ANIM_PRIORITY_DEAD, 3000, true);
+      // No need for isStunned flag - state machine blocks movement via priority + blocksMovement!
     }
 
     // MVP 8 UX: Show death overlay with countdown
@@ -3302,7 +3232,7 @@ export class Game {
     // Reset health
     this.health = this.MAX_HEALTH;
     this.isDead = false;
-    this.isStunned = false;
+    // MIGRATION PHASE 2.3: No need to clear isStunned - state machine auto-clears on respawn
 
     // MVP 8 UX: Teleport to random location (avoid spawn camping)
     if (this.character) {
@@ -4994,12 +4924,13 @@ export class Game {
     // Update throw cooldown (optimistic - assume server will accept)
     this.lastThrowTime = now;
 
-    // MVP 8: Play 'attack' animation when throwing - slower for emphasis
+    // MIGRATION PHASE 2.2: Use state machine for throw animation
     if (this.actions['attack']) {
       const attackAction = this.actions['attack'];
       const normalDuration = attackAction.getClip().duration * 1000; // ms
       attackAction.timeScale = 0.6; // Slow down to 60% speed (67% longer)
-      this.playOneShotAnimation('attack', normalDuration * 1.67); // 1/0.6 = 1.67x longer
+      // Use ACTION priority, doesn't block movement (can throw while moving)
+      this.requestAnimation('attack', this.ANIM_PRIORITY_ACTION, normalDuration * 1.67, false);
     }
 
     // Send throw command to server
@@ -5048,21 +4979,20 @@ export class Game {
     // Heal player
     this.heal(25);
 
-    // Play eat animation (reuse existing animation from finding walnuts)
+    // MIGRATION PHASE 2.2: Use state machine for eat animation
     if (this.actions['eat']) {
       console.log('🍽️ Playing eat animation for healing');
       const eatAction = this.actions['eat'];
-      const normalDuration = eatAction.getClip().duration * 1000;
       eatAction.timeScale = 1.0;
 
-      this.isEatingWalnut = true;
+      // Stop current movement (eating should feel deliberate)
       this.velocity.set(0, 0, 0);
 
-      this.playOneShotAnimation('eat', normalDuration);
+      // Use ACTION priority with movement blocking (can't move while eating)
+      // Fixed 1s duration for eating
+      this.requestAnimation('eat', this.ANIM_PRIORITY_ACTION, 1000, true);
 
-      setTimeout(() => {
-        this.isEatingWalnut = false;
-      }, 1000);
+      // No need for isEatingWalnut flag or setTimeout - state machine handles it!
     }
 
     // Visual/audio feedback
@@ -5416,23 +5346,20 @@ export class Game {
     // MVP 8 Phase 3: Heal player when eating walnut
     this.heal(25); // +25 HP from eating walnut
 
-    // MVP 8: Play eating animation (all characters) - block movement for 1 second
+    // MIGRATION PHASE 2.2: Use state machine for eat animation
     if (this.actions['eat']) {
       console.log('🍽️ Playing eat animation for local player');
       const eatAction = this.actions['eat'];
-      const normalDuration = eatAction.getClip().duration * 1000; // ms
       eatAction.timeScale = 1.0; // Normal speed (snappier)
 
-      // MVP 8: Block movement for 1 second during eat animation
-      this.isEatingWalnut = true;
-      this.velocity.set(0, 0, 0); // Stop current movement
+      // Stop current movement
+      this.velocity.set(0, 0, 0);
 
-      this.playOneShotAnimation('eat', normalDuration); // Normal duration
+      // Use ACTION priority with movement blocking (can't move while eating)
+      // Fixed 1s duration for eating
+      this.requestAnimation('eat', this.ANIM_PRIORITY_ACTION, 1000, true);
 
-      // Clear eating flag after 1 second
-      setTimeout(() => {
-        this.isEatingWalnut = false;
-      }, 1000);
+      // No need for isEatingWalnut flag or setTimeout - state machine handles it!
     } else {
       console.warn('⚠️ Eat animation not available for local player!');
     }
@@ -5804,15 +5731,13 @@ export class Game {
       return;
     }
 
-    // Prevent emote spam
-    if (this.emoteInProgress) {
-      return;
-    }
+    // MIGRATION PHASE 2.1: Spam prevention now handled by state machine
+    // playEmoteAnimation() uses requestAnimation() which blocks equal/higher priority
 
     // MVP 5: Play emote send sound
     this.audioManager.playSound('ui', 'emote_send');
 
-    // Play emote animation locally
+    // Play emote animation locally (will be blocked if another animation is playing)
     this.playEmoteAnimation(emote);
 
     // Send to server to broadcast to all other players
@@ -5892,11 +5817,12 @@ export class Game {
    * Uses character-specific emoteAnimations mapping (Squirrel-first feature)
    */
   private playEmoteAnimation(emote: string): void {
-    if (!this.character || this.emoteInProgress) {
+    if (!this.character) {
       return;
     }
 
-    this.emoteInProgress = true;
+    // MIGRATION PHASE 2.1: Use new animation state machine instead of emoteInProgress flag
+    // State machine handles spam prevention via priority/duration system
 
     // Get current character config
     const char = this.characters.find(c => c.id === this.selectedCharacterId);
@@ -5921,16 +5847,11 @@ export class Game {
       const action = this.actions[animationName];
       const animDuration = action.getClip().duration * 1000; // Convert to ms
 
-      // Play the animation (will auto-return to idle after its actual duration)
-      this.playOneShotAnimation(animationName); // No hardcoded delay!
+      // PHASE 3 CLEANUP: Using state machine requestAnimation() (old playOneShotAnimation removed)
+      this.requestAnimation(animationName, this.ANIM_PRIORITY_ACTION, animDuration, false);
 
-      // Clear emote flag after the actual animation duration
-      setTimeout(() => {
-        this.emoteInProgress = false;
-      }, animDuration);
-    } else {
-      // Animation not found, clear flag immediately
-      this.emoteInProgress = false;
+      // No need for setTimeout - state machine handles expiration automatically!
+      // No need for emoteInProgress flag - state machine prevents interrupts via priority!
     }
   }
 
