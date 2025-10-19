@@ -11,6 +11,7 @@ const BUSH_COUNT = 30;
 let treeModel: THREE.Group | null = null;
 let bushModel: THREE.Group | null = null;
 let rockModels: (THREE.Group | null)[] = [null, null, null, null, null]; // Rock_01 through Rock_05
+let rockHeightOffsets: number[] = [0, 0, 0, 0, 0]; // Calculated offsets for each rock variant
 let stumpModel: THREE.Group | null = null;
 
 // Export bush positions for walnut hiding
@@ -28,9 +29,22 @@ export async function createForestFromServer(
     treeModel = await loadModel('/assets/models/environment/Tree_01.glb');
     bushModel = await loadModel('/assets/models/environment/Bush_01.glb');
 
-    // MVP 5.5: Load rock models (5 variants)
+    // MVP 5.5: Load rock models (5 variants) and calculate height offsets
     for (let i = 0; i < 5; i++) {
       rockModels[i] = await loadModel(`/assets/models/environment/Rock_0${i + 1}.glb`);
+
+      // Calculate correct height offset for this rock variant
+      if (rockModels[i]) {
+        const box = new THREE.Box3().setFromObject(rockModels[i]!);
+        const size = box.getSize(new THREE.Vector3());
+        const minY = box.min.y;
+
+        // Offset is the distance from model origin to bottom
+        // If minY is negative, the model extends below origin, so we need to offset UP by abs(minY)
+        rockHeightOffsets[i] = Math.abs(minY);
+
+        console.log(`Rock_0${i + 1}: height=${size.y.toFixed(2)}, minY=${minY.toFixed(2)}, offset=${rockHeightOffsets[i].toFixed(2)}`);
+      }
     }
 
     // MVP 5.5: Load stump model
@@ -82,9 +96,9 @@ export async function createForestFromServer(
         if (rockModel) {
           const rock = rockModel.clone();
 
-          // Fix: Adjust rock Y position to sit on terrain (rocks have pivot at center, not bottom)
-          // Rock models are roughly 0.5-0.6 units tall at base scale
-          const rockHeightOffset = 0.3 * obj.scale; // Half of rock height to place bottom on ground
+          // MVP 8: Use calculated height offset for each rock variant (fixes floating rocks)
+          // Each rock model has different dimensions and pivot points
+          const rockHeightOffset = rockHeightOffsets[rockIndex] * obj.scale;
           rock.position.set(obj.x, y + rockHeightOffset, obj.z);
           rock.scale.set(obj.scale, obj.scale, obj.scale);
           scene.add(rock);
