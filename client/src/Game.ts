@@ -3557,21 +3557,14 @@ export class Game {
   /**
    * Create visual indicator for a buried walnut (mound of dirt)
    * MVP 5: Improved to be more rounded and natural-looking
-   * MVP 8: Reduced size for better gameplay visibility
+   * MVP 8: Using shared walnut mesh for visual consistency
    */
   private createBuriedWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // MVP 8: Show partially buried walnut (walnut shell visible above mound) - very small
-    const walnutGeometry = new THREE.SphereGeometry(0.05, 16, 12); // Reduced from 0.08 to 0.05 (38% smaller)
-    walnutGeometry.scale(1, 1.2, 1); // Slightly elongated walnut shape
-    const walnutMaterial = new THREE.MeshStandardMaterial({
-      color: 0x8B4513, // Brown walnut color - stands out from terrain
-      roughness: 0.85,
-      metalness: 0.15
-    });
-    const walnut = new THREE.Mesh(walnutGeometry, walnutMaterial);
-    walnut.position.y = 0.04; // MVP 8: Adjusted height (reduced from 0.06)
+    // MVP 8 FIX: Use shared walnut mesh (partially buried above mound)
+    const walnut = this.createWalnutMesh();
+    walnut.position.y = 0.04; // Partially visible above dirt mound
     walnut.castShadow = true;
     walnut.receiveShadow = true;
     group.add(walnut);

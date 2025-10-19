@@ -813,6 +813,22 @@ velocity.y += gravity * delta  // -9.8 m/s²
 - Audio: Rustling leaves + thump on ground
 - Spawns as pickupable ground walnut at tree base
 
+**Bush Proximity Logic**:
+- When walnut drops from tree, check distance to nearby bushes
+- If bush within 3 units of drop location:
+  - Walnut becomes hidden in bush (bush walnut type)
+  - Uses existing bush glow effect for visibility
+  - More challenging to find than ground walnuts
+- If no bush nearby:
+  - Walnut spawns as ground pickup at tree base
+  - Easily visible to nearby players
+
+**Benefits**:
+- Natural integration with existing bush system
+- Adds variety to tree-dropped walnut difficulty
+- Creates strategic positioning near trees with bushes
+- No new walnut type needed (reuses existing types)
+
 **Balance**: Ensures walnut supply remains stable despite consumption for health restoration
 
 **Success**:
