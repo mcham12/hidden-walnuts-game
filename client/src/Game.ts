@@ -622,6 +622,11 @@ export class Game {
         this.throwWalnut();
       }
 
+      // MVP 8 Phase 3: Eat walnut with E key (heal +25 HP)
+      if (e.key === 'e' || e.key === 'E') {
+        this.eatWalnut();
+      }
+
       // Debug overlay toggle with F key
       if (e.key === 'f' || e.key === 'F') {
         const debugOverlay = document.getElementById('debug-overlay');
@@ -760,6 +765,18 @@ export class Game {
           navigator.vibrate(50);
         }
         this.throwWalnut();
+      });
+    }
+
+    // MVP 8 Phase 3: Wire up eat button for mobile
+    const eatButton = document.getElementById('mobile-eat-btn');
+    if (eatButton) {
+      eatButton.addEventListener('click', () => {
+        // Haptic feedback on mobile
+        if (navigator.vibrate) {
+          navigator.vibrate(50);
+        }
+        this.eatWalnut();
       });
     }
 
@@ -1757,8 +1774,7 @@ export class Game {
           this.walnutInventory = data.walnutCount;
           console.log(`🌰 Inventory updated: ${this.walnutInventory} walnuts`);
           // Update all UI displays
-          this.updateMobileThrowButton();
-          this.updateMobileHideButton();
+          this.updateMobileButtons();
           this.updateWalnutHUD();
         }
         break;
@@ -2999,15 +3015,28 @@ export class Game {
   }
 
   /**
-   * MVP 8 Phase 3: Update health bar UI (placeholder)
+   * MVP 8 Phase 3: Update health bar UI
    */
   private updateHealthUI(): void {
-    // TODO: Implement health bar UI
-    // For now, just update a placeholder element if it exists
     const healthBar = document.getElementById('health-bar');
+    const healthText = document.getElementById('health-text');
+
     if (healthBar) {
-      const healthPercent = (this.health / this.MAX_HEALTH) * 100;
+      const healthPercent = Math.max(0, Math.min(100, (this.health / this.MAX_HEALTH) * 100));
       healthBar.style.width = `${healthPercent}%`;
+
+      // Color changes based on health level
+      if (healthPercent > 60) {
+        healthBar.style.background = 'linear-gradient(90deg, #44ff44 0%, #66ff66 100%)'; // Green
+      } else if (healthPercent > 30) {
+        healthBar.style.background = 'linear-gradient(90deg, #ffaa44 0%, #ffcc66 100%)'; // Orange
+      } else {
+        healthBar.style.background = 'linear-gradient(90deg, #ff4444 0%, #ff6666 100%)'; // Red
+      }
+    }
+
+    if (healthText) {
+      healthText.textContent = `${Math.round(this.health)}/${this.MAX_HEALTH}`;
     }
   }
 
@@ -3596,22 +3625,19 @@ export class Game {
       playerScoreSpan.textContent = `${Math.floor(this.displayedScore)}`;
     }
 
-    // MVP 5.7: Update mobile hide button
-    this.updateMobileHideButton();
+    // MVP 5.7: Update mobile buttons
+    this.updateMobileButtons();
   }
 
   /**
-   * MVP 5.7: Update mobile hide button state (count, enabled/disabled)
+   * MVP 5.7: Update mobile button states (Hide, Throw, Eat)
    */
-  private updateMobileHideButton(): void {
+  private updateMobileButtons(): void {
+    // Update HIDE button
     const hideButton = document.getElementById('mobile-hide-btn') as HTMLButtonElement;
     const hideCountSpan = document.getElementById('mobile-hide-count');
-
     if (hideButton && hideCountSpan) {
-      // MVP 8: Update count display using unified walnut inventory
       hideCountSpan.textContent = `(${this.walnutInventory})`;
-
-      // Enable/disable button based on walnut count
       if (this.walnutInventory <= 0) {
         hideButton.disabled = true;
         hideButton.style.opacity = '0.4';
@@ -3620,20 +3646,12 @@ export class Game {
         hideButton.style.opacity = '1';
       }
     }
-  }
 
-  /**
-   * MVP 8: Update mobile throw button state (count, enabled/disabled)
-   */
-  private updateMobileThrowButton(): void {
+    // Update THROW button
     const throwButton = document.getElementById('mobile-throw-btn') as HTMLButtonElement;
     const throwCountSpan = document.getElementById('mobile-throw-count');
-
     if (throwButton && throwCountSpan) {
-      // Update count display
       throwCountSpan.textContent = `(${this.walnutInventory})`;
-
-      // Enable/disable button based on walnut inventory
       if (this.walnutInventory <= 0) {
         throwButton.disabled = true;
         throwButton.style.opacity = '0.4';
@@ -3642,8 +3660,22 @@ export class Game {
         throwButton.style.opacity = '1';
       }
     }
-  }
 
+    // MVP 8 Phase 3: Update EAT button
+    const eatButton = document.getElementById('mobile-eat-btn') as HTMLButtonElement;
+    const eatCountSpan = document.getElementById('mobile-eat-count');
+    if (eatButton && eatCountSpan) {
+      eatCountSpan.textContent = `(${this.walnutInventory})`;
+      // Disable if no walnuts OR already at full health
+      if (this.walnutInventory <= 0 || this.health >= this.MAX_HEALTH) {
+        eatButton.disabled = true;
+        eatButton.style.opacity = '0.4';
+      } else {
+        eatButton.disabled = false;
+        eatButton.style.opacity = '1';
+      }
+    }
+  }
 
   // MVP 3: Label system for landmarks and walnuts
 
@@ -4492,8 +4524,7 @@ export class Game {
 
     // MVP 8: Decrement unified walnut inventory
     this.walnutInventory--;
-    this.updateMobileHideButton(); // Update UI
-    this.updateMobileThrowButton(); // Update UI
+    this.updateMobileButtons(); // Update UI (all action buttons)
 
     // MVP 5: Spawn dirt particles (sound already played at start for instant feedback)
     if (this.vfxManager) {
@@ -4640,6 +4671,55 @@ export class Game {
     });
 
     console.log(`🌰 Throw request sent (inventory: ${this.walnutInventory}, target: ${targetId || 'none'})`);
+  }
+
+  /**
+   * MVP 8 Phase 3: Eat a walnut from inventory to heal (+25 HP)
+   */
+  private eatWalnut(): void {
+    // Check if player can eat
+    if (this.isDead) {
+      this.toastManager.warning('Cannot eat while dead!');
+      return;
+    }
+
+    if (this.walnutInventory <= 0) {
+      this.toastManager.warning('No walnuts to eat!');
+      return;
+    }
+
+    if (this.health >= this.MAX_HEALTH) {
+      this.toastManager.info('Already at full health!');
+      return;
+    }
+
+    // Consume one walnut
+    this.walnutInventory--;
+    this.updateWalnutHUD();
+
+    // Heal player
+    this.heal(25);
+
+    // Play eat animation (reuse existing animation from finding walnuts)
+    if (this.actions['eat']) {
+      console.log('🍽️ Playing eat animation for healing');
+      const eatAction = this.actions['eat'];
+      const normalDuration = eatAction.getClip().duration * 1000;
+      eatAction.timeScale = 1.0;
+
+      this.isEatingWalnut = true;
+      this.velocity.set(0, 0, 0);
+
+      this.playOneShotAnimation('eat', normalDuration);
+
+      setTimeout(() => {
+        this.isEatingWalnut = false;
+      }, 1000);
+    }
+
+    // Visual/audio feedback
+    this.toastManager.success('+25 HP!');
+    console.log(`🍽️ Ate walnut for healing. Health: ${this.health}/${this.MAX_HEALTH}, Inventory: ${this.walnutInventory}`);
   }
 
   /**

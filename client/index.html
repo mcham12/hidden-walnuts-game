@@ -204,6 +204,10 @@
         margin-right: 8px;
         vertical-align: middle;
       }
+      /* MVP 8 Phase 3: Health Bar Styles (Desktop/Default) */
+      #health-container {
+        margin-top: 4px;
+      }
       .landmark-label {
         position: absolute;
         background: rgba(0, 0, 0, 0.7);
@@ -1152,6 +1156,19 @@
           display: none !important;
         }
 
+        /* MVP 8 Phase 3: Health bar responsive for tablets/phones */
+        #health-container {
+          margin-top: 2px;
+        }
+        #health-bar-container {
+          min-width: 80px !important;
+          height: 14px !important;
+        }
+        #health-text {
+          font-size: 11px;
+          min-width: 45px !important;
+        }
+
         /* Make minimap smaller on mobile */
         #minimap {
           width: 120px;
@@ -1306,6 +1323,26 @@
           width: 10px;
           height: 10px;
           margin-right: 3px;
+        }
+
+        /* MVP 8 Phase 3: Ultra-compact health bar for landscape mode */
+        #health-container {
+          margin-top: 0;
+        }
+        #health-container > div {
+          gap: 4px !important;
+        }
+        #health-container span:first-child {
+          font-size: 12px !important; /* Heart emoji */
+        }
+        #health-bar-container {
+          min-width: 50px !important;
+          height: 10px !important;
+          border-radius: 5px !important;
+        }
+        #health-text {
+          font-size: 8px !important;
+          min-width: 35px !important;
         }
 
         /* Smaller minimap in landscape, respects notch */
@@ -1719,6 +1756,16 @@
           margin: 4px 0;
         }
 
+        /* MVP 8 Phase 3: Compact health bar for small phones */
+        #health-bar-container {
+          min-width: 70px !important;
+          height: 12px !important;
+        }
+        #health-text {
+          font-size: 10px;
+          min-width: 40px !important;
+        }
+
         /* Extra small minimap for phones */
         #minimap {
           width: 100px;
@@ -1797,6 +1844,16 @@
       <div>
         ⭐ Score: <span id="player-score">0</span>
       </div>
+      <!-- MVP 8 Phase 3: Health Bar -->
+      <div id="health-container">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 16px;">❤️</span>
+          <div id="health-bar-container" style="flex: 1; min-width: 100px; height: 16px; background: rgba(0,0,0,0.5); border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.3);">
+            <div id="health-bar" style="width: 100%; height: 100%; background: linear-gradient(90deg, #ff4444 0%, #ff6666 100%); transition: width 0.3s ease;"></div>
+          </div>
+          <span id="health-text" style="min-width: 50px; text-align: right; font-weight: bold;">100/100</span>
+        </div>
+      </div>
     </div>
     <div id="debug-overlay" class="hidden">
       <div>🎮 Position: <span id="player-pos">0, 0, 0</span></div>
@@ -1854,7 +1911,7 @@
       <div>👉 Use HIDE button to bury walnuts</div>
       <div style="margin-top: 8px; font-size: 12px; opacity: 0.7;">Tap here to dismiss</div>
     </div>
-    <!-- MVP 5.7: Mobile Action Buttons (Hide/Throw) -->
+    <!-- MVP 5.7: Mobile Action Buttons (Hide/Throw/Eat) -->
     <div id="mobile-actions">
       <button id="mobile-hide-btn" class="mobile-action-btn" title="Hide Walnut">
         <span class="btn-icon">🥜</span>
@@ -1866,6 +1923,12 @@
         <span class="btn-icon">🌰</span>
         <span class="btn-label">THROW</span>
         <span class="btn-count" id="mobile-throw-count">(0)</span>
+      </button>
+      <!-- MVP 8 Phase 3: Eat button -->
+      <button id="mobile-eat-btn" class="mobile-action-btn" title="Eat Walnut (Heal +25 HP)">
+        <span class="btn-icon">🍽️</span>
+        <span class="btn-label">EAT</span>
+        <span class="btn-count" id="mobile-eat-count">(0)</span>
       </button>
     </div>
     <!-- MVP 5: Persistent Control Guide -->
