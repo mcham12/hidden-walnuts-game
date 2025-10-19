@@ -2943,8 +2943,9 @@ export class Game {
     const playerPos = this.character.position.clone();
 
     // DEBUG: Log check every few seconds
-    if (this.remotePlayers.size > 0 && Math.random() < 0.01) { // 1% of frames
-      console.log(`🔍 Checking collision damage against ${this.remotePlayers.size} players...`);
+    const totalEntities = this.remotePlayers.size + this.npcs.size;
+    if (totalEntities > 0 && Math.random() < 0.01) { // 1% of frames
+      console.log(`🔍 Checking collision damage against ${this.remotePlayers.size} players + ${this.npcs.size} NPCs...`);
     }
 
     // Check collisions with remote players
@@ -2962,6 +2963,27 @@ export class Game {
         this.lastCollisionDamageTime = now;
 
         console.log(`💥💥 COLLISION DAMAGE from player ${playerId}! Distance: ${distance.toFixed(2)}, Damage: -${this.COLLISION_DAMAGE} HP`);
+
+        // Visual feedback
+        this.triggerHitEffects();
+      }
+    });
+
+    // MVP 8 FIX: Also check collisions with NPCs
+    this.npcs.forEach((npc, npcId) => {
+      const distance = playerPos.distanceTo(npc.position);
+
+      // DEBUG: Log all distances when close
+      if (distance < 3.0) {
+        console.log(`📏 Distance to NPC ${npcId}: ${distance.toFixed(2)} units (damage threshold: ${COLLISION_RADIUS})`);
+      }
+
+      if (distance < COLLISION_RADIUS) {
+        // Collision detected! Apply damage
+        this.takeDamage(this.COLLISION_DAMAGE, npcId);
+        this.lastCollisionDamageTime = now;
+
+        console.log(`💥💥 COLLISION DAMAGE from NPC ${npcId}! Distance: ${distance.toFixed(2)}, Damage: -${this.COLLISION_DAMAGE} HP`);
 
         // Visual feedback
         this.triggerHitEffects();
