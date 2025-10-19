@@ -210,6 +210,18 @@ export class Game {
   private walnutInventory: number = 0; // Player's walnut count (0-10) - unified for throw/eat/hide
   private lastThrowTime: number = 0; // For throw cooldown tracking
   private readonly THROW_COOLDOWN = 1500; // 1.5 seconds in milliseconds
+
+  // MVP 8 Phase 3: Health & Combat system
+  private health: number = 100; // Current health (0-100)
+  private readonly MAX_HEALTH = 100;
+  private readonly REGEN_RATE = 1; // HP per tick
+  private readonly REGEN_INTERVAL = 10000; // 10 seconds in milliseconds
+  private readonly PROJECTILE_DAMAGE = 20; // Damage from thrown walnut hit
+  private readonly COLLISION_DAMAGE = 10; // Damage from player collision
+  private readonly COLLISION_DAMAGE_COOLDOWN = 2000; // 2s cooldown between collision damage
+  private lastCollisionDamageTime: number = 0;
+  private lastRegenTime: number = 0;
+  private isDead: boolean = false;
   // Note: MAX_INVENTORY enforced server-side (10 walnuts)
 
   // MVP 8 FIX: Shared walnut model for visual consistency
@@ -880,6 +892,12 @@ export class Game {
 
     // MVP 8: Check proximity pickup for walnuts (walk over to collect)
     this.checkProximityWalnutPickup();
+
+    // MVP 8 Phase 3: Check player collisions for damage
+    this.checkPlayerCollisions();
+
+    // MVP 8 Phase 3: Update health (regen system)
+    this.updateHealth();
 
     // MVP 5: Animate score counter with tweening
     if (this.displayedScore !== this.playerScore) {
@@ -2613,6 +2631,9 @@ export class Game {
 
     // MVP 8: Check if LOCAL player was hit (stun + forced hit animation)
     if (data.targetId === this.playerId) {
+      // MVP 8 Phase 3: Apply damage
+      this.takeDamage(this.PROJECTILE_DAMAGE, data.ownerId);
+
       // MVP 8 FIX: Add intense visual effects when hit
       this.triggerHitEffects();
 
@@ -2809,6 +2830,184 @@ export class Game {
           actions['fear'].clampWhenFinished = true;
         }
       }
+    }
+  }
+
+  /**
+   * MVP 8 Phase 3: Apply damage to local player
+   */
+  private takeDamage(amount: number, attackerId: string): void {
+    if (this.isDead) return; // Can't damage dead players
+
+    this.health = Math.max(0, this.health - amount);
+    console.log(`💔 Took ${amount} damage from ${attackerId}. Health: ${this.health}/${this.MAX_HEALTH}`);
+
+    // Send damage event to server
+    this.sendMessage({
+      type: 'player_damaged',
+      damage: amount,
+      attackerId: attackerId,
+      health: this.health
+    });
+
+    // Check if player died
+    if (this.health <= 0) {
+      this.onDeath(attackerId);
+    }
+
+    // Update health bar UI (will implement later)
+    this.updateHealthUI();
+  }
+
+  /**
+   * MVP 8 Phase 3: Heal local player
+   */
+  private heal(amount: number): void {
+    if (this.isDead) return;
+
+    const oldHealth = this.health;
+    this.health = Math.min(this.MAX_HEALTH, this.health + amount);
+    const actualHeal = this.health - oldHealth;
+
+    if (actualHeal > 0) {
+      console.log(`💚 Healed ${actualHeal} HP. Health: ${this.health}/${this.MAX_HEALTH}`);
+
+      // Send heal event to server
+      this.sendMessage({
+        type: 'player_healed',
+        amount: actualHeal,
+        health: this.health
+      });
+
+      // Update health bar UI
+      this.updateHealthUI();
+    }
+  }
+
+  /**
+   * MVP 8 Phase 3: Update health (regen system)
+   */
+  private updateHealth(): void {
+    if (this.isDead) return;
+
+    const now = Date.now();
+
+    // Health regeneration (every 10 seconds)
+    if (now - this.lastRegenTime >= this.REGEN_INTERVAL) {
+      this.lastRegenTime = now;
+
+      if (this.health < this.MAX_HEALTH) {
+        this.heal(this.REGEN_RATE);
+      }
+    }
+  }
+
+  /**
+   * MVP 8 Phase 3: Check for player-to-player collisions and apply damage
+   */
+  private checkPlayerCollisions(): void {
+    if (!this.character || this.isDead) return;
+
+    const now = Date.now();
+
+    // Check cooldown
+    if (now - this.lastCollisionDamageTime < this.COLLISION_DAMAGE_COOLDOWN) {
+      return; // Still on cooldown
+    }
+
+    const COLLISION_RADIUS = 1.0; // Distance for collision damage
+    const playerPos = this.character.position.clone();
+
+    // Check collisions with remote players
+    this.remotePlayers.forEach((remotePlayer, playerId) => {
+      const distance = playerPos.distanceTo(remotePlayer.position);
+
+      if (distance < COLLISION_RADIUS) {
+        // Collision detected! Apply damage
+        this.takeDamage(this.COLLISION_DAMAGE, playerId);
+        this.lastCollisionDamageTime = now;
+
+        console.log(`💥 Collision damage from player ${playerId}! Distance: ${distance.toFixed(2)}`);
+
+        // Visual feedback
+        this.triggerHitEffects();
+      }
+    });
+  }
+
+  /**
+   * MVP 8 Phase 3: Handle player death
+   */
+  private onDeath(killerId: string): void {
+    console.log(`💀 Player died! Killed by ${killerId}`);
+    this.isDead = true;
+
+    // Stop all movement
+    this.velocity.set(0, 0, 0);
+    this.isStunned = true; // Prevent input during death
+
+    // Play death animation if available
+    if (this.actions && this.actions['death']) {
+      this.playOneShotAnimation('death', 3000);
+    }
+
+    // Drop all walnuts at death location
+    if (this.walnutInventory > 0 && this.character) {
+      const dropPosition = this.character.position.clone();
+
+      // Send death event to server (server will spawn dropped walnuts)
+      this.sendMessage({
+        type: 'player_died',
+        killerId: killerId,
+        position: {
+          x: dropPosition.x,
+          y: dropPosition.y,
+          z: dropPosition.z
+        },
+        walnuts: this.walnutInventory
+      });
+
+      this.walnutInventory = 0;
+      this.updateWalnutHUD();
+    }
+
+    // Start respawn timer (3 seconds)
+    setTimeout(() => {
+      this.respawn();
+    }, 3000);
+  }
+
+  /**
+   * MVP 8 Phase 3: Respawn player after death
+   */
+  private respawn(): void {
+    console.log('🔄 Respawning player...');
+
+    // Reset health
+    this.health = this.MAX_HEALTH;
+    this.isDead = false;
+    this.isStunned = false;
+
+    // Request respawn from server (will send new spawn position)
+    this.sendMessage({
+      type: 'player_respawn'
+    });
+
+    // Update UI
+    this.updateHealthUI();
+    this.updateWalnutHUD();
+  }
+
+  /**
+   * MVP 8 Phase 3: Update health bar UI (placeholder)
+   */
+  private updateHealthUI(): void {
+    // TODO: Implement health bar UI
+    // For now, just update a placeholder element if it exists
+    const healthBar = document.getElementById('health-bar');
+    if (healthBar) {
+      const healthPercent = (this.health / this.MAX_HEALTH) * 100;
+      healthBar.style.width = `${healthPercent}%`;
     }
   }
 
@@ -4785,6 +4984,9 @@ export class Game {
 
     // Remove the walnut from the world
     this.removeWalnut(walnutId);
+
+    // MVP 8 Phase 3: Heal player when eating walnut
+    this.heal(25); // +25 HP from eating walnut
 
     // MVP 8: Play eating animation (all characters) - block movement for 1 second
     if (this.actions['eat']) {
