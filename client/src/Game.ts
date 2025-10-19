@@ -148,7 +148,7 @@ export class Game {
 
   // MVP 3: Walnut system properties
   private walnuts: Map<string, THREE.Group> = new Map(); // All walnuts in world
-  private playerWalnutCount: number = 3; // Player starts with 3 walnuts to hide
+  // Note: playerWalnutCount removed in MVP 8 - using unified walnutInventory instead
   private playerScore: number = 0; // Player's current score
   private displayedScore: number = 0; // MVP 5: Animated score for tweening effect
   private mouse: THREE.Vector2 = new THREE.Vector2();
@@ -202,9 +202,10 @@ export class Game {
 
   // MVP 8: Projectile system (flying walnuts)
   private projectileManager: ProjectileManager | null = null;
-  private walnutInventory: number = 0; // Player's walnut count (0-10)
+  private walnutInventory: number = 0; // Player's walnut count (0-10) - unified for throw/eat/hide
   private lastThrowTime: number = 0; // For throw cooldown tracking
   private readonly THROW_COOLDOWN = 1500; // 1.5 seconds in milliseconds
+  // Note: MAX_INVENTORY enforced server-side (10 walnuts)
 
   // MVP 5: Toast notification system
   private toastManager: ToastManager = new ToastManager();
@@ -2958,7 +2959,8 @@ export class Game {
     const playerScoreSpan = document.getElementById('player-score');
 
     if (walnutCountSpan) {
-      walnutCountSpan.textContent = `${this.playerWalnutCount}`;
+      // MVP 8: Display unified walnut inventory
+      walnutCountSpan.textContent = `${this.walnutInventory}`;
     }
 
     if (playerScoreSpan) {
@@ -2978,11 +2980,11 @@ export class Game {
     const hideCountSpan = document.getElementById('mobile-hide-count');
 
     if (hideButton && hideCountSpan) {
-      // Update count display
-      hideCountSpan.textContent = `(${this.playerWalnutCount})`;
+      // MVP 8: Update count display using unified walnut inventory
+      hideCountSpan.textContent = `(${this.walnutInventory})`;
 
       // Enable/disable button based on walnut count
-      if (this.playerWalnutCount <= 0) {
+      if (this.walnutInventory <= 0) {
         hideButton.disabled = true;
         hideButton.style.opacity = '0.4';
       } else {
@@ -3774,8 +3776,8 @@ export class Game {
   private hideWalnut(): void {
     if (!this.character) return;
 
-    // Check if player has walnuts to hide
-    if (this.playerWalnutCount <= 0) {
+    // MVP 8: Check if player has walnuts to hide (unified inventory)
+    if (this.walnutInventory <= 0) {
       return;
     }
 
@@ -3833,8 +3835,10 @@ export class Game {
     const label = this.createLabel(labelText, labelColor);
     this.walnutLabels.set(walnutId, label);
 
-    // Decrement player walnut count
-    this.playerWalnutCount--;
+    // MVP 8: Decrement unified walnut inventory
+    this.walnutInventory--;
+    this.updateMobileHideButton(); // Update UI
+    this.updateMobileThrowButton(); // Update UI
 
     // MVP 5: Spawn dirt particles (sound already played at start for instant feedback)
     if (this.vfxManager) {
@@ -4160,8 +4164,8 @@ export class Game {
     }
 
     if (isOwnWalnut) {
-      // FOUND YOUR OWN WALNUT - No points (prevents farming), just get walnut back
-      this.playerWalnutCount++;
+      // MVP 8: FOUND YOUR OWN WALNUT - No points, server handles inventory
+      // (Server increments walnutInventory and sends inventory_update)
 
       // MVP 5: Subtle visual feedback for retrieving your own walnut
       if (this.vfxManager) {
@@ -4171,9 +4175,9 @@ export class Game {
       // MVP 5: Toast notification for finding your own walnut
       this.toastManager.info('Found your walnut');
     } else {
-      // FOUND SOMEONE ELSE'S WALNUT - Award points AND give walnut to rehide
+      // MVP 8: FOUND SOMEONE ELSE'S WALNUT - Award points, server handles inventory
       this.playerScore += points;
-      this.playerWalnutCount++;
+      // (Server increments walnutInventory and sends inventory_update)
 
       // MVP 5: Visual feedback for scoring (audio already played for instant response)
       if (this.vfxManager && this.character) {
