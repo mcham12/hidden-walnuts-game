@@ -4507,7 +4507,7 @@ export class Game {
   private checkProximityWalnutPickup(): void {
     if (!this.character) return;
 
-    const PICKUP_RANGE = 1.5; // Distance in units to auto-collect walnut
+    const PICKUP_RANGE = 0.8; // MVP 8: Reduced from 1.5 to require closer proximity
     const playerPos = this.character.position.clone();
     const now = Date.now(); // MVP 8 FIX: Must match Date.now() used for settlingUntil
 
