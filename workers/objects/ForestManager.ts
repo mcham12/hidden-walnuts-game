@@ -129,6 +129,13 @@ export default class ForestManager extends DurableObject {
       return true;
     }
 
+    // MVP 7.1: Accept testing tokens (from Cloudflare's testing site key)
+    // Testing tokens start with 'XXXX.' and are used in preview/dev environments
+    if (token.startsWith('XXXX.')) {
+      console.log('⚠️ Turnstile testing token detected - skipping validation (preview/dev mode)');
+      return true;
+    }
+
     try {
       const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
         method: 'POST',
