@@ -39,6 +39,10 @@ export class ProjectileManager {
   private readonly FLIGHT_TIME = 0.5; // seconds (faster = flatter trajectory for easier hits)
   private readonly MAX_LIFETIME = 5.0; // seconds (cleanup timeout)
   private readonly HIT_RADIUS = 0.8; // units (collision detection radius - increased for easier hits)
+  private readonly NEAR_MISS_RADIUS = 2.0; // units (radius for near-miss detection)
+
+  // Track entities that have had near misses (prevent spam)
+  private nearMissCooldowns: Map<string, number> = new Map();
 
   // Projectile ID counter
   private nextProjectileId = 0;
@@ -215,6 +219,9 @@ export class ProjectileManager {
         return;
       }
 
+      // MVP 8: Near-miss detection (before hit detection)
+      this.checkNearMissDetection(projectile, entities, now);
+
       // Hit detection against entities
       const hitEntityId = this.checkHitDetection(projectile, entities);
       if (hitEntityId) {
@@ -264,6 +271,58 @@ export class ProjectileManager {
     }
 
     return null;
+  }
+
+  /**
+   * MVP 8: Check for near-miss (projectile passing close to entity)
+   * Triggers fear reaction animation
+   *
+   * @param projectile - Projectile to check
+   * @param entities - Map of all entities in world
+   * @param now - Current timestamp (milliseconds)
+   */
+  private checkNearMissDetection(
+    projectile: Projectile,
+    entities: Map<string, { position: THREE.Vector3, isInvulnerable?: boolean }>,
+    now: number
+  ): void {
+    const NEAR_MISS_COOLDOWN = 2000; // 2 seconds cooldown per entity
+
+    for (const [entityId, entity] of entities) {
+      // Don't detect near-miss for self
+      if (entityId === projectile.ownerId) {
+        continue;
+      }
+
+      // Don't detect near-miss for invulnerable entities
+      if (entity.isInvulnerable) {
+        continue;
+      }
+
+      // Check cooldown for this entity
+      const lastNearMiss = this.nearMissCooldowns.get(entityId) || 0;
+      if (now - lastNearMiss < NEAR_MISS_COOLDOWN) {
+        continue; // Still on cooldown
+      }
+
+      // Check distance
+      const distance = projectile.position.distanceTo(entity.position);
+      if (distance > this.HIT_RADIUS && distance <= this.NEAR_MISS_RADIUS) {
+        // Near miss detected! Dispatch event
+        const nearMissEvent = new CustomEvent('projectile-near-miss', {
+          detail: {
+            projectileId: projectile.id,
+            ownerId: projectile.ownerId,
+            entityId: entityId,
+            position: entity.position.clone()
+          }
+        });
+        window.dispatchEvent(nearMissEvent);
+
+        // Update cooldown
+        this.nearMissCooldowns.set(entityId, now);
+      }
+    }
   }
 
   /**

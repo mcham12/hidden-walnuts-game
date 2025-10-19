@@ -73,7 +73,7 @@ export class NPCManager {
   // Throw configuration
   private readonly THROW_MIN_RANGE = 5;
   private readonly THROW_MAX_RANGE = 15;
-  private readonly THROW_COOLDOWN = 3000; // 3 seconds
+  private readonly THROW_COOLDOWN = 2000; // MVP 8: Reduced from 3s to 2s for more active combat
   private readonly MAX_INVENTORY = 5;
 
   // Character types (all 11 available from characters.json)
@@ -168,15 +168,16 @@ export class NPCManager {
     };
 
     // Random aggression level
-    // 50% passive (0.2-0.4), 30% neutral (0.4-0.6), 20% aggressive (0.6-0.8)
+    // MVP 8: Increased aggression for more active combat
+    // 30% neutral (0.4-0.6), 40% aggressive (0.6-0.8), 30% very aggressive (0.8-1.0)
     const rand = Math.random();
     let aggressionLevel: number;
-    if (rand < 0.5) {
-      aggressionLevel = 0.2 + Math.random() * 0.2; // Passive
-    } else if (rand < 0.8) {
-      aggressionLevel = 0.4 + Math.random() * 0.2; // Neutral
-    } else {
+    if (rand < 0.3) {
+      aggressionLevel = 0.4 + Math.random() * 0.2; // Neutral (was Passive)
+    } else if (rand < 0.7) {
       aggressionLevel = 0.6 + Math.random() * 0.2; // Aggressive
+    } else {
+      aggressionLevel = 0.8 + Math.random() * 0.2; // Very Aggressive (new tier)
     }
 
     return {
@@ -368,6 +369,7 @@ export class NPCManager {
 
   /**
    * Select new behavior based on weighted random + current state
+   * MVP 8: Increased NPC aggression/throwing frequency
    */
   private selectNewBehavior(
     npc: NPC,
@@ -375,36 +377,38 @@ export class NPCManager {
     nearbyNPCs: NPC[],
     nearbyWalnuts: Walnut[]
   ): NPCBehavior {
-    // Gather walnuts if inventory is low
-    if (npc.walnutInventory < 3 && nearbyWalnuts.length > 0) {
-      if (Math.random() < 0.3) { // 30% chance to gather
-        return NPCBehavior.GATHER;
-      }
-    }
-
-    // Approach entities if aggressive and has walnuts to throw
+    // MVP 8: PRIORITY - Approach players if has walnuts (increased from aggression > 0.5 to > 0.3)
+    // Players are high-value targets for combat
     const nearbyEntities = [...nearbyPlayers, ...nearbyNPCs];
-    if (nearbyEntities.length > 0 && npc.walnutInventory > 0 && npc.aggressionLevel > 0.5) {
-      if (Math.random() < npc.aggressionLevel) {
+    if (nearbyPlayers.length > 0 && npc.walnutInventory > 0 && npc.aggressionLevel > 0.3) {
+      // MVP 8: Increased chance from aggressionLevel to aggressionLevel * 1.5 (more aggressive)
+      if (Math.random() < Math.min(0.9, npc.aggressionLevel * 1.5)) {
         return NPCBehavior.APPROACH;
       }
     }
 
-    // Default behavior distribution (favor idling for more natural/calm NPCs)
+    // Gather walnuts if inventory is low (increased priority)
+    if (npc.walnutInventory < 2 && nearbyWalnuts.length > 0) {
+      if (Math.random() < 0.5) { // MVP 8: Increased from 30% to 50%
+        return NPCBehavior.GATHER;
+      }
+    }
+
+    // Default behavior distribution (MVP 8: Reduced idle time for more active NPCs)
     const rand = Math.random();
 
-    if (rand < 0.60) {
-      return NPCBehavior.IDLE; // 60% idle - NPCs spend most time resting
-    } else if (rand < 0.90) {
-      return NPCBehavior.WANDER; // 30% wander - occasional exploration
+    if (rand < 0.40) {
+      return NPCBehavior.IDLE; // MVP 8: Reduced from 60% to 40% idle
+    } else if (rand < 0.75) {
+      return NPCBehavior.WANDER; // MVP 8: Increased from 30% to 35% wander
     } else {
-      // 10% split between gather/approach - rare active behaviors
-      if (nearbyWalnuts.length > 0) {
+      // 25% split between gather/approach (increased from 10%)
+      if (nearbyWalnuts.length > 0 && npc.walnutInventory < 4) {
         return NPCBehavior.GATHER;
-      } else if (nearbyEntities.length > 0) {
+      } else if (nearbyEntities.length > 0 && npc.walnutInventory > 0) {
         return NPCBehavior.APPROACH;
       } else {
-        return NPCBehavior.IDLE; // Default to idle if no targets
+        return NPCBehavior.WANDER; // More wandering when no targets
       }
     }
   }

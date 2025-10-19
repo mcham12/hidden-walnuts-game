@@ -415,7 +415,15 @@ export class Game {
         }
       });
 
-      await Promise.all(animationPromises);
+      const results = await Promise.all(animationPromises);
+
+      // MVP 8: Log loaded animations for debugging
+      const loadedAnims = results.filter(r => r.success).map(r => r.name);
+      const failedAnims = results.filter(r => !r.success).map(r => r.name);
+      console.log(`✅ Loaded animations for local player: ${loadedAnims.join(', ')}`);
+      if (failedAnims.length > 0) {
+        console.warn(`⚠️ Failed to load animations: ${failedAnims.join(', ')}`);
+      }
 
       // Validate at least idle animation loaded
       if (!this.actions.idle) {
@@ -650,6 +658,11 @@ export class Game {
     // MVP 8: Projectile miss events (create pickupable walnut on ground)
     window.addEventListener('projectile-miss', ((e: CustomEvent) => {
       this.onProjectileMiss(e.detail);
+    }) as EventListener);
+
+    // MVP 8: Projectile near-miss events (play fear animation)
+    window.addEventListener('projectile-near-miss', ((e: CustomEvent) => {
+      this.onProjectileNearMiss(e.detail);
     }) as EventListener);
 
     // MVP 5.7: Touch controls for mobile
@@ -1469,6 +1482,30 @@ export class Game {
         // Another player found a walnut - remove it locally
         if (data.walnutId && data.finderId !== this.playerId) {
           this.removeWalnut(data.walnutId);
+
+          // MVP 8: Play 'eat' animation for remote player or NPC who found the walnut
+          const remotePlayer = this.remotePlayers.get(data.finderId);
+          if (remotePlayer && this.remotePlayerActions.has(data.finderId)) {
+            const actions = this.remotePlayerActions.get(data.finderId);
+            if (actions && actions['eat']) {
+              // Play eat animation once
+              actions['eat'].reset().setLoop(THREE.LoopOnce, 1).play();
+              // Return to idle after animation completes
+              actions['eat'].clampWhenFinished = true;
+            }
+          }
+
+          // Check if finder is an NPC
+          const npc = this.npcs.get(data.finderId);
+          if (npc && this.npcActions.has(data.finderId)) {
+            const actions = this.npcActions.get(data.finderId);
+            if (actions && actions['eat']) {
+              // Play eat animation once
+              actions['eat'].reset().setLoop(THREE.LoopOnce, 1).play();
+              // Return to idle after animation completes
+              actions['eat'].clampWhenFinished = true;
+            }
+          }
         }
         break;
 
@@ -2396,10 +2433,11 @@ export class Game {
   private handleNPCThrow(npcId: string, fromPosition: { x: number; y: number; z: number }, toPosition: { x: number; y: number; z: number }, targetId: string): void {
     const npc = this.npcs.get(npcId);
     if (npc) {
-      // Play throw animation if available
+      // MVP 8: Play attack animation when NPC throws (no 'throw' animation, use 'attack')
       const actions = this.npcActions.get(npcId);
-      if (actions && actions['throw']) {
-        actions['throw'].reset().play();
+      if (actions && actions['attack']) {
+        actions['attack'].reset().setLoop(THREE.LoopOnce, 1).play();
+        actions['attack'].clampWhenFinished = true;
       }
 
       // MVP 8: Spawn flying walnut projectile
@@ -2423,29 +2461,32 @@ export class Game {
       console.log(`🌰 Projectile spawned: ${throwerId} → ${targetId || 'ground'}`);
     }
 
-    // Play throw animation for the thrower (if it's a remote player or NPC)
+    // MVP 8: Play attack animation for the thrower (no 'throw' animation, use 'attack')
     if (throwerId !== this.playerId) {
       // Check if it's a remote player
       const remotePlayer = this.remotePlayers.get(throwerId);
       if (remotePlayer) {
         const actions = this.remotePlayerActions.get(throwerId);
-        if (actions && actions['throw']) {
-          actions['throw'].reset().play();
+        if (actions && actions['attack']) {
+          actions['attack'].reset().setLoop(THREE.LoopOnce, 1).play();
+          actions['attack'].clampWhenFinished = true;
         }
       } else {
         // Check if it's an NPC
         const npc = this.npcs.get(throwerId);
         if (npc) {
           const actions = this.npcActions.get(throwerId);
-          if (actions && actions['throw']) {
-            actions['throw'].reset().play();
+          if (actions && actions['attack']) {
+            actions['attack'].reset().setLoop(THREE.LoopOnce, 1).play();
+            actions['attack'].clampWhenFinished = true;
           }
         }
       }
     } else {
-      // Local player threw - play local throw animation if available
-      if (this.actions && this.actions['throw']) {
-        this.actions['throw'].reset().play();
+      // Local player threw - play local attack animation if available
+      if (this.actions && this.actions['attack']) {
+        this.actions['attack'].reset().setLoop(THREE.LoopOnce, 1).play();
+        this.actions['attack'].clampWhenFinished = true;
       }
     }
   }
@@ -2503,6 +2544,42 @@ export class Game {
         z: data.position.z
       }
     });
+  }
+
+  /**
+   * MVP 8: Handle projectile near-miss (play fear animation)
+   * This is called when ProjectileManager detects a near miss
+   */
+  private onProjectileNearMiss(data: { projectileId: string; ownerId: string; entityId: string; position: THREE.Vector3 }): void {
+    console.log(`😨 Projectile near-miss! Entity: ${data.entityId}`);
+
+    // Play fear animation for the entity that experienced the near miss
+    if (data.entityId === this.playerId) {
+      // Local player had near miss
+      if (this.actions && this.actions['fear']) {
+        this.playOneShotAnimation('fear');
+      }
+    } else {
+      // Check if it's a remote player
+      const remotePlayer = this.remotePlayers.get(data.entityId);
+      if (remotePlayer && this.remotePlayerActions.has(data.entityId)) {
+        const actions = this.remotePlayerActions.get(data.entityId);
+        if (actions && actions['fear']) {
+          actions['fear'].reset().setLoop(THREE.LoopOnce, 1).play();
+          actions['fear'].clampWhenFinished = true;
+        }
+      }
+
+      // Check if it's an NPC
+      const npc = this.npcs.get(data.entityId);
+      if (npc && this.npcActions.has(data.entityId)) {
+        const actions = this.npcActions.get(data.entityId);
+        if (actions && actions['fear']) {
+          actions['fear'].reset().setLoop(THREE.LoopOnce, 1).play();
+          actions['fear'].clampWhenFinished = true;
+        }
+      }
+    }
   }
 
   /**
@@ -4094,6 +4171,11 @@ export class Game {
     // Update throw cooldown (optimistic - assume server will accept)
     this.lastThrowTime = now;
 
+    // MVP 8: Play 'attack' animation when throwing
+    if (this.actions['attack']) {
+      this.playOneShotAnimation('attack');
+    }
+
     // Send throw command to server
     this.sendMessage({
       type: 'player_throw',
@@ -4437,9 +4519,12 @@ export class Game {
     // Remove the walnut from the world
     this.removeWalnut(walnutId);
 
-    // MVP 5: Play eating animation (Squirrel-first feature)
+    // MVP 8: Play eating animation (all characters)
     if (this.actions['eat']) {
+      console.log('🍽️ Playing eat animation for local player');
       this.playOneShotAnimation('eat');
+    } else {
+      console.warn('⚠️ Eat animation not available for local player!');
     }
 
     // MULTIPLAYER: Send to server for sync
