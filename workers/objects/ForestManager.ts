@@ -43,7 +43,7 @@ interface Walnut {
   timestamp: number;
   isGolden?: boolean; // MVP 8: true = golden bonus walnut (5pts), false/undefined = regular (3pts/1pt)
   immunePlayerId?: string; // MVP 8: Player who can't pick up this walnut (hit by projectile)
-  immuneUntil?: number; // MVP 8: Timestamp when immunity expires (3 seconds after hit)
+  immuneUntil?: number; // MVP 8: Timestamp when immunity expires (1.5 seconds after hit)
 }
 
 interface ForestObject {
@@ -906,7 +906,7 @@ export default class ForestManager extends DurableObject {
           timestamp: dropTime,
           // MVP 8: Immunity only applies if hit a specific player (miss = no immunity)
           immunePlayerId: data.immunePlayerId, // undefined for miss, playerId for hit
-          immuneUntil: data.immunePlayerId ? dropTime + 3000 : undefined // 3 seconds if hit
+          immuneUntil: data.immunePlayerId ? dropTime + 1500 : undefined // 1.5 seconds if hit
         };
 
         this.mapState.push(droppedWalnut);

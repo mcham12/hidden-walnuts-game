@@ -50,6 +50,7 @@ export class Game {
   private static animationCache = new Map<string, THREE.AnimationClip>();
   private isJumping = false;
   private isEatingWalnut = false; // MVP 8: Block movement during eat animation
+  private isStunned = false; // MVP 8: Block movement when hit by walnut
   private characters: Character[] = [];
   public selectedCharacterId = 'squirrel';
   public sessionToken: string = ''; // MVP 6: Player session token
@@ -972,8 +973,8 @@ export class Game {
     let moving = false;
     let rotating = false;
 
-    // MVP 8: Block all movement input during eat animation
-    if (!this.isEatingWalnut) {
+    // MVP 8: Block all movement input during eat animation or when stunned from hit
+    if (!this.isEatingWalnut && !this.isStunned) {
       // STANDARD: Character rotation (not camera rotation)
       if (this.keys.has('a')) {
         this.character.rotation.y += this.rotationSpeed * delta;
@@ -2508,13 +2509,36 @@ export class Game {
       this.toastManager.success('HIT!');
     }
 
+    // MVP 8: Check if LOCAL player was hit (stun + forced hit animation)
+    if (data.targetId === this.playerId) {
+      // Local player was hit - force hit animation and block movement for 1.5s
+      if (this.actions && this.actions['hit']) {
+        const hitAction = this.actions['hit'];
+        const normalDuration = hitAction.getClip().duration * 1000; // ms
+        hitAction.timeScale = 0.65; // Slow down to 65% speed (54% longer)
+
+        this.isStunned = true;
+        this.velocity.set(0, 0, 0); // Stop current movement
+
+        this.playOneShotAnimation('hit', normalDuration * 1.54); // 1/0.65 = 1.54x longer
+
+        // Clear stunned flag after 1.5 seconds
+        setTimeout(() => {
+          this.isStunned = false;
+        }, 1500);
+      }
+    }
+
     // MVP 8: Trigger hit animation on target (remote player or NPC)
     const remotePlayer = this.remotePlayers.get(data.targetId);
     if (remotePlayer && this.remotePlayerActions.has(data.targetId)) {
       const actions = this.remotePlayerActions.get(data.targetId);
       if (actions && actions['hit']) {
-        // Play hit animation
-        actions['hit'].reset().play();
+        // Play hit animation for 1.5 seconds
+        const hitAction = actions['hit'];
+        hitAction.timeScale = 0.65; // Slow down
+        hitAction.reset().setLoop(THREE.LoopOnce, 1).play();
+        hitAction.clampWhenFinished = true;
       }
     }
 
@@ -2523,12 +2547,15 @@ export class Game {
     if (npc && this.npcActions.has(data.targetId)) {
       const actions = this.npcActions.get(data.targetId);
       if (actions && actions['hit']) {
-        // Play hit animation
-        actions['hit'].reset().play();
+        // Play hit animation for 1.5 seconds
+        const hitAction = actions['hit'];
+        hitAction.timeScale = 0.65; // Slow down
+        hitAction.reset().setLoop(THREE.LoopOnce, 1).play();
+        hitAction.clampWhenFinished = true;
       }
     }
 
-    // MVP 8: Drop walnut on ground at hit location (only hit player has cooldown)
+    // MVP 8: Drop walnut on ground at hit location (only hit player has cooldown for 1.5s)
     this.sendMessage({
       type: 'spawn_dropped_walnut',
       position: {
@@ -2536,7 +2563,7 @@ export class Game {
         y: data.position.y,
         z: data.position.z
       },
-      immunePlayerId: data.targetId // Only the hit player can't pick it up for 3 seconds
+      immunePlayerId: data.targetId // Only the hit player can't pick it up for 1.5 seconds
     });
 
     // TODO Phase 3: Apply damage to target

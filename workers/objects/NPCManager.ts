@@ -54,7 +54,7 @@ interface Walnut {
   found: boolean;
   origin: 'game' | 'player';
   immunePlayerId?: string; // MVP 8: Player who can't pick up this walnut (hit by projectile)
-  immuneUntil?: number; // MVP 8: Timestamp when immunity expires (3 seconds after hit)
+  immuneUntil?: number; // MVP 8: Timestamp when immunity expires (1.5 seconds after hit)
 }
 
 export class NPCManager {
