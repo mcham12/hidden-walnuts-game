@@ -130,6 +130,22 @@ export class NPCManager {
   }
 
   /**
+   * Despawn all NPCs (called when last player leaves)
+   * MVP 7.1: Cost optimization - stop idle processing when no players
+   */
+  despawnAllNPCs(): void {
+    if (this.npcs.size === 0) return;
+
+    console.log(`🧹 Despawning all ${this.npcs.size} NPCs (no players remaining)`);
+
+    for (const [npcId, npc] of this.npcs.entries()) {
+      this.broadcastNPCDespawn(npcId);
+    }
+
+    this.npcs.clear();
+  }
+
+  /**
    * Create a new NPC with random properties
    */
   private createNPC(): NPC {

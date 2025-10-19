@@ -236,14 +236,23 @@ export default class ForestManager extends DurableObject {
    * MVP 5.8: Durable Object Alarm for session management
    * MVP 7: Also handles NPC updates (200ms intervals)
    * MVP 7.1: Reduced from 150ms to 200ms for 25% cost reduction
+   * MVP 7.2: Cost optimization - stop alarm when no players/NPCs (prevent idle processing)
    * Runs every 200ms for NPCs, checks player disconnects less frequently
    */
   async alarm(): Promise<void> {
-    // MVP 7.1: Removed frequent alarm logging to reduce DO CPU usage
     const now = Date.now();
 
-    // MVP 7.1: Update NPCs every 200ms (5 Hz for cost-optimized performance)
-    if (now - this.lastNPCUpdate >= this.NPC_UPDATE_INTERVAL) {
+    // MVP 7.2 CRITICAL: Check if we should even be running (cost optimization)
+    const hasPlayers = this.activePlayers.size > 0;
+    const hasNPCs = this.npcManager.getNPCCount() > 0;
+
+    if (!hasPlayers && !hasNPCs) {
+      console.log('⏸️ Stopping alarm: No players or NPCs (object will go inactive and save costs)');
+      return; // DON'T reschedule - let object hibernate
+    }
+
+    // MVP 7.1: Update NPCs every 200ms (only if they exist)
+    if (hasNPCs && now - this.lastNPCUpdate >= this.NPC_UPDATE_INTERVAL) {
       this.npcManager.update();
       this.lastNPCUpdate = now;
     }
@@ -270,6 +279,12 @@ export default class ForestManager extends DurableObject {
             username: player.username, // MVP 6: Include username
             characterId: player.characterId // MVP 6: Include characterId
           });
+
+          // MVP 7.2 CRITICAL: If that was the last player, despawn all NPCs immediately
+          if (this.activePlayers.size === 0) {
+            console.log('👋 Last player removed - despawning all NPCs to stop idle processing');
+            this.npcManager.despawnAllNPCs();
+          }
         }
         // Mark as disconnected if inactive for 60+ seconds (but not already disconnected)
         else if (timeSinceActivity > DISCONNECT_TIMEOUT && !player.isDisconnected) {
@@ -286,10 +301,12 @@ export default class ForestManager extends DurableObject {
       }
     }
 
-    // Reschedule alarm for next NPC update (200ms)
-    // MVP 7.1: Reduced to 5 Hz for cost-optimized updates, removed logging to reduce DO CPU usage
+    // MVP 7.2 CRITICAL: Only reschedule if there are active players OR NPCs
+    // Re-check after potential NPC despawn above
     if (this.activePlayers.size > 0 || this.npcManager.getNPCCount() > 0) {
       await this.storage.setAlarm(Date.now() + this.NPC_UPDATE_INTERVAL);
+    } else {
+      console.log('⏸️ Not rescheduling alarm - no players or NPCs (object will go inactive and save costs)');
     }
   }
 
@@ -495,6 +512,15 @@ export default class ForestManager extends DurableObject {
           username: existingPlayer.username, // MVP 6: Include username
           characterId: existingPlayer.characterId // MVP 6: Include characterId
         });
+
+        // MVP 7.2 CRITICAL: If no connected players remain, despawn NPCs immediately (cost optimization)
+        const connectedPlayers = Array.from(this.activePlayers.values())
+          .filter(p => !p.isDisconnected).length;
+
+        if (connectedPlayers === 0) {
+          console.log('👋 Last player disconnected - despawning all NPCs immediately to stop idle processing');
+          this.npcManager.despawnAllNPCs();
+        }
       };
 
       socket.onerror = (event) => {
@@ -591,6 +617,15 @@ export default class ForestManager extends DurableObject {
           username: playerConnection.username, // MVP 6: Include username
           characterId: playerConnection.characterId // MVP 6: Include characterId
         });
+
+        // MVP 7.2 CRITICAL: If no connected players remain, despawn NPCs immediately (cost optimization)
+        const connectedPlayers = Array.from(this.activePlayers.values())
+          .filter(p => !p.isDisconnected).length;
+
+        if (connectedPlayers === 0) {
+          console.log('👋 Last player disconnected - despawning all NPCs immediately to stop idle processing');
+          this.npcManager.despawnAllNPCs();
+        }
       };
 
       socket.onerror = (event) => {
