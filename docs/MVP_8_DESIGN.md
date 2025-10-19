@@ -697,6 +697,94 @@ MVP 8 is complete when:
 
 ---
 
+## 🚧 CURRENT PROGRESS (As of Oct 19, 2025)
+
+### ✅ COMPLETE - Core Combat System
+
+**Server-Side Foundation:**
+- [x] PlayerConnection interface extended with health, score, combatStats, invulnerability
+- [x] Server-authoritative hit validation (`player_hit` message handler)
+  - Distance validation (max 20 units)
+  - Invulnerability check (3s spawn protection)
+  - Self-hit prevention
+  - Server applies damage (-20 HP)
+- [x] Combat scoring system:
+  - Hit opponent: +2 points
+  - Knockout: +5 points (to killer)
+  - Death: -2 points (to victim)
+- [x] Death handling (`handlePlayerDeath` method):
+  - Drops all walnuts at death location
+  - Respawns after 3s at random location
+  - 3s spawn protection on respawn
+- [x] Eat validation (`player_eat` message handler):
+  - Inventory validation
+  - Health cap validation (can't eat at 100 HP)
+  - +25 HP healing
+  - Inventory decrement
+- [x] Health/score broadcast in `player_update` messages
+- [x] Combat stats tracking (hits, knockouts, deaths)
+
+**Client-Side:**
+- [x] Client sends `player_hit` to server for validation
+- [x] Optimistic damage application (instant feedback)
+- [x] All animations go through state machine (collision, throw, eat, pickup)
+- [x] Animation state machine fully debugged and working
+
+**Total Implementation:** ~300 lines of code (server + client)
+
+### 🔨 REMAINING WORK
+
+**HIGH PRIORITY:**
+1. **Real Leaderboard Integration** (1-2 hours)
+   - Replace `getMockLeaderboardData()` with real API call
+   - Call Leaderboard Durable Object `/top` endpoint
+   - Send score updates to leaderboard (report on changes)
+   - Display real player rankings
+
+**MEDIUM PRIORITY (Polish):**
+2. **Damage Floaters** (30-45 min)
+   - Create VFXManager method for floating damage numbers
+   - Spawn "-20" text on hit, floats up and fades
+   - Red color, bold font
+   - Follow standard game UX patterns
+
+3. **Respawn Invulnerability Visual** (30-45 min)
+   - Add shimmer shader to player mesh
+   - Apply when `invulnerableUntil > Date.now()`
+   - Pulse/glow effect (light blue/white)
+   - Fade out as timer expires
+
+4. **Knockback on Hit** (30-45 min)
+   - Apply velocity push-back when hit
+   - Direction: away from attacker
+   - Magnitude: 2-3 units
+   - Short duration (0.3s)
+
+**CLEANUP:**
+5. **Remove Debug Logs** (15-30 min)
+   - Remove all MVP 8 `console.log` for combat features
+   - Keep only error/warning logs
+   - Clean up commented code
+
+**Estimated Remaining Time:** 3-4 hours
+
+### 📝 NOTES FOR NEXT SESSION
+
+**Testing Priorities:**
+1. Hit validation working? (server rejects invalid hits)
+2. Scoring accurate? (+2 hit, +5 knockout, -2 death)
+3. Death/respawn smooth? (3s countdown, spawn protection)
+4. Eat validation working? (can't eat at full HP)
+5. Animation state machine stable? (no stuck animations)
+
+**Known Issues:**
+- Leaderboard still showing mock data
+- No visual feedback for invulnerability
+- No damage numbers on hit
+- No knockback physics
+
+---
+
 ## ✅ Design Decisions (Finalized)
 
 ### 1. NPC Respawn

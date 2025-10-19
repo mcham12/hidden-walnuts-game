@@ -31,6 +31,16 @@ interface PlayerConnection {
   // MVP 8: Combat system
   walnutInventory: number; // 0-10 walnuts (ammo/health)
   lastThrowTime: number; // For throw cooldown tracking
+  health: number; // 0-100 HP
+  maxHealth: number; // Always 100
+  score: number; // Player's current score (tracked server-side)
+  lastAttackerId: string | null; // Who hit this player last (for knockout credit)
+  combatStats: { // MVP 8: Track combat actions for scoring
+    hits: number; // Successful hits on opponents
+    knockouts: number; // Players knocked out
+    deaths: number; // Times player died
+  };
+  invulnerableUntil: number | null; // MVP 8: Timestamp when respawn invulnerability expires
 }
 
 interface Walnut {
@@ -609,7 +619,17 @@ export default class ForestManager extends DurableObject {
         lastPositionSave: 0,
         // MVP 8: Combat system
         walnutInventory: 0, // Start with 0 walnuts
-        lastThrowTime: 0
+        lastThrowTime: 0,
+        health: 100, // Start at full health
+        maxHealth: 100,
+        score: 0, // Start with 0 score
+        lastAttackerId: null,
+        combatStats: {
+          hits: 0,
+          knockouts: 0,
+          deaths: 0
+        },
+        invulnerableUntil: Date.now() + 3000 // 3 seconds spawn protection
       };
 
       console.log(`✅ New player ${squirrelId} (${username}) connected`);
@@ -729,6 +749,8 @@ export default class ForestManager extends DurableObject {
           position: playerConnection.position,
           rotationY: playerConnection.rotationY,
           characterId: playerConnection.characterId,
+          health: playerConnection.health, // MVP 8: Broadcast health for UI
+          score: playerConnection.score, // MVP 8: Broadcast score for leaderboard
           animation: data.animation, // Forward animation state from client
           animationStartTime: data.animationStartTime, // TIME-BASED SYNC: Forward animation start time
           velocity: data.velocity, // Forward velocity for extrapolation
@@ -938,11 +960,223 @@ export default class ForestManager extends DurableObject {
         });
         break;
 
+      case "player_hit":
+        // MVP 8: Server-side hit validation and damage application
+        const { targetId, damage: requestedDamage, position: hitPosition } = data;
+
+        // Validate target exists
+        const target = this.activePlayers.get(targetId);
+        if (!target) {
+          console.warn(`🚫 Hit rejected: Target ${targetId} not found`);
+          return;
+        }
+
+        // Validate attacker is not hitting themselves
+        if (targetId === playerConnection.squirrelId) {
+          console.warn(`🚫 Hit rejected: Cannot hit yourself`);
+          return;
+        }
+
+        // Validate target is not invulnerable (spawn protection)
+        if (target.invulnerableUntil && Date.now() < target.invulnerableUntil) {
+          console.warn(`🚫 Hit rejected: Target ${targetId} has spawn protection`);
+          return;
+        }
+
+        // Validate distance (prevent cheating - max projectile range is ~15 units)
+        const distance = Math.sqrt(
+          Math.pow(target.position.x - playerConnection.position.x, 2) +
+          Math.pow(target.position.z - playerConnection.position.z, 2)
+        );
+        if (distance > 20) { // 20 units = generous validation (15 range + 5 margin)
+          console.warn(`🚫 Hit rejected: Distance too far (${distance.toFixed(1)} units)`);
+          return;
+        }
+
+        // Apply damage (server authoritative - ignore client damage value)
+        const DAMAGE_PER_HIT = 20;
+        const oldHealth = target.health;
+        target.health = Math.max(0, target.health - DAMAGE_PER_HIT);
+        const actualDamage = oldHealth - target.health;
+
+        // Track attacker for knockout credit
+        if (actualDamage > 0) {
+          target.lastAttackerId = playerConnection.squirrelId;
+        }
+
+        // Award +2 points for successful hit
+        playerConnection.score += 2;
+        playerConnection.combatStats.hits += 1;
+
+        console.log(`💥 ${playerConnection.username} hit ${target.username} for ${actualDamage} damage (${target.health}/${target.maxHealth} HP)`);
+
+        // Broadcast damage event to all players
+        this.activePlayers.forEach((player) => {
+          this.sendMessage(player.socket, {
+            type: 'entity_damaged',
+            targetId: targetId,
+            attackerId: playerConnection.squirrelId,
+            damage: actualDamage,
+            newHealth: target.health,
+            position: target.position
+          });
+        });
+
+        // Check for death/knockout
+        if (target.health <= 0) {
+          await this.handlePlayerDeath(target, playerConnection);
+        }
+        break;
+
+      case "player_eat":
+        // MVP 8: Server-side eat validation and healing
+        const EAT_HEAL_AMOUNT = 25;
+
+        // Validate inventory
+        if (playerConnection.walnutInventory <= 0) {
+          console.warn(`🚫 Eat rejected: No walnuts for ${playerConnection.squirrelId}`);
+          this.sendMessage(playerConnection.socket, {
+            type: 'eat_rejected',
+            reason: 'no_walnuts'
+          });
+          return;
+        }
+
+        // Validate not at full health
+        if (playerConnection.health >= playerConnection.maxHealth) {
+          console.warn(`🚫 Eat rejected: Already at full health for ${playerConnection.squirrelId}`);
+          this.sendMessage(playerConnection.socket, {
+            type: 'eat_rejected',
+            reason: 'full_health'
+          });
+          return;
+        }
+
+        // Consume walnut and heal
+        playerConnection.walnutInventory -= 1;
+        const oldHp = playerConnection.health;
+        playerConnection.health = Math.min(playerConnection.maxHealth, playerConnection.health + EAT_HEAL_AMOUNT);
+        const actualHealing = playerConnection.health - oldHp;
+
+        console.log(`🍽️ ${playerConnection.username} ate walnut (+${actualHealing} HP, ${playerConnection.walnutInventory} walnuts left)`);
+
+        // Broadcast heal event
+        this.activePlayers.forEach((player) => {
+          this.sendMessage(player.socket, {
+            type: 'entity_healed',
+            playerId: playerConnection.squirrelId,
+            healing: actualHealing,
+            newHealth: playerConnection.health
+          });
+        });
+
+        // Send inventory update to player
+        this.sendMessage(playerConnection.socket, {
+          type: 'inventory_update',
+          walnutCount: playerConnection.walnutInventory
+        });
+        break;
+
       default:
         // Broadcast other messages
         this.broadcastToOthers(playerConnection.squirrelId, data);
         break;
     }
+  }
+
+  /**
+   * MVP 8: Handle player death and respawn
+   */
+  private async handlePlayerDeath(victim: PlayerConnection, killer: PlayerConnection): Promise<void> {
+    console.log(`💀 ${victim.username} was knocked out by ${killer.username}`);
+
+    // Award knockout points to killer (+5)
+    killer.score += 5;
+    killer.combatStats.knockouts += 1;
+
+    // Apply death penalty to victim (-2)
+    victim.score = Math.max(0, victim.score - 2);
+    victim.combatStats.deaths += 1;
+
+    // Drop all walnuts at death location
+    const droppedWalnuts = victim.walnutInventory;
+    if (droppedWalnuts > 0) {
+      // Create dropped walnuts at death position
+      for (let i = 0; i < droppedWalnuts; i++) {
+        const walnutId = `death-drop-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const walnut: Walnut = {
+          id: walnutId,
+          ownerId: 'game', // Dropped walnuts are neutral
+          origin: 'game',
+          hiddenIn: 'ground',
+          location: {
+            x: victim.position.x + (Math.random() - 0.5) * 2, // Spread around death location
+            y: victim.position.y,
+            z: victim.position.z + (Math.random() - 0.5) * 2
+          },
+          found: false,
+          timestamp: Date.now()
+        };
+
+        this.mapState.push(walnut);
+
+        // Broadcast dropped walnut
+        this.activePlayers.forEach((player) => {
+          this.sendMessage(player.socket, {
+            type: 'walnut_dropped',
+            walnutId: walnut.id,
+            position: walnut.location
+          });
+        });
+      }
+
+      await this.storage.put('mapState', this.mapState);
+      victim.walnutInventory = 0;
+    }
+
+    // Broadcast death event
+    this.activePlayers.forEach((player) => {
+      this.sendMessage(player.socket, {
+        type: 'player_death',
+        victimId: victim.squirrelId,
+        killerId: killer.squirrelId,
+        deathPosition: victim.position
+      });
+    });
+
+    // Respawn after 3 seconds
+    setTimeout(async () => {
+      // Respawn at random location
+      const spawnPoints = [
+        { x: 0, z: 10 },
+        { x: 10, z: 0 },
+        { x: -10, z: 0 },
+        { x: 0, z: -10 },
+        { x: 15, z: 15 },
+        { x: -15, z: 15 },
+        { x: 15, z: -15 },
+        { x: -15, z: -15 }
+      ];
+      const randomSpawn = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
+
+      victim.position = { x: randomSpawn.x, y: 2, z: randomSpawn.z };
+      victim.health = victim.maxHealth;
+      victim.lastAttackerId = null;
+      victim.invulnerableUntil = Date.now() + 3000; // 3s spawn protection
+
+      console.log(`♻️ ${victim.username} respawned at (${randomSpawn.x}, ${randomSpawn.z})`);
+
+      // Broadcast respawn
+      this.activePlayers.forEach((player) => {
+        this.sendMessage(player.socket, {
+          type: 'player_respawn',
+          playerId: victim.squirrelId,
+          position: victim.position,
+          health: victim.health,
+          invulnerableUntil: victim.invulnerableUntil
+        });
+      });
+    }, 3000);
   }
 
   // Simple world state initialization

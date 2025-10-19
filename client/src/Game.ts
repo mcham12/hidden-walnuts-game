@@ -2768,30 +2768,34 @@ export class Game {
   private onProjectileHit(data: { projectileId: string; ownerId: string; targetId: string; position: THREE.Vector3; mesh: THREE.Group }): void {
     console.log(`🌰 Projectile hit! Owner: ${data.ownerId}, Target: ${data.targetId}`);
 
-    // MVP 8: Show "HIT!" feedback to the thrower
-    if (data.ownerId === this.playerId) {
+    // MVP 8: Send hit to server for validation and scoring (only if we're the attacker)
+    if (data.ownerId === this.playerId && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+      this.sendMessage({
+        type: 'player_hit',
+        targetId: data.targetId,
+        damage: this.PROJECTILE_DAMAGE,
+        position: data.position
+      });
+
+      // Show local feedback immediately (optimistic)
       this.toastManager.success('HIT!');
     }
 
-    // MVP 8: Check if LOCAL player was hit (stun + forced hit animation)
+    // MVP 8: Apply effects immediately (optimistic) - server will broadcast authoritative damage
+    // This provides instant feedback while waiting for server validation
     if (data.targetId === this.playerId) {
-      // MVP 8 Phase 3: Apply damage
+      // Client-side optimistic damage (server will send authoritative update)
       this.takeDamage(this.PROJECTILE_DAMAGE, data.ownerId);
 
-      // MVP 8 FIX: Add intense visual effects when hit
+      // Visual/audio feedback
       this.triggerHitEffects();
 
-      // MIGRATION PHASE 2.3: Use state machine for hit animation (STUN priority, blocks movement)
+      // Hit animation via state machine
       if (this.actions && this.actions['hit']) {
         const hitAction = this.actions['hit'];
-        hitAction.timeScale = 0.65; // Slow down to 65% speed (54% longer)
-
-        this.velocity.set(0, 0, 0); // Stop current movement
-
-        // Use STUN priority with movement blocking for 1.5s (fixed duration)
+        hitAction.timeScale = 0.65;
+        this.velocity.set(0, 0, 0);
         this.requestAnimation('hit', this.ANIM_PRIORITY_STUN, 1500, true);
-
-        // No need for isStunned flag or setTimeout - state machine handles it!
       }
     }
 
