@@ -40,15 +40,13 @@ export class Game {
   private rotationSpeed = Math.PI;
   // @ts-ignore - MVP 5: Mouse sensitivity multiplier (0.25-2.0) - ready for future mouse controls
   private mouseSensitivity = 1.0;
-  private gravity = -9.8;
-  private jumpVelocity = 5;
-
+  // Note: gravity removed - no longer needed without jump
 
   // INDUSTRY STANDARD: Asset caching system
   private static gltfLoader = new GLTFLoader(); // Singleton loader
   private static assetCache = new Map<string, THREE.Group>();
   private static animationCache = new Map<string, THREE.AnimationClip>();
-  private isJumping = false;
+  // Note: isJumping removed - jump feature disabled in favor of throwing
   private isEatingWalnut = false; // MVP 8: Block movement during eat animation
   private isStunned = false; // MVP 8: Block movement when hit by walnut
   private characters: Character[] = [];
@@ -1036,28 +1034,8 @@ export class Game {
       }
     }
 
-    // Gravity and jump
-    if (this.isJumping) {
-      this.velocity.y += this.gravity * delta;
-      this.character.position.y += this.velocity.y * delta;
-      // STANDARD: Check ground position using heightmap
-      const groundY = this.positionLocalPlayerOnGround();
-      if (this.character.position.y <= groundY) {
-        this.character.position.y = groundY;
-        this.isJumping = false;
-        this.velocity.y = 0;
-        // STANDARD: Use correct animation after landing
-        // Don't override animation if emote is playing
-        if (!this.emoteInProgress) {
-          const isRunning = moving && this.keys.has('shift');
-          let animation = 'idle';
-          if (moving) {
-            animation = isRunning ? 'run' : 'walk';
-          }
-          this.setAction(animation);
-        }
-      }
-    }
+    // MVP 8: No jump/gravity - characters always grounded
+    // (Jump feature removed in favor of throwing mechanics)
 
     // MVP 5.5: Apply horizontal movement with collision detection
     const movementDelta = this.velocity.clone().setY(0).multiplyScalar(delta);
@@ -1086,7 +1064,7 @@ export class Game {
 
     // MVP 5: Spawn footstep dust particles when moving on ground (subtle)
     const horizontalSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
-    if (!this.isJumping && horizontalSpeed > 1.0 && this.vfxManager) {
+    if (horizontalSpeed > 1.0 && this.vfxManager) {
       const currentTime = performance.now();
       if (currentTime - this.lastFootstepTime >= this.footstepInterval) {
         // Spawn subtle dust particles at character's feet
@@ -1105,46 +1083,44 @@ export class Game {
       this.collisionSystem.updateColliderPosition(this.playerId, this.character.position);
     }
 
-    if (!this.isJumping) {
-      // INDUSTRY STANDARD: Animation state machine with hysteresis
-      const currentTime = performance.now() / 1000; // Convert to seconds
-      const horizontalSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
+    // INDUSTRY STANDARD: Animation state machine with hysteresis
+    const currentTime = performance.now() / 1000; // Convert to seconds
+    const horizontalSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
 
-      // Determine what animation should be playing
-      let animation = 'idle';
-      if (horizontalSpeed > 0.5) { // Increased threshold to prevent oscillation at low speeds
-        const isRunning = this.keys.has('shift');
-        animation = isRunning ? 'run' : 'walk';
-      }
+    // Determine what animation should be playing
+    let animation = 'idle';
+    if (horizontalSpeed > 0.5) { // Increased threshold to prevent oscillation at low speeds
+      const isRunning = this.keys.has('shift');
+      animation = isRunning ? 'run' : 'walk';
+    }
 
-      // Only change animation if different AND enough time has passed (hysteresis)
-      // AND if no emote is playing AND if not playing a one-shot animation
-      if (!this.emoteInProgress &&
-          !this.isPlayingOneShotAnimation &&
-          animation !== this.currentAnimationName &&
-          (currentTime - this.lastAnimationChangeTime) >= this.animationChangeDelay) {
-        this.setAction(animation);
-        this.lastAnimationChangeTime = currentTime;
-      }
+    // Only change animation if different AND enough time has passed (hysteresis)
+    // AND if no emote is playing AND if not playing a one-shot animation
+    if (!this.emoteInProgress &&
+        !this.isPlayingOneShotAnimation &&
+        animation !== this.currentAnimationName &&
+        (currentTime - this.lastAnimationChangeTime) >= this.animationChangeDelay) {
+      this.setAction(animation);
+      this.lastAnimationChangeTime = currentTime;
+    }
 
-      // MVP 5: Idle variation system (Squirrel-first feature)
-      // Randomly cycle between idle animations when character is standing still
-      if (animation === 'idle' &&
-          this.currentAnimationName === 'idle' &&
-          !this.emoteInProgress &&
-          !this.isPlayingOneShotAnimation) {
-        const timeSinceLastVariation = performance.now() - this.lastIdleVariationTime;
-        if (timeSinceLastVariation >= this.idleVariationInterval) {
-          // Filter idle animations that exist in the current character
-          const availableIdles = this.availableIdleAnimations.filter(anim => this.actions[anim]);
-          if (availableIdles.length > 0) {
-            // Pick a random idle animation (including the current one for variety)
-            const randomIdle = availableIdles[Math.floor(Math.random() * availableIdles.length)];
-            if (randomIdle !== 'idle' && this.actions[randomIdle]) {
-              // Play the idle variation as a one-shot that returns to 'idle'
-              this.playOneShotAnimation(randomIdle);
-              this.lastIdleVariationTime = performance.now();
-            }
+    // MVP 5: Idle variation system (Squirrel-first feature)
+    // Randomly cycle between idle animations when character is standing still
+    if (animation === 'idle' &&
+        this.currentAnimationName === 'idle' &&
+        !this.emoteInProgress &&
+        !this.isPlayingOneShotAnimation) {
+      const timeSinceLastVariation = performance.now() - this.lastIdleVariationTime;
+      if (timeSinceLastVariation >= this.idleVariationInterval) {
+        // Filter idle animations that exist in the current character
+        const availableIdles = this.availableIdleAnimations.filter(anim => this.actions[anim]);
+        if (availableIdles.length > 0) {
+          // Pick a random idle animation (including the current one for variety)
+          const randomIdle = availableIdles[Math.floor(Math.random() * availableIdles.length)];
+          if (randomIdle !== 'idle' && this.actions[randomIdle]) {
+            // Play the idle variation as a one-shot that returns to 'idle'
+            this.playOneShotAnimation(randomIdle);
+            this.lastIdleVariationTime = performance.now();
           }
         }
       }
