@@ -69,11 +69,12 @@ export class ProjectileManager {
       const gltf = await this.loader.loadAsync('/assets/models/environment/walnut_free_download.glb');
       this.walnutModel = gltf.scene.clone();
 
-      // Scale down for projectile use (much smaller for thrown walnuts)
+      // Scale down for projectile use (match ground walnut size for consistency)
       const box = new THREE.Box3().setFromObject(this.walnutModel);
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
-      const scale = 0.08 / maxDim; // MVP 8: Tiny walnut for throwing (reduced from 0.15)
+      // MVP 8 FIX: Match ground walnut size (0.06 radius) for visual consistency
+      const scale = 0.06 / maxDim; // Reduced from 0.08 to match ground walnut
       this.walnutModel.scale.setScalar(scale);
     } catch (error) {
       console.error('Failed to load walnut model for projectiles:', error);
@@ -86,7 +87,8 @@ export class ProjectileManager {
    * Create fallback walnut mesh if model fails to load
    */
   private createFallbackWalnut(): void {
-    const geometry = new THREE.SphereGeometry(0.05, 16, 16); // MVP 8: Tiny projectile (reduced from 0.08)
+    // MVP 8 FIX: Match ground walnut size (0.06 radius)
+    const geometry = new THREE.SphereGeometry(0.06, 16, 16); // Increased from 0.05 to match ground walnut
     const material = new THREE.MeshStandardMaterial({
       color: 0x8B4513, // Brown
       roughness: 0.8,

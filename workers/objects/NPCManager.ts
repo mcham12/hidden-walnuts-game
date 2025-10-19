@@ -35,6 +35,7 @@ interface NPC {
   behaviorDuration: number;
   targetPosition?: Vector3;
   targetEntityId?: string;
+  targetStartTime?: number; // MVP 8 FIX: Track when started targeting entity (for timeout)
   animation: string;
   walnutInventory: number;
   lastThrowTime: number;
@@ -73,10 +74,11 @@ export class NPCManager {
   private readonly WALNUT_VISION_RADIUS = 20;
 
   // Throw configuration
-  private readonly THROW_MIN_RANGE = 5;
-  private readonly THROW_MAX_RANGE = 15;
-  private readonly THROW_COOLDOWN = 1200; // MVP 8: Reduced from 2s to 1.2s for very active combat
-  private readonly MAX_INVENTORY = 5;
+  // MVP 8 FIX: Increased throw frequency and range
+  private readonly THROW_MIN_RANGE = 3; // Reduced from 5 to allow close-range throws
+  private readonly THROW_MAX_RANGE = 18; // Increased from 15 for longer range
+  private readonly THROW_COOLDOWN = 800; // Reduced from 1200ms to 800ms for more frequent throws
+  private readonly MAX_INVENTORY = 6; // Increased from 5 to carry more ammo
 
   // Character types (all 11 available from characters.json)
   private readonly CHARACTER_TYPES = [
@@ -358,9 +360,10 @@ export class NPCManager {
         npc.behaviorTimer = 0;
         npc.behaviorDuration = this.getRandomBehaviorDuration(newBehavior);
 
-        // Clear target when changing behavior
+        // Clear target when changing behavior (MVP 8 FIX: also clear target start time)
         npc.targetPosition = undefined;
         npc.targetEntityId = undefined;
+        npc.targetStartTime = undefined;
       }
     }
 
@@ -394,19 +397,48 @@ export class NPCManager {
     nearbyNPCs: NPC[],
     nearbyWalnuts: Walnut[]
   ): NPCBehavior {
-    // MVP 8: PRIORITY - Approach players if has walnuts (very aggressive)
+    const now = Date.now();
+    const TARGET_TIMEOUT = 8000; // 8 seconds max targeting same entity
+
+    // MVP 8 FIX: Time-based escape - give up on target after timeout
+    if (npc.targetEntityId && npc.targetStartTime) {
+      const targetDuration = now - npc.targetStartTime;
+      if (targetDuration > TARGET_TIMEOUT) {
+        console.log(`⏱️ NPC ${npc.id} giving up on target ${npc.targetEntityId} after ${(targetDuration / 1000).toFixed(1)}s`);
+        npc.targetEntityId = undefined;
+        npc.targetStartTime = undefined;
+        return NPCBehavior.WANDER; // Break free and wander
+      }
+    }
+
+    // MVP 8 FIX: Check if too close to current target - back off to prevent harassment loops
+    if (npc.targetEntityId) {
+      const target = this.forestManager.activePlayers.get(npc.targetEntityId) ||
+                     this.npcs.get(npc.targetEntityId);
+      if (target) {
+        const distanceToTarget = this.getDistance2D(npc.position, target.position);
+        // If within 3 units of target, switch to WANDER to create separation
+        if (distanceToTarget < 3) {
+          npc.targetEntityId = undefined;
+          npc.targetStartTime = undefined;
+          return NPCBehavior.WANDER;
+        }
+      }
+    }
+
+    // MVP 8: PRIORITY - Approach players if has walnuts (reduced aggression)
     // Players are high-value targets for combat
     const nearbyEntities = [...nearbyPlayers, ...nearbyNPCs];
     if (nearbyPlayers.length > 0 && npc.walnutInventory > 0 && npc.aggressionLevel > 0.3) {
-      // MVP 8: Increased chance to aggressionLevel * 2.0 (very aggressive targeting)
-      if (Math.random() < Math.min(0.95, npc.aggressionLevel * 2.0)) {
+      // MVP 8 FIX: Reduced from 2.0 to 1.2 (less aggressive, more natural)
+      if (Math.random() < Math.min(0.7, npc.aggressionLevel * 1.2)) {
         return NPCBehavior.APPROACH;
       }
     }
 
-    // Gather walnuts if inventory is low (increased priority)
-    if (npc.walnutInventory < 2 && nearbyWalnuts.length > 0) {
-      if (Math.random() < 0.5) { // MVP 8: Increased from 30% to 50%
+    // MVP 8 FIX: Gather walnuts if inventory is low (very high priority for combat)
+    if (npc.walnutInventory < 4 && nearbyWalnuts.length > 0) {
+      if (Math.random() < 0.7) { // Increased from 50% to 70% (NPCs need ammo!)
         return NPCBehavior.GATHER;
       }
     }
@@ -519,6 +551,17 @@ export class NPCManager {
       return;
     }
 
+    // MVP 8 FIX: Track target entity and start time (for timeout escape mechanism)
+    const newTargetId = 'squirrelId' in closestEntity ? closestEntity.squirrelId : closestEntity.id;
+    if (npc.targetEntityId !== newTargetId) {
+      // Target changed - reset timer
+      npc.targetEntityId = newTargetId;
+      npc.targetStartTime = Date.now();
+    } else if (!npc.targetStartTime) {
+      // Same target but no start time set - initialize it
+      npc.targetStartTime = Date.now();
+    }
+
     // Check if in throw range
     if (closestDistance >= this.THROW_MIN_RANGE && closestDistance <= this.THROW_MAX_RANGE) {
       // Check throw cooldown and inventory
@@ -526,7 +569,6 @@ export class NPCManager {
       if (npc.walnutInventory > 0 && timeSinceLastThrow >= this.THROW_COOLDOWN) {
         npc.currentBehavior = NPCBehavior.THROW;
         npc.behaviorTimer = 0;
-        npc.targetEntityId = 'squirrelId' in closestEntity ? closestEntity.squirrelId : closestEntity.id;
         return;
       }
     }

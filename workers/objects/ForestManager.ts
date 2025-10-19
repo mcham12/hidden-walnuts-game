@@ -1209,10 +1209,11 @@ export default class ForestManager extends DurableObject {
 
     // MVP 8: Add bush walnuts at actual shrub locations (not hardcoded)
     const shrubs = this.forestObjects.filter(obj => obj.type === 'shrub');
-    if (shrubs.length >= 3) {
-      // Select 3 random shrubs for walnuts
+    const BUSH_WALNUT_COUNT = 8; // MVP 8 FIX: Increased from 3 to 8 for more exploration
+    if (shrubs.length >= BUSH_WALNUT_COUNT) {
+      // Select random shrubs for walnuts
       const shuffled = [...shrubs].sort(() => Math.random() - 0.5);
-      const selectedShrubs = shuffled.slice(0, 3);
+      const selectedShrubs = shuffled.slice(0, BUSH_WALNUT_COUNT);
 
       for (let i = 0; i < selectedShrubs.length; i++) {
         const shrub = selectedShrubs[i];
@@ -1229,7 +1230,7 @@ export default class ForestManager extends DurableObject {
       }
       console.log(`🌿 SERVER: Added ${selectedShrubs.length} bush walnuts at shrub locations`);
     } else {
-      console.warn(`⚠️ SERVER: Not enough shrubs (${shrubs.length}) to place bush walnuts`);
+      console.warn(`⚠️ SERVER: Not enough shrubs (${shrubs.length}) to place ${BUSH_WALNUT_COUNT} bush walnuts`);
     }
 
     // Add all regular game walnuts

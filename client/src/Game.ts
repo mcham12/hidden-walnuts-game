@@ -146,6 +146,9 @@ export class Game {
   private networkLatency: number = 0;
   private lastPingSent: number = 0;
 
+  // MVP 8: Entity collision tracking (for spin animation on bump)
+  private lastEntityCollisionTime: number = 0;
+
   // MVP 3: Walnut system properties
   private walnuts: Map<string, THREE.Group> = new Map(); // All walnuts in world
   private bushGlows: Map<string, THREE.Mesh> = new Map(); // MVP 8: Glow indicators for bush walnuts
@@ -1054,6 +1057,9 @@ export class Game {
 
     this.character.position.copy(collisionResult.position);
 
+    // MVP 8: Check collision with other players/NPCs (spin animation on bump)
+    this.checkEntityCollisions(moving);
+
     // MVP 5.9: Apply soft boundary push-back (prevent falling off world edge)
     this.applyBoundaryPushBack(delta);
 
@@ -1126,6 +1132,92 @@ export class Game {
         }
       }
     }
+  }
+
+  /**
+   * MVP 8: Check collision with other players/NPCs
+   * Triggers spin animation on bump
+   */
+  private checkEntityCollisions(isMoving: boolean): void {
+    if (!this.character || !isMoving) return;
+
+    const COLLISION_RADIUS = 1.0; // Distance to trigger collision
+    const COLLISION_COOLDOWN = 2000; // 2 seconds between collisions
+    const now = Date.now();
+
+    // Skip if on cooldown
+    if (now - this.lastEntityCollisionTime < COLLISION_COOLDOWN) {
+      return;
+    }
+
+    const playerPos = this.character.position;
+
+    // Check collision with remote players
+    for (const [remoteId, remotePlayer] of this.remotePlayers) {
+      const distance = playerPos.distanceTo(remotePlayer.position);
+      if (distance < COLLISION_RADIUS) {
+        console.log(`💥 Bumped into player ${remoteId}!`);
+        this.triggerBumpEffect();
+        this.lastEntityCollisionTime = now;
+        return; // Only one collision per update
+      }
+    }
+
+    // Check collision with NPCs
+    for (const [npcId, npc] of this.npcs) {
+      const distance = playerPos.distanceTo(npc.position);
+      if (distance < COLLISION_RADIUS) {
+        console.log(`💥 Bumped into NPC ${npcId}!`);
+        this.triggerBumpEffect();
+        this.lastEntityCollisionTime = now;
+        return; // Only one collision per update
+      }
+    }
+  }
+
+  /**
+   * MVP 8: Trigger visual/audio feedback when bumping into another entity
+   * Plays spin animation and camera shake
+   */
+  private triggerBumpEffect(): void {
+    // Play spin animation if available
+    if (this.actions && this.actions['spin']) {
+      const spinAction = this.actions['spin'];
+      spinAction.reset().setLoop(THREE.LoopOnce, 1).play();
+      spinAction.clampWhenFinished = true;
+    }
+
+    // Camera shake
+    this.triggerCameraShake(0.08, 0.3);
+
+    // Particle effect (dust cloud on impact)
+    if (this.vfxManager && this.character) {
+      this.vfxManager.spawnParticles('dirt', this.character.position, 15);
+    }
+
+    // TODO: Add health loss in next MVP section (user requested to save for later)
+  }
+
+  /**
+   * MVP 8: Trigger intense visual effects when hit by projectile
+   * Screen shake, blur effect, particles
+   */
+  private triggerHitEffects(): void {
+    // INTENSE camera shake (much stronger than bump)
+    this.triggerCameraShake(0.2, 0.5);
+
+    // Screen flash effect (blur/dizzy)
+    this.vfxManager?.screenShake(0.3, 0.8); // Stronger screen shake through VFX manager
+
+    // Particle burst (stars/sparkles for "dazed" effect)
+    if (this.vfxManager && this.character) {
+      this.vfxManager.spawnParticles('sparkle', this.character.position, 40);
+      // Add confetti for silly cartoon effect
+      this.vfxManager.spawnParticles('confetti', this.character.position, 30);
+    }
+
+    // Toast notification
+    this.toastManager.warning('OUCH!');
   }
 
   // STANDARD: Snap local player to ground using heightmap
@@ -2509,6 +2601,9 @@ export class Game {
 
     // MVP 8: Check if LOCAL player was hit (stun + forced hit animation)
     if (data.targetId === this.playerId) {
+      // MVP 8 FIX: Add intense visual effects when hit
+      this.triggerHitEffects();
+
       // Local player was hit - force hit animation and block movement for 1.5s
       if (this.actions && this.actions['hit']) {
         const hitAction = this.actions['hit'];
@@ -4558,6 +4653,16 @@ export class Game {
    */
   private findWalnut(walnutId: string, walnutGroup: THREE.Group): void {
     if (!this.character) return;
+
+    // MVP 8 FIX: Check immunity FIRST (before distance check)
+    // Prevents hit players from immediately picking up the walnut that hit them
+    if (walnutGroup.userData.immunePlayerId === this.playerId && walnutGroup.userData.immuneUntil) {
+      const now = Date.now();
+      if (now < walnutGroup.userData.immuneUntil) {
+        console.log(`⚠️ Player is immune to walnut ${walnutId} (${Math.round((walnutGroup.userData.immuneUntil - now) / 1000)}s remaining)`);
+        return; // Player is still immune, cannot pick up
+      }
+    }
 
     // Use clickPosition if available, otherwise use group position
     const walnutPos = walnutGroup.userData.clickPosition || walnutGroup.position;
