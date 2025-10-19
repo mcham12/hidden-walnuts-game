@@ -212,6 +212,10 @@ export class Game {
   private readonly THROW_COOLDOWN = 1500; // 1.5 seconds in milliseconds
   // Note: MAX_INVENTORY enforced server-side (10 walnuts)
 
+  // MVP 8 FIX: Shared walnut model for visual consistency
+  private walnutModel: THREE.Group | null = null;
+  private readonly WALNUT_SIZE = 0.06; // Unified walnut radius for all types
+
   // MVP 5: Toast notification system
   private toastManager: ToastManager = new ToastManager();
 
@@ -329,6 +333,9 @@ export class Game {
 
       // MVP 8: Initialize Projectile Manager
       this.projectileManager = new ProjectileManager(this.scene, this.vfxManager, this.audioManager);
+
+      // MVP 8 FIX: Load shared walnut model for visual consistency
+      await this.loadWalnutModel();
 
       // MVP 3: Initialize minimap
       this.initMinimap();
@@ -3228,6 +3235,61 @@ export class Game {
     }
   }
 
+  /**
+   * MVP 8 FIX: Load shared walnut model for visual consistency
+   * All walnut types use this same model with different effects/sizes
+   */
+  private async loadWalnutModel(): Promise<void> {
+    try {
+      const walnutScene = await this.loadCachedAsset('/assets/models/environment/walnut_free_download.glb');
+      if (walnutScene) {
+        this.walnutModel = walnutScene;
+
+        // Scale to standard size
+        const box = new THREE.Box3().setFromObject(this.walnutModel);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const scale = this.WALNUT_SIZE / maxDim;
+        this.walnutModel.scale.setScalar(scale);
+
+        console.log('✅ Loaded shared walnut model');
+      } else {
+        console.warn('⚠️ Failed to load walnut model, using fallback');
+        this.createFallbackWalnutModel();
+      }
+    } catch (error) {
+      console.error('❌ Error loading walnut model:', error);
+      this.createFallbackWalnutModel();
+    }
+  }
+
+  /**
+   * Create fallback walnut model if GLB fails to load
+   */
+  private createFallbackWalnutModel(): void {
+    const geometry = new THREE.SphereGeometry(this.WALNUT_SIZE, 16, 16);
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x8B4513, // Brown
+      roughness: 0.8,
+      metalness: 0.2
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    this.walnutModel = new THREE.Group();
+    this.walnutModel.add(mesh);
+  }
+
+  /**
+   * Create a walnut mesh from the shared model
+   * Returns a clone ready to add to the scene
+   */
+  private createWalnutMesh(): THREE.Group {
+    if (!this.walnutModel) {
+      console.warn('⚠️ Walnut model not loaded, creating fallback');
+      this.createFallbackWalnutModel();
+    }
+    return this.walnutModel!.clone();
+  }
+
   private startDebugUpdates(): void {
     const updateDebug = () => {
       try {
@@ -3645,19 +3707,29 @@ export class Game {
    * Create visual indicator for a game walnut (golden bonus)
    * MVP 8: Reduced size for better gameplay visibility
    */
+  /**
+   * MVP 8 FIX: Create golden (game-spawned bonus) walnut using shared model
+   * Adds golden glow and sparkles for special effect
+   */
   private createGameWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // Walnut-shaped geometry (ellipsoid - slightly elongated sphere) - MVP 8: Very small
-    const geometry = new THREE.SphereGeometry(0.05, 16, 12); // Reduced from 0.08 to 0.05 (38% smaller)
-    geometry.scale(1, 1.3, 1); // Stretch vertically to make walnut shape
+    // Use shared walnut model for consistency
+    const walnut = this.createWalnutMesh();
+    walnut.position.y = 0;
 
-    // Rich golden-amber color (not bright yellow)
-    const material = new THREE.MeshBasicMaterial({
-      color: 0xDAA520, // Goldenrod - more natural golden walnut color
+    // Override material to golden color
+    walnut.traverse((child: any) => {
+      if (child.isMesh) {
+        child.material = new THREE.MeshStandardMaterial({
+          color: 0xDAA520, // Goldenrod - natural golden walnut
+          emissive: 0xFFD700, // Gold glow
+          emissiveIntensity: 0.3,
+          metalness: 0.4,
+          roughness: 0.6
+        });
+      }
     });
-    const walnut = new THREE.Mesh(geometry, material);
-    walnut.position.y = 0.05; // MVP 8: Adjusted height (reduced from 0.08)
     group.add(walnut);
 
     // Subtle golden aura/glow around it
@@ -3736,20 +3808,15 @@ export class Game {
    * MVP 8: Create visual for ground walnut (dropped from throw)
    * Simple walnut on ground surface, no fancy effects
    */
+  /**
+   * MVP 8 FIX: Create ground walnut using shared model
+   * Used for dropped walnuts from throws (hits and misses)
+   */
   private createGroundWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // Simple walnut-shaped geometry (ellipsoid) - MVP 8: Very small
-    const geometry = new THREE.SphereGeometry(0.06, 16, 12); // Reduced from 0.1 to 0.06 (40% smaller)
-    geometry.scale(1, 1.2, 1); // Slightly elongated
-
-    // Natural brown walnut color
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x8B4513, // SaddleBrown - natural walnut color
-      roughness: 0.8,
-      metalness: 0.1
-    });
-    const walnut = new THREE.Mesh(geometry, material);
+    // Use shared walnut model for consistency
+    const walnut = this.createWalnutMesh();
     walnut.position.y = 0; // On ground surface
     group.add(walnut);
 
@@ -3763,8 +3830,7 @@ export class Game {
     group.add(collisionMesh);
 
     // Hover pulse glow (initially hidden)
-    const hoverPulseGeometry = new THREE.SphereGeometry(0.18, 16, 12);
-    hoverPulseGeometry.scale(1, 1.2, 1);
+    const hoverPulseGeometry = new THREE.SphereGeometry(this.WALNUT_SIZE * 3, 16, 12);
     const hoverPulseMaterial = new THREE.MeshBasicMaterial({
       color: 0xCD853F, // Peru/tan color
       transparent: true,
@@ -3782,7 +3848,7 @@ export class Game {
     // Position the entire group
     group.position.copy(position);
     group.userData.type = 'ground';
-    group.userData.points = 1; // Same as bush walnut
+    group.userData.points = 1;
     group.userData.clickPosition = new THREE.Vector3(position.x, position.y, position.z);
 
     return group;

@@ -795,10 +795,31 @@ velocity.y += gravity * delta  // -9.8 m/s²
 - Predator sounds
 - Cycle countdown timer
 
+### Tree-Drop Walnut System
+**Goal**: Offset walnut consumption (eating for health) with environmental replenishment
+
+**Mechanics**:
+- Regular trees (Tree_01.glb): Drop walnuts periodically
+  - 90% regular walnuts (1 pt)
+  - 10% golden walnuts (5 pts)
+- Cardinal direction trees (North/South/East/West): Higher golden drop rate
+  - 60% regular walnuts
+  - 40% golden walnuts
+- Origin tree (Dead_straight_tree.glb): No drops (landmark only)
+
+**Drop Timing**:
+- Random intervals (2-5 minutes per tree)
+- Visual cue: Walnut falls from tree with particle trail
+- Audio: Rustling leaves + thump on ground
+- Spawns as pickupable ground walnut at tree base
+
+**Balance**: Ensures walnut supply remains stable despite consumption for health restoration
+
 **Success**:
 - Predators add challenge
 - Power-ups are fun
 - Audio enhances immersion
+- Tree drops maintain walnut economy
 
 ---
 
@@ -903,8 +924,8 @@ AAA polish: Hermite interpolation, narrator voiceover, NPC voices. Optional. (TB
 ### MVP 9.5: Leaderboard Management & Polish
 Real server-side leaderboard with persistence, admin management, anti-cheat validation. (TBD)
 
-### MVP 10: Predators & Polish
-Hawks/wolves as threats, power-ups (Scent/Fast Dig/Decoy), weather effects. (TBD)
+### MVP 10: Predators, Tree-Drop Walnuts & Polish
+Hawks/wolves as threats, power-ups (Scent/Fast Dig/Decoy), tree-drop walnut system for resource replenishment, weather effects. (TBD)
 
 ### MVP 11: Player Authentication (Full)
 Passwords, email, account recovery, cross-device sync. Builds on MVP 6. (TBD)
