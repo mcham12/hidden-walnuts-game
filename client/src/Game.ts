@@ -200,6 +200,26 @@ export class Game {
   private emoteInProgress: boolean = false; // Prevent emote spam (local player)
   private remotePlayerEmotes: Map<string, boolean> = new Map(); // Track which remote players are emoting
 
+  // BEST PRACTICE: Two-Layer Animation State Machine (replaces boolean flags)
+  // Priority constants (will be used in Phase 2 migration)
+  // @ts-ignore - unused until Phase 2
+  private readonly ANIM_PRIORITY_DEAD = 3;
+  // @ts-ignore - unused until Phase 2
+  private readonly ANIM_PRIORITY_STUN = 2;        // hit, fear
+  // @ts-ignore - unused until Phase 2
+  private readonly ANIM_PRIORITY_ACTION = 1;      // eat, throw, emote
+  // @ts-ignore - unused until Phase 2
+  private readonly ANIM_PRIORITY_IDLE_VARIANT = 0; // subtle idle animations
+
+  // Animation state
+  private animState = {
+    baseAnimation: 'idle',        // Always tracks correct movement animation
+    overrideAnimation: null as string | null, // Temporary animation (hit, eat, etc)
+    overrideEndTime: null as number | null,   // When override expires (ms)
+    overridePriority: -1,         // Priority of current override
+    blocksMovement: false         // Whether override blocks input
+  };
+
   // MVP 5: Audio system (passed from main to reuse loaded sounds)
   private audioManager!: AudioManager;
 
@@ -564,9 +584,113 @@ export class Game {
   }
 
   /**
+   * BEST PRACTICE: Request an animation to play (NEW state machine)
+   * @param name Animation name
+   * @param priority Priority level (higher can interrupt lower)
+   * @param duration Duration in milliseconds
+   * @param blocksMovement Whether this animation blocks movement input
+   * @returns true if animation was started, false if blocked by higher priority
+   */
+  // @ts-ignore - unused until Phase 2 migration
+  private requestAnimation(name: string, priority: number, duration: number, blocksMovement: boolean = false): boolean {
+    const now = performance.now();
+
+    // Check if we can interrupt current override
+    if (this.animState.overrideAnimation !== null) {
+      if (priority < this.animState.overridePriority) {
+        console.log(`🚫 Animation '${name}' blocked by higher priority '${this.animState.overrideAnimation}' (${priority} < ${this.animState.overridePriority})`);
+        return false; // Can't interrupt higher priority
+      }
+    }
+
+    // Set override
+    this.animState.overrideAnimation = name;
+    this.animState.overridePriority = priority;
+    this.animState.overrideEndTime = now + duration;
+    this.animState.blocksMovement = blocksMovement;
+
+    console.log(`🎬 NEW STATE MACHINE: Playing ${name} (priority: ${priority}, duration: ${duration}ms, blocks movement: ${blocksMovement})`);
+
+    // Actually play the animation
+    this.playAnimation(name);
+    return true;
+  }
+
+  /**
+   * BEST PRACTICE: Update animation state machine (called every frame)
+   */
+  private updateAnimationState(_delta: number): void {
+    const now = performance.now();
+
+    // Check if override has expired
+    if (this.animState.overrideAnimation !== null && this.animState.overrideEndTime !== null) {
+      if (now >= this.animState.overrideEndTime) {
+        console.log(`⏱️ Override '${this.animState.overrideAnimation}' expired, returning to base '${this.animState.baseAnimation}'`);
+
+        // Clear override
+        this.animState.overrideAnimation = null;
+        this.animState.overridePriority = -1;
+        this.animState.overrideEndTime = null;
+        this.animState.blocksMovement = false;
+
+        // Return to base animation
+        this.playAnimation(this.animState.baseAnimation);
+      }
+    }
+
+    // Update base animation based on movement (if not overridden)
+    if (this.animState.overrideAnimation === null && this.character && !this.isDead) {
+      const horizontalSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
+
+      let targetBaseAnimation = 'idle';
+      if (horizontalSpeed > 0.5) {
+        const isRunning = this.keys.has('shift');
+        targetBaseAnimation = isRunning ? 'run' : 'walk';
+      }
+
+      // Update base if changed
+      if (targetBaseAnimation !== this.animState.baseAnimation) {
+        this.animState.baseAnimation = targetBaseAnimation;
+        // Only play if no override active
+        if (this.animState.overrideAnimation === null) {
+          this.playAnimation(targetBaseAnimation);
+        }
+      }
+    }
+  }
+
+  /**
+   * BEST PRACTICE: Actually play an animation (low-level helper)
+   */
+  private playAnimation(name: string): void {
+    const action = this.actions[name];
+    if (!action) {
+      console.warn(`Animation "${name}" not found`);
+      return;
+    }
+
+    // Stop current
+    if (this.currentAction && this.currentAction !== action) {
+      this.currentAction.stop();
+    }
+
+    // Reset timeScale (prevent stuck slow-motion)
+    action.timeScale = 1.0;
+
+    // Configure and play
+    action.reset();
+    action.setLoop(THREE.LoopRepeat, Infinity);
+    action.play();
+
+    this.currentAction = action;
+    this.currentAnimationName = name;
+  }
+
+  /**
    * MVP 5: Play a one-shot animation (like eating, spinning) that returns to idle when finished
    * MVP 8 FIX: Improved state management to prevent stuck animations
    * BEST PRACTICE: Returns to APPROPRIATE animation based on movement state
+   * NOTE: Will be DEPRECATED in favor of requestAnimation()
    * @param name Animation name to play
    * @param returnToIdleDelay Optional delay before returning to idle (default: auto-detect from animation duration)
    */
@@ -941,6 +1065,9 @@ export class Game {
     for (const mixer of this.npcMixers.values()) {
       mixer.update(delta);
     }
+
+    // BEST PRACTICE: Update animation state machine (NEW system)
+    this.updateAnimationState(delta);
 
     // Update remote player interpolation
     this.updateRemotePlayerInterpolation(delta);
