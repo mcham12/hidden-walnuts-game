@@ -519,6 +519,7 @@ export class Game {
 
   /**
    * MVP 5: Play a one-shot animation (like eating, spinning) that returns to idle when finished
+   * MVP 8 FIX: Improved state management to prevent stuck animations
    * @param name Animation name to play
    * @param returnToIdleDelay Optional delay before returning to idle (default: auto-detect from animation duration)
    */
@@ -537,6 +538,9 @@ export class Game {
       this.currentAction.stop();
     }
 
+    // MVP 8 FIX: Reset timeScale to normal before playing (prevents stuck slow/fast animations)
+    newAction.timeScale = 1.0;
+
     // Configure animation to play once and stop
     newAction.reset();
     newAction.setLoop(THREE.LoopOnce, 1);
@@ -549,11 +553,14 @@ export class Game {
     // Calculate when to return to idle
     const duration = returnToIdleDelay ?? newAction.getClip().duration * 1000; // Convert to ms
 
+    console.log(`🎬 Playing one-shot animation: ${name}, duration: ${duration}ms, will return to idle`);
+
     // Return to idle after animation completes
     setTimeout(() => {
       this.isPlayingOneShotAnimation = false;
       // Only return to idle if we're still playing this animation (prevent race conditions)
-      if (this.currentAnimationName === name) {
+      if (this.currentAnimationName === name && !this.isDead) {
+        console.log(`🔄 Returning to idle after ${name} animation`);
         this.setAction('idle');
       }
     }, duration);
@@ -2993,6 +3000,7 @@ export class Game {
 
   /**
    * MVP 8 Phase 3: Handle player death
+   * MVP 8 UX: Enhanced with death screen overlay and countdown
    */
   private onDeath(killerId: string): void {
     console.log(`💀 Player died! Killed by ${killerId}`);
@@ -3005,6 +3013,43 @@ export class Game {
     // Play death animation if available
     if (this.actions && this.actions['death']) {
       this.playOneShotAnimation('death', 3000);
+    }
+
+    // MVP 8 UX: Show death overlay with countdown
+    const deathOverlay = document.getElementById('death-overlay');
+    const deathMessage = document.getElementById('death-message');
+    const respawnCountdown = document.getElementById('respawn-countdown');
+
+    if (deathOverlay) {
+      // Show killer name in death message
+      if (deathMessage) {
+        if (killerId.startsWith('npc-')) {
+          deathMessage.textContent = `You were killed by an NPC!`;
+        } else if (killerId.startsWith('player_')) {
+          deathMessage.textContent = `You were killed by another player!`;
+        } else {
+          deathMessage.textContent = 'You were defeated!';
+        }
+      }
+
+      deathOverlay.classList.remove('hidden');
+      deathOverlay.style.opacity = '0';
+      // Fade in death screen
+      setTimeout(() => {
+        if (deathOverlay) deathOverlay.style.opacity = '1';
+      }, 50);
+
+      // Countdown 3... 2... 1...
+      let countdown = 3;
+      const countdownInterval = setInterval(() => {
+        if (respawnCountdown) {
+          respawnCountdown.textContent = `Respawning in ${countdown}...`;
+        }
+        countdown--;
+        if (countdown < 0) {
+          clearInterval(countdownInterval);
+        }
+      }, 1000);
     }
 
     // Drop all walnuts at death location
@@ -3035,6 +3080,7 @@ export class Game {
 
   /**
    * MVP 8 Phase 3: Respawn player after death
+   * MVP 8 UX: Enhanced with random teleport and fade effects
    */
   private respawn(): void {
     console.log('🔄 Respawning player...');
@@ -3044,14 +3090,51 @@ export class Game {
     this.isDead = false;
     this.isStunned = false;
 
-    // Request respawn from server (will send new spawn position)
+    // MVP 8 UX: Teleport to random location (avoid spawn camping)
+    if (this.character) {
+      // Generate random spawn position within terrain bounds
+      const spawnX = (Math.random() - 0.5) * 300; // -150 to 150
+      const spawnZ = (Math.random() - 0.5) * 300; // -150 to 150
+      const spawnY = getTerrainHeight(spawnX, spawnZ) + 2; // 2 units above ground
+
+      console.log(`🎯 Teleporting to random spawn: (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
+
+      this.character.position.set(spawnX, spawnY, spawnZ);
+
+      // Reset velocity
+      this.velocity.set(0, 0, 0);
+
+      // MVP 8 UX: Reset animation to idle (prevent stuck death animation)
+      this.isPlayingOneShotAnimation = false;
+      if (this.actions['idle']) {
+        this.setAction('idle');
+      }
+    }
+
+    // Request respawn from server (notify server of new position)
     this.sendMessage({
-      type: 'player_respawn'
+      type: 'player_respawn',
+      position: this.character ? {
+        x: this.character.position.x,
+        y: this.character.position.y,
+        z: this.character.position.z
+      } : undefined
     });
+
+    // MVP 8 UX: Hide death overlay with fade out
+    const deathOverlay = document.getElementById('death-overlay');
+    if (deathOverlay) {
+      deathOverlay.style.opacity = '0';
+      setTimeout(() => {
+        deathOverlay.classList.add('hidden');
+      }, 500); // Match transition duration
+    }
 
     // Update UI
     this.updateHealthUI();
     this.updateWalnutHUD();
+
+    console.log('✅ Respawn complete!');
   }
 
   /**
