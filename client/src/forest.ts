@@ -39,9 +39,11 @@ export async function createForestFromServer(
         const size = box.getSize(new THREE.Vector3());
         const minY = box.min.y;
 
-        // Offset is the distance from model origin to bottom
-        // If minY is negative, the model extends below origin, so we need to offset UP by abs(minY)
-        rockHeightOffsets[i] = Math.abs(minY);
+        // Standard Three.js approach: offset = -minY
+        // This positions the bottom of the bounding box at terrain level
+        // If minY is negative (bottom below pivot), offset is positive (lift up)
+        // If minY is positive (bottom above pivot), offset is negative (push down)
+        rockHeightOffsets[i] = -minY;
 
         console.log(`Rock_0${i + 1}: height=${size.y.toFixed(2)}, minY=${minY.toFixed(2)}, offset=${rockHeightOffsets[i].toFixed(2)}`);
       }
