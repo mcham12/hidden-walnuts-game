@@ -2523,6 +2523,16 @@ export class Game {
       }
     }
 
+    // MVP 8: Drop walnut on ground at hit location (so hit player can't immediately pick it up)
+    this.sendMessage({
+      type: 'spawn_dropped_walnut',
+      position: {
+        x: data.position.x,
+        y: data.position.y,
+        z: data.position.z
+      }
+    });
+
     // TODO Phase 3: Apply damage to target
     // TODO Phase 3: Send hit message to server for validation
   }
@@ -2555,9 +2565,12 @@ export class Game {
 
     // Play fear animation for the entity that experienced the near miss
     if (data.entityId === this.playerId) {
-      // Local player had near miss
+      // Local player had near miss - slower for emphasis
       if (this.actions && this.actions['fear']) {
-        this.playOneShotAnimation('fear');
+        const fearAction = this.actions['fear'];
+        const normalDuration = fearAction.getClip().duration * 1000; // ms
+        fearAction.timeScale = 0.65; // Slow down to 65% speed (54% longer)
+        this.playOneShotAnimation('fear', normalDuration * 1.54); // 1/0.65 = 1.54x longer
       }
     } else {
       // Check if it's a remote player
@@ -4171,9 +4184,12 @@ export class Game {
     // Update throw cooldown (optimistic - assume server will accept)
     this.lastThrowTime = now;
 
-    // MVP 8: Play 'attack' animation when throwing
+    // MVP 8: Play 'attack' animation when throwing - slower for emphasis
     if (this.actions['attack']) {
-      this.playOneShotAnimation('attack');
+      const attackAction = this.actions['attack'];
+      const normalDuration = attackAction.getClip().duration * 1000; // ms
+      attackAction.timeScale = 0.6; // Slow down to 60% speed (67% longer)
+      this.playOneShotAnimation('attack', normalDuration * 1.67); // 1/0.6 = 1.67x longer
     }
 
     // Send throw command to server
@@ -4519,10 +4535,13 @@ export class Game {
     // Remove the walnut from the world
     this.removeWalnut(walnutId);
 
-    // MVP 8: Play eating animation (all characters)
+    // MVP 8: Play eating animation (all characters) - slower for emphasis
     if (this.actions['eat']) {
       console.log('🍽️ Playing eat animation for local player');
-      this.playOneShotAnimation('eat');
+      const eatAction = this.actions['eat'];
+      const normalDuration = eatAction.getClip().duration * 1000; // ms
+      eatAction.timeScale = 0.7; // Slow down to 70% speed (30% longer)
+      this.playOneShotAnimation('eat', normalDuration * 1.43); // 1/0.7 = 1.43x longer
     } else {
       console.warn('⚠️ Eat animation not available for local player!');
     }

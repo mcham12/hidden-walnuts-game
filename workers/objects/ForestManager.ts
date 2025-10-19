@@ -42,6 +42,7 @@ interface Walnut {
   found: boolean;
   timestamp: number;
   isGolden?: boolean; // MVP 8: true = golden bonus walnut (5pts), false/undefined = regular (3pts/1pt)
+  droppedTime?: number; // MVP 8: Timestamp when walnut was dropped (for pickup immunity)
 }
 
 interface ForestObject {
@@ -892,6 +893,7 @@ export default class ForestManager extends DurableObject {
       case "spawn_dropped_walnut":
         // MVP 8: Create pickupable walnut on ground where projectile landed
         const droppedWalnutId = `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const dropTime = Date.now();
 
         const droppedWalnut: Walnut = {
           id: droppedWalnutId,
@@ -900,7 +902,8 @@ export default class ForestManager extends DurableObject {
           hiddenIn: 'ground', // Not buried, on ground surface
           location: data.position,
           found: false,
-          timestamp: Date.now()
+          timestamp: dropTime,
+          droppedTime: dropTime // MVP 8: Set immunity timer (3 seconds)
         };
 
         this.mapState.push(droppedWalnut);

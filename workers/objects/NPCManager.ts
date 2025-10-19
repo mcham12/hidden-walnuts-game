@@ -53,6 +53,7 @@ interface Walnut {
   location: Vector3;
   found: boolean;
   origin: 'game' | 'player';
+  droppedTime?: number; // MVP 8: Timestamp when walnut was dropped (for pickup immunity)
 }
 
 export class NPCManager {
@@ -303,12 +304,23 @@ export class NPCManager {
 
   /**
    * Find nearby walnuts within radius (only unfound walnuts)
+   * MVP 8: Skip walnuts with active immunity (3 seconds after drop)
    */
   private findNearbyWalnuts(npc: NPC, radius: number): Walnut[] {
     const nearby: Walnut[] = [];
+    const PICKUP_IMMUNITY_TIME = 3000; // 3 seconds in milliseconds
+    const now = Date.now();
 
     for (const walnut of this.forestManager.mapState) {
       if (walnut.found) continue; // Skip already found walnuts
+
+      // MVP 8: Skip walnuts that were just dropped (immunity period)
+      if (walnut.droppedTime) {
+        const timeSinceDrop = now - walnut.droppedTime;
+        if (timeSinceDrop < PICKUP_IMMUNITY_TIME) {
+          continue; // Still immune, skip this walnut
+        }
+      }
 
       const distance = this.getDistance2D(npc.position, walnut.location);
       if (distance <= radius) {
