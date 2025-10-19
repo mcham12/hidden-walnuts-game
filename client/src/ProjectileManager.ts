@@ -214,7 +214,21 @@ export class ProjectileManager {
       projectile.mesh.rotation.x += delta * 10;
       projectile.mesh.rotation.y += delta * 15;
 
-      // MVP 8 FIX: Check if hit ground using actual terrain height at projectile position
+      // MVP 8: Near-miss detection (check early for responsive feedback)
+      this.checkNearMissDetection(projectile, entities, now);
+
+      // MVP 8 FIX: Check hit detection BEFORE ground check (prevents close-range misses)
+      // At close range, high velocity can cause projectile to pass through hit radius
+      // and hit ground in same frame. Hit detection must take priority.
+      const hitEntityId = this.checkHitDetection(projectile, entities);
+      if (hitEntityId) {
+        projectile.hasHit = true;
+        this.onProjectileHit(projectile, hitEntityId);
+        toRemove.push(id);
+        return;
+      }
+
+      // Check if hit ground (only if no entity hit detected)
       const terrainAtProjectile = getTerrainHeight(projectile.position.x, projectile.position.z);
       const groundBuffer = 0.1; // Small buffer to trigger slightly before visual ground contact
       if (projectile.position.y <= terrainAtProjectile + groundBuffer) {
@@ -222,17 +236,6 @@ export class ProjectileManager {
         this.onProjectileMiss(projectile);
         toRemove.push(id);
         return;
-      }
-
-      // MVP 8: Near-miss detection (before hit detection)
-      this.checkNearMissDetection(projectile, entities, now);
-
-      // Hit detection against entities
-      const hitEntityId = this.checkHitDetection(projectile, entities);
-      if (hitEntityId) {
-        projectile.hasHit = true;
-        this.onProjectileHit(projectile, hitEntityId);
-        toRemove.push(id);
       }
     });
 
