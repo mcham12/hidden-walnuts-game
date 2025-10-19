@@ -3039,9 +3039,18 @@ export class Game {
     const healthBar = document.getElementById('health-bar');
     const healthText = document.getElementById('health-text');
 
+    console.log('🏥 updateHealthUI called:', {
+      health: this.health,
+      maxHealth: this.MAX_HEALTH,
+      healthBarFound: !!healthBar,
+      healthTextFound: !!healthText
+    });
+
     if (healthBar) {
       const healthPercent = Math.max(0, Math.min(100, (this.health / this.MAX_HEALTH) * 100));
       healthBar.style.width = `${healthPercent}%`;
+
+      console.log(`❤️ Health bar updated: ${healthPercent.toFixed(1)}% (${this.health}/${this.MAX_HEALTH})`);
 
       // Color changes based on health level
       if (healthPercent > 60) {
@@ -3051,10 +3060,15 @@ export class Game {
       } else {
         healthBar.style.background = 'linear-gradient(90deg, #ff4444 0%, #ff6666 100%)'; // Red
       }
+    } else {
+      console.error('❌ Health bar element not found! ID: health-bar');
     }
 
     if (healthText) {
       healthText.textContent = `${Math.round(this.health)}/${this.MAX_HEALTH}`;
+      console.log(`📝 Health text updated: ${healthText.textContent}`);
+    } else {
+      console.error('❌ Health text element not found! ID: health-text');
     }
   }
 
