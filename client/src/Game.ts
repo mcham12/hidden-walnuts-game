@@ -638,9 +638,10 @@ export class Game {
       }
     }
 
-    // CRITICAL FIX: ALWAYS update base animation based on movement (even during overrides!)
-    // Base layer must track what animation SHOULD be playing, so when override expires we return to correct state
-    if (this.character && !this.isDead) {
+    // FINAL FIX: Update base animation, but FREEZE it when movement is blocked
+    // When blocksMovement=true, velocity becomes 0, which would incorrectly set baseAnimation='idle'
+    // We need to preserve what the player WAS doing before the blocking animation started
+    if (this.character && !this.isDead && !this.animState.blocksMovement) {
       const horizontalSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
 
       let targetBaseAnimation = 'idle';
@@ -658,7 +659,7 @@ export class Game {
         if (this.animState.overrideAnimation === null) {
           this.playAnimation(targetBaseAnimation);
         }
-        // Otherwise, when override expires (line 639), it will return to this updated base
+        // Otherwise, when override expires (line 637), it will return to this PRESERVED base
       }
     }
   }
