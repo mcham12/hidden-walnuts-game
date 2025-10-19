@@ -49,6 +49,7 @@ export class Game {
   private static assetCache = new Map<string, THREE.Group>();
   private static animationCache = new Map<string, THREE.AnimationClip>();
   private isJumping = false;
+  private isEatingWalnut = false; // MVP 8: Block movement during eat animation
   private characters: Character[] = [];
   public selectedCharacterId = 'squirrel';
   public sessionToken: string = ''; // MVP 6: Player session token
@@ -971,26 +972,29 @@ export class Game {
     let moving = false;
     let rotating = false;
 
-    // STANDARD: Character rotation (not camera rotation)
-    if (this.keys.has('a')) {
-      this.character.rotation.y += this.rotationSpeed * delta;
-      rotating = true;
-    }
-    if (this.keys.has('d')) {
-      this.character.rotation.y -= this.rotationSpeed * delta;
-      rotating = true;
-    }
+    // MVP 8: Block all movement input during eat animation
+    if (!this.isEatingWalnut) {
+      // STANDARD: Character rotation (not camera rotation)
+      if (this.keys.has('a')) {
+        this.character.rotation.y += this.rotationSpeed * delta;
+        rotating = true;
+      }
+      if (this.keys.has('d')) {
+        this.character.rotation.y -= this.rotationSpeed * delta;
+        rotating = true;
+      }
 
-    // Calculate desired horizontal velocity from input
-    if (this.keys.has('w')) {
-      this.direction.set(0, 0, 1).applyQuaternion(this.character.quaternion);
-      desiredVelocity.add(this.direction.multiplyScalar(this.moveSpeed));
-      moving = true;
-    }
-    if (this.keys.has('s')) {
-      this.direction.set(0, 0, -1).applyQuaternion(this.character.quaternion);
-      desiredVelocity.add(this.direction.multiplyScalar(this.moveSpeed));
-      moving = true;
+      // Calculate desired horizontal velocity from input
+      if (this.keys.has('w')) {
+        this.direction.set(0, 0, 1).applyQuaternion(this.character.quaternion);
+        desiredVelocity.add(this.direction.multiplyScalar(this.moveSpeed));
+        moving = true;
+      }
+      if (this.keys.has('s')) {
+        this.direction.set(0, 0, -1).applyQuaternion(this.character.quaternion);
+        desiredVelocity.add(this.direction.multiplyScalar(this.moveSpeed));
+        moving = true;
+      }
     }
 
     // INDUSTRY STANDARD: Smooth acceleration/deceleration for continuous velocity
@@ -1510,7 +1514,7 @@ export class Game {
         break;
 
       case 'walnut_dropped':
-        // MVP 8: A projectile missed and created a pickupable walnut on ground
+        // MVP 8: A projectile hit/missed and created a pickupable walnut on ground
         this.createRemoteWalnut({
           walnutId: data.walnutId,
           ownerId: 'game', // No specific owner
@@ -1519,10 +1523,11 @@ export class Game {
           points: 1 // Same as bush walnut
         });
 
-        // Mark as just dropped (immunity from auto-pickup for 3 seconds)
+        // MVP 8: Set immunity for specific player if hit (miss = no immunity)
         const droppedWalnut = this.walnuts.get(data.walnutId);
-        if (droppedWalnut) {
-          droppedWalnut.userData.droppedTime = performance.now();
+        if (droppedWalnut && data.immunePlayerId) {
+          droppedWalnut.userData.immunePlayerId = data.immunePlayerId;
+          droppedWalnut.userData.immuneUntil = data.immuneUntil;
         }
         break;
 
@@ -2523,14 +2528,15 @@ export class Game {
       }
     }
 
-    // MVP 8: Drop walnut on ground at hit location (so hit player can't immediately pick it up)
+    // MVP 8: Drop walnut on ground at hit location (only hit player has cooldown)
     this.sendMessage({
       type: 'spawn_dropped_walnut',
       position: {
         x: data.position.x,
         y: data.position.y,
         z: data.position.z
-      }
+      },
+      immunePlayerId: data.targetId // Only the hit player can't pick it up for 3 seconds
     });
 
     // TODO Phase 3: Apply damage to target
@@ -4276,17 +4282,15 @@ export class Game {
     if (!this.character) return;
 
     const PICKUP_RANGE = 1.5; // Distance in units to auto-collect walnut
-    const PICKUP_IMMUNITY_TIME = 3000; // 3 seconds immunity for dropped walnuts (ms)
     const playerPos = this.character.position.clone();
     const now = performance.now();
 
     // Check each walnut for proximity
     this.walnuts.forEach((walnutGroup, walnutId) => {
-      // MVP 8: Skip walnuts that were just dropped (prevents auto-pickup of thrown walnuts)
-      if (walnutGroup.userData.droppedTime) {
-        const timeSinceDrop = now - walnutGroup.userData.droppedTime;
-        if (timeSinceDrop < PICKUP_IMMUNITY_TIME) {
-          return; // Still immune, skip this walnut
+      // MVP 8: Skip walnuts where THIS PLAYER is immune (hit by projectile)
+      if (walnutGroup.userData.immunePlayerId === this.playerId && walnutGroup.userData.immuneUntil) {
+        if (now < walnutGroup.userData.immuneUntil) {
+          return; // This player is still immune (was hit), skip this walnut
         }
       }
 
@@ -4535,13 +4539,23 @@ export class Game {
     // Remove the walnut from the world
     this.removeWalnut(walnutId);
 
-    // MVP 8: Play eating animation (all characters) - slower for emphasis
+    // MVP 8: Play eating animation (all characters) - slower for emphasis + block movement
     if (this.actions['eat']) {
       console.log('🍽️ Playing eat animation for local player');
       const eatAction = this.actions['eat'];
       const normalDuration = eatAction.getClip().duration * 1000; // ms
       eatAction.timeScale = 0.7; // Slow down to 70% speed (30% longer)
+
+      // MVP 8: Block movement for 1.5 seconds during eat animation
+      this.isEatingWalnut = true;
+      this.velocity.set(0, 0, 0); // Stop current movement
+
       this.playOneShotAnimation('eat', normalDuration * 1.43); // 1/0.7 = 1.43x longer
+
+      // Clear eating flag after 1.5 seconds
+      setTimeout(() => {
+        this.isEatingWalnut = false;
+      }, 1500);
     } else {
       console.warn('⚠️ Eat animation not available for local player!');
     }
