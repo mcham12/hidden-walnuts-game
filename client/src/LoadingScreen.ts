@@ -116,15 +116,15 @@ export class LoadingScreen {
           const hostname = window.location.hostname;
           let TURNSTILE_SITE_KEY: string;
 
-          // Check if this is a preview deployment (mvp-* branches) or localhost
-          const isPreview = hostname.includes('mvp-') || hostname.includes('localhost') || hostname.includes('127.0.0.1');
+          // Production is game.hiddenwalnuts.com, everything else is preview (pages.dev, localhost)
+          const isProduction = hostname === 'game.hiddenwalnuts.com';
 
-          if (isPreview) {
-            // Preview/localhost: Testing key (always passes)
-            TURNSTILE_SITE_KEY = '1x00000000000000000000AA'; // Cloudflare testing key
-          } else {
-            // Production (game.hiddenwalnuts.com or main branch pages.dev): Real site key
+          if (isProduction) {
+            // Production (game.hiddenwalnuts.com): Real site key
             TURNSTILE_SITE_KEY = '0x4AAAAAAB7S9YhTOdtQjCTu'; // Production key
+          } else {
+            // Preview/localhost (*.pages.dev, localhost, etc.): Testing key (always passes)
+            TURNSTILE_SITE_KEY = '1x00000000000000000000AA'; // Cloudflare testing key
           }
 
           try {
