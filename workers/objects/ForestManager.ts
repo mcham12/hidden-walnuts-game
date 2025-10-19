@@ -37,7 +37,7 @@ interface Walnut {
   id: string;
   ownerId: string;
   origin: 'game' | 'player';
-  hiddenIn: 'buried' | 'bush';
+  hiddenIn: 'buried' | 'bush' | 'ground'; // MVP 8: 'ground' = dropped from throw
   location: { x: number, y: number, z: number };
   found: boolean;
   timestamp: number;
@@ -885,6 +885,35 @@ export default class ForestManager extends DurableObject {
         this.sendMessage(playerConnection.socket, {
           type: 'inventory_update',
           walnutCount: playerConnection.walnutInventory
+        });
+        break;
+
+      case "spawn_dropped_walnut":
+        // MVP 8: Create pickupable walnut on ground where projectile landed
+        const droppedWalnutId = `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+        const droppedWalnut: Walnut = {
+          id: droppedWalnutId,
+          ownerId: 'game', // No specific owner, anyone can pick it up
+          origin: 'player', // Originated from player throw
+          hiddenIn: 'ground', // Not buried, on ground surface
+          location: data.position,
+          found: false,
+          timestamp: Date.now()
+        };
+
+        this.mapState.push(droppedWalnut);
+        await this.storage.put('mapState', this.mapState);
+
+        console.log(`🌰 Dropped walnut created at (${data.position.x}, ${data.position.y}, ${data.position.z})`);
+
+        // Broadcast to all players so they can see the new pickupable walnut
+        this.activePlayers.forEach((player) => {
+          this.sendMessage(player.socket, {
+            type: 'walnut_dropped',
+            walnutId: droppedWalnutId,
+            position: data.position
+          });
         });
         break;
 

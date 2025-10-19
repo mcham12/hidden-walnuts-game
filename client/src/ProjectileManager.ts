@@ -310,6 +310,16 @@ export class ProjectileManager {
     );
 
     // No sound on miss (keeps it subtle)
+
+    // Dispatch custom event for Game.ts to create pickupable dropped walnut
+    const missEvent = new CustomEvent('projectile-miss', {
+      detail: {
+        projectileId: projectile.id,
+        ownerId: projectile.ownerId,
+        position: projectile.position.clone()
+      }
+    });
+    window.dispatchEvent(missEvent);
   }
 
   /**

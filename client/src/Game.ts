@@ -646,6 +646,11 @@ export class Game {
       this.onProjectileHit(e.detail);
     }) as EventListener);
 
+    // MVP 8: Projectile miss events (create pickupable walnut on ground)
+    window.addEventListener('projectile-miss', ((e: CustomEvent) => {
+      this.onProjectileMiss(e.detail);
+    }) as EventListener);
+
     // MVP 5.7: Touch controls for mobile
     this.touchControls = new TouchControls(this.renderer.domElement);
 
@@ -1464,6 +1469,17 @@ export class Game {
         }
         break;
 
+      case 'walnut_dropped':
+        // MVP 8: A projectile missed and created a pickupable walnut on ground
+        this.createRemoteWalnut({
+          walnutId: data.walnutId,
+          ownerId: 'game', // No specific owner
+          walnutType: 'ground', // New type for dropped walnuts
+          position: data.position,
+          points: 1 // Same as bush walnut
+        });
+        break;
+
       case 'existing_players':
         if (Array.isArray(data.players)) {
           for (const player of data.players) {
@@ -1586,9 +1602,10 @@ export class Game {
         if (typeof data.walnutCount === 'number') {
           this.walnutInventory = data.walnutCount;
           console.log(`🌰 Inventory updated: ${this.walnutInventory} walnuts`);
-          // Update mobile throw button
+          // Update all UI displays
           this.updateMobileThrowButton();
-          // TODO: Update HUD display when we add UI in Phase 5
+          this.updateMobileHideButton();
+          this.updateWalnutHUD();
         }
         break;
 
@@ -2436,6 +2453,25 @@ export class Game {
     // TODO Phase 3: Visual feedback (damage number, hit effect)
 
     // For now, just log the hit - full implementation in Phase 3 (Health & Damage)
+  }
+
+  /**
+   * MVP 8: Handle projectile missing (hit ground)
+   * Creates a pickupable walnut on the ground at the impact position
+   */
+  private onProjectileMiss(data: { projectileId: string; ownerId: string; position: THREE.Vector3 }): void {
+    console.log(`🌰 Projectile missed! Creating pickupable walnut at position:`, data.position);
+
+    // Send message to server to create a pickupable "ground" walnut
+    // The server will spawn it and broadcast to all clients
+    this.sendMessage({
+      type: 'spawn_dropped_walnut',
+      position: {
+        x: data.position.x,
+        y: data.position.y,
+        z: data.position.z
+      }
+    });
   }
 
   /**
@@ -3398,6 +3434,62 @@ export class Game {
   }
 
   /**
+   * MVP 8: Create visual for ground walnut (dropped from throw)
+   * Simple walnut on ground surface, no fancy effects
+   */
+  private createGroundWalnutVisual(position: THREE.Vector3): THREE.Group {
+    const group = new THREE.Group();
+
+    // Simple walnut-shaped geometry (ellipsoid)
+    const geometry = new THREE.SphereGeometry(0.2, 16, 12);
+    geometry.scale(1, 1.2, 1); // Slightly elongated
+
+    // Natural brown walnut color
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x8B4513, // SaddleBrown - natural walnut color
+      roughness: 0.8,
+      metalness: 0.1
+    });
+    const walnut = new THREE.Mesh(geometry, material);
+    walnut.position.y = 0; // On ground surface
+    group.add(walnut);
+
+    // Invisible collision sphere for clicking
+    const collisionGeometry = new THREE.SphereGeometry(1.0, 8, 8);
+    const collisionMaterial = new THREE.MeshBasicMaterial({
+      visible: false
+    });
+    const collisionMesh = new THREE.Mesh(collisionGeometry, collisionMaterial);
+    collisionMesh.position.y = 0;
+    group.add(collisionMesh);
+
+    // Hover pulse glow (initially hidden)
+    const hoverPulseGeometry = new THREE.SphereGeometry(0.35, 16, 12);
+    hoverPulseGeometry.scale(1, 1.2, 1);
+    const hoverPulseMaterial = new THREE.MeshBasicMaterial({
+      color: 0xCD853F, // Peru/tan color
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending
+    });
+    const hoverPulse = new THREE.Mesh(hoverPulseGeometry, hoverPulseMaterial);
+    hoverPulse.position.y = 0;
+    group.add(hoverPulse);
+    group.userData.hoverPulse = hoverPulse;
+
+    // Store references
+    group.userData.walnut = walnut;
+
+    // Position the entire group
+    group.position.copy(position);
+    group.userData.type = 'ground';
+    group.userData.points = 1; // Same as bush walnut
+    group.userData.clickPosition = new THREE.Vector3(position.x, position.y, position.z);
+
+    return group;
+  }
+
+  /**
    * Animate walnuts (glints, pulses, particles)
    */
   private animateWalnuts(delta: number): void {
@@ -3883,7 +3975,7 @@ export class Game {
 
     // Calculate throw trajectory (from player position to camera direction)
     const fromPosition = this.character.position.clone();
-    fromPosition.y += 1.5; // Throw from chest height
+    fromPosition.y += 1.0; // Throw from mid-torso height (closer to player)
 
     // Get camera direction for aiming
     const cameraDirection = new THREE.Vector3();
@@ -4256,6 +4348,15 @@ export class Game {
         walnutGroup = this.createGameWalnutVisual(position);
         labelText = '🌟 Bonus Walnut (5 pts)';
         labelColor = '#FFD700';
+        break;
+
+      case 'ground':
+        // MVP 8: Dropped walnut from thrown projectile (on ground surface, not buried)
+        const groundHeight = getTerrainHeight(position.x, position.z);
+        position.y = groundHeight + 0.15; // Slightly above ground so it's visible
+        walnutGroup = this.createGroundWalnutVisual(position);
+        labelText = 'Dropped Walnut (1 pt)';
+        labelColor = '#CD853F'; // Peru/tan color
         break;
 
       default:
