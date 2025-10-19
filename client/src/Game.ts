@@ -1351,11 +1351,12 @@ export class Game {
    * Plays spin animation and camera shake
    */
   private triggerBumpEffect(): void {
-    // Play spin animation if available
+    // FINAL FIX: Use state machine for spin animation (was bypassing and causing stuck animations)
     if (this.actions && this.actions['spin']) {
       const spinAction = this.actions['spin'];
-      spinAction.reset().setLoop(THREE.LoopOnce, 1).play();
-      spinAction.clampWhenFinished = true;
+      const duration = spinAction.getClip().duration * 1000; // Convert to ms
+      // Use ACTION priority, doesn't block movement (can bump while moving)
+      this.requestAnimation('spin', this.ANIM_PRIORITY_ACTION, duration, false);
     }
 
     // Camera shake
@@ -2734,6 +2735,8 @@ export class Game {
     }
 
     // MVP 8: Play attack animation for the thrower (no 'throw' animation, use 'attack')
+    // FINAL FIX: Only play for REMOTE players/NPCs
+    // Local player animation already handled in throwWalnut() via state machine (line 4910)
     if (throwerId !== this.playerId) {
       // Check if it's a remote player
       const remotePlayer = this.remotePlayers.get(throwerId);
@@ -2754,13 +2757,8 @@ export class Game {
           }
         }
       }
-    } else {
-      // Local player threw - play local attack animation if available
-      if (this.actions && this.actions['attack']) {
-        this.actions['attack'].reset().setLoop(THREE.LoopOnce, 1).play();
-        this.actions['attack'].clampWhenFinished = true;
-      }
     }
+    // Local player throw animation removed - already played via requestAnimation() in throwWalnut()
   }
 
   /**
@@ -5320,9 +5318,22 @@ export class Game {
     // Remove the walnut from the world
     this.removeWalnut(walnutId);
 
-    // CRITICAL FIX: Do NOT auto-eat on pickup!
+    // FINAL FIX: Restore eat animation on pickup (via state machine)
     // Server increments walnutInventory (sent via inventory_update message)
-    // Player can manually eat later using the Eat button (calls eatWalnut() method)
+    // Play eat animation for ~1 second, blocks movement briefly
+    if (this.actions['eat']) {
+      console.log('🍽️ Playing eat animation for pickup');
+      const eatAction = this.actions['eat'];
+      eatAction.timeScale = 1.0; // Normal speed
+
+      // Stop current movement (eating should feel deliberate)
+      this.velocity.set(0, 0, 0);
+
+      // Use ACTION priority with movement blocking (same as manual eat)
+      // Fixed 1s duration - animation plays, then player can continue if W still held
+      this.requestAnimation('eat', this.ANIM_PRIORITY_ACTION, 1000, true);
+    }
+
     console.log(`📥 Picked up walnut! Inventory will be updated by server.`);
 
     // MULTIPLAYER: Send to server for sync
