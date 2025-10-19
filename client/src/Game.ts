@@ -202,6 +202,9 @@ export class Game {
 
   // MVP 8: Projectile system (flying walnuts)
   private projectileManager: ProjectileManager | null = null;
+  private walnutInventory: number = 0; // Player's walnut count (0-10)
+  private lastThrowTime: number = 0; // For throw cooldown tracking
+  private readonly THROW_COOLDOWN = 1500; // 1.5 seconds in milliseconds
 
   // MVP 5: Toast notification system
   private toastManager: ToastManager = new ToastManager();
@@ -583,6 +586,11 @@ export class Game {
         this.hideWalnut();
       }
 
+      // MVP 8: Throw walnut with T key
+      if (e.key === 't' || e.key === 'T') {
+        this.throwWalnut();
+      }
+
       // Debug overlay toggle with F key
       if (e.key === 'f' || e.key === 'F') {
         const debugOverlay = document.getElementById('debug-overlay');
@@ -700,6 +708,18 @@ export class Game {
           localStorage.setItem('hideButtonSeen', 'true');
         }, { once: true });
       }
+    }
+
+    // MVP 8: Wire up throw button for mobile
+    const throwButton = document.getElementById('mobile-throw-btn');
+    if (throwButton) {
+      throwButton.addEventListener('click', () => {
+        // Haptic feedback on mobile
+        if (navigator.vibrate) {
+          navigator.vibrate(50);
+        }
+        this.throwWalnut();
+      });
     }
 
   }
@@ -1560,6 +1580,33 @@ export class Game {
         }
         break;
 
+      case 'inventory_update':
+        // MVP 8: Update player walnut inventory count
+        if (typeof data.walnutCount === 'number') {
+          this.walnutInventory = data.walnutCount;
+          console.log(`🌰 Inventory updated: ${this.walnutInventory} walnuts`);
+          // Update mobile throw button
+          this.updateMobileThrowButton();
+          // TODO: Update HUD display when we add UI in Phase 5
+        }
+        break;
+
+      case 'throw_event':
+        // MVP 8: Someone threw a walnut - spawn projectile
+        if (data.throwerId && data.fromPosition && data.toPosition) {
+          this.handleThrowEvent(data.throwerId, data.fromPosition, data.toPosition, data.targetId);
+        }
+        break;
+
+      case 'throw_rejected':
+        // MVP 8: Server rejected throw (cooldown or no ammo)
+        if (data.reason === 'cooldown') {
+          this.toastManager.warning('Throw on cooldown!');
+        } else if (data.reason === 'no_ammo') {
+          this.toastManager.warning('No walnuts to throw!');
+        }
+        break;
+
       default:
         console.warn('⚠️ Unknown message type:', data.type);
     }
@@ -2338,6 +2385,45 @@ export class Game {
   }
 
   /**
+   * MVP 8: Handle throw event (player or NPC throwing walnut)
+   */
+  private handleThrowEvent(throwerId: string, fromPosition: { x: number; y: number; z: number }, toPosition: { x: number; y: number; z: number }, targetId?: string): void {
+    // Spawn projectile
+    if (this.projectileManager) {
+      const from = new THREE.Vector3(fromPosition.x, fromPosition.y, fromPosition.z);
+      const to = new THREE.Vector3(toPosition.x, toPosition.y, toPosition.z);
+      this.projectileManager.spawnProjectile(from, to, throwerId, targetId);
+      console.log(`🌰 Projectile spawned: ${throwerId} → ${targetId || 'ground'}`);
+    }
+
+    // Play throw animation for the thrower (if it's a remote player or NPC)
+    if (throwerId !== this.playerId) {
+      // Check if it's a remote player
+      const remotePlayer = this.remotePlayers.get(throwerId);
+      if (remotePlayer) {
+        const actions = this.remotePlayerActions.get(throwerId);
+        if (actions && actions['throw']) {
+          actions['throw'].reset().play();
+        }
+      } else {
+        // Check if it's an NPC
+        const npc = this.npcs.get(throwerId);
+        if (npc) {
+          const actions = this.npcActions.get(throwerId);
+          if (actions && actions['throw']) {
+            actions['throw'].reset().play();
+          }
+        }
+      }
+    } else {
+      // Local player threw - play local throw animation if available
+      if (this.actions && this.actions['throw']) {
+        this.actions['throw'].reset().play();
+      }
+    }
+  }
+
+  /**
    * MVP 8: Handle projectile hitting an entity
    * This is called when ProjectileManager detects a hit
    */
@@ -2902,6 +2988,28 @@ export class Game {
       } else {
         hideButton.disabled = false;
         hideButton.style.opacity = '1';
+      }
+    }
+  }
+
+  /**
+   * MVP 8: Update mobile throw button state (count, enabled/disabled)
+   */
+  private updateMobileThrowButton(): void {
+    const throwButton = document.getElementById('mobile-throw-btn') as HTMLButtonElement;
+    const throwCountSpan = document.getElementById('mobile-throw-count');
+
+    if (throwButton && throwCountSpan) {
+      // Update count display
+      throwCountSpan.textContent = `(${this.walnutInventory})`;
+
+      // Enable/disable button based on walnut inventory
+      if (this.walnutInventory <= 0) {
+        throwButton.disabled = true;
+        throwButton.style.opacity = '0.4';
+      } else {
+        throwButton.disabled = false;
+        throwButton.style.opacity = '1';
       }
     }
   }
@@ -3747,6 +3855,102 @@ export class Game {
       points: walnutGroup.userData.points,
       timestamp: Date.now()
     });
+  }
+
+  /**
+   * MVP 8: Throw walnut at target
+   */
+  private throwWalnut(): void {
+    if (!this.character || !this.websocket || this.websocket.readyState !== WebSocket.OPEN) return;
+
+    // Check cooldown
+    const now = performance.now();
+    if (now - this.lastThrowTime < this.THROW_COOLDOWN) {
+      const remaining = Math.ceil((this.THROW_COOLDOWN - (now - this.lastThrowTime)) / 1000);
+      this.toastManager.warning(`Throw cooldown: ${remaining}s`);
+      return;
+    }
+
+    // Check inventory
+    if (this.walnutInventory <= 0) {
+      this.toastManager.warning('No walnuts to throw!');
+      return;
+    }
+
+    // Calculate throw trajectory (from player position to camera direction)
+    const fromPosition = this.character.position.clone();
+    fromPosition.y += 1.5; // Throw from chest height
+
+    // Get camera direction for aiming
+    const cameraDirection = new THREE.Vector3();
+    this.camera.getWorldDirection(cameraDirection);
+
+    // Calculate target position (15 units in camera direction)
+    const throwRange = 15;
+    const toPosition = fromPosition.clone().add(
+      cameraDirection.multiplyScalar(throwRange)
+    );
+
+    // Ensure target is above terrain
+    const terrainHeight = getTerrainHeight(toPosition.x, toPosition.z);
+    if (toPosition.y < terrainHeight) {
+      toPosition.y = terrainHeight + 1;
+    }
+
+    // Find target entity (player or NPC) in throw direction for aim assist
+    let targetId: string | undefined = undefined;
+    const targetCandidates: Array<{ id: string; position: THREE.Vector3 }> = [];
+
+    // Add all players
+    this.remotePlayers.forEach((player, id) => {
+      targetCandidates.push({ id, position: player.position });
+    });
+
+    // Add all NPCs
+    this.npcs.forEach((npc, id) => {
+      targetCandidates.push({ id, position: npc.position });
+    });
+
+    // Find closest entity within aiming cone (30 degrees)
+    let closestDist = Infinity;
+    const aimConeAngle = Math.PI / 6; // 30 degrees
+
+    for (const candidate of targetCandidates) {
+      const toCandidate = candidate.position.clone().sub(fromPosition).normalize();
+      const angle = cameraDirection.angleTo(toCandidate);
+
+      if (angle < aimConeAngle) {
+        const dist = fromPosition.distanceTo(candidate.position);
+        if (dist < closestDist && dist <= throwRange) {
+          closestDist = dist;
+          targetId = candidate.id;
+          // Update toPosition to aim at target
+          toPosition.copy(candidate.position);
+          toPosition.y += 1; // Aim at center mass
+        }
+      }
+    }
+
+    // Update throw cooldown (optimistic - assume server will accept)
+    this.lastThrowTime = now;
+
+    // Send throw command to server
+    this.sendMessage({
+      type: 'player_throw',
+      fromPosition: {
+        x: fromPosition.x,
+        y: fromPosition.y,
+        z: fromPosition.z
+      },
+      toPosition: {
+        x: toPosition.x,
+        y: toPosition.y,
+        z: toPosition.z
+      },
+      targetId: targetId
+    });
+
+    console.log(`🌰 Throw request sent (inventory: ${this.walnutInventory}, target: ${targetId || 'none'})`);
   }
 
   /**

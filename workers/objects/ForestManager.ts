@@ -27,6 +27,10 @@ interface PlayerConnection {
 
   // MVP 7.1: Position save throttling
   lastPositionSave: number;
+
+  // MVP 8: Combat system
+  walnutInventory: number; // 0-10 walnuts (ammo/health)
+  lastThrowTime: number; // For throw cooldown tracking
 }
 
 interface Walnut {
@@ -586,7 +590,10 @@ export default class ForestManager extends DurableObject {
         sessionToken,
         username,
         // MVP 7.1: Position save throttling
-        lastPositionSave: 0
+        lastPositionSave: 0,
+        // MVP 8: Combat system
+        walnutInventory: 0, // Start with 0 walnuts
+        lastThrowTime: 0
       };
 
       console.log(`✅ New player ${squirrelId} (${username}) connected`);
@@ -761,15 +768,30 @@ export default class ForestManager extends DurableObject {
         if (walnutIndex !== -1) {
           this.mapState[walnutIndex].found = true;
 
+          // MVP 8: Add walnut to player inventory (max 10)
+          const MAX_INVENTORY = 10;
+          if (playerConnection.walnutInventory < MAX_INVENTORY) {
+            playerConnection.walnutInventory++;
+            console.log(`🌰 Player ${playerConnection.squirrelId} now has ${playerConnection.walnutInventory} walnuts`);
+          } else {
+            console.log(`⚠️ Player ${playerConnection.squirrelId} inventory full (${MAX_INVENTORY} walnuts)`);
+          }
+
           // Persist updated mapState
           await this.storage.put('mapState', this.mapState);
 
-          // Broadcast to all other players
+          // Broadcast to all other players (including inventory update)
           this.broadcastToOthers(playerConnection.squirrelId, {
             type: 'walnut_found',
             walnutId: data.walnutId,
             finderId: data.finderId,
             points: data.points
+          });
+
+          // MVP 8: Send inventory update to the player who found it
+          this.sendMessage(playerConnection.socket, {
+            type: 'inventory_update',
+            walnutCount: playerConnection.walnutInventory
           });
         } else {
           console.warn(`⚠️ SERVER: Walnut ${data.walnutId} not found in mapState`);
@@ -803,6 +825,59 @@ export default class ForestManager extends DurableObject {
           type: 'player_emote',
           playerId: data.playerId,
           emote: data.emote
+        });
+        break;
+
+      case "player_throw":
+        // MVP 8: Player throwing walnut
+        const THROW_COOLDOWN = 1500; // 1.5 seconds in milliseconds
+        const throwTime = Date.now();
+
+        // Validate cooldown
+        if (throwTime - playerConnection.lastThrowTime < THROW_COOLDOWN) {
+          console.warn(`🚫 Throw cooldown active for ${playerConnection.squirrelId}`);
+          this.sendMessage(playerConnection.socket, {
+            type: 'throw_rejected',
+            reason: 'cooldown'
+          });
+          return;
+        }
+
+        // Validate inventory
+        if (playerConnection.walnutInventory <= 0) {
+          console.warn(`🚫 No walnuts to throw for ${playerConnection.squirrelId}`);
+          this.sendMessage(playerConnection.socket, {
+            type: 'throw_rejected',
+            reason: 'no_ammo'
+          });
+          return;
+        }
+
+        // Validation passed - process throw
+        playerConnection.lastThrowTime = throwTime;
+        playerConnection.walnutInventory--;
+
+        console.log(`🌰 Player ${playerConnection.squirrelId} threw walnut (${playerConnection.walnutInventory} remaining)`);
+
+        // Broadcast throw event to ALL clients (including thrower for visual feedback)
+        const throwEvent = {
+          type: 'throw_event',
+          throwerId: playerConnection.squirrelId,
+          fromPosition: data.fromPosition,
+          toPosition: data.toPosition,
+          targetId: data.targetId, // Optional - who they're aiming at
+          timestamp: throwTime
+        };
+
+        // Send to all players (they all need to see the projectile)
+        this.activePlayers.forEach((player) => {
+          this.sendMessage(player.socket, throwEvent);
+        });
+
+        // Send inventory update to thrower
+        this.sendMessage(playerConnection.socket, {
+          type: 'inventory_update',
+          walnutCount: playerConnection.walnutInventory
         });
         break;
 
