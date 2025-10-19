@@ -2495,7 +2495,7 @@ export class Game {
    * MVP 8: Handle projectile hitting an entity
    * This is called when ProjectileManager detects a hit
    */
-  private onProjectileHit(data: { projectileId: string; ownerId: string; targetId: string; position: THREE.Vector3 }): void {
+  private onProjectileHit(data: { projectileId: string; ownerId: string; targetId: string; position: THREE.Vector3; mesh: THREE.Group }): void {
     console.log(`🌰 Projectile hit! Owner: ${data.ownerId}, Target: ${data.targetId}`);
 
     // MVP 8: Show "HIT!" feedback to the thrower
@@ -2549,37 +2549,43 @@ export class Game {
       }
     }
 
-    // MVP 8: Drop walnut on ground at hit location (only hit player has cooldown for 1.5s)
-    // Create walnut locally first for immediate visual feedback (optimistic update)
+    // BEST PRACTICE: Transform projectile mesh into pickup walnut (no destroy/recreate)
     const walnutId = `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const groundPos = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
-    const terrainHeight = getTerrainHeight(groundPos.x, groundPos.z);
-    groundPos.y = terrainHeight + 0.15;
 
-    this.createRemoteWalnut({
-      walnutId: walnutId,
-      ownerId: 'game',
-      walnutType: 'ground',
-      position: { x: groundPos.x, y: groundPos.y, z: groundPos.z },
-      points: 1
-    });
+    // Position on terrain
+    const terrainHeight = getTerrainHeight(data.position.x, data.position.z);
+    data.mesh.position.y = terrainHeight + 0.15; // Place on ground
 
-    // Set immunity for hit player locally
-    const droppedWalnut = this.walnuts.get(walnutId);
-    if (droppedWalnut) {
-      droppedWalnut.userData.immunePlayerId = data.targetId;
-      droppedWalnut.userData.immuneUntil = Date.now() + 1500;
-    }
+    // Stop spinning animation (projectile was spinning in flight)
+    data.mesh.rotation.set(0, 0, 0);
 
-    // Then notify server (server will broadcast to other clients)
+    // Update metadata to convert from projectile to pickup
+    data.mesh.userData.id = walnutId;
+    data.mesh.userData.ownerId = 'game';
+    data.mesh.userData.type = 'ground';
+    data.mesh.userData.points = 1;
+    data.mesh.userData.clickPosition = data.mesh.position.clone();
+
+    // Set immunity for hit player
+    data.mesh.userData.immunePlayerId = data.targetId;
+    data.mesh.userData.immuneUntil = Date.now() + 1500;
+
+    // Add to walnuts registry (mesh already in scene from projectile)
+    this.walnuts.set(walnutId, data.mesh);
+
+    // Add label
+    const label = this.createLabel('Dropped Walnut (1 pt)', '#CD853F');
+    this.walnutLabels.set(walnutId, label);
+
+    // Notify server to sync with other clients
     this.sendMessage({
       type: 'spawn_dropped_walnut',
       position: {
-        x: groundPos.x,
-        y: groundPos.y,
-        z: groundPos.z
+        x: data.mesh.position.x,
+        y: data.mesh.position.y,
+        z: data.mesh.position.z
       },
-      immunePlayerId: data.targetId // Only the hit player can't pick it up for 1.5 seconds
+      immunePlayerId: data.targetId
     });
 
     // TODO Phase 3: Apply damage to target
@@ -2588,34 +2594,46 @@ export class Game {
 
   /**
    * MVP 8: Handle projectile missing (hit ground)
-   * Creates a pickupable walnut on the ground at the impact position
+   * BEST PRACTICE: Transform projectile mesh into pickup walnut (no destroy/recreate)
    */
-  private onProjectileMiss(data: { projectileId: string; ownerId: string; position: THREE.Vector3 }): void {
-    console.log(`🌰 Projectile missed! Creating pickupable walnut at position:`, data.position);
+  private onProjectileMiss(data: { projectileId: string; ownerId: string; position: THREE.Vector3; mesh: THREE.Group }): void {
+    console.log(`🌰 Projectile missed! Transforming to pickupable walnut at position:`, data.position);
 
-    // Create walnut locally first for immediate visual feedback (optimistic update)
+    // BEST PRACTICE: Transform projectile mesh into pickup walnut (no destroy/recreate)
     const walnutId = `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const groundPos = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
-    const terrainHeight = getTerrainHeight(groundPos.x, groundPos.z);
-    groundPos.y = terrainHeight + 0.15;
 
-    this.createRemoteWalnut({
-      walnutId: walnutId,
-      ownerId: 'game',
-      walnutType: 'ground',
-      position: { x: groundPos.x, y: groundPos.y, z: groundPos.z },
-      points: 1
-    });
+    // Position on terrain
+    const terrainHeight = getTerrainHeight(data.position.x, data.position.z);
+    data.mesh.position.y = terrainHeight + 0.15; // Place on ground
 
-    // Then notify server (server will broadcast to other clients)
+    // Stop spinning animation (projectile was spinning in flight)
+    data.mesh.rotation.set(0, 0, 0);
+
+    // Update metadata to convert from projectile to pickup
+    data.mesh.userData.id = walnutId;
+    data.mesh.userData.ownerId = 'game';
+    data.mesh.userData.type = 'ground';
+    data.mesh.userData.points = 1;
+    data.mesh.userData.clickPosition = data.mesh.position.clone();
+
+    // No immunity for misses - anyone can pick up immediately
+
+    // Add to walnuts registry (mesh already in scene from projectile)
+    this.walnuts.set(walnutId, data.mesh);
+
+    // Add label
+    const label = this.createLabel('Dropped Walnut (1 pt)', '#CD853F');
+    this.walnutLabels.set(walnutId, label);
+
+    // Notify server to sync with other clients
     this.sendMessage({
       type: 'spawn_dropped_walnut',
       position: {
-        x: groundPos.x,
-        y: groundPos.y,
-        z: groundPos.z
+        x: data.mesh.position.x,
+        y: data.mesh.position.y,
+        z: data.mesh.position.z
       }
-      // No immunity for misses - anyone can pick up
+      // No immunity for misses
     });
   }
 
@@ -4631,7 +4649,6 @@ export class Game {
 
   /**
    * MULTIPLAYER: Create a walnut from network data (when another player hides one)
-   * MVP 8: Prevents duplicate ground walnuts from optimistic updates
    */
   private createRemoteWalnut(data: {
     walnutId: string;
@@ -4645,20 +4662,9 @@ export class Game {
       return;
     }
 
-    // MVP 8: For ground walnuts, check if one already exists at this position
-    // (prevents duplicates from optimistic updates)
-    if (data.walnutType === 'ground') {
-      const pos = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
-      for (const [existingId, existingWalnut] of this.walnuts.entries()) {
-        if (existingWalnut.userData.type === 'ground') {
-          const distance = existingWalnut.position.distanceTo(pos);
-          if (distance < 0.5) { // Within 0.5 units = same walnut
-            console.log(`⚠️ Skipping duplicate ground walnut at (${pos.x.toFixed(1)}, ${pos.z.toFixed(1)})`);
-            return;
-          }
-        }
-      }
-    }
+    // NOTE: For ground walnuts from hits/misses, the local client transforms the projectile
+    // mesh directly. Server broadcasts to OTHER clients who need to create the mesh.
+    // No duplicate detection needed since local client reuses projectile mesh.
 
     const position = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
     let walnutGroup: THREE.Group;

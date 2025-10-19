@@ -231,11 +231,12 @@ export class ProjectileManager {
       }
     });
 
-    // Cleanup projectiles
+    // BEST PRACTICE: Cleanup projectiles from tracking (mesh stays in scene, converted to pickup)
     toRemove.forEach(id => {
       const projectile = this.projectiles.get(id);
       if (projectile) {
-        this.scene.remove(projectile.mesh);
+        // DON'T remove mesh from scene - Game.ts will convert it to pickup
+        // Just stop tracking it as an active projectile (stops physics updates)
         this.projectiles.delete(id);
       }
     });
@@ -327,6 +328,7 @@ export class ProjectileManager {
 
   /**
    * Handle projectile hitting an entity
+   * BEST PRACTICE: Transform projectile mesh into pickup (no destroy/recreate)
    *
    * @param projectile - Projectile that hit
    * @param targetId - ID of entity that was hit
@@ -343,13 +345,14 @@ export class ProjectileManager {
     // TODO Phase 2: Add dedicated hit sound
     // this.audioManager.playSound('hit');
 
-    // Dispatch custom event for Game.ts to handle (damage application)
+    // BEST PRACTICE: Pass mesh reference so Game.ts can convert to pickup (no destroy/recreate)
     const hitEvent = new CustomEvent('projectile-hit', {
       detail: {
         projectileId: projectile.id,
         ownerId: projectile.ownerId,
         targetId: targetId,
-        position: projectile.position
+        position: projectile.position.clone(),
+        mesh: projectile.mesh // Pass mesh to reuse as pickup
       }
     });
     window.dispatchEvent(hitEvent);
@@ -357,6 +360,7 @@ export class ProjectileManager {
 
   /**
    * Handle projectile missing (hit ground)
+   * BEST PRACTICE: Transform projectile mesh into pickup (no destroy/recreate)
    *
    * @param projectile - Projectile that missed
    */
@@ -370,12 +374,13 @@ export class ProjectileManager {
 
     // No sound on miss (keeps it subtle)
 
-    // Dispatch custom event for Game.ts to create pickupable dropped walnut
+    // BEST PRACTICE: Pass mesh reference so Game.ts can convert to pickup (no destroy/recreate)
     const missEvent = new CustomEvent('projectile-miss', {
       detail: {
         projectileId: projectile.id,
         ownerId: projectile.ownerId,
-        position: projectile.position.clone()
+        position: projectile.position.clone(),
+        mesh: projectile.mesh // Pass mesh to reuse as pickup
       }
     });
     window.dispatchEvent(missEvent);
