@@ -1394,12 +1394,14 @@ export class Game {
         // Load existing walnuts from server
         if (Array.isArray(data.mapState)) {
           for (const walnut of data.mapState) {
-            // ALWAYS create golden walnuts (they respawn), only check found status for player walnuts
-            const isGoldenWalnut = walnut.origin === 'game';
+            // MVP 8: Check isGolden flag (true = golden, false/undefined = regular)
+            const isGoldenWalnut = walnut.isGolden === true;
+            const isGameWalnut = walnut.origin === 'game';
 
-            if (isGoldenWalnut || !walnut.found) {
+            // ALWAYS create game walnuts (they respawn), only check found status for player walnuts
+            if (isGameWalnut || !walnut.found) {
               // Convert server Walnut format to client format
-              // Game walnuts (origin='game') should render as golden bonus walnuts
+              // Golden walnuts (isGolden=true) render as golden bonus, others use hiddenIn type
               const walnutType = isGoldenWalnut ? 'game' : walnut.hiddenIn;
 
               // CRITICAL FIX: Skip walnuts with undefined type (corrupted/old data)
@@ -1409,9 +1411,6 @@ export class Game {
               }
 
               const points = isGoldenWalnut ? 5 : (walnut.hiddenIn === 'buried' ? 3 : 1);
-
-              if (isGoldenWalnut) {
-              }
 
               this.createRemoteWalnut({
                 walnutId: walnut.id,

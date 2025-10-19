@@ -41,6 +41,7 @@ interface Walnut {
   location: { x: number, y: number, z: number };
   found: boolean;
   timestamp: number;
+  isGolden?: boolean; // MVP 8: true = golden bonus walnut (5pts), false/undefined = regular (3pts/1pt)
 }
 
 interface ForestObject {
@@ -1095,7 +1096,8 @@ export default class ForestManager extends DurableObject {
         hiddenIn: "buried" as const,
         location: { x: 15, y: 0, z: 15 },
         found: false,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        isGolden: true // MVP 8: Golden bonus walnut (5 pts)
       },
       {
         id: "game-walnut-2",
@@ -1104,7 +1106,8 @@ export default class ForestManager extends DurableObject {
         hiddenIn: "buried" as const,
         location: { x: -12, y: 0, z: 18 },
         found: false,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        isGolden: true // MVP 8: Golden bonus walnut (5 pts)
       },
       {
         id: "game-walnut-3",
@@ -1113,7 +1116,8 @@ export default class ForestManager extends DurableObject {
         hiddenIn: "bush" as const,
         location: { x: 20, y: 0, z: -10 },
         found: false,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        isGolden: true // MVP 8: Golden bonus walnut (5 pts)
       }
     ];
 
@@ -1123,7 +1127,100 @@ export default class ForestManager extends DurableObject {
       this.mapState.push(goldenWalnut);
     }
 
-    console.log(`✅ SERVER: Total walnuts after adding golden: ${this.mapState.length} (3 golden + ${this.mapState.length - 3} player)`);
+    // MVP 8: Add regular game-spawned walnuts (not golden, respawn when found)
+    const regularGameWalnuts: Walnut[] = [
+      // Buried walnuts (3 pts each)
+      {
+        id: "game-regular-buried-1",
+        ownerId: "system",
+        origin: "game" as const,
+        hiddenIn: "buried" as const,
+        location: { x: -25, y: 0, z: 30 },
+        found: false,
+        timestamp: Date.now(),
+        isGolden: false
+      },
+      {
+        id: "game-regular-buried-2",
+        ownerId: "system",
+        origin: "game" as const,
+        hiddenIn: "buried" as const,
+        location: { x: 30, y: 0, z: -25 },
+        found: false,
+        timestamp: Date.now(),
+        isGolden: false
+      },
+      {
+        id: "game-regular-buried-3",
+        ownerId: "system",
+        origin: "game" as const,
+        hiddenIn: "buried" as const,
+        location: { x: -15, y: 0, z: -20 },
+        found: false,
+        timestamp: Date.now(),
+        isGolden: false
+      },
+      // Bush walnuts (1 pt each)
+      {
+        id: "game-regular-bush-1",
+        ownerId: "system",
+        origin: "game" as const,
+        hiddenIn: "bush" as const,
+        location: { x: 18, y: 0, z: 25 },
+        found: false,
+        timestamp: Date.now(),
+        isGolden: false
+      },
+      {
+        id: "game-regular-bush-2",
+        ownerId: "system",
+        origin: "game" as const,
+        hiddenIn: "bush" as const,
+        location: { x: -20, y: 0, z: 12 },
+        found: false,
+        timestamp: Date.now(),
+        isGolden: false
+      },
+      {
+        id: "game-regular-bush-3",
+        ownerId: "system",
+        origin: "game" as const,
+        hiddenIn: "bush" as const,
+        location: { x: 8, y: 0, z: -18 },
+        found: false,
+        timestamp: Date.now(),
+        isGolden: false
+      },
+      // Ground walnuts (1 pt each) - new scope
+      {
+        id: "game-regular-ground-1",
+        ownerId: "system",
+        origin: "game" as const,
+        hiddenIn: "ground" as const,
+        location: { x: 5, y: 0, z: 8 },
+        found: false,
+        timestamp: Date.now(),
+        isGolden: false
+      },
+      {
+        id: "game-regular-ground-2",
+        ownerId: "system",
+        origin: "game" as const,
+        hiddenIn: "ground" as const,
+        location: { x: -8, y: 0, z: -5 },
+        found: false,
+        timestamp: Date.now(),
+        isGolden: false
+      }
+    ];
+
+    // Add all regular game walnuts
+    for (const regularWalnut of regularGameWalnuts) {
+      console.log(`🌰 SERVER: Adding regular game walnut: ${regularWalnut.id} (${regularWalnut.hiddenIn})`);
+      this.mapState.push(regularWalnut);
+    }
+
+    console.log(`✅ SERVER: Total walnuts after adding game walnuts: ${this.mapState.length} (3 golden + ${regularGameWalnuts.length} regular + ${this.mapState.length - 3 - regularGameWalnuts.length} player)`);
 
     await this.storage.put('mapState', this.mapState);
 
