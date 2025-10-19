@@ -2928,22 +2928,40 @@ export class Game {
 
     // Check cooldown
     if (now - this.lastCollisionDamageTime < this.COLLISION_DAMAGE_COOLDOWN) {
+      // DEBUG: Log cooldown status
+      const remainingCooldown = this.COLLISION_DAMAGE_COOLDOWN - (now - this.lastCollisionDamageTime);
+      if (remainingCooldown > 1000) { // Only log if more than 1s remaining
+        console.log(`⏳ Collision damage on cooldown: ${(remainingCooldown / 1000).toFixed(1)}s remaining`);
+      }
       return; // Still on cooldown
     }
 
-    const COLLISION_RADIUS = 1.0; // Distance for collision damage
+    // MVP 8 FIX: Increased from 1.0 to 1.5 - collision system prevents < 0.7 distance
+    // Players have radius 0.5 each, soft collision allows min 0.7 distance
+    // Using 1.5 gives more leeway for damage detection
+    const COLLISION_RADIUS = 1.5; // Distance for collision damage
     const playerPos = this.character.position.clone();
+
+    // DEBUG: Log check every few seconds
+    if (this.remotePlayers.size > 0 && Math.random() < 0.01) { // 1% of frames
+      console.log(`🔍 Checking collision damage against ${this.remotePlayers.size} players...`);
+    }
 
     // Check collisions with remote players
     this.remotePlayers.forEach((remotePlayer, playerId) => {
       const distance = playerPos.distanceTo(remotePlayer.position);
+
+      // DEBUG: Log all distances when close
+      if (distance < 3.0) {
+        console.log(`📏 Distance to player ${playerId}: ${distance.toFixed(2)} units (damage threshold: ${COLLISION_RADIUS})`);
+      }
 
       if (distance < COLLISION_RADIUS) {
         // Collision detected! Apply damage
         this.takeDamage(this.COLLISION_DAMAGE, playerId);
         this.lastCollisionDamageTime = now;
 
-        console.log(`💥 Collision damage from player ${playerId}! Distance: ${distance.toFixed(2)}`);
+        console.log(`💥💥 COLLISION DAMAGE from player ${playerId}! Distance: ${distance.toFixed(2)}, Damage: -${this.COLLISION_DAMAGE} HP`);
 
         // Visual feedback
         this.triggerHitEffects();
