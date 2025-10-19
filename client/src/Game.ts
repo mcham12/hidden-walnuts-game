@@ -3348,12 +3348,13 @@ export class Game {
   /**
    * Create visual indicator for a buried walnut (mound of dirt)
    * MVP 5: Improved to be more rounded and natural-looking
+   * MVP 8: Reduced size for better gameplay visibility
    */
   private createBuriedWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // MVP 8: Show partially buried walnut (walnut shell visible above mound)
-    const walnutGeometry = new THREE.SphereGeometry(0.12, 16, 12);
+    // MVP 8: Show partially buried walnut (walnut shell visible above mound) - smaller size
+    const walnutGeometry = new THREE.SphereGeometry(0.08, 16, 12); // Reduced from 0.12 to 0.08 (33% smaller)
     walnutGeometry.scale(1, 1.2, 1); // Slightly elongated walnut shape
     const walnutMaterial = new THREE.MeshStandardMaterial({
       color: 0x8B4513, // Brown walnut color - stands out from terrain
@@ -3361,13 +3362,13 @@ export class Game {
       metalness: 0.15
     });
     const walnut = new THREE.Mesh(walnutGeometry, walnutMaterial);
-    walnut.position.y = 0.08; // Partially above ground (half visible)
+    walnut.position.y = 0.06; // MVP 8: Adjusted height (reduced from 0.08)
     walnut.castShadow = true;
     walnut.receiveShadow = true;
     group.add(walnut);
 
     // Dirt mound around walnut (smaller, more subtle)
-    const moundGeometry = new THREE.SphereGeometry(0.22, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+    const moundGeometry = new THREE.SphereGeometry(0.16, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2); // Reduced from 0.22 to 0.16
     const moundMaterial = new THREE.MeshStandardMaterial({
       color: 0x5a4a3a, // Lighter soil color (more visible than before)
       roughness: 0.95,
@@ -3495,12 +3496,13 @@ export class Game {
 
   /**
    * Create visual indicator for a game walnut (golden bonus)
+   * MVP 8: Reduced size for better gameplay visibility
    */
   private createGameWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // Walnut-shaped geometry (ellipsoid - slightly elongated sphere) - MUCH SMALLER
-    const geometry = new THREE.SphereGeometry(0.12, 16, 12);
+    // Walnut-shaped geometry (ellipsoid - slightly elongated sphere) - MVP 8: Even smaller
+    const geometry = new THREE.SphereGeometry(0.08, 16, 12); // Reduced from 0.12 to 0.08 (33% smaller)
     geometry.scale(1, 1.3, 1); // Stretch vertically to make walnut shape
 
     // Rich golden-amber color (not bright yellow)
@@ -3508,11 +3510,11 @@ export class Game {
       color: 0xDAA520, // Goldenrod - more natural golden walnut color
     });
     const walnut = new THREE.Mesh(geometry, material);
-    walnut.position.y = 0.12; // Half-buried in ground like a real walnut
+    walnut.position.y = 0.08; // MVP 8: Adjusted height (reduced from 0.12)
     group.add(walnut);
 
     // Subtle golden aura/glow around it
-    const glowGeometry = new THREE.SphereGeometry(0.18, 12, 10);
+    const glowGeometry = new THREE.SphereGeometry(0.12, 12, 10); // Reduced from 0.18 to 0.12
     glowGeometry.scale(1, 1.3, 1);
     const glowMaterial = new THREE.MeshBasicMaterial({
       color: 0xFFD700,
@@ -4566,23 +4568,23 @@ export class Game {
     // Remove the walnut from the world
     this.removeWalnut(walnutId);
 
-    // MVP 8: Play eating animation (all characters) - slower for emphasis + block movement
+    // MVP 8: Play eating animation (all characters) - block movement for 1 second
     if (this.actions['eat']) {
       console.log('🍽️ Playing eat animation for local player');
       const eatAction = this.actions['eat'];
       const normalDuration = eatAction.getClip().duration * 1000; // ms
-      eatAction.timeScale = 0.7; // Slow down to 70% speed (30% longer)
+      eatAction.timeScale = 1.0; // Normal speed (snappier)
 
-      // MVP 8: Block movement for 1.5 seconds during eat animation
+      // MVP 8: Block movement for 1 second during eat animation
       this.isEatingWalnut = true;
       this.velocity.set(0, 0, 0); // Stop current movement
 
-      this.playOneShotAnimation('eat', normalDuration * 1.43); // 1/0.7 = 1.43x longer
+      this.playOneShotAnimation('eat', normalDuration); // Normal duration
 
-      // Clear eating flag after 1.5 seconds
+      // Clear eating flag after 1 second
       setTimeout(() => {
         this.isEatingWalnut = false;
-      }, 1500);
+      }, 1000);
     } else {
       console.warn('⚠️ Eat animation not available for local player!');
     }

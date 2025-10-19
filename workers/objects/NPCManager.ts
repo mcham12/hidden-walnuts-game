@@ -75,7 +75,7 @@ export class NPCManager {
   // Throw configuration
   private readonly THROW_MIN_RANGE = 5;
   private readonly THROW_MAX_RANGE = 15;
-  private readonly THROW_COOLDOWN = 2000; // MVP 8: Reduced from 3s to 2s for more active combat
+  private readonly THROW_COOLDOWN = 1200; // MVP 8: Reduced from 2s to 1.2s for very active combat
   private readonly MAX_INVENTORY = 5;
 
   // Character types (all 11 available from characters.json)
@@ -170,16 +170,16 @@ export class NPCManager {
     };
 
     // Random aggression level
-    // MVP 8: Increased aggression for more active combat
-    // 30% neutral (0.4-0.6), 40% aggressive (0.6-0.8), 30% very aggressive (0.8-1.0)
+    // MVP 8: Increased aggression for very active combat
+    // 20% neutral (0.5-0.7), 30% aggressive (0.7-0.85), 50% very aggressive (0.85-1.0)
     const rand = Math.random();
     let aggressionLevel: number;
-    if (rand < 0.3) {
-      aggressionLevel = 0.4 + Math.random() * 0.2; // Neutral (was Passive)
-    } else if (rand < 0.7) {
-      aggressionLevel = 0.6 + Math.random() * 0.2; // Aggressive
+    if (rand < 0.2) {
+      aggressionLevel = 0.5 + Math.random() * 0.2; // Neutral (minimum 0.5)
+    } else if (rand < 0.5) {
+      aggressionLevel = 0.7 + Math.random() * 0.15; // Aggressive
     } else {
-      aggressionLevel = 0.8 + Math.random() * 0.2; // Very Aggressive (new tier)
+      aggressionLevel = 0.85 + Math.random() * 0.15; // Very Aggressive - MOST NPCs
     }
 
     return {
@@ -383,12 +383,12 @@ export class NPCManager {
     nearbyNPCs: NPC[],
     nearbyWalnuts: Walnut[]
   ): NPCBehavior {
-    // MVP 8: PRIORITY - Approach players if has walnuts (increased from aggression > 0.5 to > 0.3)
+    // MVP 8: PRIORITY - Approach players if has walnuts (very aggressive)
     // Players are high-value targets for combat
     const nearbyEntities = [...nearbyPlayers, ...nearbyNPCs];
     if (nearbyPlayers.length > 0 && npc.walnutInventory > 0 && npc.aggressionLevel > 0.3) {
-      // MVP 8: Increased chance from aggressionLevel to aggressionLevel * 1.5 (more aggressive)
-      if (Math.random() < Math.min(0.9, npc.aggressionLevel * 1.5)) {
+      // MVP 8: Increased chance to aggressionLevel * 2.0 (very aggressive targeting)
+      if (Math.random() < Math.min(0.95, npc.aggressionLevel * 2.0)) {
         return NPCBehavior.APPROACH;
       }
     }
@@ -400,15 +400,15 @@ export class NPCManager {
       }
     }
 
-    // Default behavior distribution (MVP 8: Reduced idle time for more active NPCs)
+    // Default behavior distribution (MVP 8: Very active NPCs with minimal idle time)
     const rand = Math.random();
 
-    if (rand < 0.40) {
-      return NPCBehavior.IDLE; // MVP 8: Reduced from 60% to 40% idle
-    } else if (rand < 0.75) {
-      return NPCBehavior.WANDER; // MVP 8: Increased from 30% to 35% wander
+    if (rand < 0.25) {
+      return NPCBehavior.IDLE; // MVP 8: Reduced from 40% to 25% idle
+    } else if (rand < 0.60) {
+      return NPCBehavior.WANDER; // MVP 8: Increased from 35% to 35% wander
     } else {
-      // 25% split between gather/approach (increased from 10%)
+      // 40% split between gather/approach (increased from 25%)
       if (nearbyWalnuts.length > 0 && npc.walnutInventory < 4) {
         return NPCBehavior.GATHER;
       } else if (nearbyEntities.length > 0 && npc.walnutInventory > 0) {
@@ -672,6 +672,7 @@ export class NPCManager {
 
   /**
    * Throw walnut at target entity
+   * MVP 8: Added aim prediction to lead moving targets for better accuracy
    */
   private throwWalnutAtTarget(npc: NPC, target: any): void {
     if (npc.walnutInventory === 0) {
@@ -682,19 +683,31 @@ export class NPCManager {
     npc.walnutInventory--;
     npc.lastThrowTime = Date.now();
 
-    // Calculate throw trajectory
-    const dx = target.position.x - npc.position.x;
-    const dz = target.position.z - npc.position.z;
-    const distance = Math.sqrt(dx * dx + dz * dz);
+    // MVP 8: Predict target position based on velocity
+    // Projectile flight time is 0.5s (from ProjectileManager.ts line 39)
+    const FLIGHT_TIME = 0.5;
 
-    // Broadcast throw message
+    // Get target velocity (players have velocity property, NPCs use npc.velocity)
+    let targetVelocity = { x: 0, z: 0 };
+    if ('velocity' in target && target.velocity) {
+      targetVelocity = target.velocity;
+    }
+
+    // Predict where target will be after flight time
+    const predictedPosition = {
+      x: target.position.x + targetVelocity.x * FLIGHT_TIME,
+      y: target.position.y,
+      z: target.position.z + targetVelocity.z * FLIGHT_TIME
+    };
+
+    // Broadcast throw message with predicted position
     // MVP 7.1: Removed logging to reduce DO CPU usage
     this.forestManager.broadcastToAll({
       type: 'npc_throw',
       npcId: npc.id,
       npcName: npc.username,
       fromPosition: { ...npc.position },
-      toPosition: { ...target.position },
+      toPosition: predictedPosition, // MVP 8: Use predicted position instead of current
       targetId: 'squirrelId' in target ? target.squirrelId : target.id,
       timestamp: Date.now()
     });
