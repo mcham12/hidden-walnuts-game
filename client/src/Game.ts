@@ -206,7 +206,6 @@ export class Game {
   private lastThrowTime: number = 0; // For throw cooldown tracking
   private readonly THROW_COOLDOWN = 1500; // 1.5 seconds in milliseconds
   // Note: MAX_INVENTORY enforced server-side (10 walnuts)
-  // Test: Verifying GitHub Actions-only deployment
 
   // MVP 5: Toast notification system
   private toastManager: ToastManager = new ToastManager();
