@@ -2550,12 +2550,34 @@ export class Game {
     }
 
     // MVP 8: Drop walnut on ground at hit location (only hit player has cooldown for 1.5s)
+    // Create walnut locally first for immediate visual feedback (optimistic update)
+    const walnutId = `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const groundPos = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
+    const terrainHeight = getTerrainHeight(groundPos.x, groundPos.z);
+    groundPos.y = terrainHeight + 0.15;
+
+    this.createRemoteWalnut({
+      walnutId: walnutId,
+      ownerId: 'game',
+      walnutType: 'ground',
+      position: { x: groundPos.x, y: groundPos.y, z: groundPos.z },
+      points: 1
+    });
+
+    // Set immunity for hit player locally
+    const droppedWalnut = this.walnuts.get(walnutId);
+    if (droppedWalnut) {
+      droppedWalnut.userData.immunePlayerId = data.targetId;
+      droppedWalnut.userData.immuneUntil = Date.now() + 1500;
+    }
+
+    // Then notify server (server will broadcast to other clients)
     this.sendMessage({
       type: 'spawn_dropped_walnut',
       position: {
-        x: data.position.x,
-        y: data.position.y,
-        z: data.position.z
+        x: groundPos.x,
+        y: groundPos.y,
+        z: groundPos.z
       },
       immunePlayerId: data.targetId // Only the hit player can't pick it up for 1.5 seconds
     });
@@ -2571,15 +2593,29 @@ export class Game {
   private onProjectileMiss(data: { projectileId: string; ownerId: string; position: THREE.Vector3 }): void {
     console.log(`🌰 Projectile missed! Creating pickupable walnut at position:`, data.position);
 
-    // Send message to server to create a pickupable "ground" walnut
-    // The server will spawn it and broadcast to all clients
+    // Create walnut locally first for immediate visual feedback (optimistic update)
+    const walnutId = `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const groundPos = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
+    const terrainHeight = getTerrainHeight(groundPos.x, groundPos.z);
+    groundPos.y = terrainHeight + 0.15;
+
+    this.createRemoteWalnut({
+      walnutId: walnutId,
+      ownerId: 'game',
+      walnutType: 'ground',
+      position: { x: groundPos.x, y: groundPos.y, z: groundPos.z },
+      points: 1
+    });
+
+    // Then notify server (server will broadcast to other clients)
     this.sendMessage({
       type: 'spawn_dropped_walnut',
       position: {
-        x: data.position.x,
-        y: data.position.y,
-        z: data.position.z
+        x: groundPos.x,
+        y: groundPos.y,
+        z: groundPos.z
       }
+      // No immunity for misses - anyone can pick up
     });
   }
 
@@ -3586,8 +3622,8 @@ export class Game {
   private createGroundWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // Simple walnut-shaped geometry (ellipsoid) - MUCH SMALLER
-    const geometry = new THREE.SphereGeometry(0.1, 16, 12);
+    // Simple walnut-shaped geometry (ellipsoid) - MVP 8: Very small
+    const geometry = new THREE.SphereGeometry(0.06, 16, 12); // Reduced from 0.1 to 0.06 (40% smaller)
     geometry.scale(1, 1.2, 1); // Slightly elongated
 
     // Natural brown walnut color
@@ -4595,6 +4631,7 @@ export class Game {
 
   /**
    * MULTIPLAYER: Create a walnut from network data (when another player hides one)
+   * MVP 8: Prevents duplicate ground walnuts from optimistic updates
    */
   private createRemoteWalnut(data: {
     walnutId: string;
@@ -4606,6 +4643,21 @@ export class Game {
     // Don't create if already exists
     if (this.walnuts.has(data.walnutId)) {
       return;
+    }
+
+    // MVP 8: For ground walnuts, check if one already exists at this position
+    // (prevents duplicates from optimistic updates)
+    if (data.walnutType === 'ground') {
+      const pos = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
+      for (const [existingId, existingWalnut] of this.walnuts.entries()) {
+        if (existingWalnut.userData.type === 'ground') {
+          const distance = existingWalnut.position.distanceTo(pos);
+          if (distance < 0.5) { // Within 0.5 units = same walnut
+            console.log(`⚠️ Skipping duplicate ground walnut at (${pos.x.toFixed(1)}, ${pos.z.toFixed(1)})`);
+            return;
+          }
+        }
+      }
     }
 
     const position = new THREE.Vector3(data.position.x, data.position.y, data.position.z);

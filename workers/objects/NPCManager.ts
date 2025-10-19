@@ -305,16 +305,21 @@ export class NPCManager {
 
   /**
    * Find nearby walnuts within radius (only unfound walnuts)
-   * MVP 8: NPCs can always pick up walnuts (immunity only applies to specific hit players)
+   * MVP 8: NPCs respect immunity when THEY are the immune entity
    */
   private findNearbyWalnuts(npc: NPC, radius: number): Walnut[] {
     const nearby: Walnut[] = [];
+    const now = Date.now();
 
     for (const walnut of this.forestManager.mapState) {
       if (walnut.found) continue; // Skip already found walnuts
 
-      // MVP 8: NPCs ignore immunity (immunity only applies to specific players who were hit)
-      // This is intentional - NPCs can pick up any walnut on the ground
+      // MVP 8: Check if THIS NPC is immune to this specific walnut (was hit by it)
+      if (walnut.immunePlayerId === npc.id && walnut.immuneUntil) {
+        if (now < walnut.immuneUntil) {
+          continue; // This NPC is still immune to this walnut
+        }
+      }
 
       const distance = this.getDistance2D(npc.position, walnut.location);
       if (distance <= radius) {
