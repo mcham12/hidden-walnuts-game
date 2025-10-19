@@ -1062,10 +1062,20 @@ export class Game {
     this.actualVelocity.y = this.velocity.y;
     this.actualVelocity.z = this.velocity.z;
 
-    // MVP 5: Spawn footstep dust particles when moving on ground (subtle)
+    // STANDARD: Use raycasting for precise ground detection (prevents sinking)
+    this.snapToGround();
+
+    // MVP 5.5: Update player collision position
+    if (this.collisionSystem) {
+      this.collisionSystem.updateColliderPosition(this.playerId, this.character.position);
+    }
+
+    // Calculate horizontal speed once (reused for footsteps and animations)
     const horizontalSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
+    const currentTime = performance.now();
+
+    // MVP 5: Spawn footstep dust particles when moving on ground (subtle)
     if (horizontalSpeed > 1.0 && this.vfxManager) {
-      const currentTime = performance.now();
       if (currentTime - this.lastFootstepTime >= this.footstepInterval) {
         // Spawn subtle dust particles at character's feet
         const footPosition = this.character.position.clone();
@@ -1075,17 +1085,8 @@ export class Game {
       }
     }
 
-    // STANDARD: Use raycasting for precise ground detection (prevents sinking)
-    this.snapToGround();
-
-    // MVP 5.5: Update player collision position
-    if (this.collisionSystem) {
-      this.collisionSystem.updateColliderPosition(this.playerId, this.character.position);
-    }
-
     // INDUSTRY STANDARD: Animation state machine with hysteresis
-    const currentTime = performance.now() / 1000; // Convert to seconds
-    const horizontalSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
+    const animationTime = currentTime / 1000; // Convert to seconds for animation timing
 
     // Determine what animation should be playing
     let animation = 'idle';
@@ -1099,9 +1100,9 @@ export class Game {
     if (!this.emoteInProgress &&
         !this.isPlayingOneShotAnimation &&
         animation !== this.currentAnimationName &&
-        (currentTime - this.lastAnimationChangeTime) >= this.animationChangeDelay) {
+        (animationTime - this.lastAnimationChangeTime) >= this.animationChangeDelay) {
       this.setAction(animation);
-      this.lastAnimationChangeTime = currentTime;
+      this.lastAnimationChangeTime = animationTime;
     }
 
     // MVP 5: Idle variation system (Squirrel-first feature)
