@@ -1599,11 +1599,16 @@ export class Game {
           points: 1 // Same as bush walnut
         });
 
-        // MVP 8: Set immunity for specific player if hit (miss = no immunity)
+        // MVP 8 FIX: Add settling delay to remote dropped walnuts
         const droppedWalnut = this.walnuts.get(data.walnutId);
-        if (droppedWalnut && data.immunePlayerId) {
-          droppedWalnut.userData.immunePlayerId = data.immunePlayerId;
-          droppedWalnut.userData.immuneUntil = data.immuneUntil;
+        if (droppedWalnut) {
+          droppedWalnut.userData.settlingUntil = Date.now() + 500; // Match local settling time
+
+          // Legacy immunity (now using settling delay instead)
+          if (data.immunePlayerId) {
+            droppedWalnut.userData.immunePlayerId = data.immunePlayerId;
+            droppedWalnut.userData.immuneUntil = data.immuneUntil;
+          }
         }
         break;
 
@@ -2686,9 +2691,12 @@ export class Game {
     data.mesh.userData.points = 1;
     data.mesh.userData.clickPosition = data.mesh.position.clone();
 
-    // Set immunity for hit player
-    data.mesh.userData.immunePlayerId = data.targetId;
-    data.mesh.userData.immuneUntil = Date.now() + 1500;
+    // MVP 8 FIX: Add settling delay so walnut is visible before being pickupable
+    // Prevents instant auto-pickup at close range (looks like walnut disappeared)
+    data.mesh.userData.settlingUntil = Date.now() + 500; // 0.5 second visual settling time
+
+    // MVP 8: Immunity removed - thrower should be able to pick up (advantage over stunned target)
+    // Target is stunned for 1.5s anyway, so they can't pick it up during that time
 
     // Add to walnuts registry (mesh already in scene from projectile)
     this.walnuts.set(walnutId, data.mesh);
@@ -2704,8 +2712,8 @@ export class Game {
         x: data.mesh.position.x,
         y: data.mesh.position.y,
         z: data.mesh.position.z
-      },
-      immunePlayerId: data.targetId
+      }
+      // No immunity - settling delay handles visual timing instead
     });
 
     // TODO Phase 3: Apply damage to target
@@ -2741,7 +2749,10 @@ export class Game {
     data.mesh.userData.points = 1;
     data.mesh.userData.clickPosition = data.mesh.position.clone();
 
-    // No immunity for misses - anyone can pick up immediately
+    // MVP 8 FIX: Add settling delay for visual feedback (same as hits)
+    data.mesh.userData.settlingUntil = Date.now() + 500; // 0.5 second visual settling time
+
+    // No immunity for misses - anyone can pick up after settling delay
 
     // Add to walnuts registry (mesh already in scene from projectile)
     this.walnuts.set(walnutId, data.mesh);
@@ -4502,10 +4513,15 @@ export class Game {
 
     // Check each walnut for proximity
     this.walnuts.forEach((walnutGroup, walnutId) => {
-      // MVP 8: Skip walnuts where THIS PLAYER is immune (hit by projectile)
+      // MVP 8 FIX: Skip walnuts that are still settling (just landed from projectile)
+      if (walnutGroup.userData.settlingUntil && now < walnutGroup.userData.settlingUntil) {
+        return; // Walnut still settling, not yet pickupable
+      }
+
+      // MVP 8: Skip walnuts where THIS PLAYER is immune (legacy - now using settling delay instead)
       if (walnutGroup.userData.immunePlayerId === this.playerId && walnutGroup.userData.immuneUntil) {
         if (now < walnutGroup.userData.immuneUntil) {
-          return; // This player is still immune (was hit), skip this walnut
+          return; // This player is still immune (threw it), skip this walnut
         }
       }
 
@@ -4693,10 +4709,16 @@ export class Game {
   private findWalnut(walnutId: string, walnutGroup: THREE.Group): void {
     if (!this.character) return;
 
-    // MVP 8 FIX: Check immunity FIRST (before distance check)
-    // Prevents hit players from immediately picking up the walnut that hit them
+    const now = Date.now();
+
+    // MVP 8 FIX: Check settling delay FIRST (walnut just landed from projectile)
+    if (walnutGroup.userData.settlingUntil && now < walnutGroup.userData.settlingUntil) {
+      console.log(`⏳ Walnut ${walnutId} is settling (${Math.round((walnutGroup.userData.settlingUntil - now))}ms remaining)`);
+      return; // Walnut still settling, not yet pickupable
+    }
+
+    // MVP 8: Check immunity (legacy - now using settling delay instead)
     if (walnutGroup.userData.immunePlayerId === this.playerId && walnutGroup.userData.immuneUntil) {
-      const now = Date.now();
       if (now < walnutGroup.userData.immuneUntil) {
         console.log(`⚠️ Player is immune to walnut ${walnutId} (${Math.round((walnutGroup.userData.immuneUntil - now) / 1000)}s remaining)`);
         return; // Player is still immune, cannot pick up
