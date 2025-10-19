@@ -105,6 +105,7 @@ export class Game {
   // INDUSTRY STANDARD: Animation state machine with hysteresis (prevents rapid state oscillation)
   private lastAnimationChangeTime: number = 0;
   private animationChangeDelay: number = 0.1; // Minimum 100ms between animation changes
+  private lastFlagCheckTime: number = 0; // BEST PRACTICE: Watchdog for stuck animation flags
 
   // MVP 5: Enhanced character animations (Squirrel-first)
   private lastIdleVariationTime: number = 0;
@@ -518,8 +519,54 @@ export class Game {
   }
 
   /**
+   * BEST PRACTICE: Reset animation state machine to clean state
+   * Called when animations get stuck or on major state transitions (respawn, etc)
+   */
+  private resetAnimationState(): void {
+    console.log('🔧 EMERGENCY: Resetting animation state machine');
+
+    // Clear ALL animation control flags
+    this.isPlayingOneShotAnimation = false;
+    this.emoteInProgress = false;
+    this.isStunned = false;
+    this.isEatingWalnut = false;
+
+    // Stop ALL running animations
+    for (const action of Object.values(this.actions)) {
+      if (action.isRunning()) {
+        action.stop();
+      }
+      // Reset timeScale to prevent stuck slow-motion
+      action.timeScale = 1.0;
+    }
+
+    // Determine correct animation based on current movement state
+    if (this.character && !this.isDead) {
+      const horizontalSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
+
+      let targetAnimation = 'idle';
+      if (horizontalSpeed > 0.5) {
+        const isRunning = this.keys.has('shift');
+        targetAnimation = isRunning ? 'run' : 'walk';
+      }
+
+      // Start fresh with correct animation
+      if (this.actions[targetAnimation]) {
+        const action = this.actions[targetAnimation];
+        action.reset();
+        action.setLoop(THREE.LoopRepeat, Infinity);
+        action.play();
+        this.currentAction = action;
+        this.currentAnimationName = targetAnimation;
+        console.log(`✅ Reset complete: Now playing ${targetAnimation}`);
+      }
+    }
+  }
+
+  /**
    * MVP 5: Play a one-shot animation (like eating, spinning) that returns to idle when finished
    * MVP 8 FIX: Improved state management to prevent stuck animations
+   * BEST PRACTICE: Returns to APPROPRIATE animation based on movement state
    * @param name Animation name to play
    * @param returnToIdleDelay Optional delay before returning to idle (default: auto-detect from animation duration)
    */
@@ -553,15 +600,28 @@ export class Game {
     // Calculate when to return to idle
     const duration = returnToIdleDelay ?? newAction.getClip().duration * 1000; // Convert to ms
 
-    console.log(`🎬 Playing one-shot animation: ${name}, duration: ${duration}ms, will return to idle`);
+    console.log(`🎬 Playing one-shot animation: ${name}, duration: ${duration}ms`);
 
-    // Return to idle after animation completes
+    // MVP 8 FIX: Return to APPROPRIATE animation after completion (not always idle!)
     setTimeout(() => {
       this.isPlayingOneShotAnimation = false;
-      // Only return to idle if we're still playing this animation (prevent race conditions)
-      if (this.currentAnimationName === name && !this.isDead) {
-        console.log(`🔄 Returning to idle after ${name} animation`);
-        this.setAction('idle');
+
+      // Only transition if we're still playing this animation (prevent race conditions)
+      if (this.currentAnimationName === name && !this.isDead && this.character) {
+        // Calculate current horizontal speed to determine correct animation
+        const horizontalSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
+
+        // Determine appropriate animation based on movement state
+        let targetAnimation = 'idle';
+        if (horizontalSpeed > 0.5) {
+          const isRunning = this.keys.has('shift');
+          targetAnimation = isRunning ? 'run' : 'walk';
+          console.log(`🔄 Returning to ${targetAnimation} after ${name} (moving: ${horizontalSpeed.toFixed(2)} units/s)`);
+        } else {
+          console.log(`🔄 Returning to idle after ${name} (stationary)`);
+        }
+
+        this.setAction(targetAnimation);
       }
     }, duration);
   }
@@ -1150,14 +1210,40 @@ export class Game {
       animation = isRunning ? 'run' : 'walk';
     }
 
-    // Only change animation if different AND enough time has passed (hysteresis)
-    // AND if no emote is playing AND if not playing a one-shot animation
+    // BEST PRACTICE: Watchdog - detect stuck animations and force reset
+    // If we should be in a different animation but flags are preventing it for too long, reset
+    const STUCK_ANIMATION_THRESHOLD = 5.0; // 5 seconds
     if (!this.emoteInProgress &&
         !this.isPlayingOneShotAnimation &&
-        animation !== this.currentAnimationName &&
-        (animationTime - this.lastAnimationChangeTime) >= this.animationChangeDelay) {
-      this.setAction(animation);
-      this.lastAnimationChangeTime = animationTime;
+        animation !== this.currentAnimationName) {
+
+      // Check if enough time has passed to change animation
+      if ((animationTime - this.lastAnimationChangeTime) >= this.animationChangeDelay) {
+        this.setAction(animation);
+        this.lastAnimationChangeTime = animationTime;
+      } else if ((animationTime - this.lastAnimationChangeTime) >= STUCK_ANIMATION_THRESHOLD) {
+        // Animation has been stuck in wrong state for too long - force reset
+        console.warn(`⚠️ Animation stuck in ${this.currentAnimationName} (should be ${animation}) for ${(animationTime - this.lastAnimationChangeTime).toFixed(1)}s - forcing reset`);
+        this.resetAnimationState();
+        this.lastAnimationChangeTime = animationTime;
+      }
+    }
+
+    // BEST PRACTICE: Detect if flags are stuck (safety check)
+    if (this.isPlayingOneShotAnimation || this.emoteInProgress) {
+      // These flags should only be true during animations
+      // If they're stuck true for too long, something went wrong
+      if (!this.lastFlagCheckTime) {
+        this.lastFlagCheckTime = animationTime;
+      } else if ((animationTime - this.lastFlagCheckTime) >= 10.0) {
+        // Flags have been stuck for 10+ seconds - definitely a bug
+        console.error(`🚨 Animation flags stuck for 10+ seconds! isPlayingOneShotAnimation: ${this.isPlayingOneShotAnimation}, emoteInProgress: ${this.emoteInProgress}`);
+        this.resetAnimationState();
+        this.lastFlagCheckTime = animationTime;
+      }
+    } else {
+      // Flags are clear, reset the timer
+      this.lastFlagCheckTime = animationTime;
     }
 
     // MVP 5: Idle variation system (Squirrel-first feature)
@@ -3105,36 +3191,8 @@ export class Game {
       // Reset velocity
       this.velocity.set(0, 0, 0);
 
-      // MVP 8 FIX: Comprehensive animation state reset (fixes stuck animations)
-      // Clear all animation flags
-      this.isPlayingOneShotAnimation = false;
-      this.emoteInProgress = false;
-      this.isStunned = false;
-      this.isEatingWalnut = false;
-
-      // Stop current action completely
-      if (this.currentAction) {
-        this.currentAction.stop();
-        this.currentAction = null;
-      }
-
-      // Force reset to idle animation with proper setup
-      if (this.actions['idle']) {
-        const idleAction = this.actions['idle'];
-        // Stop all other animations first
-        for (const action of Object.values(this.actions)) {
-          if (action.isRunning()) {
-            action.stop();
-          }
-        }
-        // Start idle fresh
-        idleAction.reset();
-        idleAction.setLoop(THREE.LoopRepeat, Infinity);
-        idleAction.play();
-        this.currentAction = idleAction;
-        this.currentAnimationName = 'idle';
-        console.log('🔄 Animation state completely reset to idle');
-      }
+      // BEST PRACTICE: Use centralized animation reset
+      this.resetAnimationState();
     }
 
     // Request respawn from server (notify server of new position)
