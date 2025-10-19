@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { VFXManager } from './VFXManager';
 import { AudioManager } from './AudioManager';
+import { getTerrainHeight } from './terrain.js';
 
 /**
  * MVP 8: ProjectileManager
@@ -213,8 +214,10 @@ export class ProjectileManager {
       projectile.mesh.rotation.x += delta * 10;
       projectile.mesh.rotation.y += delta * 15;
 
-      // Check if hit ground
-      if (projectile.position.y <= 0.5) {
+      // MVP 8 FIX: Check if hit ground using actual terrain height at projectile position
+      const terrainAtProjectile = getTerrainHeight(projectile.position.x, projectile.position.z);
+      const groundBuffer = 0.1; // Small buffer to trigger slightly before visual ground contact
+      if (projectile.position.y <= terrainAtProjectile + groundBuffer) {
         projectile.hasHit = true;
         this.onProjectileMiss(projectile);
         toRemove.push(id);

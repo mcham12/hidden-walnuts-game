@@ -2658,9 +2658,9 @@ export class Game {
     // BEST PRACTICE: Transform projectile mesh into pickup walnut (no destroy/recreate)
     const walnutId = `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // Position on terrain
+    // MVP 8 FIX: Position on terrain (walnut center at radius above ground so bottom touches)
     const terrainHeight = getTerrainHeight(data.position.x, data.position.z);
-    data.mesh.position.y = terrainHeight + 0.15; // Place on ground
+    data.mesh.position.y = terrainHeight + (this.WALNUT_SIZE / 2); // Radius offset so bottom touches ground
 
     // Stop spinning animation (projectile was spinning in flight)
     data.mesh.rotation.set(0, 0, 0);
@@ -2708,9 +2708,9 @@ export class Game {
     // BEST PRACTICE: Transform projectile mesh into pickup walnut (no destroy/recreate)
     const walnutId = `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // Position on terrain
+    // MVP 8 FIX: Position on terrain (walnut center at radius above ground so bottom touches)
     const terrainHeight = getTerrainHeight(data.position.x, data.position.z);
-    data.mesh.position.y = terrainHeight + 0.15; // Place on ground
+    data.mesh.position.y = terrainHeight + (this.WALNUT_SIZE / 2); // Radius offset so bottom touches ground
 
     // Stop spinning animation (projectile was spinning in flight)
     data.mesh.rotation.set(0, 0, 0);
@@ -4829,7 +4829,7 @@ export class Game {
       case 'ground':
         // MVP 8: Dropped walnut from thrown projectile (on ground surface, not buried)
         const groundHeight = getTerrainHeight(position.x, position.z);
-        position.y = groundHeight + 0.15; // Slightly above ground so it's visible
+        position.y = groundHeight + (this.WALNUT_SIZE / 2); // MVP 8 FIX: Radius offset so bottom touches ground
         walnutGroup = this.createGroundWalnutVisual(position);
         labelText = 'Dropped Walnut (1 pt)';
         labelColor = '#CD853F'; // Peru/tan color
