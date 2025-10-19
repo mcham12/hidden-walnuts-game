@@ -97,23 +97,29 @@ export class NPCManager {
   spawnNPCs(): void {
     const playerCount = this.forestManager.activePlayers.size;
 
+    console.log(`🤖 NPC Spawn Check: ${this.npcs.size} NPCs exist, ${playerCount} players, MAX=${this.MAX_NPCS}`);
+
     // Don't spawn if too many players
-    // MVP 7.1: Removed logging to reduce DO CPU usage
     if (playerCount >= this.DESPAWN_PLAYER_THRESHOLD) {
+      console.log(`⚠️ Too many players (${playerCount} >= ${this.DESPAWN_PLAYER_THRESHOLD}), skipping NPC spawn`);
       return;
     }
 
     // Spawn NPCs up to MAX_NPCS
     const npcsToSpawn = this.MAX_NPCS - this.npcs.size;
+    console.log(`🤖 Spawning ${npcsToSpawn} NPCs...`);
 
     for (let i = 0; i < npcsToSpawn; i++) {
       const npc = this.createNPC();
       this.npcs.set(npc.id, npc);
 
+      console.log(`✅ Created NPC: ${npc.id} (${npc.username})`);
+
       // Broadcast NPC spawn to all players
-      // MVP 7.1: Removed logging to reduce DO CPU usage
       this.broadcastNPCSpawn(npc);
     }
+
+    console.log(`🎯 NPC spawn complete: ${this.npcs.size} total NPCs`);
   }
 
   /**

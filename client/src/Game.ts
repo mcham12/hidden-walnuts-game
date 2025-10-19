@@ -1582,8 +1582,12 @@ export class Game {
 
       case 'npc_spawned':
         // MVP 7: NPC spawned on server, create NPC entity on client
+        console.log('📨 Received npc_spawned message:', data.npc);
         if (data.npc && data.npc.id) {
+          console.log(`🤖 Creating NPC client-side: ${data.npc.id} (${data.npc.username})`);
           this.createNPC(data.npc.id, data.npc.position, data.npc.rotationY, data.npc.characterId, data.npc.username, data.npc.animation);
+        } else {
+          console.error('❌ Invalid npc_spawned data:', data);
         }
         break;
 

@@ -545,6 +545,12 @@ export default class ForestManager extends DurableObject {
       await this.sendWorldState(socket, existingPlayer.position, existingPlayer.rotationY);
       await this.sendExistingPlayers(socket, squirrelId);
 
+      // MVP 8 FIX: Spawn NPCs if none exist (they may have been despawned when last player left)
+      if (this.npcManager.getNPCCount() === 0) {
+        console.log('🔄 No NPCs exist, spawning fresh batch...');
+        this.npcManager.spawnNPCs();
+      }
+
       // MVP 7: Send existing NPCs to reconnecting player
       await this.sendExistingNPCs(socket);
 
@@ -652,6 +658,12 @@ export default class ForestManager extends DurableObject {
       // Send initial data with spawn position (MVP 6: may be saved position or default)
       await this.sendWorldState(socket, playerConnection.position, playerConnection.rotationY);
       await this.sendExistingPlayers(socket, squirrelId);
+
+      // MVP 8 FIX: Spawn NPCs if none exist (they may have been despawned when last player left)
+      if (this.npcManager.getNPCCount() === 0) {
+        console.log('🔄 No NPCs exist, spawning fresh batch...');
+        this.npcManager.spawnNPCs();
+      }
 
       // MVP 7: Send existing NPCs to new player
       await this.sendExistingNPCs(socket);
@@ -986,10 +998,12 @@ export default class ForestManager extends DurableObject {
    */
   private async sendExistingNPCs(socket: WebSocket): Promise<void> {
     const existingNPCs = this.npcManager.getNPCs();
+    console.log(`📤 sendExistingNPCs called: ${existingNPCs.length} NPCs exist`);
 
     if (existingNPCs.length > 0) {
       // Send each NPC as an npc_spawned message
       for (const npc of existingNPCs) {
+        console.log(`  → Sending NPC ${npc.id} (${npc.username}) to new player`);
         this.sendMessage(socket, {
           type: 'npc_spawned',
           npc: {
@@ -1003,6 +1017,8 @@ export default class ForestManager extends DurableObject {
         });
       }
       console.log(`📤 Sent ${existingNPCs.length} existing NPCs to new player`);
+    } else {
+      console.log(`⚠️ No NPCs to send to new player`);
     }
   }
 
