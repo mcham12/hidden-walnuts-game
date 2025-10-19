@@ -1481,6 +1481,12 @@ export class Game {
           position: data.position,
           points: 1 // Same as bush walnut
         });
+
+        // Mark as just dropped (immunity from auto-pickup for 3 seconds)
+        const droppedWalnut = this.walnuts.get(data.walnutId);
+        if (droppedWalnut) {
+          droppedWalnut.userData.droppedTime = performance.now();
+        }
         break;
 
       case 'existing_players':
@@ -2451,11 +2457,33 @@ export class Game {
   private onProjectileHit(data: { projectileId: string; ownerId: string; targetId: string; position: THREE.Vector3 }): void {
     console.log(`🌰 Projectile hit! Owner: ${data.ownerId}, Target: ${data.targetId}`);
 
+    // MVP 8: Show "HIT!" feedback to the thrower
+    if (data.ownerId === this.playerId) {
+      this.toastManager.success('HIT!');
+    }
+
+    // MVP 8: Trigger hit animation on target (remote player or NPC)
+    const remotePlayer = this.remotePlayers.get(data.targetId);
+    if (remotePlayer && this.remotePlayerActions.has(data.targetId)) {
+      const actions = this.remotePlayerActions.get(data.targetId);
+      if (actions && actions['hit']) {
+        // Play hit animation
+        actions['hit'].reset().play();
+      }
+    }
+
+    // Check if target is an NPC
+    const npc = this.npcs.get(data.targetId);
+    if (npc && this.npcActions.has(data.targetId)) {
+      const actions = this.npcActions.get(data.targetId);
+      if (actions && actions['hit']) {
+        // Play hit animation
+        actions['hit'].reset().play();
+      }
+    }
+
     // TODO Phase 3: Apply damage to target
     // TODO Phase 3: Send hit message to server for validation
-    // TODO Phase 3: Visual feedback (damage number, hit effect)
-
-    // For now, just log the hit - full implementation in Phase 3 (Health & Damage)
   }
 
   /**
@@ -3201,50 +3229,46 @@ export class Game {
   private createBuriedWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // MVP 5: Rounded hemisphere mound (more natural than cone) - MUCH SMALLER
-    const moundGeometry = new THREE.SphereGeometry(0.18, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+    // MVP 8: Show partially buried walnut (walnut shell visible above mound)
+    const walnutGeometry = new THREE.SphereGeometry(0.12, 16, 12);
+    walnutGeometry.scale(1, 1.2, 1); // Slightly elongated walnut shape
+    const walnutMaterial = new THREE.MeshStandardMaterial({
+      color: 0x8B4513, // Brown walnut color - stands out from terrain
+      roughness: 0.85,
+      metalness: 0.15
+    });
+    const walnut = new THREE.Mesh(walnutGeometry, walnutMaterial);
+    walnut.position.y = 0.08; // Partially above ground (half visible)
+    walnut.castShadow = true;
+    walnut.receiveShadow = true;
+    group.add(walnut);
+
+    // Dirt mound around walnut (smaller, more subtle)
+    const moundGeometry = new THREE.SphereGeometry(0.22, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
     const moundMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4a3728, // Darker soil color
+      color: 0x5a4a3a, // Lighter soil color (more visible than before)
       roughness: 0.95,
       metalness: 0.1
     });
     const mound = new THREE.Mesh(moundGeometry, moundMaterial);
-    mound.scale.set(1, 0.4, 1); // Flatten slightly for natural mound shape
-    mound.position.y = 0.02;
+    mound.scale.set(1, 0.3, 1); // Flatter mound
+    mound.position.y = 0.01;
     mound.receiveShadow = true;
     mound.castShadow = true;
     group.add(mound);
 
     // Add a darker ring at base for depth
-    const ringGeometry = new THREE.RingGeometry(0.15, 0.2, 16);
+    const ringGeometry = new THREE.RingGeometry(0.18, 0.25, 16);
     const ringMaterial = new THREE.MeshStandardMaterial({
-      color: 0x3a2818,
+      color: 0x4a3a2a,
       roughness: 0.98,
       side: THREE.DoubleSide
     });
     const ring = new THREE.Mesh(ringGeometry, ringMaterial);
     ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.01;
+    ring.position.y = 0.005;
     ring.receiveShadow = true;
     group.add(ring);
-
-    // Add subtle dirt particles (will be animated later)
-    const particleGeometry = new THREE.SphereGeometry(0.01, 4, 4);
-    const particleMaterial = new THREE.MeshBasicMaterial({
-      color: 0x6b4423,
-      transparent: true,
-      opacity: 0.6
-    });
-
-    for (let i = 0; i < 3; i++) {
-      const particle = new THREE.Mesh(particleGeometry, particleMaterial);
-      particle.position.set(
-        (Math.random() - 0.5) * 0.15,
-        0.05 + Math.random() * 0.03,
-        (Math.random() - 0.5) * 0.15
-      );
-      group.add(particle);
-    }
 
     // Add invisible collision sphere for easier clicking (MVP 5: Increased to 1.2 for even better click detection)
     const collisionGeometry = new THREE.SphereGeometry(1.2, 8, 8);
@@ -4154,10 +4178,20 @@ export class Game {
     if (!this.character) return;
 
     const PICKUP_RANGE = 1.5; // Distance in units to auto-collect walnut
+    const PICKUP_IMMUNITY_TIME = 3000; // 3 seconds immunity for dropped walnuts (ms)
     const playerPos = this.character.position.clone();
+    const now = performance.now();
 
     // Check each walnut for proximity
     this.walnuts.forEach((walnutGroup, walnutId) => {
+      // MVP 8: Skip walnuts that were just dropped (prevents auto-pickup of thrown walnuts)
+      if (walnutGroup.userData.droppedTime) {
+        const timeSinceDrop = now - walnutGroup.userData.droppedTime;
+        if (timeSinceDrop < PICKUP_IMMUNITY_TIME) {
+          return; // Still immune, skip this walnut
+        }
+      }
+
       // Get walnut position from group
       const walnutPos = walnutGroup.position.clone();
 
