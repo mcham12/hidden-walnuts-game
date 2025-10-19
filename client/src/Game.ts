@@ -3032,7 +3032,8 @@ export class Game {
         }
       }
 
-      deathOverlay.classList.remove('hidden');
+      // MVP 8 FIX: Use display + opacity for proper visibility control
+      deathOverlay.style.display = 'block';
       deathOverlay.style.opacity = '0';
       // Fade in death screen
       setTimeout(() => {
@@ -3104,10 +3105,35 @@ export class Game {
       // Reset velocity
       this.velocity.set(0, 0, 0);
 
-      // MVP 8 UX: Reset animation to idle (prevent stuck death animation)
+      // MVP 8 FIX: Comprehensive animation state reset (fixes stuck animations)
+      // Clear all animation flags
       this.isPlayingOneShotAnimation = false;
+      this.emoteInProgress = false;
+      this.isStunned = false;
+      this.isEatingWalnut = false;
+
+      // Stop current action completely
+      if (this.currentAction) {
+        this.currentAction.stop();
+        this.currentAction = null;
+      }
+
+      // Force reset to idle animation with proper setup
       if (this.actions['idle']) {
-        this.setAction('idle');
+        const idleAction = this.actions['idle'];
+        // Stop all other animations first
+        for (const action of Object.values(this.actions)) {
+          if (action.isRunning()) {
+            action.stop();
+          }
+        }
+        // Start idle fresh
+        idleAction.reset();
+        idleAction.setLoop(THREE.LoopRepeat, Infinity);
+        idleAction.play();
+        this.currentAction = idleAction;
+        this.currentAnimationName = 'idle';
+        console.log('🔄 Animation state completely reset to idle');
       }
     }
 
@@ -3126,7 +3152,7 @@ export class Game {
     if (deathOverlay) {
       deathOverlay.style.opacity = '0';
       setTimeout(() => {
-        deathOverlay.classList.add('hidden');
+        deathOverlay.style.display = 'none';
       }, 500); // Match transition duration
     }
 
