@@ -2658,9 +2658,23 @@ export class Game {
     // BEST PRACTICE: Transform projectile mesh into pickup walnut (no destroy/recreate)
     const walnutId = `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // MVP 8 FIX: Position on terrain (walnut center at radius above ground so bottom touches)
+    // MVP 8 FIX: Explicitly set all coordinates (not just Y) to prevent drift at close range
+    // At close range with fast projectiles, mesh position must match hit position exactly
     const terrainHeight = getTerrainHeight(data.position.x, data.position.z);
-    data.mesh.position.y = terrainHeight + (this.WALNUT_SIZE / 2); // Radius offset so bottom touches ground
+    const finalPosition = new THREE.Vector3(
+      data.position.x,
+      terrainHeight + (this.WALNUT_SIZE / 2), // Radius offset so bottom touches ground
+      data.position.z
+    );
+    data.mesh.position.copy(finalPosition);
+
+    console.log(`🌰 HIT walnut ${walnutId} positioned at:`, {
+      x: finalPosition.x.toFixed(2),
+      y: finalPosition.y.toFixed(2),
+      z: finalPosition.z.toFixed(2),
+      terrainHeight: terrainHeight.toFixed(2),
+      inScene: this.scene.children.includes(data.mesh)
+    });
 
     // Stop spinning animation (projectile was spinning in flight)
     data.mesh.rotation.set(0, 0, 0);
@@ -2708,9 +2722,14 @@ export class Game {
     // BEST PRACTICE: Transform projectile mesh into pickup walnut (no destroy/recreate)
     const walnutId = `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // MVP 8 FIX: Position on terrain (walnut center at radius above ground so bottom touches)
+    // MVP 8 FIX: Explicitly set all coordinates (not just Y) to prevent drift at close range
+    // At close range with fast projectiles, mesh position must match hit position exactly
     const terrainHeight = getTerrainHeight(data.position.x, data.position.z);
-    data.mesh.position.y = terrainHeight + (this.WALNUT_SIZE / 2); // Radius offset so bottom touches ground
+    data.mesh.position.set(
+      data.position.x,
+      terrainHeight + (this.WALNUT_SIZE / 2), // Radius offset so bottom touches ground
+      data.position.z
+    );
 
     // Stop spinning animation (projectile was spinning in flight)
     data.mesh.rotation.set(0, 0, 0);
