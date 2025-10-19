@@ -148,6 +148,7 @@ export class Game {
 
   // MVP 3: Walnut system properties
   private walnuts: Map<string, THREE.Group> = new Map(); // All walnuts in world
+  private bushGlows: Map<string, THREE.Mesh> = new Map(); // MVP 8: Glow indicators for bush walnuts
   // Note: playerWalnutCount removed in MVP 8 - using unified walnutInventory instead
   private playerScore: number = 0; // Player's current score
   private displayedScore: number = 0; // MVP 5: Animated score for tweening effect
@@ -3546,6 +3547,21 @@ export class Game {
         }
       }
     }
+
+    // MVP 8: Animate bush glows (subtle pulsing effect)
+    this.bushGlows.forEach((glowMesh) => {
+      // Update pulse phase
+      glowMesh.userData.pulsePhase += delta * 1.5;
+
+      // Gentle opacity pulse
+      const baseOpacity = glowMesh.userData.baseOpacity || 0.15;
+      const pulse = baseOpacity + Math.sin(glowMesh.userData.pulsePhase) * 0.1;
+      (glowMesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, pulse);
+
+      // Subtle scale pulse
+      const scale = 1 + Math.sin(glowMesh.userData.pulsePhase * 0.8) * 0.05;
+      glowMesh.scale.set(scale, scale, scale);
+    });
   }
 
   /**
@@ -4081,6 +4097,34 @@ export class Game {
   }
 
   /**
+   * MVP 8: Create subtle glow/throb effect on bush containing walnut
+   * Helps players discover walnuts hidden in bushes
+   */
+  private createBushGlow(walnutId: string, walnutPosition: THREE.Vector3): void {
+    // Create subtle pulsing sphere at bush location
+    const glowGeometry = new THREE.SphereGeometry(0.8, 16, 16);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: 0x90EE90, // Light green to match bush/nature
+      transparent: true,
+      opacity: 0.15, // Very subtle
+      blending: THREE.AdditiveBlending
+    });
+    const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+
+    // Position at bush/walnut location, slightly elevated
+    glowMesh.position.copy(walnutPosition);
+    glowMesh.position.y += 0.5; // Center of bush height
+
+    // Add to scene and track
+    this.scene.add(glowMesh);
+    this.bushGlows.set(walnutId, glowMesh);
+
+    // Store animation data for pulsing effect
+    glowMesh.userData.baseOpacity = 0.15;
+    glowMesh.userData.pulsePhase = Math.random() * Math.PI * 2; // Random start phase
+  }
+
+  /**
    * MVP 8: Check proximity pickup for walnuts (walk over to collect)
    * Automatically collects walnuts when player is within pickup range
    */
@@ -4134,6 +4178,21 @@ export class Game {
     if (label && this.labelsContainer) {
       this.labelsContainer.removeChild(label);
       this.walnutLabels.delete(walnutId);
+    }
+
+    // MVP 8: Remove bush glow if it exists
+    const bushGlow = this.bushGlows.get(walnutId);
+    if (bushGlow) {
+      if (bushGlow.geometry) bushGlow.geometry.dispose();
+      if (bushGlow.material) {
+        if (Array.isArray(bushGlow.material)) {
+          bushGlow.material.forEach((mat: any) => mat.dispose());
+        } else {
+          (bushGlow.material as any).dispose();
+        }
+      }
+      this.scene.remove(bushGlow);
+      this.bushGlows.delete(walnutId);
     }
 
     this.scene.remove(walnutGroup);
@@ -4369,6 +4428,9 @@ export class Game {
         walnutGroup = this.createBushWalnutVisual(position);
         labelText = data.ownerId === this.playerId ? 'Your Bush Walnut (1 pt)' : `Bush Walnut (1 pt)`;
         labelColor = '#90EE90';
+
+        // MVP 8: Add subtle glow/throb effect on bush containing walnut
+        this.createBushGlow(data.walnutId, position);
         break;
 
       case 'game':
