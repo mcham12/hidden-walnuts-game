@@ -855,6 +855,9 @@ export class Game {
     // MVP 3: Animate walnuts
     this.animateWalnuts(delta);
 
+    // MVP 8: Check proximity pickup for walnuts (walk over to collect)
+    this.checkProximityWalnutPickup();
+
     // MVP 5: Animate score counter with tweening
     if (this.displayedScore !== this.playerScore) {
       const diff = this.playerScore - this.displayedScore;
@@ -3197,8 +3200,8 @@ export class Game {
   private createBuriedWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // MVP 5: Rounded hemisphere mound (more natural than cone)
-    const moundGeometry = new THREE.SphereGeometry(0.35, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+    // MVP 5: Rounded hemisphere mound (more natural than cone) - MUCH SMALLER
+    const moundGeometry = new THREE.SphereGeometry(0.18, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
     const moundMaterial = new THREE.MeshStandardMaterial({
       color: 0x4a3728, // Darker soil color
       roughness: 0.95,
@@ -3212,7 +3215,7 @@ export class Game {
     group.add(mound);
 
     // Add a darker ring at base for depth
-    const ringGeometry = new THREE.RingGeometry(0.3, 0.4, 16);
+    const ringGeometry = new THREE.RingGeometry(0.15, 0.2, 16);
     const ringMaterial = new THREE.MeshStandardMaterial({
       color: 0x3a2818,
       roughness: 0.98,
@@ -3225,7 +3228,7 @@ export class Game {
     group.add(ring);
 
     // Add subtle dirt particles (will be animated later)
-    const particleGeometry = new THREE.SphereGeometry(0.02, 4, 4);
+    const particleGeometry = new THREE.SphereGeometry(0.01, 4, 4);
     const particleMaterial = new THREE.MeshBasicMaterial({
       color: 0x6b4423,
       transparent: true,
@@ -3235,9 +3238,9 @@ export class Game {
     for (let i = 0; i < 3; i++) {
       const particle = new THREE.Mesh(particleGeometry, particleMaterial);
       particle.position.set(
-        (Math.random() - 0.5) * 0.3,
-        0.1 + Math.random() * 0.05,
-        (Math.random() - 0.5) * 0.3
+        (Math.random() - 0.5) * 0.15,
+        0.05 + Math.random() * 0.03,
+        (Math.random() - 0.5) * 0.15
       );
       group.add(particle);
     }
@@ -3248,11 +3251,11 @@ export class Game {
       visible: false
     });
     const collisionMesh = new THREE.Mesh(collisionGeometry, collisionMaterial);
-    collisionMesh.position.y = 0.1;
+    collisionMesh.position.y = 0.05;
     group.add(collisionMesh);
 
     // MVP 5: Add hover highlight ring (initially hidden)
-    const hoverRingGeometry = new THREE.TorusGeometry(0.6, 0.05, 8, 24);
+    const hoverRingGeometry = new THREE.TorusGeometry(0.3, 0.03, 8, 24);
     const hoverRingMaterial = new THREE.MeshBasicMaterial({
       color: 0xffff00,
       transparent: true,
@@ -3261,7 +3264,7 @@ export class Game {
     });
     const hoverRing = new THREE.Mesh(hoverRingGeometry, hoverRingMaterial);
     hoverRing.rotation.x = -Math.PI / 2;
-    hoverRing.position.y = 0.05;
+    hoverRing.position.y = 0.03;
     group.add(hoverRing);
     group.userData.hoverRing = hoverRing;
 
@@ -3269,7 +3272,7 @@ export class Game {
     group.position.copy(position);
     group.userData.type = 'buried';
     group.userData.points = 3;
-    group.userData.clickPosition = new THREE.Vector3(position.x, position.y + 0.1, position.z);
+    group.userData.clickPosition = new THREE.Vector3(position.x, position.y + 0.05, position.z);
 
     return group;
   }
@@ -3348,8 +3351,8 @@ export class Game {
   private createGameWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // Walnut-shaped geometry (ellipsoid - slightly elongated sphere)
-    const geometry = new THREE.SphereGeometry(0.25, 16, 12);
+    // Walnut-shaped geometry (ellipsoid - slightly elongated sphere) - MUCH SMALLER
+    const geometry = new THREE.SphereGeometry(0.12, 16, 12);
     geometry.scale(1, 1.3, 1); // Stretch vertically to make walnut shape
 
     // Rich golden-amber color (not bright yellow)
@@ -3357,11 +3360,11 @@ export class Game {
       color: 0xDAA520, // Goldenrod - more natural golden walnut color
     });
     const walnut = new THREE.Mesh(geometry, material);
-    walnut.position.y = 0.25; // Half-buried in ground like a real walnut
+    walnut.position.y = 0.12; // Half-buried in ground like a real walnut
     group.add(walnut);
 
     // Subtle golden aura/glow around it
-    const glowGeometry = new THREE.SphereGeometry(0.35, 12, 10);
+    const glowGeometry = new THREE.SphereGeometry(0.18, 12, 10);
     glowGeometry.scale(1, 1.3, 1);
     const glowMaterial = new THREE.MeshBasicMaterial({
       color: 0xFFD700,
@@ -3374,7 +3377,7 @@ export class Game {
     group.add(glow);
 
     // Small sparkles orbiting around it (to show it's special)
-    const sparkleGeometry = new THREE.SphereGeometry(0.04, 6, 6);
+    const sparkleGeometry = new THREE.SphereGeometry(0.02, 6, 6);
     const sparkleMaterial = new THREE.MeshBasicMaterial({
       color: 0xFFFFAA,
       transparent: true,
@@ -3386,9 +3389,9 @@ export class Game {
       const sparkle = new THREE.Mesh(sparkleGeometry, sparkleMaterial);
       const angle = (i / 5) * Math.PI * 2;
       sparkle.position.set(
-        Math.cos(angle) * 0.4,
-        0.25 + Math.sin(angle * 2) * 0.15,
-        Math.sin(angle) * 0.4
+        Math.cos(angle) * 0.2,
+        0.12 + Math.sin(angle * 2) * 0.08,
+        Math.sin(angle) * 0.2
       );
       group.add(sparkle);
       sparkles.push(sparkle);
@@ -3400,11 +3403,11 @@ export class Game {
       visible: false
     });
     const collisionMesh = new THREE.Mesh(collisionGeometry, collisionMaterial);
-    collisionMesh.position.y = 0.25;
+    collisionMesh.position.y = 0.12;
     group.add(collisionMesh);
 
     // MVP 5: Add hover pulse glow (initially hidden)
-    const hoverPulseGeometry = new THREE.SphereGeometry(0.5, 16, 12);
+    const hoverPulseGeometry = new THREE.SphereGeometry(0.25, 16, 12);
     hoverPulseGeometry.scale(1, 1.3, 1);
     const hoverPulseMaterial = new THREE.MeshBasicMaterial({
       color: 0xffff00,
@@ -3413,7 +3416,7 @@ export class Game {
       blending: THREE.AdditiveBlending
     });
     const hoverPulse = new THREE.Mesh(hoverPulseGeometry, hoverPulseMaterial);
-    hoverPulse.position.y = 0.25;
+    hoverPulse.position.y = 0.12;
     group.add(hoverPulse);
     group.userData.hoverPulse = hoverPulse;
 
@@ -3427,7 +3430,7 @@ export class Game {
     group.position.copy(position);
     group.userData.type = 'game';
     group.userData.points = 5; // Bonus multiplier
-    group.userData.clickPosition = new THREE.Vector3(position.x, position.y + 0.25, position.z);
+    group.userData.clickPosition = new THREE.Vector3(position.x, position.y + 0.12, position.z);
 
     return group;
   }
@@ -3439,8 +3442,8 @@ export class Game {
   private createGroundWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // Simple walnut-shaped geometry (ellipsoid)
-    const geometry = new THREE.SphereGeometry(0.2, 16, 12);
+    // Simple walnut-shaped geometry (ellipsoid) - MUCH SMALLER
+    const geometry = new THREE.SphereGeometry(0.1, 16, 12);
     geometry.scale(1, 1.2, 1); // Slightly elongated
 
     // Natural brown walnut color
@@ -3463,7 +3466,7 @@ export class Game {
     group.add(collisionMesh);
 
     // Hover pulse glow (initially hidden)
-    const hoverPulseGeometry = new THREE.SphereGeometry(0.35, 16, 12);
+    const hoverPulseGeometry = new THREE.SphereGeometry(0.18, 16, 12);
     hoverPulseGeometry.scale(1, 1.2, 1);
     const hoverPulseMaterial = new THREE.MeshBasicMaterial({
       color: 0xCD853F, // Peru/tan color
@@ -3974,7 +3977,7 @@ export class Game {
 
     // Calculate throw trajectory (from player position to camera direction)
     const fromPosition = this.character.position.clone();
-    fromPosition.y += 1.0; // Throw from mid-torso height (closer to player)
+    fromPosition.y += 0.5; // Throw from waist height (visual fix - was appearing too high)
 
     // Get camera direction for aiming
     const cameraDirection = new THREE.Vector3();
@@ -4075,6 +4078,34 @@ export class Game {
       this.character.position.y = 2; // Keep player at proper height
     } else {
     }
+  }
+
+  /**
+   * MVP 8: Check proximity pickup for walnuts (walk over to collect)
+   * Automatically collects walnuts when player is within pickup range
+   */
+  private checkProximityWalnutPickup(): void {
+    if (!this.character) return;
+
+    const PICKUP_RANGE = 1.5; // Distance in units to auto-collect walnut
+    const playerPos = this.character.position.clone();
+
+    // Check each walnut for proximity
+    this.walnuts.forEach((walnutGroup, walnutId) => {
+      // Get walnut position from group
+      const walnutPos = walnutGroup.position.clone();
+
+      // Calculate horizontal distance (ignore y to avoid issues with height differences)
+      const dx = playerPos.x - walnutPos.x;
+      const dz = playerPos.z - walnutPos.z;
+      const distance = Math.sqrt(dx * dx + dz * dz);
+
+      // If within pickup range, collect it
+      if (distance <= PICKUP_RANGE) {
+        // Call the existing findWalnut method which handles score and server notification
+        this.findWalnut(walnutId, walnutGroup);
+      }
+    });
   }
 
   /**

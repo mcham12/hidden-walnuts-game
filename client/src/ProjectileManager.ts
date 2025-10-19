@@ -36,9 +36,9 @@ export class ProjectileManager {
 
   // Physics constants
   private readonly GRAVITY = -9.8; // m/s²
-  private readonly FLIGHT_TIME = 1.0; // seconds (target flight time)
+  private readonly FLIGHT_TIME = 0.5; // seconds (faster = flatter trajectory for easier hits)
   private readonly MAX_LIFETIME = 5.0; // seconds (cleanup timeout)
-  private readonly HIT_RADIUS = 0.5; // units (collision detection radius)
+  private readonly HIT_RADIUS = 0.8; // units (collision detection radius - increased for easier hits)
 
   // Projectile ID counter
   private nextProjectileId = 0;
