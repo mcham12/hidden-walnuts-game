@@ -101,10 +101,8 @@ export class Game {
   // INDUSTRY STANDARD: Smooth camera interpolation
   private cameraLerpFactor = 0.15; // Higher = faster catch-up, lower = smoother
 
-  // INDUSTRY STANDARD: Animation state machine with hysteresis (prevents rapid state oscillation)
-  private lastAnimationChangeTime: number = 0;
-  private animationChangeDelay: number = 0.1; // Minimum 100ms between animation changes
-  // PHASE 3 CLEANUP: lastFlagCheckTime removed - old flag watchdog no longer needed
+  // PHASE 3.5 CLEANUP: Old animation timing removed - state machine handles all transitions now
+  // (lastAnimationChangeTime, animationChangeDelay, lastFlagCheckTime no longer needed)
 
   // MVP 5: Enhanced character animations (Squirrel-first)
   private lastIdleVariationTime: number = 0;
@@ -640,8 +638,9 @@ export class Game {
       }
     }
 
-    // Update base animation based on movement (if not overridden)
-    if (this.animState.overrideAnimation === null && this.character && !this.isDead) {
+    // CRITICAL FIX: ALWAYS update base animation based on movement (even during overrides!)
+    // Base layer must track what animation SHOULD be playing, so when override expires we return to correct state
+    if (this.character && !this.isDead) {
       const horizontalSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
 
       let targetBaseAnimation = 'idle';
@@ -653,10 +652,13 @@ export class Game {
       // Update base if changed
       if (targetBaseAnimation !== this.animState.baseAnimation) {
         this.animState.baseAnimation = targetBaseAnimation;
-        // Only play if no override active
+        console.log(`🔄 Base animation updated: ${this.animState.baseAnimation} → ${targetBaseAnimation}`);
+
+        // Only play immediately if no override active
         if (this.animState.overrideAnimation === null) {
           this.playAnimation(targetBaseAnimation);
         }
+        // Otherwise, when override expires (line 639), it will return to this updated base
       }
     }
   }
@@ -1268,41 +1270,15 @@ export class Game {
       }
     }
 
-    // INDUSTRY STANDARD: Animation state machine with hysteresis
-    const animationTime = currentTime / 1000; // Convert to seconds for animation timing
-
-    // Determine what animation should be playing
-    let animation = 'idle';
-    if (horizontalSpeed > 0.5) { // Increased threshold to prevent oscillation at low speeds
-      const isRunning = this.keys.has('shift');
-      animation = isRunning ? 'run' : 'walk';
-    }
-
-    // MIGRATION PHASE 2.6: Watchdog simplified - only check state machine
-    // State machine is self-recovering, but keep watchdog for edge cases
-    const STUCK_ANIMATION_THRESHOLD = 5.0; // 5 seconds
-    const hasOverride = this.animState.overrideAnimation !== null;
-    if (!hasOverride && animation !== this.currentAnimationName) {
-      // No override active, so we should be able to change to base animation
-      // Check if enough time has passed to change animation
-      if ((animationTime - this.lastAnimationChangeTime) >= this.animationChangeDelay) {
-        this.setAction(animation);
-        this.lastAnimationChangeTime = animationTime;
-      } else if ((animationTime - this.lastAnimationChangeTime) >= STUCK_ANIMATION_THRESHOLD) {
-        // Animation has been stuck in wrong state for too long - force reset
-        console.warn(`⚠️ Animation stuck in ${this.currentAnimationName} (should be ${animation}) for ${(animationTime - this.lastAnimationChangeTime).toFixed(1)}s - forcing reset`);
-        this.resetAnimationState();
-        this.lastAnimationChangeTime = animationTime;
-      }
-    }
-
-    // PHASE 3 CLEANUP: Old flag watchdog removed - state machine is self-recovering
+    // PHASE 3.5 CLEANUP: OLD animation watchdog completely removed
+    // State machine (updateAnimationState) handles ALL animation transitions now
+    // No need for duplicate logic here
 
     // MVP 5: Idle variation system (Squirrel-first feature)
     // Randomly cycle between idle animations when character is standing still
-    // MIGRATION PHASE 2.4: Use state machine for idle variations (IDLE_VARIANT priority)
+    // PHASE 3.5: Use state machine for idle variations (IDLE_VARIANT priority)
     const hasOverrideForIdle = this.animState.overrideAnimation !== null;
-    if (animation === 'idle' &&
+    if (this.animState.baseAnimation === 'idle' &&
         this.currentAnimationName === 'idle' &&
         !hasOverrideForIdle) {
       const timeSinceLastVariation = performance.now() - this.lastIdleVariationTime;
@@ -5343,26 +5319,10 @@ export class Game {
     // Remove the walnut from the world
     this.removeWalnut(walnutId);
 
-    // MVP 8 Phase 3: Heal player when eating walnut
-    this.heal(25); // +25 HP from eating walnut
-
-    // MIGRATION PHASE 2.2: Use state machine for eat animation
-    if (this.actions['eat']) {
-      console.log('🍽️ Playing eat animation for local player');
-      const eatAction = this.actions['eat'];
-      eatAction.timeScale = 1.0; // Normal speed (snappier)
-
-      // Stop current movement
-      this.velocity.set(0, 0, 0);
-
-      // Use ACTION priority with movement blocking (can't move while eating)
-      // Fixed 1s duration for eating
-      this.requestAnimation('eat', this.ANIM_PRIORITY_ACTION, 1000, true);
-
-      // No need for isEatingWalnut flag or setTimeout - state machine handles it!
-    } else {
-      console.warn('⚠️ Eat animation not available for local player!');
-    }
+    // CRITICAL FIX: Do NOT auto-eat on pickup!
+    // Server increments walnutInventory (sent via inventory_update message)
+    // Player can manually eat later using the Eat button (calls eatWalnut() method)
+    console.log(`📥 Picked up walnut! Inventory will be updated by server.`);
 
     // MULTIPLAYER: Send to server for sync
     this.sendMessage({
