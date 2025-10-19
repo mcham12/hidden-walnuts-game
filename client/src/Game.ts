@@ -3702,7 +3702,7 @@ export class Game {
    */
   /**
    * MVP 8 FIX: Create golden (game-spawned bonus) walnut using shared model
-   * Adds golden glow and sparkles for special effect
+   * Simple golden walnut with subtle throbbing glow (like ground walnut)
    */
   private createGameWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
@@ -3711,88 +3711,63 @@ export class Game {
     const walnut = this.createWalnutMesh();
     walnut.position.y = 0;
 
-    // Override material to golden color
+    // Override material to golden color (subtle, not garish)
     walnut.traverse((child: any) => {
       if (child.isMesh) {
         child.material = new THREE.MeshStandardMaterial({
           color: 0xDAA520, // Goldenrod - natural golden walnut
-          emissive: 0xFFD700, // Gold glow
-          emissiveIntensity: 0.3,
-          metalness: 0.4,
-          roughness: 0.6
+          emissive: 0xB8860B, // Dark goldenrod emissive (subtle glow)
+          emissiveIntensity: 0.2,
+          metalness: 0.3,
+          roughness: 0.7
         });
       }
     });
     group.add(walnut);
 
-    // Subtle golden aura/glow around it
-    const glowGeometry = new THREE.SphereGeometry(0.08, 12, 10); // Reduced from 0.12 to 0.08
-    glowGeometry.scale(1, 1.3, 1);
-    const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0xFFD700,
-      transparent: true,
-      opacity: 0.3,
-      blending: THREE.AdditiveBlending
-    });
-    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-    glow.position.copy(walnut.position);
-    group.add(glow);
-
-    // Small sparkles orbiting around it (to show it's special)
-    const sparkleGeometry = new THREE.SphereGeometry(0.02, 6, 6);
-    const sparkleMaterial = new THREE.MeshBasicMaterial({
-      color: 0xFFFFAA,
-      transparent: true,
-      opacity: 0.8
-    });
-
-    const sparkles: THREE.Mesh[] = [];
-    for (let i = 0; i < 5; i++) {
-      const sparkle = new THREE.Mesh(sparkleGeometry, sparkleMaterial);
-      const angle = (i / 5) * Math.PI * 2;
-      sparkle.position.set(
-        Math.cos(angle) * 0.2,
-        0.12 + Math.sin(angle * 2) * 0.08,
-        Math.sin(angle) * 0.2
-      );
-      group.add(sparkle);
-      sparkles.push(sparkle);
-    }
-
-    // Invisible collision sphere for clicking (MVP 5: Increased to 1.3 for even better click detection)
-    const collisionGeometry = new THREE.SphereGeometry(1.3, 8, 8);
+    // Invisible collision sphere for clicking
+    const collisionGeometry = new THREE.SphereGeometry(1.0, 8, 8);
     const collisionMaterial = new THREE.MeshBasicMaterial({
       visible: false
     });
     const collisionMesh = new THREE.Mesh(collisionGeometry, collisionMaterial);
-    collisionMesh.position.y = 0.12;
+    collisionMesh.position.y = 0;
     group.add(collisionMesh);
 
-    // MVP 5: Add hover pulse glow (initially hidden)
-    const hoverPulseGeometry = new THREE.SphereGeometry(0.25, 16, 12);
-    hoverPulseGeometry.scale(1, 1.3, 1);
+    // Throbbing glow effect (initially visible, will pulse via animation)
+    const glowGeometry = new THREE.SphereGeometry(this.WALNUT_SIZE * 2, 16, 12);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: 0xFFD700, // Gold
+      transparent: true,
+      opacity: 0.2, // Start subtle
+      blending: THREE.AdditiveBlending
+    });
+    const throbGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+    throbGlow.position.y = 0;
+    group.add(throbGlow);
+    group.userData.throbGlow = throbGlow; // Store for throb animation
+
+    // Hover pulse glow (initially hidden)
+    const hoverPulseGeometry = new THREE.SphereGeometry(this.WALNUT_SIZE * 3, 16, 12);
     const hoverPulseMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffff00,
+      color: 0xFFFF00,
       transparent: true,
       opacity: 0,
       blending: THREE.AdditiveBlending
     });
     const hoverPulse = new THREE.Mesh(hoverPulseGeometry, hoverPulseMaterial);
-    hoverPulse.position.y = 0.12;
+    hoverPulse.position.y = 0;
     group.add(hoverPulse);
     group.userData.hoverPulse = hoverPulse;
 
-    // Store references for animation
+    // Store references
     group.userData.walnut = walnut;
-    group.userData.glow = glow;
-    group.userData.sparkles = sparkles;
-    group.userData.animationPhase = Math.random() * Math.PI * 2;
 
     // Position the entire group
     group.position.copy(position);
     group.userData.type = 'game';
     group.userData.points = 5; // Bonus multiplier
-    group.userData.clickPosition = new THREE.Vector3(position.x, position.y + 0.12, position.z);
+    group.userData.clickPosition = new THREE.Vector3(position.x, position.y, position.z);
 
     return group;
   }
@@ -3871,34 +3846,20 @@ export class Game {
           glint.scale.set(scale, scale, scale);
         }
       } else if (type === 'game') {
-        // MVP 5: Enhanced golden walnut animation (rotation + pulse + glow + orbiting sparkles)
-        const walnut = walnutGroup.userData.walnut as THREE.Mesh;
-        const glow = walnutGroup.userData.glow as THREE.Mesh;
-        const sparkles = walnutGroup.userData.sparkles as THREE.Mesh[];
+        // MVP 8 FIX: Simple golden walnut animation (just gentle throb on glow, no rotation)
+        const throbGlow = walnutGroup.userData.throbGlow as THREE.Mesh;
 
-        if (walnut) {
-          walnutGroup.userData.animationPhase += delta;
-          walnut.rotation.y += delta * 1.5; // Slow rotation
-
-          // Gentle pulse effect
-          const pulse = 1 + Math.sin(walnutGroup.userData.animationPhase * 2) * 0.1;
-          walnut.scale.set(pulse, pulse, pulse);
-
-          // Glow pulse
-          if (glow) {
-            const glowPulse = 0.3 + Math.sin(walnutGroup.userData.animationPhase * 2.5) * 0.15;
-            (glow.material as THREE.MeshBasicMaterial).opacity = glowPulse;
+        if (throbGlow) {
+          // Initialize phase if not present
+          if (walnutGroup.userData.throbPhase === undefined) {
+            walnutGroup.userData.throbPhase = Math.random() * Math.PI * 2;
           }
 
-          // Orbit sparkles around the walnut
-          if (sparkles && sparkles.length > 0) {
-            for (let i = 0; i < sparkles.length; i++) {
-              const angle = (i / sparkles.length) * Math.PI * 2 + walnutGroup.userData.animationPhase;
-              sparkles[i].position.x = Math.cos(angle) * 0.4;
-              sparkles[i].position.z = Math.sin(angle) * 0.4;
-              sparkles[i].position.y = 0.25 + Math.sin(angle * 3) * 0.1;
-            }
-          }
+          walnutGroup.userData.throbPhase += delta * 1.5;
+
+          // Gentle glow throb (opacity only, no size change)
+          const opacity = 0.2 + Math.sin(walnutGroup.userData.throbPhase) * 0.15;
+          (throbGlow.material as THREE.MeshBasicMaterial).opacity = Math.max(0.05, opacity);
         }
       }
     }
