@@ -3991,57 +3991,79 @@ export class Game {
       return;
     }
 
-    // Calculate throw trajectory (from player position to camera direction)
+    // INDUSTRY STANDARD: Camera raycast to determine aim point
+    // This ensures projectiles go exactly where the camera is looking
     const fromPosition = this.character.position.clone();
-    fromPosition.y += 0.5; // Throw from waist height (visual fix - was appearing too high)
+    fromPosition.y += 0.5; // Throw from waist height
 
-    // Get camera direction for aiming
+    // Raycast from camera center forward to find what player is aiming at
     const cameraDirection = new THREE.Vector3();
     this.camera.getWorldDirection(cameraDirection);
 
-    // Calculate target position (15 units in camera direction)
-    const throwRange = 15;
-    const toPosition = fromPosition.clone().add(
-      cameraDirection.multiplyScalar(throwRange)
-    );
+    this.raycaster.set(this.camera.position, cameraDirection);
+    const throwRange = 20; // Max throw range
 
-    // Ensure target is above terrain
-    const terrainHeight = getTerrainHeight(toPosition.x, toPosition.z);
-    if (toPosition.y < terrainHeight) {
-      toPosition.y = terrainHeight + 1;
+    // Raycast against all objects (terrain, players, NPCs, obstacles)
+    const intersectObjects: THREE.Object3D[] = [];
+
+    // Add terrain if exists
+    if (this.terrain) {
+      intersectObjects.push(this.terrain);
     }
 
-    // Find target entity (player or NPC) in throw direction for aim assist
+    // Add remote players
+    this.remotePlayers.forEach((player) => {
+      intersectObjects.push(player);
+    });
+
+    // Add NPCs
+    this.npcs.forEach((npc) => {
+      intersectObjects.push(npc);
+    });
+
+    const intersects = this.raycaster.intersectObjects(intersectObjects, true);
+
+    // Determine aim point
+    let toPosition: THREE.Vector3;
     let targetId: string | undefined = undefined;
-    const targetCandidates: Array<{ id: string; position: THREE.Vector3 }> = [];
 
-    // Add all players
-    this.remotePlayers.forEach((player, id) => {
-      targetCandidates.push({ id, position: player.position });
-    });
+    if (intersects.length > 0 && intersects[0].distance <= throwRange) {
+      // Hit something - aim at that point
+      toPosition = intersects[0].point.clone();
 
-    // Add all NPCs
-    this.npcs.forEach((npc, id) => {
-      targetCandidates.push({ id, position: npc.position });
-    });
+      // Check if we hit a player or NPC for tracking
+      let hitObject = intersects[0].object;
+      while (hitObject.parent && !(hitObject instanceof THREE.Group)) {
+        hitObject = hitObject.parent;
+      }
 
-    // Find closest entity within aiming cone (30 degrees)
-    let closestDist = Infinity;
-    const aimConeAngle = Math.PI / 6; // 30 degrees
-
-    for (const candidate of targetCandidates) {
-      const toCandidate = candidate.position.clone().sub(fromPosition).normalize();
-      const angle = cameraDirection.angleTo(toCandidate);
-
-      if (angle < aimConeAngle) {
-        const dist = fromPosition.distanceTo(candidate.position);
-        if (dist < closestDist && dist <= throwRange) {
-          closestDist = dist;
-          targetId = candidate.id;
-          // Update toPosition to aim at target
-          toPosition.copy(candidate.position);
-          toPosition.y += 1; // Aim at center mass
+      // Check if it's a remote player
+      for (const [id, player] of this.remotePlayers) {
+        if (player === hitObject || player.children.includes(hitObject as any)) {
+          targetId = id;
+          break;
         }
+      }
+
+      // Check if it's an NPC
+      if (!targetId) {
+        for (const [id, npc] of this.npcs) {
+          if (npc === hitObject || npc.children.includes(hitObject as any)) {
+            targetId = id;
+            break;
+          }
+        }
+      }
+    } else {
+      // Didn't hit anything - aim at max range in camera direction
+      toPosition = this.camera.position.clone().add(
+        cameraDirection.multiplyScalar(throwRange)
+      );
+
+      // Clamp to terrain
+      const terrainHeight = getTerrainHeight(toPosition.x, toPosition.z);
+      if (toPosition.y < terrainHeight) {
+        toPosition.y = terrainHeight + 0.5;
       }
     }
 

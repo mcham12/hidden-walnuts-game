@@ -1160,38 +1160,7 @@ export default class ForestManager extends DurableObject {
         timestamp: Date.now(),
         isGolden: false
       },
-      // Bush walnuts (1 pt each)
-      {
-        id: "game-regular-bush-1",
-        ownerId: "system",
-        origin: "game" as const,
-        hiddenIn: "bush" as const,
-        location: { x: 18, y: 0, z: 25 },
-        found: false,
-        timestamp: Date.now(),
-        isGolden: false
-      },
-      {
-        id: "game-regular-bush-2",
-        ownerId: "system",
-        origin: "game" as const,
-        hiddenIn: "bush" as const,
-        location: { x: -20, y: 0, z: 12 },
-        found: false,
-        timestamp: Date.now(),
-        isGolden: false
-      },
-      {
-        id: "game-regular-bush-3",
-        ownerId: "system",
-        origin: "game" as const,
-        hiddenIn: "bush" as const,
-        location: { x: 8, y: 0, z: -18 },
-        found: false,
-        timestamp: Date.now(),
-        isGolden: false
-      },
-      // Ground walnuts (1 pt each) - new scope
+      // Ground walnuts (1 pt each)
       {
         id: "game-regular-ground-1",
         ownerId: "system",
@@ -1213,6 +1182,31 @@ export default class ForestManager extends DurableObject {
         isGolden: false
       }
     ];
+
+    // MVP 8: Add bush walnuts at actual shrub locations (not hardcoded)
+    const shrubs = this.forestObjects.filter(obj => obj.type === 'shrub');
+    if (shrubs.length >= 3) {
+      // Select 3 random shrubs for walnuts
+      const shuffled = [...shrubs].sort(() => Math.random() - 0.5);
+      const selectedShrubs = shuffled.slice(0, 3);
+
+      for (let i = 0; i < selectedShrubs.length; i++) {
+        const shrub = selectedShrubs[i];
+        regularGameWalnuts.push({
+          id: `game-regular-bush-${i + 1}`,
+          ownerId: "system",
+          origin: "game" as const,
+          hiddenIn: "bush" as const,
+          location: { x: shrub.x, y: 0, z: shrub.z },
+          found: false,
+          timestamp: Date.now(),
+          isGolden: false
+        });
+      }
+      console.log(`🌿 SERVER: Added ${selectedShrubs.length} bush walnuts at shrub locations`);
+    } else {
+      console.warn(`⚠️ SERVER: Not enough shrubs (${shrubs.length}) to place bush walnuts`);
+    }
 
     // Add all regular game walnuts
     for (const regularWalnut of regularGameWalnuts) {
