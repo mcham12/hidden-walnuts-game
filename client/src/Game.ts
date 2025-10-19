@@ -180,6 +180,7 @@ export class Game {
     "Movement: Press W to move forward, A/D to rotate left/right, S to move backward.",
     "You start with 3 walnuts to hide around the forest.",
     "Press H to hide a walnut. Hide near a bush (1 pt) or bury in ground (3 pts).",
+    "Press SPACEBAR (or T) to throw walnuts at other players! Pick up more walnuts to restock.",
     "Click on suspicious spots to find hidden walnuts!",
     "Finding others' walnuts = points + walnut back. Finding your own = just walnut back.",
     "Use the minimap (top-right) and landmarks to navigate the forest.",
@@ -586,11 +587,9 @@ export class Game {
 
       this.keys.add(key);
 
-      // Jump with space
-      if (e.key === ' ' && !this.isJumping) {
-        this.isJumping = true;
-        this.velocity.y = this.jumpVelocity;
-        this.setAction('jump');
+      // MVP 8: Throw with spacebar (more important than jump)
+      if (e.key === ' ') {
+        this.throwWalnut();
       }
 
       // MVP 3: Hide walnut with H key
@@ -598,7 +597,7 @@ export class Game {
         this.hideWalnut();
       }
 
-      // MVP 8: Throw walnut with T key
+      // MVP 8: Throw walnut with T key (alternative to spacebar)
       if (e.key === 't' || e.key === 'T') {
         this.throwWalnut();
       }
@@ -2151,6 +2150,7 @@ export class Game {
 
   /**
    * MVP 7: Create NPC entity on client (server-spawned AI character)
+   * MVP 8: Fixed race condition that caused ghost NPCs
    */
   private async createNPC(npcId: string, position: { x: number; y: number; z: number }, rotationY: number, characterId: string, username: string, animation: string): Promise<void> {
     if (this.npcs.has(npcId)) {
@@ -2159,17 +2159,29 @@ export class Game {
       return;
     }
 
+    // MVP 8: Check if NPC is currently being created (prevent race condition ghost NPCs)
+    const loadingKey = `loading_${npcId}`;
+    if ((this as any)[loadingKey]) {
+      console.log(`⏳ NPC ${npcId} is already being created, ignoring duplicate spawn`);
+      return;
+    }
+
+    // Mark as loading to prevent duplicate creation
+    (this as any)[loadingKey] = true;
+
     try {
       // Load character model (same as remote players)
       const char = this.characters.find(c => c.id === characterId);
       if (!char) {
         console.error('❌ Character config not found for NPC:', characterId);
+        delete (this as any)[loadingKey]; // Clean up loading flag
         return;
       }
 
       const npcCharacter = await this.loadCachedAsset(char.modelPath);
       if (!npcCharacter) {
         console.error('❌ Failed to load NPC model');
+        delete (this as any)[loadingKey]; // Clean up loading flag
         return;
       }
 
@@ -2302,8 +2314,13 @@ export class Game {
         }
         this.npcPendingUpdates.delete(npcId);
       }
+
+      // MVP 8: Clear loading flag after successful creation
+      delete (this as any)[loadingKey];
     } catch (error) {
       console.error('❌ Failed to create NPC:', npcId, error);
+      // MVP 8: Clear loading flag on error
+      delete (this as any)[loadingKey];
     }
   }
 
@@ -3353,8 +3370,8 @@ export class Game {
   private createBuriedWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // MVP 8: Show partially buried walnut (walnut shell visible above mound) - smaller size
-    const walnutGeometry = new THREE.SphereGeometry(0.08, 16, 12); // Reduced from 0.12 to 0.08 (33% smaller)
+    // MVP 8: Show partially buried walnut (walnut shell visible above mound) - very small
+    const walnutGeometry = new THREE.SphereGeometry(0.05, 16, 12); // Reduced from 0.08 to 0.05 (38% smaller)
     walnutGeometry.scale(1, 1.2, 1); // Slightly elongated walnut shape
     const walnutMaterial = new THREE.MeshStandardMaterial({
       color: 0x8B4513, // Brown walnut color - stands out from terrain
@@ -3362,13 +3379,13 @@ export class Game {
       metalness: 0.15
     });
     const walnut = new THREE.Mesh(walnutGeometry, walnutMaterial);
-    walnut.position.y = 0.06; // MVP 8: Adjusted height (reduced from 0.08)
+    walnut.position.y = 0.04; // MVP 8: Adjusted height (reduced from 0.06)
     walnut.castShadow = true;
     walnut.receiveShadow = true;
     group.add(walnut);
 
     // Dirt mound around walnut (smaller, more subtle)
-    const moundGeometry = new THREE.SphereGeometry(0.16, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2); // Reduced from 0.22 to 0.16
+    const moundGeometry = new THREE.SphereGeometry(0.12, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2); // Reduced from 0.16 to 0.12
     const moundMaterial = new THREE.MeshStandardMaterial({
       color: 0x5a4a3a, // Lighter soil color (more visible than before)
       roughness: 0.95,
@@ -3501,8 +3518,8 @@ export class Game {
   private createGameWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // Walnut-shaped geometry (ellipsoid - slightly elongated sphere) - MVP 8: Even smaller
-    const geometry = new THREE.SphereGeometry(0.08, 16, 12); // Reduced from 0.12 to 0.08 (33% smaller)
+    // Walnut-shaped geometry (ellipsoid - slightly elongated sphere) - MVP 8: Very small
+    const geometry = new THREE.SphereGeometry(0.05, 16, 12); // Reduced from 0.08 to 0.05 (38% smaller)
     geometry.scale(1, 1.3, 1); // Stretch vertically to make walnut shape
 
     // Rich golden-amber color (not bright yellow)
@@ -3510,11 +3527,11 @@ export class Game {
       color: 0xDAA520, // Goldenrod - more natural golden walnut color
     });
     const walnut = new THREE.Mesh(geometry, material);
-    walnut.position.y = 0.08; // MVP 8: Adjusted height (reduced from 0.12)
+    walnut.position.y = 0.05; // MVP 8: Adjusted height (reduced from 0.08)
     group.add(walnut);
 
     // Subtle golden aura/glow around it
-    const glowGeometry = new THREE.SphereGeometry(0.12, 12, 10); // Reduced from 0.18 to 0.12
+    const glowGeometry = new THREE.SphereGeometry(0.08, 12, 10); // Reduced from 0.12 to 0.08
     glowGeometry.scale(1, 1.3, 1);
     const glowMaterial = new THREE.MeshBasicMaterial({
       color: 0xFFD700,
