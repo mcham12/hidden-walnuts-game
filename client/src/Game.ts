@@ -37,7 +37,7 @@ export class Game {
   private moveSpeed = 5; // Normal movement speed
   private acceleration = 20; // Units per second squared - how fast we accelerate
   private deceleration = 15; // Units per second squared - how fast we decelerate
-  private rotationSpeed = Math.PI;
+  private rotationSpeed = Math.PI / 2.5; // MVP 8: Reduced from Math.PI for easier aiming (72 deg/sec)
   // @ts-ignore - MVP 5: Mouse sensitivity multiplier (0.25-2.0) - ready for future mouse controls
   private mouseSensitivity = 1.0;
   // Note: gravity removed - no longer needed without jump
