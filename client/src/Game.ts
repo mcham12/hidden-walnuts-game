@@ -866,7 +866,12 @@ export class Game {
     // Hide button
     const hideButton = document.getElementById('mobile-hide-btn');
     if (hideButton) {
-      hideButton.addEventListener('click', () => {
+      hideButton.addEventListener('click', (e) => {
+        // iOS BEST PRACTICE: Check CSS class instead of disabled attribute
+        if (hideButton.classList.contains('btn-disabled')) {
+          e.preventDefault();
+          return;
+        }
         // Haptic feedback on mobile
         if (navigator.vibrate) {
           navigator.vibrate(50);
@@ -893,7 +898,12 @@ export class Game {
     // MVP 8: Wire up throw button for mobile
     const throwButton = document.getElementById('mobile-throw-btn');
     if (throwButton) {
-      throwButton.addEventListener('click', () => {
+      throwButton.addEventListener('click', (e) => {
+        // iOS BEST PRACTICE: Check CSS class instead of disabled attribute
+        if (throwButton.classList.contains('btn-disabled')) {
+          e.preventDefault();
+          return;
+        }
         // Haptic feedback on mobile
         if (navigator.vibrate) {
           navigator.vibrate(50);
@@ -905,7 +915,12 @@ export class Game {
     // MVP 8 Phase 3: Wire up eat button for mobile
     const eatButton = document.getElementById('mobile-eat-btn');
     if (eatButton) {
-      eatButton.addEventListener('click', () => {
+      eatButton.addEventListener('click', (e) => {
+        // iOS BEST PRACTICE: Check CSS class instead of disabled attribute
+        if (eatButton.classList.contains('btn-disabled')) {
+          e.preventDefault();
+          return;
+        }
         // Haptic feedback on mobile
         if (navigator.vibrate) {
           navigator.vibrate(50);
@@ -3888,6 +3903,7 @@ export class Game {
 
   /**
    * MVP 5.7: Update mobile button states (Hide, Throw, Eat)
+   * iOS BEST PRACTICE: Use CSS classes instead of disabled attribute for reliable iOS behavior
    */
   private updateMobileButtons(): void {
     // Update HIDE button
@@ -3896,11 +3912,9 @@ export class Game {
     if (hideButton && hideCountSpan) {
       hideCountSpan.textContent = `(${this.walnutInventory})`;
       if (this.walnutInventory <= 0) {
-        hideButton.disabled = true;
-        hideButton.style.opacity = '0.4';
+        hideButton.classList.add('btn-disabled');
       } else {
-        hideButton.disabled = false;
-        hideButton.style.opacity = '1';
+        hideButton.classList.remove('btn-disabled');
       }
     }
 
@@ -3910,11 +3924,9 @@ export class Game {
     if (throwButton && throwCountSpan) {
       throwCountSpan.textContent = `(${this.walnutInventory})`;
       if (this.walnutInventory <= 0) {
-        throwButton.disabled = true;
-        throwButton.style.opacity = '0.4';
+        throwButton.classList.add('btn-disabled');
       } else {
-        throwButton.disabled = false;
-        throwButton.style.opacity = '1';
+        throwButton.classList.remove('btn-disabled');
       }
     }
 
@@ -3925,11 +3937,9 @@ export class Game {
       eatCountSpan.textContent = `(${this.walnutInventory})`;
       // Disable if no walnuts OR already at full health
       if (this.walnutInventory <= 0 || this.health >= this.MAX_HEALTH) {
-        eatButton.disabled = true;
-        eatButton.style.opacity = '0.4';
+        eatButton.classList.add('btn-disabled');
       } else {
-        eatButton.disabled = false;
-        eatButton.style.opacity = '1';
+        eatButton.classList.remove('btn-disabled');
       }
     }
   }

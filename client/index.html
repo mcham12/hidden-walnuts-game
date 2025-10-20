@@ -1682,10 +1682,13 @@
         transform: scale(0.95);
         background: rgba(139, 69, 19, 1);
       }
-      .mobile-action-btn:disabled {
+      /* iOS BEST PRACTICE: Use CSS class instead of :disabled for reliable mobile behavior */
+      .mobile-action-btn.btn-disabled {
         opacity: 0.4;
         background: rgba(100, 100, 100, 0.6);
         cursor: not-allowed;
+        pointer-events: none; /* Prevent touch events on iOS */
+        -webkit-tap-highlight-color: transparent;
       }
       .mobile-action-btn .btn-icon {
         font-size: 24px;
@@ -1938,20 +1941,21 @@
       <div style="margin-top: 8px; font-size: 12px; opacity: 0.7;">Tap here to dismiss</div>
     </div>
     <!-- MVP 5.7: Mobile Action Buttons (Hide/Throw/Eat) -->
+    <!-- iOS BEST PRACTICE: Start with btn-disabled class, JavaScript will remove when inventory > 0 -->
     <div id="mobile-actions">
-      <button id="mobile-hide-btn" class="mobile-action-btn" title="Hide Walnut">
+      <button id="mobile-hide-btn" class="mobile-action-btn btn-disabled" title="Hide Walnut">
         <span class="btn-icon">🥜</span>
         <span class="btn-label">HIDE</span>
-        <span class="btn-count" id="mobile-hide-count">(3)</span>
+        <span class="btn-count" id="mobile-hide-count">(0)</span>
       </button>
       <!-- MVP 8: Throw button -->
-      <button id="mobile-throw-btn" class="mobile-action-btn" title="Throw Walnut">
+      <button id="mobile-throw-btn" class="mobile-action-btn btn-disabled" title="Throw Walnut">
         <span class="btn-icon">🌰</span>
         <span class="btn-label">THROW</span>
         <span class="btn-count" id="mobile-throw-count">(0)</span>
       </button>
       <!-- MVP 8 Phase 3: Eat button -->
-      <button id="mobile-eat-btn" class="mobile-action-btn" title="Eat Walnut (Heal +25 HP)">
+      <button id="mobile-eat-btn" class="mobile-action-btn btn-disabled" title="Eat Walnut (Heal +25 HP)">
         <span class="btn-icon">🍽️</span>
         <span class="btn-label">EAT</span>
         <span class="btn-count" id="mobile-eat-count">(0)</span>
