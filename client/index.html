@@ -1207,11 +1207,10 @@
           right: 5px;
           gap: 8px; /* Reduce gap between buttons */
         }
-        /* Leaderboard button - positioned to not overlap mobile-actions */
-        /* Mobile-actions takes ~200px height (3 buttons * 64px + 2 gaps * 8px = 208px) */
+        /* Leaderboard button - directly under Settings per user request */
         #leaderboard-toggle {
-          top: auto;
-          bottom: 240px; /* 20px (mobile-actions bottom) + 220px (mobile-actions height + padding) */
+          top: 183px; /* 130px (settings top) + 48px (settings height) + 5px (gap) */
+          bottom: auto;
           right: 5px;
         }
 
@@ -1383,14 +1382,14 @@
           min-height: 24px;
         }
 
-        /* Hide/Throw/Eat buttons - SAME SIZE AS PORTRAIT per user request */
+        /* Hide/Throw/Eat buttons - moved left per user request */
         #mobile-actions {
           top: auto;
           bottom: max(5px, env(safe-area-inset-bottom));
-          right: max(5px, env(safe-area-inset-right));
+          right: 80px; /* Moved left from right edge (was 5px) */
           left: auto;
           flex-direction: column;
-          gap: 4px; /* Same as portrait */
+          gap: 4px;
         }
         .mobile-action-btn {
           min-width: 50px; /* SAME AS PORTRAIT */
@@ -1718,10 +1717,10 @@
           bottom: auto; /* Override any bottom positioning */
         }
 
-        /* Hide/Throw/Eat buttons (middle-bottom of screen) */
+        /* Hide/Throw/Eat buttons (lower on screen per user request) */
         #mobile-actions {
           right: 5px;
-          bottom: 180px; /* Raised higher to avoid bottom clutter */
+          bottom: 60px; /* Lowered from 180px */
           gap: 4px;
         }
         .mobile-action-btn {

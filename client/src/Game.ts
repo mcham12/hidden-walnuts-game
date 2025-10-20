@@ -4761,6 +4761,8 @@ export class Game {
     // Add to scene and registry
     walnutGroup.userData.ownerId = this.playerId;
     walnutGroup.userData.id = walnutId;
+    // MVP 8 FIX: Add settling cooldown to prevent immediate pickup (same as thrown projectiles)
+    walnutGroup.userData.settlingUntil = Date.now() + 2000; // 2 second cooldown
     this.scene.add(walnutGroup);
     this.walnuts.set(walnutId, walnutGroup);
 
