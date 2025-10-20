@@ -863,20 +863,15 @@ export class Game {
    * Note: Visibility is controlled by CSS media queries, not JavaScript
    */
   private initMobileActionButtons(): void {
-    // Hide button
+    // Hide button - COPY EMOTE BUTTON PATTERN: Simple, always clickable
     const hideButton = document.getElementById('mobile-hide-btn');
     if (hideButton) {
-      hideButton.addEventListener('click', (e) => {
-        // iOS BEST PRACTICE: Check CSS class instead of disabled attribute
-        if (hideButton.classList.contains('btn-disabled')) {
-          e.preventDefault();
-          return;
-        }
+      hideButton.addEventListener('click', () => {
         // Haptic feedback on mobile
         if (navigator.vibrate) {
           navigator.vibrate(50);
         }
-        this.hideWalnut();
+        this.hideWalnut(); // Function already checks inventory
       });
 
       // Pulse animation on first load (tutorial hint)
@@ -895,37 +890,27 @@ export class Game {
       }
     }
 
-    // MVP 8: Wire up throw button for mobile
+    // MVP 8: Wire up throw button - COPY EMOTE BUTTON PATTERN: Simple, always clickable
     const throwButton = document.getElementById('mobile-throw-btn');
     if (throwButton) {
-      throwButton.addEventListener('click', (e) => {
-        // iOS BEST PRACTICE: Check CSS class instead of disabled attribute
-        if (throwButton.classList.contains('btn-disabled')) {
-          e.preventDefault();
-          return;
-        }
+      throwButton.addEventListener('click', () => {
         // Haptic feedback on mobile
         if (navigator.vibrate) {
           navigator.vibrate(50);
         }
-        this.throwWalnut();
+        this.throwWalnut(); // Function already checks inventory
       });
     }
 
-    // MVP 8 Phase 3: Wire up eat button for mobile
+    // MVP 8 Phase 3: Wire up eat button - COPY EMOTE BUTTON PATTERN: Simple, always clickable
     const eatButton = document.getElementById('mobile-eat-btn');
     if (eatButton) {
-      eatButton.addEventListener('click', (e) => {
-        // iOS BEST PRACTICE: Check CSS class instead of disabled attribute
-        if (eatButton.classList.contains('btn-disabled')) {
-          e.preventDefault();
-          return;
-        }
+      eatButton.addEventListener('click', () => {
         // Haptic feedback on mobile
         if (navigator.vibrate) {
           navigator.vibrate(50);
         }
-        this.eatWalnut();
+        this.eatWalnut(); // Function already checks inventory
       });
     }
 
@@ -3903,7 +3888,7 @@ export class Game {
 
   /**
    * MVP 5.7: Update mobile button states (Hide, Throw, Eat)
-   * iOS BEST PRACTICE: Use CSS classes instead of disabled attribute for reliable iOS behavior
+   * COPY PATTERN FROM WORKING BUTTONS: Just change opacity, no disabled state
    */
   private updateMobileButtons(): void {
     // Update HIDE button
@@ -3911,11 +3896,8 @@ export class Game {
     const hideCountSpan = document.getElementById('mobile-hide-count');
     if (hideButton && hideCountSpan) {
       hideCountSpan.textContent = `(${this.walnutInventory})`;
-      if (this.walnutInventory <= 0) {
-        hideButton.classList.add('btn-disabled');
-      } else {
-        hideButton.classList.remove('btn-disabled');
-      }
+      // Just change opacity - keep button always clickable like emote buttons
+      hideButton.style.opacity = this.walnutInventory <= 0 ? '0.4' : '1';
     }
 
     // Update THROW button
@@ -3923,11 +3905,7 @@ export class Game {
     const throwCountSpan = document.getElementById('mobile-throw-count');
     if (throwButton && throwCountSpan) {
       throwCountSpan.textContent = `(${this.walnutInventory})`;
-      if (this.walnutInventory <= 0) {
-        throwButton.classList.add('btn-disabled');
-      } else {
-        throwButton.classList.remove('btn-disabled');
-      }
+      throwButton.style.opacity = this.walnutInventory <= 0 ? '0.4' : '1';
     }
 
     // MVP 8 Phase 3: Update EAT button
@@ -3935,12 +3913,9 @@ export class Game {
     const eatCountSpan = document.getElementById('mobile-eat-count');
     if (eatButton && eatCountSpan) {
       eatCountSpan.textContent = `(${this.walnutInventory})`;
-      // Disable if no walnuts OR already at full health
-      if (this.walnutInventory <= 0 || this.health >= this.MAX_HEALTH) {
-        eatButton.classList.add('btn-disabled');
-      } else {
-        eatButton.classList.remove('btn-disabled');
-      }
+      // Dim if no walnuts OR already at full health
+      const canEat = this.walnutInventory > 0 && this.health < this.MAX_HEALTH;
+      eatButton.style.opacity = canEat ? '1' : '0.4';
     }
   }
 
