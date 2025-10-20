@@ -1337,6 +1337,8 @@ export default class ForestManager extends DurableObject {
         updatedAt: Date.now()
       };
 
+      console.log(`🏆 Reporting score to leaderboard: ${scoreRecord.playerId} = ${scoreRecord.score} points`);
+
       // Report to leaderboard
       const response = await leaderboard.fetch(new Request('http://leaderboard/report', {
         method: 'POST',
@@ -1345,7 +1347,9 @@ export default class ForestManager extends DurableObject {
       }));
 
       if (!response.ok) {
-        console.warn(`⚠️ Failed to report score to leaderboard for ${playerConnection.username}`);
+        console.warn(`⚠️ Failed to report score to leaderboard for ${playerConnection.username} (status: ${response.status})`);
+      } else {
+        console.log(`✅ Score reported successfully for ${scoreRecord.playerId}`);
       }
     } catch (error) {
       console.error('❌ Error reporting score to leaderboard:', error);

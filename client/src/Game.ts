@@ -2834,6 +2834,7 @@ export class Game {
       }
 
       // MVP 8: Show damage floater on remote player
+      console.log(`🎯 onProjectileHit: Remote player hit, showing damage floater (vfxManager=${!!this.vfxManager})`);
       if (this.vfxManager) {
         const damagePosition = remotePlayer.position.clone();
         damagePosition.y += 2; // Show above player head
@@ -2854,6 +2855,7 @@ export class Game {
       }
 
       // MVP 8: Show damage floater on NPC
+      console.log(`🎯 onProjectileHit: NPC hit, showing damage floater (vfxManager=${!!this.vfxManager})`);
       if (this.vfxManager) {
         const damagePosition = npc.position.clone();
         damagePosition.y += 2; // Show above NPC head
@@ -3028,10 +3030,14 @@ export class Game {
     console.log(`💔 Took ${amount} damage from ${attackerId}. Health: ${this.health}/${this.MAX_HEALTH}`);
 
     // MVP 8: Show damage floater on local player
+    console.log(`🩹 takeDamage: Attempting to show damage floater (character=${!!this.character}, vfxManager=${!!this.vfxManager})`);
     if (this.character && this.vfxManager) {
       const damagePosition = this.character.position.clone();
       damagePosition.y += 2; // Show above player head
+      console.log(`🎯 Calling vfxManager.showDamageFloater with amount=${amount}, position=`, damagePosition);
       this.vfxManager.showDamageFloater(amount, damagePosition);
+    } else {
+      console.warn(`⚠️ Cannot show damage floater: character=${!!this.character}, vfxManager=${!!this.vfxManager}`);
     }
 
     // MVP 8: Apply knockback effect (push away from attacker)
@@ -5700,14 +5706,18 @@ export class Game {
     try {
       // MVP 8: Fetch real leaderboard data from server
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+      console.log(`🏆 Fetching leaderboard from: ${apiUrl}/api/leaderboard/top?limit=10`);
+
       const response = await fetch(`${apiUrl}/api/leaderboard/top?limit=10`);
 
       let leaderboardData;
       if (!response.ok) {
-        console.warn('⚠️ Leaderboard fetch failed, using mock data');
+        console.warn(`⚠️ Leaderboard fetch failed (${response.status} ${response.statusText}), using mock data`);
         leaderboardData = this.getMockLeaderboardData();
       } else {
         const data = await response.json();
+        console.log('✅ Leaderboard API response:', data);
+
         leaderboardData = data.leaderboard.map((entry: any) => ({
           playerId: entry.playerId,
           displayName: entry.playerId === this.playerId
@@ -5715,6 +5725,8 @@ export class Game {
             : entry.playerId.substring(0, 8), // Show first 8 chars of player ID
           score: entry.score
         }));
+
+        console.log('🏆 Processed leaderboard data:', leaderboardData);
       }
 
       const leaderboardList = document.getElementById('leaderboard-list');
