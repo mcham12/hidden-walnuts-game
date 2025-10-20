@@ -4723,7 +4723,7 @@ export class Game {
     }
 
     // Draw local player (MVP 8 FIX: Hide indicator while dead, show after respawn)
-    if (!this.isDead) {
+    if (!this.isDead && this.character) {
       const playerPos = worldToMinimap(this.character.position.x, this.character.position.z);
 
       // Player dot
