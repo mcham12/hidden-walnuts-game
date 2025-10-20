@@ -555,6 +555,18 @@ export default class ForestManager extends DurableObject {
       await this.sendWorldState(socket, existingPlayer.position, existingPlayer.rotationY);
       await this.sendExistingPlayers(socket, squirrelId);
 
+      // MVP 8 FIX: Send initial inventory and health state to sync UI (prevents grayed-out buttons on reconnect)
+      this.sendMessage(socket, {
+        type: 'inventory_update',
+        walnutCount: existingPlayer.walnutInventory
+      });
+      this.sendMessage(socket, {
+        type: 'health_update',
+        playerId: squirrelId,
+        health: existingPlayer.health,
+        maxHealth: existingPlayer.maxHealth
+      });
+
       // MVP 8 FIX: Spawn NPCs if none exist (they may have been despawned when last player left)
       if (this.npcManager.getNPCCount() === 0) {
         console.log('🔄 No NPCs exist, spawning fresh batch...');
@@ -678,6 +690,18 @@ export default class ForestManager extends DurableObject {
       // Send initial data with spawn position (MVP 6: may be saved position or default)
       await this.sendWorldState(socket, playerConnection.position, playerConnection.rotationY);
       await this.sendExistingPlayers(socket, squirrelId);
+
+      // MVP 8 FIX: Send initial inventory and health state to sync UI (prevents grayed-out buttons)
+      this.sendMessage(socket, {
+        type: 'inventory_update',
+        walnutCount: playerConnection.walnutInventory
+      });
+      this.sendMessage(socket, {
+        type: 'health_update',
+        playerId: squirrelId,
+        health: playerConnection.health,
+        maxHealth: playerConnection.maxHealth
+      });
 
       // MVP 8 FIX: Spawn NPCs if none exist (they may have been despawned when last player left)
       if (this.npcManager.getNPCCount() === 0) {

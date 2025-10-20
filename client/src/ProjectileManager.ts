@@ -239,8 +239,11 @@ export class ProjectileManager {
           projectile.velocity.clone().multiplyScalar(delta)
         );
 
+        // CRITICAL FIX: Pass ownerId (not projectile ID) so collision system skips thrower's capsule
+        // CollisionSystem has logic: "if (collider.id === playerId) continue"
+        // This prevents projectile from immediately hitting thrower's collision and being auto-eaten
         const collisionResult = this.collisionSystem.checkCollision(
-          `projectile-${projectile.id}`,
+          projectile.ownerId,  // Use thrower ID to skip their collider
           projectile.position,
           nextPos
         );
