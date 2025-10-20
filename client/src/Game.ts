@@ -4609,41 +4609,43 @@ export class Game {
       }
     }
 
-    // Draw local player
-    const playerPos = worldToMinimap(this.character.position.x, this.character.position.z);
+    // Draw local player (MVP 8 FIX: Hide indicator while dead, show after respawn)
+    if (!this.isDead) {
+      const playerPos = worldToMinimap(this.character.position.x, this.character.position.z);
 
-    // Player dot
-    ctx.fillStyle = '#00ff00';
-    ctx.beginPath();
-    ctx.arc(playerPos.x, playerPos.y, 6, 0, Math.PI * 2);
-    ctx.fill();
+      // Player dot
+      ctx.fillStyle = '#00ff00';
+      ctx.beginPath();
+      ctx.arc(playerPos.x, playerPos.y, 6, 0, Math.PI * 2);
+      ctx.fill();
 
-    // Player border
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+      // Player border
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
 
-    // Draw player direction indicator (arrow showing rotation)
-    // Player rotation: 0 = facing +Z (south), Math.PI = facing -Z (north)
-    // Canvas: rotation 0 = up (north), PI = down (south), -PI/2 = right (east), PI/2 = left (west)
-    ctx.save();
-    ctx.translate(playerPos.x, playerPos.y);
-    ctx.rotate(Math.PI - this.character.rotation.y); // Correct mapping for static north-up minimap
+      // Draw player direction indicator (arrow showing rotation)
+      // Player rotation: 0 = facing +Z (south), Math.PI = facing -Z (north)
+      // Canvas: rotation 0 = up (north), PI = down (south), -PI/2 = right (east), PI/2 = left (west)
+      ctx.save();
+      ctx.translate(playerPos.x, playerPos.y);
+      ctx.rotate(Math.PI - this.character.rotation.y); // Correct mapping for static north-up minimap
 
-    // Draw direction arrow
-    ctx.strokeStyle = '#00ff00';
-    ctx.fillStyle = '#00ff00';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, -10);  // Arrow tip
-    ctx.lineTo(-4, -4);
-    ctx.lineTo(0, 0);
-    ctx.lineTo(4, -4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+      // Draw direction arrow
+      ctx.strokeStyle = '#00ff00';
+      ctx.fillStyle = '#00ff00';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, -10);  // Arrow tip
+      ctx.lineTo(-4, -4);
+      ctx.lineTo(0, 0);
+      ctx.lineTo(4, -4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
 
-    ctx.restore();
+      ctx.restore();
+    }
   }
 
   /**
