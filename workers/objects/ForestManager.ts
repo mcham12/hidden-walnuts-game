@@ -648,6 +648,9 @@ export default class ForestManager extends DurableObject {
 
       this.activePlayers.set(squirrelId, playerConnection);
 
+      // MVP 8: Report initial score to leaderboard (bootstrap with 0 score)
+      await this.reportScoreToLeaderboard(playerConnection);
+
       // MVP 5.8: Ensure alarm is scheduled for disconnect checking
       await this.ensureAlarmScheduled();
 

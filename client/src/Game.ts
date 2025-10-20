@@ -5717,16 +5717,22 @@ export class Game {
       } else {
         const data = await response.json();
         console.log('✅ Leaderboard API response:', data);
+        console.log(`📊 Leaderboard stats: ${data.count} entries shown, ${data.totalPlayers} total players in DB`);
 
-        leaderboardData = data.leaderboard.map((entry: any) => ({
-          playerId: entry.playerId,
-          displayName: entry.playerId === this.playerId
-            ? (this.username ? `You (${this.username})` : 'You')
-            : entry.playerId.substring(0, 8), // Show first 8 chars of player ID
-          score: entry.score
-        }));
+        if (data.leaderboard.length === 0) {
+          console.warn('⚠️ Leaderboard is empty! No scores have been reported yet. Falling back to mock data.');
+          leaderboardData = this.getMockLeaderboardData();
+        } else {
+          leaderboardData = data.leaderboard.map((entry: any) => ({
+            playerId: entry.playerId,
+            displayName: entry.playerId === this.playerId
+              ? (this.username ? `You (${this.username})` : 'You')
+              : entry.playerId.substring(0, 8), // Show first 8 chars of player ID
+            score: entry.score
+          }));
 
-        console.log('🏆 Processed leaderboard data:', leaderboardData);
+          console.log('🏆 Processed leaderboard data:', leaderboardData);
+        }
       }
 
       const leaderboardList = document.getElementById('leaderboard-list');
