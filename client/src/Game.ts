@@ -4067,39 +4067,27 @@ export class Game {
   private createBuriedWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // MVP 8 FIX: Use shared walnut mesh (partially buried above mound)
+    // MVP 8 FIX: Use shared walnut mesh (sits on ground patch)
     const walnut = this.createWalnutMesh();
-    walnut.position.y = 0.04; // Partially visible above dirt mound
+    walnut.position.y = 0.03; // Slightly above ground
     walnut.castShadow = true;
     walnut.receiveShadow = true;
     group.add(walnut);
 
-    // Dirt mound around walnut (smaller, more subtle)
-    const moundGeometry = new THREE.SphereGeometry(0.12, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2); // Reduced from 0.16 to 0.12
-    const moundMaterial = new THREE.MeshStandardMaterial({
-      color: 0x5a4a3a, // Lighter soil color (more visible than before)
-      roughness: 0.95,
-      metalness: 0.1
-    });
-    const mound = new THREE.Mesh(moundGeometry, moundMaterial);
-    mound.scale.set(1, 0.3, 1); // Flatter mound
-    mound.position.y = 0.01;
-    mound.receiveShadow = true;
-    mound.castShadow = true;
-    group.add(mound);
-
-    // Add a darker ring at base for depth
-    const ringGeometry = new THREE.RingGeometry(0.18, 0.25, 16);
-    const ringMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4a3a2a,
-      roughness: 0.98,
+    // Simple brownish ground patch - flat disc slightly bigger than walnut
+    // Walnut radius: 0.06, patch radius: 0.10 (just slightly bigger)
+    const patchGeometry = new THREE.CircleGeometry(0.10, 16);
+    const patchMaterial = new THREE.MeshStandardMaterial({
+      color: 0x6B5A4D, // Slightly brownish, earthy color
+      roughness: 0.9,
+      metalness: 0.0,
       side: THREE.DoubleSide
     });
-    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.005;
-    ring.receiveShadow = true;
-    group.add(ring);
+    const patch = new THREE.Mesh(patchGeometry, patchMaterial);
+    patch.rotation.x = -Math.PI / 2; // Lay flat on ground
+    patch.position.y = 0.01; // Just above terrain to prevent z-fighting
+    patch.receiveShadow = true;
+    group.add(patch);
 
     // Add invisible collision sphere for easier clicking (MVP 5: Increased to 1.2 for even better click detection)
     const collisionGeometry = new THREE.SphereGeometry(1.2, 8, 8);

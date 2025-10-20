@@ -1467,12 +1467,12 @@
           padding: 4px;
         }
 
-        /* Compact toast notifications in landscape, respect safe areas */
+        /* Compact toast notifications in landscape - slide from LEFT */
         #toast-container {
           top: max(5px, env(safe-area-inset-top));
-          left: 50%;
+          left: max(5px, env(safe-area-inset-left)); /* Slide from left, not center */
           right: auto;
-          transform: translateX(-50%);
+          transform: none; /* Remove center transform */
           max-width: 200px;
         }
         .toast {
