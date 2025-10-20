@@ -2812,6 +2812,13 @@ export class Game {
         hitAction.reset().setLoop(THREE.LoopOnce, 1).play();
         hitAction.clampWhenFinished = true;
       }
+
+      // MVP 8: Show damage floater on remote player
+      if (this.vfxManager) {
+        const damagePosition = remotePlayer.position.clone();
+        damagePosition.y += 2; // Show above player head
+        this.vfxManager.showDamageFloater(this.PROJECTILE_DAMAGE, damagePosition);
+      }
     }
 
     // Check if target is an NPC
@@ -2824,6 +2831,13 @@ export class Game {
         hitAction.timeScale = 0.65; // Slow down
         hitAction.reset().setLoop(THREE.LoopOnce, 1).play();
         hitAction.clampWhenFinished = true;
+      }
+
+      // MVP 8: Show damage floater on NPC
+      if (this.vfxManager) {
+        const damagePosition = npc.position.clone();
+        damagePosition.y += 2; // Show above NPC head
+        this.vfxManager.showDamageFloater(this.PROJECTILE_DAMAGE, damagePosition);
       }
     }
 
@@ -2988,6 +3002,13 @@ export class Game {
 
     this.health = Math.max(0, this.health - amount);
     console.log(`💔 Took ${amount} damage from ${attackerId}. Health: ${this.health}/${this.MAX_HEALTH}`);
+
+    // MVP 8: Show damage floater on local player
+    if (this.character && this.vfxManager) {
+      const damagePosition = this.character.position.clone();
+      damagePosition.y += 2; // Show above player head
+      this.vfxManager.showDamageFloater(amount, damagePosition);
+    }
 
     // Send damage event to server
     this.sendMessage({
