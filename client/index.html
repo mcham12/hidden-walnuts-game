@@ -1207,11 +1207,15 @@
           right: 5px;
           gap: 8px; /* Reduce gap between buttons */
         }
-        /* Leaderboard button - directly under Settings per user request */
+        /* iPad: Leaderboard button - directly under Settings per user request */
         #leaderboard-toggle {
           top: 183px; /* 130px (settings top) + 48px (settings height) + 5px (gap) */
           bottom: auto;
           right: 5px;
+          padding: 10px 14px; /* Same as Settings */
+          font-size: 14px; /* Same as Settings */
+          min-height: 48px; /* Same as Settings */
+          min-width: 100px; /* Same as Settings */
         }
 
         /* Make leaderboard responsive */
@@ -1382,11 +1386,11 @@
           min-height: 24px;
         }
 
-        /* Hide/Throw/Eat buttons - moved left per user request */
+        /* Hide/Throw/Eat buttons - moved lower and more left per user request */
         #mobile-actions {
           top: auto;
-          bottom: max(5px, env(safe-area-inset-bottom));
-          right: 80px; /* Moved left from right edge (was 5px) */
+          bottom: 15px; /* Slightly lower (was 5px with safe-area) */
+          right: 120px; /* More to the left (was 80px) */
           left: auto;
           flex-direction: column;
           gap: 4px;
