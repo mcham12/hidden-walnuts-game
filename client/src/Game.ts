@@ -914,6 +914,8 @@ export class Game {
       });
     }
 
+    // CRITICAL: Initialize button states immediately (don't wait for server)
+    this.updateMobileButtons();
   }
 
   private onResize() {
