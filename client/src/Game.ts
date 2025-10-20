@@ -3034,6 +3034,38 @@ export class Game {
       this.vfxManager.showDamageFloater(amount, damagePosition);
     }
 
+    // MVP 8: Apply knockback effect (push away from attacker)
+    if (this.character) {
+      let attackerPos: THREE.Vector3 | null = null;
+
+      // Find attacker position
+      const remotePlayer = this.remotePlayers.get(attackerId);
+      if (remotePlayer) {
+        attackerPos = remotePlayer.position;
+      } else {
+        const npc = this.npcs.get(attackerId);
+        if (npc) {
+          attackerPos = npc.position;
+        }
+      }
+
+      // Apply knockback if attacker found
+      if (attackerPos) {
+        // Calculate knockback direction (from attacker to victim)
+        const knockbackDir = new THREE.Vector3()
+          .subVectors(this.character.position, attackerPos)
+          .normalize();
+
+        // Apply knockback impulse (2.5 units horizontal, 1.5 units vertical)
+        const knockbackStrength = 2.5;
+        this.velocity.x += knockbackDir.x * knockbackStrength;
+        this.velocity.z += knockbackDir.z * knockbackStrength;
+        this.velocity.y += 1.5; // Small upward boost for visual effect
+
+        console.log(`💥 Knockback applied: direction (${knockbackDir.x.toFixed(2)}, ${knockbackDir.z.toFixed(2)})`);
+      }
+    }
+
     // Send damage event to server
     this.sendMessage({
       type: 'player_damaged',
