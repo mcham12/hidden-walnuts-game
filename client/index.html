@@ -1194,20 +1194,24 @@
           min-width: 100px;
         }
 
-        /* FIX: Stack buttons vertically on RIGHT side without overlap */
-        /* Order from top: Settings (top: 130px) → Hide (mobile-actions at bottom: 80px) → Leaderboard (bottom: 180px) */
+        /* FIX: Prevent button overlap - stack with proper spacing */
+        /* Settings button below minimap */
         #settings-toggle {
           top: 130px; /* Below minimap (120px height + 10px gap) */
           right: 5px;
           bottom: auto;
         }
+        /* Mobile action buttons (Hide/Throw/Eat) - ensure enough space from bottom */
         #mobile-actions {
-          bottom: 80px;
+          bottom: 20px;
           right: 5px;
+          gap: 8px; /* Reduce gap between buttons */
         }
+        /* Leaderboard button - positioned to not overlap mobile-actions */
+        /* Mobile-actions takes ~200px height (3 buttons * 64px + 2 gaps * 8px = 208px) */
         #leaderboard-toggle {
           top: auto;
-          bottom: 180px;
+          bottom: 240px; /* 20px (mobile-actions bottom) + 220px (mobile-actions height + padding) */
           right: 5px;
         }
 
@@ -1353,35 +1357,50 @@
           right: max(5px, env(safe-area-inset-right));
         }
 
-        /* RIGHT SIDE VERTICAL STACK - All buttons SKINNY (50px wide) to fit without overlap */
-        /* Stack order from top: Minimap (70px) → Settings (32px) → Hide (32px) → Leaderboard (32px) */
+        /* LANDSCAPE REDESIGN: Settings and Leaderboard at TOP (horizontal), Hide/Throw/Eat on RIGHT */
 
-        /* Settings button - below minimap, skinny */
+        /* Settings button - TOP LEFT (next to HUD), horizontal with Leaderboard */
         #settings-toggle {
-          top: calc(max(5px, env(safe-area-inset-top)) + 70px + 3px);
-          right: max(5px, env(safe-area-inset-right));
-          bottom: auto; /* Override any bottom positioning */
-          padding: 4px 6px;
+          top: max(5px, env(safe-area-inset-top));
+          left: calc(max(5px, env(safe-area-inset-left)) + 200px); /* After HUD width */
+          right: auto;
+          bottom: auto;
+          padding: 4px 8px;
           font-size: 10px;
-          min-width: 50px;
-          min-height: 32px;
+          min-width: 70px;
+          min-height: 24px;
         }
 
-        /* Hide button (mobile-actions) - below settings, ULTRA SKINNY (35px) and SHORT (20px) to prevent overlap */
+        /* Leaderboard button - TOP, next to Settings button */
+        #leaderboard-toggle {
+          top: max(5px, env(safe-area-inset-top));
+          left: calc(max(5px, env(safe-area-inset-left)) + 200px + 70px + 5px); /* After HUD + Settings */
+          right: auto;
+          bottom: auto;
+          padding: 4px 8px;
+          font-size: 10px;
+          min-width: 70px;
+          min-height: 24px;
+        }
+
+        /* Hide/Throw/Eat buttons - RIGHT side, aligned with minimap, LESS TALL */
         #mobile-actions {
-          top: calc(max(5px, env(safe-area-inset-top)) + 70px + 3px + 32px + 3px);
-          right: max(5px, env(safe-area-inset-right));
-          bottom: auto !important; /* Override bottom positioning from other media queries */
+          top: auto;
+          bottom: max(5px, env(safe-area-inset-bottom));
+          right: max(5px, env(safe-area-inset-right)); /* Aligned with minimap right edge */
+          left: auto;
+          flex-direction: column;
+          gap: 3px;
         }
         .mobile-action-btn {
-          min-width: 35px !important; /* Ultra skinny to fit without overlap */
-          max-width: 35px;
-          min-height: 16px; /* Even shorter button height - user reported 20px still too tall */
-          padding: 2px 3px;
-          font-size: 8px;
+          min-width: 70px; /* Match minimap width for alignment */
+          max-width: 70px;
+          min-height: 40px; /* Less tall as requested */
+          padding: 4px 6px;
+          font-size: 9px;
         }
         .mobile-action-btn .btn-icon {
-          font-size: 13px;
+          font-size: 16px;
         }
         .mobile-action-btn .btn-label {
           font-size: 8px;
@@ -1389,17 +1408,6 @@
         }
         .mobile-action-btn .btn-count {
           font-size: 7px;
-        }
-
-        /* Leaderboard button - below hide button, skinny */
-        #leaderboard-toggle {
-          top: calc(max(5px, env(safe-area-inset-top)) + 70px + 3px + 32px + 3px + 16px + 3px);
-          right: max(5px, env(safe-area-inset-right));
-          bottom: auto; /* Override bottom positioning */
-          padding: 4px 6px;
-          font-size: 10px;
-          min-width: 50px;
-          min-height: 32px;
         }
 
         /* Leaderboard compact in landscape, respect safe areas */

@@ -361,8 +361,8 @@ export class Game {
       // MVP 5: Initialize VFX Manager
       this.vfxManager = new VFXManager(this.scene, this.camera);
 
-      // MVP 8: Initialize Projectile Manager
-      this.projectileManager = new ProjectileManager(this.scene, this.vfxManager, this.audioManager);
+      // MVP 8: Initialize Projectile Manager (with collision system for tree/rock detection)
+      this.projectileManager = new ProjectileManager(this.scene, this.vfxManager, this.audioManager, this.collisionSystem);
 
       // MVP 8 FIX: Load shared walnut model for visual consistency
       await this.loadWalnutModel();

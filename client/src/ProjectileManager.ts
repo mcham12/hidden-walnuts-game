@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { VFXManager } from './VFXManager';
 import { AudioManager } from './AudioManager';
+import { CollisionSystem } from './CollisionSystem';
 import { getTerrainHeight } from './terrain.js';
 
 /**
@@ -34,6 +35,7 @@ export class ProjectileManager {
   private vfxManager: VFXManager;
   // @ts-ignore - Will be used in Phase 2 for throw/hit sounds
   private audioManager: AudioManager;
+  private collisionSystem: CollisionSystem | null = null;
 
   // Physics constants
   private readonly GRAVITY = -9.8; // m/s²
@@ -51,11 +53,13 @@ export class ProjectileManager {
   constructor(
     scene: THREE.Scene,
     vfxManager: VFXManager,
-    audioManager: AudioManager
+    audioManager: AudioManager,
+    collisionSystem: CollisionSystem | null
   ) {
     this.scene = scene;
     this.vfxManager = vfxManager;
     this.audioManager = audioManager;
+    this.collisionSystem = collisionSystem;
     this.loader = new GLTFLoader();
 
     // Preload walnut model
@@ -228,7 +232,29 @@ export class ProjectileManager {
         return;
       }
 
-      // Check if hit ground (only if no entity hit detected)
+      // MVP 8: Check collision with trees/rocks (must be after entity check, before ground check)
+      if (this.collisionSystem) {
+        // Calculate next position for raycast collision check
+        const nextPos = projectile.position.clone().add(
+          projectile.velocity.clone().multiplyScalar(delta)
+        );
+
+        const collisionResult = this.collisionSystem.checkCollision(
+          `projectile-${projectile.id}`,
+          projectile.position,
+          nextPos
+        );
+
+        if (collisionResult.collided) {
+          // Projectile hit a tree/rock - treat as miss
+          projectile.hasHit = true;
+          this.onProjectileMiss(projectile);
+          toRemove.push(id);
+          return;
+        }
+      }
+
+      // Check if hit ground (only if no entity/barrier hit detected)
       const terrainAtProjectile = getTerrainHeight(projectile.position.x, projectile.position.z);
       const groundBuffer = 0.1; // Small buffer to trigger slightly before visual ground contact
       if (projectile.position.y <= terrainAtProjectile + groundBuffer) {
