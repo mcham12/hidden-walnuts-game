@@ -240,6 +240,11 @@ export class Game {
   private lastCollisionDamageTime: number = 0;
   private lastRegenTime: number = 0;
   private isDead: boolean = false;
+  // MVP 8: Spawn protection after respawn
+  private isInvulnerable: boolean = false;
+  private invulnerabilityEndTime: number = 0;
+  private readonly SPAWN_PROTECTION_DURATION = 3000; // 3 seconds
+  private invulnerabilityMesh: THREE.Mesh | null = null; // Visual effect for invulnerability
   // Note: MAX_INVENTORY enforced server-side (10 walnuts)
 
   // MVP 8 FIX: Shared walnut model for visual consistency
@@ -1020,14 +1025,29 @@ export class Game {
     // MVP 7: Update NPC interpolation
     this.updateNPCInterpolation(delta);
 
+    // MVP 8: Update invulnerability (check expiry and update visual)
+    if (this.isInvulnerable && Date.now() >= this.invulnerabilityEndTime) {
+      this.isInvulnerable = false;
+      this.removeInvulnerabilityEffect();
+      console.log('🛡️ Spawn protection expired');
+    }
+
+    // MVP 8: Update invulnerability visual effect
+    if (this.isInvulnerable && this.invulnerabilityMesh) {
+      this.updateInvulnerabilityEffect(delta);
+    }
+
     // MVP 8: Update projectiles (flying walnuts)
     if (this.projectileManager) {
       // Build entity map for hit detection
       const entities = new Map<string, { position: THREE.Vector3, isInvulnerable?: boolean }>();
 
-      // Add local player
+      // Add local player (with invulnerability flag)
       if (this.character) {
-        entities.set(this.playerId, { position: this.character.position.clone() });
+        entities.set(this.playerId, {
+          position: this.character.position.clone(),
+          isInvulnerable: this.isInvulnerable
+        });
       }
 
       // Add remote players
@@ -2999,6 +3019,10 @@ export class Game {
    */
   private takeDamage(amount: number, attackerId: string): void {
     if (this.isDead) return; // Can't damage dead players
+    if (this.isInvulnerable) {
+      console.log(`🛡️ Damage blocked by spawn protection!`);
+      return; // Invulnerable - no damage taken
+    }
 
     this.health = Math.max(0, this.health - amount);
     console.log(`💔 Took ${amount} damage from ${attackerId}. Health: ${this.health}/${this.MAX_HEALTH}`);
@@ -3273,11 +3297,76 @@ export class Game {
       }, 500); // Match transition duration
     }
 
+    // MVP 8: Enable spawn protection (3 seconds invulnerability)
+    this.isInvulnerable = true;
+    this.invulnerabilityEndTime = Date.now() + this.SPAWN_PROTECTION_DURATION;
+    this.createInvulnerabilityEffect();
+    console.log('🛡️ Spawn protection active for 3 seconds');
+
     // Update UI
     this.updateHealthUI();
     this.updateWalnutHUD();
 
     console.log('✅ Respawn complete!');
+  }
+
+  /**
+   * MVP 8: Create invulnerability visual effect (shimmer sphere)
+   */
+  private createInvulnerabilityEffect(): void {
+    if (!this.character || this.invulnerabilityMesh) return; // Already has effect
+
+    // Create transparent shimmering sphere around player
+    const geometry = new THREE.SphereGeometry(1.5, 32, 32);
+    const material = new THREE.MeshBasicMaterial({
+      color: 0x00FFFF, // Cyan shimmer
+      transparent: true,
+      opacity: 0.3,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+
+    this.invulnerabilityMesh = new THREE.Mesh(geometry, material);
+    this.invulnerabilityMesh.position.copy(this.character.position);
+    this.invulnerabilityMesh.position.y += 1; // Center on player
+    this.scene.add(this.invulnerabilityMesh);
+  }
+
+  /**
+   * MVP 8: Remove invulnerability visual effect
+   */
+  private removeInvulnerabilityEffect(): void {
+    if (this.invulnerabilityMesh) {
+      this.scene.remove(this.invulnerabilityMesh);
+      this.invulnerabilityMesh.geometry.dispose();
+      (this.invulnerabilityMesh.material as THREE.Material).dispose();
+      this.invulnerabilityMesh = null;
+    }
+  }
+
+  /**
+   * MVP 8: Update invulnerability effect (call every frame)
+   */
+  private updateInvulnerabilityEffect(delta: number): void {
+    if (!this.invulnerabilityMesh || !this.character) return;
+
+    // Follow player position
+    this.invulnerabilityMesh.position.copy(this.character.position);
+    this.invulnerabilityMesh.position.y += 1; // Center on player
+
+    // Pulse animation (scale and opacity)
+    const time = Date.now() * 0.003; // Slow pulse
+    const pulse = Math.sin(time) * 0.1 + 1.0; // Oscillate between 0.9 and 1.1
+    this.invulnerabilityMesh.scale.setScalar(pulse);
+
+    // Opacity pulse (more subtle)
+    const material = this.invulnerabilityMesh.material as THREE.MeshBasicMaterial;
+    material.opacity = 0.2 + Math.sin(time * 2) * 0.1; // Oscillate between 0.1 and 0.3
+
+    // Rotate for shimmer effect
+    this.invulnerabilityMesh.rotation.y += delta * 1.5;
+    this.invulnerabilityMesh.rotation.x += delta * 0.5;
   }
 
   /**
