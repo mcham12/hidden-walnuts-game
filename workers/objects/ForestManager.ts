@@ -1032,6 +1032,9 @@ export default class ForestManager extends DurableObject {
         playerConnection.score += 2;
         playerConnection.combatStats.hits += 1;
 
+        // MVP 8: Report score to leaderboard
+        await this.reportScoreToLeaderboard(playerConnection);
+
         console.log(`💥 ${playerConnection.username} hit ${target.username} for ${actualDamage} damage (${target.health}/${target.maxHealth} HP)`);
 
         // Broadcast damage event to all players
@@ -1121,6 +1124,10 @@ export default class ForestManager extends DurableObject {
     // Apply death penalty to victim (-2)
     victim.score = Math.max(0, victim.score - 2);
     victim.combatStats.deaths += 1;
+
+    // MVP 8: Report scores to leaderboard
+    await this.reportScoreToLeaderboard(killer);
+    await this.reportScoreToLeaderboard(victim);
 
     // Drop all walnuts at death location
     const droppedWalnuts = victim.walnutInventory;
@@ -1309,6 +1316,39 @@ export default class ForestManager extends DurableObject {
           console.error(`Failed to broadcast to ${playerConnection.squirrelId}:`, error);
         }
       }
+    }
+  }
+
+  // MVP 8: Report player score to leaderboard
+  private async reportScoreToLeaderboard(playerConnection: any): Promise<void> {
+    try {
+      // Get leaderboard Durable Object
+      const leaderboardId = this.env.LEADERBOARD.idFromName("global");
+      const leaderboard = this.env.LEADERBOARD.get(leaderboardId);
+
+      // Prepare score record
+      const scoreRecord = {
+        playerId: playerConnection.username || playerConnection.squirrelId,
+        score: playerConnection.score,
+        walnuts: {
+          hidden: 0, // TODO: Track these stats
+          found: 0
+        },
+        updatedAt: Date.now()
+      };
+
+      // Report to leaderboard
+      const response = await leaderboard.fetch(new Request('http://leaderboard/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(scoreRecord)
+      }));
+
+      if (!response.ok) {
+        console.warn(`⚠️ Failed to report score to leaderboard for ${playerConnection.username}`);
+      }
+    } catch (error) {
+      console.error('❌ Error reporting score to leaderboard:', error);
     }
   }
 

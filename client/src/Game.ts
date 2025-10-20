@@ -5556,9 +5556,24 @@ export class Game {
    */
   private async updateLeaderboard(): Promise<void> {
     try {
-      // For now, use mock data since server doesn't have leaderboard yet
-      // TODO: Fetch from server endpoint
-      const leaderboardData = this.getMockLeaderboardData();
+      // MVP 8: Fetch real leaderboard data from server
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+      const response = await fetch(`${apiUrl}/api/leaderboard/top?limit=10`);
+
+      let leaderboardData;
+      if (!response.ok) {
+        console.warn('⚠️ Leaderboard fetch failed, using mock data');
+        leaderboardData = this.getMockLeaderboardData();
+      } else {
+        const data = await response.json();
+        leaderboardData = data.leaderboard.map((entry: any) => ({
+          playerId: entry.playerId,
+          displayName: entry.playerId === this.playerId
+            ? (this.username ? `You (${this.username})` : 'You')
+            : entry.playerId.substring(0, 8), // Show first 8 chars of player ID
+          score: entry.score
+        }));
+      }
 
       const leaderboardList = document.getElementById('leaderboard-list');
       if (!leaderboardList) return;
@@ -5567,7 +5582,7 @@ export class Game {
       leaderboardList.innerHTML = '';
 
       // Add entries (top 10)
-      leaderboardData.slice(0, 10).forEach((entry, index) => {
+      leaderboardData.slice(0, 10).forEach((entry: any, index: number) => {
         const li = document.createElement('li');
 
         // Highlight current player
