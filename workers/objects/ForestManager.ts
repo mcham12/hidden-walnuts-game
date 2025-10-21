@@ -848,6 +848,10 @@ export default class ForestManager extends DurableObject {
             console.log(`⚠️ Player ${playerConnection.squirrelId} inventory full (${MAX_INVENTORY} walnuts)`);
           }
 
+          // MVP 8: Award +1 point for finding walnut
+          playerConnection.score += 1;
+          console.log(`🏆 Player ${playerConnection.username} earned +1 point (now ${playerConnection.score} points)`);
+
           // Persist updated mapState
           await this.storage.put('mapState', this.mapState);
 
@@ -864,6 +868,9 @@ export default class ForestManager extends DurableObject {
             type: 'inventory_update',
             walnutCount: playerConnection.walnutInventory
           });
+
+          // MVP 8: Report updated score to leaderboard
+          await this.reportScoreToLeaderboard(playerConnection);
         } else {
           console.warn(`⚠️ SERVER: Walnut ${data.walnutId} not found in mapState`);
         }
