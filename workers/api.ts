@@ -1,5 +1,6 @@
 // API entry point for Hidden Walnuts game - Simplified
 // MVP 7.1: Bot protection with Turnstile and rate limiting
+// Deployment test: 2025-10-21 - Verifying Cloudflare preview deployment
 
 import { getObjectInstance } from "./objects/registry";
 import type { EnvWithBindings } from "./objects/registry";
