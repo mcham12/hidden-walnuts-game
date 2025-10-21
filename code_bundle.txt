@@ -1,0 +1,3289 @@
+=== FILE: ./.gitignore ===
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+# Testing
+coverage/
+# Production
+dist/
+build/
+# Misc
+.DS_Store
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.dev.vars
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+# Editor/IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+# Cloudflare
+.wrangler/
+# Generated files
+code_bundle.txt
+repo_files.txt
+docs_bundle.txt
+assets_metadata.json
+=== END FILE ===
+
+=== FILE: ./workers/objects/WalnutRegistry.ts ===
+import type { Walnut, HidingMethod } from "../types";
+import { Logger, LogCategory, initializeLogger } from '../Logger';
+interface DurableObjectState {
+  storage: DurableObjectStorage;
+  id: DurableObjectId;
+}
+interface DurableObjectStorage {
+  get<T>(key: string): Promise<T | null>;
+  put<T>(key: string, value: T): Promise<void>;
+  delete(key: string): Promise<boolean>;
+  deleteAll(): Promise<void>;
+  list<T>(options?: { prefix?: string }): Promise<Map<string, T>>;
+}
+interface DurableObjectId {
+  toString(): string;
+  equals(other: DurableObjectId): boolean;
+}
+export default class WalnutRegistry {
+  state: DurableObjectState;
+  storage: DurableObjectStorage;
+  walnuts: Map<string, Walnut> = new Map();
+  initialized = false;
+  constructor(state: DurableObjectState, env?: any) {
+    this.state = state;
+    this.storage = state.storage;
+    
+    if (env?.ENVIRONMENT) {
+      initializeLogger(env.ENVIRONMENT);
+    }
+  }
+  async init() {
+    if (!this.initialized) {
+      await this.loadAll();
+      this.initialized = true;
+    }
+  }
+  async fetch(request: Request): Promise<Response> {
+    await this.init();
+    const url = new URL(request.url);
+    const path = url.pathname;
+    if (path.endsWith("/add") && request.method === "POST") {
+      try {
+        const walnut = await request.json() as Walnut;
+        
+        if (!this.validateWalnut(walnut)) {
+          return new Response(JSON.stringify({
+            error: "Invalid walnut object",
+            message: "Walnut must have id, ownerId, origin, hiddenIn, location, and timestamp"
+          }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+        
+        this.walnuts.set(walnut.id, walnut);
+        
+        await this.storage.put(walnut.id, walnut);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: `Walnut ${walnut.id} added successfully`,
+          walnut: {
+            id: walnut.id,
+            ownerId: walnut.ownerId,
+            hiddenIn: walnut.hiddenIn,
+            location: walnut.location
+          }
+        }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return new Response(JSON.stringify({
+          error: "Failed to add walnut",
+          message: errorMessage
+        }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+    }
+    if (path.endsWith("/all")) {
+      try {
+        await this.loadAll();
+        
+        const allWalnuts = Array.from(this.walnuts.values());
+        
+        const response = {
+          total: allWalnuts.length,
+          timestamp: Date.now(),
+          walnuts: allWalnuts
+        };
+        
+        return new Response(JSON.stringify(response, null, 2), {
+          headers: { 
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store"
+          }
+        });
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return new Response(JSON.stringify({
+          error: "Failed to retrieve walnuts",
+          message: errorMessage
+        }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+    }
+    if (path.endsWith("/reset")) {
+      await this.storage.deleteAll();
+      this.walnuts.clear();
+      return new Response(JSON.stringify({
+        success: true,
+        message: "All walnuts reset"
+      }), {
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+    return new Response(JSON.stringify({
+      error: "Not found",
+      message: "The requested endpoint does not exist"
+    }), { 
+      status: 404,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+  async loadAll(): Promise<void> {
+    const entries = await this.storage.list<Walnut>();
+    for (const [key, walnut] of entries) {
+      this.walnuts.set(key, walnut);
+    }
+  }
+  private validateWalnut(walnut: any): walnut is Walnut {
+    if (!walnut) return false;
+    
+    if (!walnut.id || !walnut.ownerId || !walnut.origin || 
+        !walnut.hiddenIn || !walnut.location || !walnut.timestamp) {
+      return false;
+    }
+    
+    if (walnut.hiddenIn !== "buried" && walnut.hiddenIn !== "bush") {
+      return false;
+    }
+    
+    if (typeof walnut.location.x !== 'number' || 
+        typeof walnut.location.y !== 'number' || 
+        typeof walnut.location.z !== 'number') {
+      return false;
+    }
+    
+    return true;
+  }
+  async alarm(): Promise<void> {
+  }
+}
+
+=== END FILE ===
+
+=== FILE: ./workers/objects/ForestManager.ts ===
+import { TREE_COUNT, SHRUB_COUNT, TERRAIN_SIZE, ANTI_CHEAT, MOVEMENT_VALIDATION } from "../constants";
+import type { Walnut, WalnutOrigin, HidingMethod, ForestObject } from "../types";
+import { Logger, LogCategory, initializeLogger } from '../Logger';
+interface DurableObjectState {
+  storage: DurableObjectStorage;
+  id: DurableObjectId;
+}
+interface DurableObjectStorage {
+  get<T>(key: string): Promise<T | null>;
+  put<T>(key: string, value: T): Promise<void>;
+  delete(key: string): Promise<boolean>;
+  deleteAll(): Promise<void>;
+  list<T>(options?: { prefix?: string }): Promise<Map<string, T>>;
+}
+interface DurableObjectId {
+  toString(): string;
+  equals(other: DurableObjectId): boolean;
+}
+interface PlayerConnection {
+  squirrelId: string;
+  socket: WebSocket;
+  isAuthenticated: boolean;
+  lastActivity: number;
+  position: { x: number; y: number; z: number };
+  rotationY: number;
+  characterId: string; 
+  errorCount: number;
+  lastErrorTime: number;
+  connectionStartTime: number;
+  messageCount: number;
+  heartbeatCount: number;
+  lastHeartbeat: number;
+  connectionQuality: 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+  lastPositionUpdate: number;
+  lastPosition: { x: number; y: number; z: number };
+  violationCount: number;
+  violations: Array<{
+    type: string;
+    timestamp: number;
+    details: any;
+  }>;
+  isFlagged: boolean;
+  flagReason?: string;
+  nearbyPlayers?: number;
+  lastDebugLog?: number;
+}
+enum ServerErrorType {
+  AUTHENTICATION_FAILED = 'authentication_failed',
+  WEBSOCKET_ERROR = 'websocket_error',
+  MESSAGE_PARSE_ERROR = 'message_parse_error',
+  PLAYER_NOT_FOUND = 'player_not_found',
+  INVALID_MESSAGE = 'invalid_message',
+  HEARTBEAT_TIMEOUT = 'heartbeat_timeout',
+  CONNECTION_TIMEOUT = 'connection_timeout'
+}
+interface ServerError {
+  type: ServerErrorType;
+  message: string;
+  timestamp: number;
+  squirrelId?: string;
+  details?: any;
+  recoverable: boolean;
+}
+export default class ForestManager {
+  state: DurableObjectState;
+  storage: DurableObjectStorage;
+  env: any;
+  cycleStartTime: number = 0;
+  mapState: Walnut[] = [];
+  terrainSeed: number = 0;
+  forestObjects: ForestObject[] = [];
+  
+  sessions: Set<WebSocket> = new Set();
+  activePlayers: Map<string, PlayerConnection> = new Map();
+  heartbeatInterval: any = null;
+  
+  errorHistory: ServerError[] = [];
+  maxErrorHistory = 100;
+  connectionMonitoringInterval: any = null;
+  serverMetrics = {
+    totalConnections: 0,
+    activeConnections: 0,
+    totalErrors: 0,
+    averageLatency: 0,
+    uptime: 0,
+    totalDisconnections: 0,
+    averageConnectionDuration: 0,
+    disconnectReasons: {} as Record<string, number>
+  };
+  
+  private pendingStorageOps: any[] = [];
+  private storageBatchTimeout: any = null;
+  private storageBatchInterval = 500; 
+  private serverStartTime: number = Date.now();
+  private static readonly INTEREST_RADIUS = 50; 
+  private static readonly CULLING_RADIUS = 100; 
+  private static readonly UPDATE_INTERVAL = 1000; 
+  private lastInterestUpdate = 0;
+  constructor(state: DurableObjectState, env: any) {
+    this.state = state;
+    this.storage = state.storage;
+    this.env = env;
+    
+    this.serverStartTime = Date.now();
+    
+    initializeLogger(env.ENVIRONMENT);
+    
+    
+    this.loadServerMetrics().catch(error => 
+      Logger.warn(LogCategory.WEBSOCKET, 'Failed to load server metrics during startup:', error)
+    );
+  }
+  async fetch(request: Request): Promise<Response> {
+    const upgradeHeader = request.headers.get("Upgrade") || "";
+    const url = new URL(request.url);
+    const path = url.pathname;
+    const CORS_HEADERS = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    };
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: CORS_HEADERS,
+      });
+    }
+    if (path === "/ws") {
+      return await this.handleWebSocketUpgrade(request);
+    }
+    if (path.endsWith("/reset")) {
+      Logger.info(LogCategory.MAP, "Handling /reset for DO ID:", this.state.id.toString());
+      await this.resetMap();
+      return new Response(JSON.stringify({ message: "Map reset and walnuts respawned." }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...CORS_HEADERS,
+        },
+      });
+    }
+    if (path.endsWith("/hotzones")) {
+      const zones = await this.getRecentActivity();
+      return new Response(JSON.stringify(zones), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...CORS_HEADERS,
+        },
+      });
+    }
+    if (path.endsWith("/state") || path.endsWith("/map-state")) {
+      try {
+        await this.initialize();
+        Logger.info(LogCategory.MAP, 'Returning mapState for /map-state:', JSON.stringify(this.mapState));
+        return new Response(JSON.stringify(this.mapState), {
+          status: 200,
+          headers: {
+            ...CORS_HEADERS,
+            'Content-Type': 'application/json',
+          },
+        });
+      } catch (error: any) {
+        Logger.error(LogCategory.MAP, 'Error in /map-state handler:', error);
+        return new Response(JSON.stringify({ error: 'Internal Server Error', message: error?.message || 'Unknown error' }), {
+          status: 500,
+          headers: {
+            ...CORS_HEADERS,
+            'Content-Type': 'application/json',
+          },
+        });
+      }
+    }
+    if (path.endsWith("/terrain-seed")) {
+      await this.initialize();
+      return new Response(JSON.stringify({ seed: this.terrainSeed }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...CORS_HEADERS,
+        },
+      });
+    }
+    if (path.endsWith("/forest-objects")) {
+      try {
+        await this.initialize();
+        Logger.info(LogCategory.MAP, `🌲 Serving ${this.forestObjects.length} forest objects`);
+        return new Response(JSON.stringify(this.forestObjects), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            ...CORS_HEADERS,
+          },
+        });
+      } catch (error) {
+        Logger.error(LogCategory.MAP, 'Error serving /forest-objects:', error);
+        return new Response(JSON.stringify({ error: 'Failed to fetch forest objects' }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            ...CORS_HEADERS,
+          },
+        });
+      }
+    }
+    if (path === "/join" && request.method === "POST") {
+      return await this.handleJoinRequest(request);
+    }
+    if (path === "/find" && request.method === "POST") {
+      const { walnutId, squirrelId } = await request.json() as { walnutId?: string, squirrelId?: string };
+      if (!walnutId || !squirrelId) return new Response(JSON.stringify({ error: "Missing walnutId or squirrelId" }), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          ...CORS_HEADERS,
+        },
+      });
+      return this.handleFind(walnutId, squirrelId);
+    }
+    if (path === "/rehide" && request.method === "POST") {
+      const { walnutId, squirrelId, location } = await request.json() as { walnutId?: string, squirrelId?: string, location?: { x: number, y: number, z: number } };
+      if (!walnutId || !squirrelId || !location) return new Response(JSON.stringify({ error: "Missing walnutId, squirrelId, or location" }), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          ...CORS_HEADERS,
+        },
+      });
+      return this.handleRehide(walnutId, squirrelId, location);
+    }
+    if (path.endsWith("/server-metrics")) {
+      this.updateServerMetrics();
+      
+      const metrics = {
+        activePlayers: this.serverMetrics.activeConnections,
+        totalConnections: this.serverMetrics.totalConnections,
+        uptime: this.serverMetrics.uptime,
+        averageLatency: this.serverMetrics.averageLatency,
+        totalErrors: this.serverMetrics.totalErrors,
+        serverStartTime: this.serverStartTime,
+        cycleStartTime: this.cycleStartTime
+      };
+      
+             Logger.debug(LogCategory.WEBSOCKET, `📊 Serving metrics: ${JSON.stringify(metrics)}`);
+      
+      return new Response(JSON.stringify(metrics), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...CORS_HEADERS,
+        },
+      });
+    }
+    return new Response("Not Found", { status: 404 });
+  }
+  private async handleWebSocketUpgrade(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    const squirrelId = url.searchParams.get("squirrelId");
+    const token = url.searchParams.get("token");
+    const clientVersion = url.searchParams.get("version") || "unknown";
+    if (!squirrelId || !token) {
+      const error: ServerError = {
+        type: ServerErrorType.AUTHENTICATION_FAILED,
+        message: "Missing squirrelId or token in WebSocket upgrade",
+        timestamp: Date.now(),
+        details: { squirrelId: !!squirrelId, token: !!token, clientVersion },
+        recoverable: false
+      };
+      this.recordError(error);
+      
+      return new Response("Missing squirrelId or token", { status: 400 });
+    }
+    if (!this.isValidSquirrelId(squirrelId)) {
+      const error: ServerError = {
+        type: ServerErrorType.AUTHENTICATION_FAILED,
+        message: "Invalid squirrelId format",
+        timestamp: Date.now(),
+        squirrelId,
+        details: { clientVersion },
+        recoverable: false
+      };
+      this.recordError(error);
+      
+      return new Response("Invalid squirrelId format", { status: 400 });
+    }
+    const upgradeHeader = request.headers.get("Upgrade");
+    const connectionHeader = request.headers.get("Connection");
+    
+    if (upgradeHeader !== "websocket") {
+      const error: ServerError = {
+        type: ServerErrorType.WEBSOCKET_ERROR,
+        message: "Expected Upgrade: websocket header",
+        timestamp: Date.now(),
+        details: { upgradeHeader, connectionHeader, clientVersion },
+        recoverable: false
+      };
+      this.recordError(error);
+      
+      return new Response("Expected Upgrade: websocket", { status: 426 });
+    }
+    if (!connectionHeader || !connectionHeader.toLowerCase().includes("upgrade")) {
+      const error: ServerError = {
+        type: ServerErrorType.WEBSOCKET_ERROR,
+        message: "Expected Connection: upgrade header",
+        timestamp: Date.now(),
+        details: { upgradeHeader, connectionHeader, clientVersion },
+        recoverable: false
+      };
+      this.recordError(error);
+      
+      return new Response("Expected Connection: upgrade", { status: 400 });
+    }
+    if (this.isConnectionRateLimited(squirrelId)) {
+      const error: ServerError = {
+        type: ServerErrorType.WEBSOCKET_ERROR,
+        message: "Connection rate limit exceeded",
+        timestamp: Date.now(),
+        squirrelId,
+        details: { clientVersion },
+        recoverable: true
+      };
+      this.recordError(error);
+      
+      return new Response("Too many connection attempts", { status: 429 });
+    }
+    try {
+      const isAuthenticated = await this.authenticatePlayerWithTimeout(squirrelId, token, 5000);
+      if (!isAuthenticated) {
+        const error: ServerError = {
+          type: ServerErrorType.AUTHENTICATION_FAILED,
+          message: "Authentication failed for WebSocket connection",
+          timestamp: Date.now(),
+          squirrelId,
+          details: { token: token.substring(0, 8) + '...', clientVersion },
+          recoverable: false
+        };
+        this.recordError(error);
+        
+        return new Response("Authentication failed", { status: 401 });
+      }
+      if (this.activePlayers.has(squirrelId)) {
+        Logger.warn(LogCategory.WEBSOCKET, `Player ${squirrelId} already connected, closing existing connection`);
+        this.handlePlayerDisconnect(squirrelId);
+      }
+      const webSocketPair = new WebSocketPair();
+      const [client, server] = Object.values(webSocketPair);
+      
+      server.accept();
+      
+      server.addEventListener('close', (event) => {
+        Logger.debug(LogCategory.WEBSOCKET, `WebSocket closed for ${squirrelId}: code=${event.code}, reason=${event.reason}`);
+      });
+      await this.setupPlayerConnection(squirrelId, server);
+      Logger.info(LogCategory.PLAYER, `🎮 WebSocket connection established for player ${squirrelId} (v${clientVersion})`);
+      return new Response(null, {
+        status: 101,
+        webSocket: client,
+        headers: {
+          'Sec-WebSocket-Protocol': 'hidden-walnuts-v1',
+          'X-Connection-ID': this.generateConnectionId(squirrelId)
+        }
+      });
+    } catch (error) {
+      const serverError: ServerError = {
+        type: ServerErrorType.WEBSOCKET_ERROR,
+        message: `WebSocket upgrade failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: Date.now(),
+        squirrelId,
+        details: { error, clientVersion },
+        recoverable: true
+      };
+      this.recordError(serverError);
+      
+      Logger.error(LogCategory.WEBSOCKET, 'WebSocket upgrade failed:', error);
+      return new Response("Internal Server Error", { status: 500 });
+    }
+  }
+  private async handleJoinRequest(request: Request): Promise<Response> {
+    try {
+      const url = new URL(request.url);
+      const squirrelId = url.searchParams.get("squirrelId");
+      
+      if (!squirrelId) {
+        const error: ServerError = {
+          type: ServerErrorType.AUTHENTICATION_FAILED,
+          message: "Missing squirrelId in join request",
+          timestamp: Date.now(),
+          recoverable: false
+        };
+        this.recordError(error);
+        
+        return new Response(JSON.stringify({ error: "Missing squirrelId parameter" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      const squirrelSession = this.env.SQUIRREL.get(this.env.SQUIRREL.idFromName(squirrelId));
+      const sessionResponse = await squirrelSession.fetch(request);
+      
+      if (!sessionResponse.ok) {
+        const error: ServerError = {
+          type: ServerErrorType.AUTHENTICATION_FAILED,
+          message: `Session creation failed: ${sessionResponse.status}`,
+          timestamp: Date.now(),
+          squirrelId,
+          details: { status: sessionResponse.status },
+          recoverable: false
+        };
+        this.recordError(error);
+        
+        return sessionResponse;
+      }
+      const sessionData = await sessionResponse.json();
+      Logger.info(LogCategory.AUTH, `Player ${squirrelId} joined successfully`);
+      
+      return new Response(JSON.stringify(sessionData), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+      
+    } catch (error) {
+      const serverError: ServerError = {
+        type: ServerErrorType.AUTHENTICATION_FAILED,
+        message: `Join request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: Date.now(),
+        details: error,
+        recoverable: true
+      };
+      this.recordError(serverError);
+      
+      Logger.error(LogCategory.AUTH, 'Join request failed:', error);
+      return new Response(JSON.stringify({ 
+        error: "Internal Server Error",
+        message: error instanceof Error ? error.message : "Unknown error"
+      }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+  }
+  private async authenticatePlayer(squirrelId: string, token: string): Promise<boolean> {
+    try {
+      const sessionRequest = new Request(`https:
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      
+      const squirrelSession = this.env.SQUIRREL.get(this.env.SQUIRREL.idFromName(squirrelId));
+      const response = await squirrelSession.fetch(sessionRequest);
+      
+      if (!response.ok) {
+        const error: ServerError = {
+          type: ServerErrorType.AUTHENTICATION_FAILED,
+          message: `Token validation failed: ${response.status}`,
+          timestamp: Date.now(),
+          squirrelId,
+          details: { status: response.status },
+          recoverable: false
+        };
+        this.recordError(error);
+        return false;
+      }
+      
+      const result = await response.json();
+      return result.valid === true;
+      
+    } catch (error) {
+      const serverError: ServerError = {
+        type: ServerErrorType.AUTHENTICATION_FAILED,
+        message: `Authentication error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: Date.now(),
+        squirrelId,
+        details: error,
+        recoverable: true
+      };
+      this.recordError(serverError);
+      return false;
+    }
+  }
+  private async authenticatePlayerWithTimeout(squirrelId: string, token: string, timeoutMs: number): Promise<boolean> {
+    const timeoutPromise = new Promise<boolean>((resolve) => {
+      setTimeout(() => resolve(false), timeoutMs);
+    });
+    
+    const authPromise = this.authenticatePlayer(squirrelId, token);
+    
+    return Promise.race([authPromise, timeoutPromise]);
+  }
+  private isValidSquirrelId(squirrelId: string): boolean {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(squirrelId);
+  }
+  private connectionAttempts = new Map<string, { count: number; lastAttempt: number }>();
+  private readonly MAX_CONNECTION_ATTEMPTS = 5;
+  private readonly CONNECTION_ATTEMPT_WINDOW = 60000; 
+  private isConnectionRateLimited(squirrelId: string): boolean {
+    const now = Date.now();
+    const attempts = this.connectionAttempts.get(squirrelId);
+    
+    if (!attempts) {
+      this.connectionAttempts.set(squirrelId, { count: 1, lastAttempt: now });
+      return false;
+    }
+    
+    if (now - attempts.lastAttempt > this.CONNECTION_ATTEMPT_WINDOW) {
+      this.connectionAttempts.set(squirrelId, { count: 1, lastAttempt: now });
+      return false;
+    }
+    
+    attempts.count++;
+    attempts.lastAttempt = now;
+    
+    if (Math.random() < 0.1) { 
+      this.cleanupConnectionAttempts();
+    }
+    
+    return attempts.count > this.MAX_CONNECTION_ATTEMPTS;
+  }
+  private cleanupConnectionAttempts(): void {
+    const now = Date.now();
+    for (const [squirrelId, attempts] of this.connectionAttempts.entries()) {
+      if (now - attempts.lastAttempt > this.CONNECTION_ATTEMPT_WINDOW) {
+        this.connectionAttempts.delete(squirrelId);
+      }
+    }
+  }
+  private generateConnectionId(squirrelId: string): string {
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 8);
+    return `${squirrelId.substring(0, 8)}-${timestamp}-${random}`;
+  }
+  private async setupPlayerConnection(squirrelId: string, socket: WebSocket): Promise<void> {
+    try {
+      const sessionInfo = await this.getPlayerSessionInfo(squirrelId);
+      
+      const playerConnection: PlayerConnection = {
+        squirrelId,
+        socket,
+        isAuthenticated: true,
+        lastActivity: Date.now(),
+        position: sessionInfo?.position || { x: 50, y: 2, z: 50 },
+        rotationY: sessionInfo?.rotationY || 0,
+        characterId: 'squirrel', 
+        errorCount: 0,
+        lastErrorTime: 0,
+        connectionStartTime: Date.now(),
+        messageCount: 0,
+        heartbeatCount: 0,
+        lastHeartbeat: Date.now(),
+        connectionQuality: 'excellent',
+        lastPositionUpdate: Date.now(),
+        lastPosition: sessionInfo?.position || { x: 50, y: 2, z: 50 },
+        violationCount: 0,
+        violations: [],
+        isFlagged: false
+      };
+      this.activePlayers.set(squirrelId, playerConnection);
+      this.sessions.add(socket); 
+      
+      this.serverMetrics.totalConnections++;
+      this.serverMetrics.activeConnections = this.activePlayers.size;
+      await this.saveServerMetrics();
+      Logger.info(LogCategory.PLAYER, `📤 Sending init message to ${squirrelId} with saved position:`, playerConnection.position);
+      Logger.info(LogCategory.PLAYER, `🔍 Session info for ${squirrelId}:`, sessionInfo);
+      
+      try {
+        await this.storage.put(`player:${squirrelId}`, {
+          position: playerConnection.position,
+          rotationY: playerConnection.rotationY,
+          lastUpdate: Date.now()
+        });
+        Logger.info(LogCategory.PLAYER, `💾 Saved initial position for ${squirrelId}:`, playerConnection.position);
+      } catch (error) {
+        Logger.error(LogCategory.PLAYER, `❌ Failed to save initial position for ${squirrelId}:`, error);
+      }
+      
+      const initMessage = {
+        type: 'init',
+        data: {
+          confirmedSquirrelId: squirrelId,
+          savedPosition: playerConnection.position,
+          savedRotationY: playerConnection.rotationY
+        },
+        timestamp: Date.now()
+      };
+      
+      Logger.info(LogCategory.PLAYER, `📤 Sending init message to ${squirrelId} at ${Date.now()}:`, initMessage);
+      
+      if (socket.readyState === WebSocket.OPEN) {
+        this.sendMessage(socket, initMessage);
+        Logger.info(LogCategory.PLAYER, `✅ Init message sent to ${squirrelId} immediately`);
+      } else {
+        socket.addEventListener('open', () => {
+          this.sendMessage(socket, initMessage);
+          Logger.info(LogCategory.PLAYER, `✅ Init message sent to ${squirrelId} after WebSocket opened`);
+        }, { once: true });
+      }
+      await this.sendWorldState(socket);
+      await this.sendExistingPlayers(socket, squirrelId);
+      this.setupMessageHandlers(playerConnection);
+      
+      this.broadcastPlayerJoin(squirrelId, playerConnection);
+      
+      this.startConnectionMonitoring();
+      Logger.info(LogCategory.PLAYER, `Player ${squirrelId} connected at saved position`, playerConnection.position);
+    } catch (error) {
+      const serverError: ServerError = {
+        type: ServerErrorType.WEBSOCKET_ERROR,
+        message: `Failed to setup player connection: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: Date.now(),
+        squirrelId,
+        details: error,
+        recoverable: true
+      };
+      this.recordError(serverError);
+      throw error;
+    }
+  }
+  private setupMessageHandlers(playerConnection: PlayerConnection): void {
+    const { squirrelId, socket } = playerConnection;
+    
+    socket.onmessage = async (event) => {
+      try {
+        const message = JSON.parse(event.data as string);
+        playerConnection.messageCount++;
+        playerConnection.lastActivity = Date.now();
+        
+        Logger.debug(LogCategory.WEBSOCKET, `Enhanced handler received message from ${squirrelId}: ${JSON.stringify(message)}`);
+        
+        await this.handlePlayerMessage(playerConnection, message);
+      } catch (error) {
+        playerConnection.errorCount++;
+        playerConnection.lastErrorTime = Date.now();
+        
+        const serverError: ServerError = {
+          type: ServerErrorType.MESSAGE_PARSE_ERROR,
+          message: `Failed to parse message from ${squirrelId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          timestamp: Date.now(),
+          squirrelId,
+          details: { rawData: event.data, error },
+          recoverable: true
+        };
+        this.recordError(serverError);
+        
+        Logger.error(LogCategory.WEBSOCKET, `Error processing enhanced message from ${squirrelId}:`, error);
+      }
+    };
+    socket.onclose = (event) => {
+      const wasClean = event.wasClean;
+      const code = event.code;
+      const reason = event.reason;
+      
+      Logger.info(LogCategory.WEBSOCKET, `Enhanced handler: Player ${squirrelId} disconnected - Clean: ${wasClean}, Code: ${code}, Reason: ${reason}`);
+      
+      if (!wasClean) {
+        const serverError: ServerError = {
+          type: ServerErrorType.WEBSOCKET_ERROR,
+          message: `Player ${squirrelId} disconnected unexpectedly`,
+          timestamp: Date.now(),
+          squirrelId,
+          details: { code, reason, wasClean },
+          recoverable: true
+        };
+        this.recordError(serverError);
+      }
+      
+      this.handlePlayerDisconnect(squirrelId);
+    };
+    socket.onerror = (event) => {
+      playerConnection.errorCount++;
+      playerConnection.lastErrorTime = Date.now();
+      
+      const serverError: ServerError = {
+        type: ServerErrorType.WEBSOCKET_ERROR,
+        message: `WebSocket error for player ${squirrelId}`,
+        timestamp: Date.now(),
+        squirrelId,
+        details: event,
+        recoverable: true
+      };
+      this.recordError(serverError);
+      
+      Logger.error(LogCategory.WEBSOCKET, `Enhanced handler WebSocket error for ${squirrelId}:`, event);
+    };
+  }
+  private async handlePlayerMessage(playerConnection: PlayerConnection, data: any): Promise<void> {
+    playerConnection.lastActivity = Date.now();
+    try {
+      switch (data.type) {
+        case "player_update":
+          await this.handlePlayerUpdate(playerConnection, data);
+          break;
+        case "batch_update":
+          if (data.updates && Array.isArray(data.updates)) {
+            Logger.debug(LogCategory.PLAYER, `📦 Processing batch of ${data.updates.length} updates from ${playerConnection.squirrelId}`);
+            for (const update of data.updates) {
+              if (update.type === 'player_update') {
+                await this.handlePlayerUpdate(playerConnection, update);
+              }
+            }
+          } else {
+            Logger.warn(LogCategory.PLAYER, `⚠️ Invalid batch_update message from ${playerConnection.squirrelId}:`, data);
+          }
+          break;
+        case "heartbeat":
+          this.handleHeartbeat(playerConnection, data);
+          break;
+        case "ping":
+          Logger.debug(LogCategory.WEBSOCKET, `Ping received from ${playerConnection.squirrelId}`);
+          this.sendMessage(playerConnection.socket, { type: 'pong', timestamp: data.timestamp });
+          break;
+        case "position_confirmation":
+          Logger.debug(LogCategory.SESSION, `✅ Position confirmation received from ${playerConnection.squirrelId}`);
+          break;
+        case "player_state":
+          await this.handlePlayerUpdate(playerConnection, {
+            ...data,
+            type: 'player_update', 
+            position: data.position,
+            rotationY: data.rotation?.y || 0,
+            sequenceNumber: data.sequenceNumber || 0,
+            velocity: data.velocity || { x: 0, y: 0, z: 0 }
+          });
+          break;
+        case "goodbye":
+          Logger.info(LogCategory.SESSION, `👋 Graceful disconnect from ${playerConnection.squirrelId}:`, data);
+          this.handlePlayerDisconnect(playerConnection.squirrelId, 'Graceful disconnect');
+          break;
+        default:
+          this.broadcastToOthers(playerConnection.squirrelId, data);
+          break;
+      }
+    } catch (error) {
+      const serverError: ServerError = {
+        type: ServerErrorType.INVALID_MESSAGE,
+        message: `Failed to handle message from ${playerConnection.squirrelId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: Date.now(),
+        squirrelId: playerConnection.squirrelId,
+        details: { data, error },
+        recoverable: true
+      };
+      this.recordError(serverError);
+      
+      Logger.error(LogCategory.PLAYER, `Error handling message from ${playerConnection.squirrelId}:`, error);
+    }
+  }
+  private handleHeartbeat(playerConnection: PlayerConnection, data: any): void {
+    const now = Date.now();
+    playerConnection.heartbeatCount++;
+    playerConnection.lastHeartbeat = now;
+    playerConnection.lastActivity = now;
+    
+    this.sendMessage(playerConnection.socket, {
+      type: 'heartbeat',
+      timestamp: data.timestamp,
+      serverTime: now,
+      connectionHealth: {
+        quality: playerConnection.connectionQuality,
+        uptime: now - playerConnection.connectionStartTime,
+        messageCount: playerConnection.messageCount,
+        errorCount: playerConnection.errorCount,
+        violationCount: playerConnection.violationCount
+      }
+    });
+    
+    this.updateConnectionQuality(playerConnection);
+    
+    this.monitorConnectionHealth(playerConnection);
+  }
+  private updateConnectionQuality(playerConnection: PlayerConnection): void {
+    const now = Date.now();
+    const timeSinceLastHeartbeat = now - playerConnection.lastHeartbeat;
+    const timeSinceLastActivity = now - playerConnection.lastActivity;
+    const errorRate = playerConnection.errorCount / Math.max(playerConnection.messageCount, 1);
+    
+    let newQuality: PlayerConnection['connectionQuality'] = 'excellent';
+    
+    if (timeSinceLastHeartbeat > 120000 || timeSinceLastActivity > 180000) {
+      newQuality = 'critical';
+    } else if (timeSinceLastHeartbeat > 90000 || timeSinceLastActivity > 120000) {
+      newQuality = 'poor';
+    } else if (timeSinceLastHeartbeat > 60000 || timeSinceLastActivity > 90000) {
+      newQuality = 'fair';
+    } else if (timeSinceLastHeartbeat > 30000 || timeSinceLastActivity > 60000) {
+      newQuality = 'good';
+    }
+    
+    if (errorRate > 0.1) { 
+      newQuality = 'poor';
+    } else if (errorRate > 0.05) { 
+      newQuality = 'fair';
+    }
+    
+    if (playerConnection.violationCount > 5) {
+      newQuality = 'poor';
+    }
+    
+    playerConnection.connectionQuality = newQuality;
+  }
+  private monitorConnectionHealth(playerConnection: PlayerConnection): void {
+    const now = Date.now();
+    const connectionAge = now - playerConnection.connectionStartTime;
+    
+    if (playerConnection.heartbeatCount % 10 === 0) { 
+      Logger.debug(LogCategory.WEBSOCKET, 
+        `Connection health for ${playerConnection.squirrelId}: ` +
+        `quality=${playerConnection.connectionQuality}, ` +
+        `uptime=${Math.floor(connectionAge / 1000)}s, ` +
+        `messages=${playerConnection.messageCount}, ` +
+        `errors=${playerConnection.errorCount}, ` +
+        `violations=${playerConnection.violationCount}`
+      );
+    }
+    
+    if (playerConnection.connectionQuality === 'critical' && connectionAge > 300000) { 
+      Logger.warn(LogCategory.WEBSOCKET, 
+        `Auto-disconnecting critical connection: ${playerConnection.squirrelId}`
+      );
+      this.handlePlayerDisconnect(playerConnection.squirrelId);
+    }
+  }
+  private async handlePlayerUpdate(playerConnection: PlayerConnection, data: any): Promise<void> {
+    try {
+      const now = Date.now();
+      const newPosition = data.position;
+      
+      const validation = this.validateMovement(playerConnection, newPosition);
+      
+      if (!validation.isValid) {
+        for (const violation of validation.violations) {
+          this.recordViolation(playerConnection, violation, {
+            originalPosition: newPosition,
+            correctedPosition: validation.correctedPosition,
+            lastPosition: playerConnection.lastPosition,
+            deltaTime: (now - playerConnection.lastPositionUpdate) / 1000
+          });
+        }
+        
+        if (validation.correctedPosition) {
+          data.position = validation.correctedPosition;
+          Logger.warn(LogCategory.PLAYER, `🚨 Anti-cheat: Position corrected for ${playerConnection.squirrelId}:`, {
+            original: newPosition,
+            corrected: validation.correctedPosition,
+            violations: validation.violations
+          });
+        } else {
+          Logger.warn(LogCategory.PLAYER, `🚨 Anti-cheat: Rejecting invalid position for ${playerConnection.squirrelId}:`, {
+            position: newPosition,
+            violations: validation.violations
+          });
+          return; 
+        }
+      }
+      
+      playerConnection.lastPosition = playerConnection.position;
+      playerConnection.position = data.position;
+      playerConnection.lastPositionUpdate = now;
+      
+      
+      if (typeof data.rotationY === 'number') {
+        playerConnection.rotationY = data.rotationY;
+      }
+      
+      if (data.characterId && typeof data.characterId === 'string') {
+        playerConnection.characterId = data.characterId;
+      }
+      Logger.debug(LogCategory.SESSION, `💾 Saving position for ${playerConnection.squirrelId}:`, data.position);
+      await this.updatePlayerSession(playerConnection);
+      const sequenceNumber = data.sequenceNumber || 0;
+      
+      this.sendMessage(playerConnection.socket, {
+        type: 'player_update_ack',
+        squirrelId: playerConnection.squirrelId,
+        acknowledgedSequence: sequenceNumber,
+        serverPosition: data.position,
+        serverRotation: { y: data.rotationY || 0 },
+        serverTimestamp: now,
+        confidence: validation.isValid ? 'high' : 'corrected'
+      });
+      
+      const broadcastMessage = {
+        type: 'player_update',
+        squirrelId: playerConnection.squirrelId,
+        characterId: playerConnection.characterId,
+        position: data.position,
+        rotationY: data.rotationY,
+        timestamp: now,
+        sequenceNumber: sequenceNumber,
+        authoritative: true 
+      };
+      
+      
+      this.broadcastToOthers(playerConnection.squirrelId, broadcastMessage);
+      
+      if (!validation.isValid && validation.correctedPosition) {
+        this.sendMessage(playerConnection.socket, {
+          type: 'position_correction',
+          originalPosition: newPosition,
+          correctedPosition: validation.correctedPosition,
+          violations: validation.violations,
+          timestamp: now
+        });
+      }
+      
+    } catch (error) {
+      const serverError: ServerError = {
+        type: ServerErrorType.INVALID_MESSAGE,
+        message: `Failed to handle player update from ${playerConnection.squirrelId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: Date.now(),
+        squirrelId: playerConnection.squirrelId,
+        details: { data, error },
+        recoverable: true
+      };
+      this.recordError(serverError);
+      
+      Logger.error(LogCategory.PLAYER, `Error handling player update from ${playerConnection.squirrelId}:`, error);
+    }
+  }
+  private isValidPosition(position: any): boolean {
+    if (!position || typeof position !== 'object') return false;
+    
+    const { x, y, z } = position;
+    if (typeof x !== 'number' || typeof y !== 'number' || typeof z !== 'number') return false;
+    
+    const maxDistance = 1000;
+    if (Math.abs(x) > maxDistance || Math.abs(y) > maxDistance || Math.abs(z) > maxDistance) return false;
+    
+    if (y < -10 || y > 100) return false;
+    
+    const terrainHeight = this.getTerrainHeight(x, z);
+    const minValidHeight = terrainHeight + 0.5; 
+    const maxValidHeight = terrainHeight + 5; 
+    
+    if (y < minValidHeight || y > maxValidHeight) {
+      Logger.warn(LogCategory.PLAYER, `Position validation failed: player at Y=${y.toFixed(2)}, terrain=${terrainHeight.toFixed(2)}, valid range=[${minValidHeight.toFixed(2)}, ${maxValidHeight.toFixed(2)}]`);
+      return false;
+    }
+    
+    return true;
+  }
+  private getTerrainHeight(x: number, z: number): number {
+    if (!this.terrainSeed) {
+      return 0.5; 
+    }
+    
+    const noise1 = Math.sin((x + this.terrainSeed) * 0.1) * Math.cos((z + this.terrainSeed) * 0.1);
+    const noise2 = Math.sin((x + this.terrainSeed) * 0.05) * Math.cos((z + this.terrainSeed) * 0.05) * 2;
+    const noise3 = Math.sin((x + this.terrainSeed) * 0.02) * Math.cos((z + this.terrainSeed) * 0.02) * 1.5;
+    
+    const height = Math.max(0.5, Math.min(5, 1.5 + noise1 + noise2 + noise3));
+    return height;
+  }
+  private enforceSoftWorldBounds(position: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
+    const bounds = { 
+      x: [ANTI_CHEAT.WORLD_BOUNDS.MIN_X, ANTI_CHEAT.WORLD_BOUNDS.MAX_X], 
+      z: [ANTI_CHEAT.WORLD_BOUNDS.MIN_Z, ANTI_CHEAT.WORLD_BOUNDS.MAX_Z], 
+      y: [ANTI_CHEAT.MIN_Y_COORDINATE, ANTI_CHEAT.MAX_Y_COORDINATE] 
+    };
+    
+    if (position.x < bounds.x[0]) position.x = bounds.x[0] + 1;
+    if (position.x > bounds.x[1]) position.x = bounds.x[1] - 1;
+    if (position.z < bounds.z[0]) position.z = bounds.z[0] + 1;
+    if (position.z > bounds.z[1]) position.z = bounds.z[1] - 1;
+    if (position.y < bounds.y[0]) position.y = bounds.y[0] + 0.5;
+    if (position.y > bounds.y[1]) position.y = bounds.y[1] - 0.5;
+    
+    return position;
+  }
+  private correctPlayerPosition(position: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
+    const terrainHeight = this.getTerrainHeight(position.x, position.z);
+    const minValidHeight = terrainHeight + 0.3; 
+    const maxValidHeight = terrainHeight + 5; 
+    
+    let correctedPosition = {
+      x: position.x,
+      y: Math.max(minValidHeight, Math.min(position.y, maxValidHeight)), 
+      z: position.z
+    };
+    
+    return this.enforceSoftWorldBounds(correctedPosition);
+  }
+  private validateMovement(playerConnection: PlayerConnection, newPosition: { x: number; y: number; z: number }): {
+    isValid: boolean;
+    correctedPosition?: { x: number; y: number; z: number };
+    violations: string[];
+  } {
+    const violations: string[] = [];
+    const now = Date.now();
+    const lastPosition = playerConnection.lastPosition;
+    const lastUpdate = playerConnection.lastPositionUpdate;
+    
+    const deltaTime = (now - lastUpdate) / 1000; 
+    const distance = this.calculateDistance(lastPosition, newPosition);
+    
+    if (deltaTime < ANTI_CHEAT.MIN_UPDATE_INTERVAL / 1000) {
+      violations.push(`UPDATE_RATE_TOO_HIGH: ${(1/deltaTime).toFixed(1)}Hz > ${ANTI_CHEAT.MAX_UPDATE_RATE}Hz`);
+    }
+    
+    if (deltaTime > MOVEMENT_VALIDATION.MIN_TIME_FOR_SPEED_CALC) {
+      const speed = distance / deltaTime;
+      const maxAllowedSpeed = ANTI_CHEAT.MAX_MOVE_SPEED * ANTI_CHEAT.SPEED_TOLERANCE;
+      
+      if (speed > maxAllowedSpeed) {
+        violations.push(`SPEED_VIOLATION: ${speed.toFixed(1)} > ${maxAllowedSpeed.toFixed(1)} units/s`);
+      }
+    }
+    
+    if (distance > ANTI_CHEAT.MAX_TELEPORT_DISTANCE) {
+      violations.push(`TELEPORTATION_DETECTED: ${distance.toFixed(1)} > ${ANTI_CHEAT.MAX_TELEPORT_DISTANCE} units`);
+    }
+    
+    if (distance > MOVEMENT_VALIDATION.MAX_SINGLE_UPDATE_DISTANCE) {
+      violations.push(`SINGLE_UPDATE_TOO_FAR: ${distance.toFixed(1)} > ${MOVEMENT_VALIDATION.MAX_SINGLE_UPDATE_DISTANCE} units`);
+    }
+    
+    if (newPosition.x < ANTI_CHEAT.WORLD_BOUNDS.MIN_X || newPosition.x > ANTI_CHEAT.WORLD_BOUNDS.MAX_X) {
+      violations.push(`X_OUT_OF_BOUNDS: ${newPosition.x} not in [${ANTI_CHEAT.WORLD_BOUNDS.MIN_X}, ${ANTI_CHEAT.WORLD_BOUNDS.MAX_X}]`);
+    }
+    
+    if (newPosition.z < ANTI_CHEAT.WORLD_BOUNDS.MIN_Z || newPosition.z > ANTI_CHEAT.WORLD_BOUNDS.MAX_Z) {
+      violations.push(`Z_OUT_OF_BOUNDS: ${newPosition.z} not in [${ANTI_CHEAT.WORLD_BOUNDS.MIN_Z}, ${ANTI_CHEAT.WORLD_BOUNDS.MAX_Z}]`);
+    }
+    
+    if (newPosition.y < ANTI_CHEAT.MIN_Y_COORDINATE || newPosition.y > ANTI_CHEAT.MAX_Y_COORDINATE) {
+      violations.push(`Y_OUT_OF_BOUNDS: ${newPosition.y} not in [${ANTI_CHEAT.MIN_Y_COORDINATE}, ${ANTI_CHEAT.MAX_Y_COORDINATE}]`);
+    }
+    
+    const terrainHeight = this.getTerrainHeight(newPosition.x, newPosition.z);
+    const minValidHeight = terrainHeight + 0.3; 
+    const maxValidHeight = terrainHeight + 5; 
+    
+    if (newPosition.y < minValidHeight || newPosition.y > maxValidHeight) {
+      violations.push(`TERRAIN_HEIGHT_VIOLATION: Y=${newPosition.y.toFixed(1)}, terrain=${terrainHeight.toFixed(1)}, valid=[${minValidHeight.toFixed(1)}, ${maxValidHeight.toFixed(1)}]`);
+    }
+    
+    const isValid = violations.length === 0;
+    
+    let correctedPosition: { x: number; y: number; z: number } | undefined;
+    if (!isValid) {
+      correctedPosition = this.correctPlayerPosition(newPosition);
+    }
+    
+    return { isValid, correctedPosition, violations };
+  }
+  private calculateDistance(pos1: { x: number; y: number; z: number }, pos2: { x: number; y: number; z: number }): number {
+    const dx = pos2.x - pos1.x;
+    const dy = pos2.y - pos1.y;
+    const dz = pos2.z - pos1.z;
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
+  private recordViolation(playerConnection: PlayerConnection, violationType: string, details: any): void {
+    const now = Date.now();
+    
+    playerConnection.violations.push({
+      type: violationType,
+      timestamp: now,
+      details
+    });
+    
+    playerConnection.violations = playerConnection.violations.filter(
+      v => now - v.timestamp < ANTI_CHEAT.VIOLATION_WINDOW
+    );
+    
+    playerConnection.violationCount = playerConnection.violations.length;
+    
+    if (playerConnection.violationCount >= ANTI_CHEAT.MAX_VIOLATIONS_BEFORE_FLAG && !playerConnection.isFlagged) {
+      playerConnection.isFlagged = true;
+      playerConnection.flagReason = `Multiple violations: ${playerConnection.violations.map(v => v.type).join(', ')}`;
+      
+      Logger.warn(LogCategory.PLAYER, `🚨 Player ${playerConnection.squirrelId} flagged for anti-cheat violations: ${playerConnection.flagReason}`);
+      
+      this.sendMessage(playerConnection.socket, {
+        type: 'anti_cheat_warning',
+        message: 'Suspicious movement detected. Please play fairly.',
+        violations: playerConnection.violations.length
+      });
+    }
+    
+    Logger.debug(LogCategory.PLAYER, `⚠️ Anti-cheat violation for ${playerConnection.squirrelId}: ${violationType}`, details);
+  }
+  private async batchStorageOperation(operation: any): Promise<void> {
+    this.pendingStorageOps.push(operation);
+    
+    if (!this.storageBatchTimeout) {
+      this.storageBatchTimeout = setTimeout(async () => {
+        await this.executeBatchStorage();
+      }, this.storageBatchInterval);
+    }
+  }
+  private async forceExecuteStorage(): Promise<void> {
+    if (this.pendingStorageOps.length > 0) {
+      Logger.debug(LogCategory.SESSION, `💾 Force executing ${this.pendingStorageOps.length} pending storage operations`);
+      await this.executeBatchStorage();
+    }
+  }
+  private async executeBatchStorage(): Promise<void> {
+    if (this.pendingStorageOps.length > 0) {
+      Logger.debug(LogCategory.SESSION, `💾 Executing batch of ${this.pendingStorageOps.length} storage operations`);
+      
+      try {
+        const storagePromises = this.pendingStorageOps.map(op => this.executeStorageOperation(op));
+        await Promise.all(storagePromises);
+        
+        Logger.debug(LogCategory.SESSION, `✅ Successfully executed ${this.pendingStorageOps.length} storage operations`);
+      } catch (error) {
+        Logger.error(LogCategory.SESSION, `❌ Failed to execute batch storage operations:`, error);
+      }
+      
+      this.pendingStorageOps = [];
+    }
+    this.storageBatchTimeout = null;
+  }
+  private async executeStorageOperation(operation: any): Promise<void> {
+    try {
+      const { squirrelId, position, rotationY } = operation;
+      
+      await this.storage.put(`player:${squirrelId}`, {
+        position,
+        rotationY,
+        lastUpdate: Date.now()
+      });
+      
+    } catch (error) {
+      Logger.error(LogCategory.SESSION, `❌ Failed to execute storage operation:`, error);
+    }
+  }
+  private async updatePlayerSession(playerConnection: PlayerConnection): Promise<void> {
+    try {
+      await this.storage.put(`player:${playerConnection.squirrelId}`, {
+        position: playerConnection.position,
+        rotationY: playerConnection.rotationY,
+        lastUpdate: Date.now()
+      });
+      
+      const nonCriticalOp = {
+        type: 'activity_log',
+        squirrelId: playerConnection.squirrelId,
+        timestamp: Date.now(),
+        activity: 'position_update'
+      };
+      
+      await this.batchStorageOperation(nonCriticalOp);
+      
+    } catch (error) {
+      Logger.error(LogCategory.SESSION, `Error updating session for ${playerConnection.squirrelId}:`, error);
+    }
+  }
+  private handlePlayerDisconnect(squirrelId: string, reason: string = 'Player disconnect'): void {
+    const playerConnection = this.activePlayers.get(squirrelId);
+    if (!playerConnection) {
+      Logger.warn(LogCategory.PLAYER, `Player ${squirrelId} not found during disconnect`);
+      return;
+    }
+    const disconnectTime = Date.now();
+    const connectionDuration = disconnectTime - playerConnection.connectionStartTime;
+    try {
+      if (playerConnection.socket.readyState === WebSocket.OPEN) {
+        this.sendMessage(playerConnection.socket, {
+          type: 'disconnect',
+          reason: reason,
+          timestamp: disconnectTime,
+          connectionStats: {
+            duration: connectionDuration,
+            messageCount: playerConnection.messageCount,
+            heartbeatCount: playerConnection.heartbeatCount,
+            errorCount: playerConnection.errorCount,
+            violationCount: playerConnection.violationCount,
+            finalQuality: playerConnection.connectionQuality
+          }
+        });
+        
+        const closeCode = reason.includes('timeout') ? 1001 : 
+                         reason.includes('error') ? 1011 : 
+                         reason.includes('server') ? 1013 : 1000;
+        
+        playerConnection.socket.close(closeCode, reason);
+      }
+    } catch (error) {
+      Logger.error(LogCategory.WEBSOCKET, `Error closing WebSocket for ${squirrelId}:`, error);
+    }
+    this.activePlayers.delete(squirrelId);
+    this.sessions.delete(playerConnection.socket);
+    this.broadcastToOthers(squirrelId, {
+      type: 'player_leave',
+      squirrelId: squirrelId,
+      timestamp: disconnectTime,
+      reason: reason,
+      finalPosition: playerConnection.position,
+      connectionDuration: connectionDuration
+    });
+    this.updatePlayerSessionOnDisconnect(playerConnection, reason, disconnectTime).catch(error => {
+      Logger.error(LogCategory.SESSION, `Error updating session for ${squirrelId}:`, error);
+    });
+    this.savePlayerPositionImmediately(playerConnection).catch(error => {
+      Logger.error(LogCategory.SESSION, `Error saving position for ${squirrelId}:`, error);
+    });
+    this.forceExecuteStorage().catch(error => {
+      Logger.error(LogCategory.SESSION, `Error forcing storage execution for ${squirrelId}:`, error);
+    });
+    this.connectionAttempts.delete(squirrelId);
+    Logger.info(LogCategory.PLAYER, 
+      `👋 Player ${squirrelId} disconnected: ` +
+      `reason="${reason}", ` +
+      `duration=${Math.floor(connectionDuration / 1000)}s, ` +
+      `messages=${playerConnection.messageCount}, ` +
+      `quality=${playerConnection.connectionQuality}`
+    );
+    this.updateDisconnectMetrics(squirrelId, connectionDuration, playerConnection);
+    
+    if (this.activePlayers.size === 0 && this.connectionMonitoringInterval) {
+      Logger.debug(LogCategory.WEBSOCKET, 'No active connections remaining, stopping monitoring to allow hibernation');
+      clearInterval(this.connectionMonitoringInterval);
+      this.connectionMonitoringInterval = null;
+    }
+  }
+  private async updatePlayerSessionOnDisconnect(
+    playerConnection: PlayerConnection, 
+    reason: string, 
+    disconnectTime: number
+  ): Promise<void> {
+    try {
+      Logger.debug(LogCategory.SESSION, `Player ${playerConnection.squirrelId} disconnected: ${reason}`);
+    } catch (error) {
+      Logger.error(LogCategory.SESSION, `Failed to update session on disconnect for ${playerConnection.squirrelId}:`, error);
+    }
+  }
+  private updateDisconnectMetrics(squirrelId: string, duration: number, playerConnection: PlayerConnection): void {
+    this.serverMetrics.totalDisconnections++;
+    this.serverMetrics.averageConnectionDuration = 
+      (this.serverMetrics.averageConnectionDuration * (this.serverMetrics.totalDisconnections - 1) + duration) / 
+      this.serverMetrics.totalDisconnections;
+    
+    if (!this.serverMetrics.disconnectReasons) {
+      this.serverMetrics.disconnectReasons = {};
+    }
+    const reason = playerConnection.connectionQuality === 'critical' ? 'critical_connection' : 'normal_disconnect';
+    this.serverMetrics.disconnectReasons[reason] = (this.serverMetrics.disconnectReasons[reason] || 0) + 1;
+  }
+  private startConnectionMonitoring(): void {
+    if (this.connectionMonitoringInterval || this.activePlayers.size === 0) {
+      return;
+    }
+    
+    Logger.debug(LogCategory.WEBSOCKET, 'Starting connection monitoring for active players');
+    this.connectionMonitoringInterval = setInterval(() => {
+      this.cleanupStaleConnections();
+      this.updateServerMetrics();
+    }, 300000); 
+  }
+  private cleanupStaleConnections(): void {
+    const now = Date.now();
+    const staleThreshold = 5 * 60 * 1000; 
+    
+    const playersToRemove: string[] = [];
+    
+    for (const [squirrelId, playerConnection] of this.activePlayers) {
+      const inactiveTime = now - playerConnection.lastActivity;
+      const isStale = inactiveTime > staleThreshold;
+      const isDisconnected = playerConnection.socket.readyState !== WebSocket.OPEN;
+      
+      if (isStale || isDisconnected) {
+        Logger.info(LogCategory.WEBSOCKET, 
+          `🧹 Cleaning up stale connection: ${squirrelId} (inactive: ${inactiveTime}ms, disconnected: ${isDisconnected})`
+        );
+        playersToRemove.push(squirrelId);
+      }
+    }
+    
+    for (const squirrelId of playersToRemove) {
+      this.handlePlayerDisconnect(squirrelId);
+    }
+    
+    this.updateServerMetrics();
+    
+    if (this.activePlayers.size === 0 && this.connectionMonitoringInterval) {
+      Logger.debug(LogCategory.WEBSOCKET, 'No active connections, stopping monitoring to allow hibernation');
+      clearInterval(this.connectionMonitoringInterval);
+      this.connectionMonitoringInterval = null;
+    }
+    
+    if (playersToRemove.length > 0) {
+      Logger.debug(LogCategory.WEBSOCKET, 
+        `🧹 Cleaned up ${playersToRemove.length} stale connections, ${this.activePlayers.size} remaining`
+      );
+    }
+  }
+  private updateServerMetrics(): void {
+    this.serverMetrics.uptime = Date.now() - this.serverStartTime;
+    this.serverMetrics.activeConnections = this.activePlayers.size;
+    
+    let totalLatency = 0;
+    let latencyCount = 0;
+    const now = Date.now();
+    
+    for (const playerConnection of this.activePlayers.values()) {
+      if (playerConnection.heartbeatCount > 0 && playerConnection.lastHeartbeat > 0) {
+        const timeSinceLastHeartbeat = now - playerConnection.lastHeartbeat;
+        
+        if (timeSinceLastHeartbeat < 30000) {
+          const estimatedLatency = Math.min(50 + (timeSinceLastHeartbeat / 1000) * 10, 200);
+          totalLatency += estimatedLatency;
+          latencyCount++;
+        }
+      }
+    }
+    
+    if (latencyCount > 0) {
+      this.serverMetrics.averageLatency = totalLatency / latencyCount;
+    } else {
+      this.serverMetrics.averageLatency = this.activePlayers.size > 0 ? 75 : 0;
+    }
+    
+    Logger.debug(LogCategory.WEBSOCKET, 
+      `📊 Server metrics: ${this.serverMetrics.activeConnections} active, ${this.serverMetrics.totalConnections} total, ${this.serverMetrics.averageLatency.toFixed(1)}ms avg latency, uptime: ${(this.serverMetrics.uptime / 1000).toFixed(0)}s`
+    );
+  }
+  private recordError(error: ServerError): void {
+    this.serverMetrics.totalErrors++;
+    this.errorHistory.push(error);
+    
+    if (this.errorHistory.length > this.maxErrorHistory) {
+      this.errorHistory.shift(); 
+    }
+    
+    this.saveServerMetrics().catch(e => 
+      Logger.warn(LogCategory.WEBSOCKET, 'Failed to save metrics after error:', e)
+    );
+    
+    Logger.error(LogCategory.WEBSOCKET, `Server Error [${error.type}]: ${error.message}`, error.details);
+  }
+  private async sendWorldState(socket: WebSocket): Promise<void> {
+    await this.initialize();
+    const worldState = {
+      type: "world_state",
+      terrainSeed: this.terrainSeed,
+      mapState: this.mapState,
+      forestObjects: this.forestObjects,
+      timestamp: Date.now()
+    };
+    this.sendMessage(socket, worldState);
+  }
+  private async sendExistingPlayers(socket: WebSocket, excludeSquirrelId: string): Promise<void> {
+    const existingPlayers = Array.from(this.activePlayers.values())
+      .filter(player => player.squirrelId !== excludeSquirrelId)
+      .map(player => ({
+        squirrelId: player.squirrelId,
+        position: player.position,
+        rotationY: player.rotationY
+      }));
+    if (existingPlayers.length > 0) {
+      this.sendMessage(socket, {
+        type: "existing_players",
+        players: existingPlayers,
+        timestamp: Date.now()
+      });
+      
+      for (const player of existingPlayers) {
+        this.sendMessage(socket, {
+          type: "player_joined",
+          squirrelId: player.squirrelId,
+          position: player.position,
+          rotationY: player.rotationY,
+          timestamp: Date.now()
+        });
+      }
+    }
+  }
+  private broadcastPlayerJoin(squirrelId: string, playerConnection: PlayerConnection): void {
+    const joinMessage = {
+      type: "player_joined",
+      squirrelId,
+      position: playerConnection.position,
+      rotationY: playerConnection.rotationY,
+      timestamp: Date.now()
+    };
+    Logger.info(LogCategory.PLAYER, `📢 Broadcasting player_joined for ${squirrelId} to ${this.activePlayers.size - 1} other players`);
+    this.broadcastToOthers(squirrelId, joinMessage);
+  }
+  private async getPlayerSessionInfo(squirrelId: string): Promise<any> {
+    Logger.info(LogCategory.SESSION, `🔍 Getting session info for: ${squirrelId}`);
+    
+    const existingConnection = this.activePlayers.get(squirrelId);
+    if (existingConnection) {
+      Logger.info(LogCategory.SESSION, `✅ Found existing connection for ${squirrelId}, returning current position:`, existingConnection.position);
+      return {
+        position: existingConnection.position,
+        rotationY: existingConnection.rotationY,
+        stats: { found: 0, hidden: 0 }
+      };
+    }
+    
+    Logger.info(LogCategory.SESSION, `📦 No existing connection for ${squirrelId}, checking storage...`);
+    Logger.info(LogCategory.SESSION, `🔍 Active players count: ${this.activePlayers.size}`);
+    Logger.info(LogCategory.SESSION, `🔍 Active players:`, Array.from(this.activePlayers.keys()));
+    
+    const savedPosition = await this.loadSavedPlayerPosition(squirrelId);
+    if (savedPosition) {
+      Logger.info(LogCategory.SESSION, `✅ Successfully loaded saved position for ${squirrelId}:`, savedPosition.position);
+      return savedPosition;
+    }
+    
+    const generatedPosition = await this.loadGeneratedPlayerPosition(squirrelId);
+    if (generatedPosition) {
+      Logger.info(LogCategory.SESSION, `🎲 Using saved generated position for ${squirrelId}:`, generatedPosition.position);
+      return generatedPosition;
+    }
+    
+    Logger.info(LogCategory.SESSION, `🎲 No saved position found for ${squirrelId}, generating new position`);
+    
+    const hash = squirrelId.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    
+    const position = { 
+      x: (hash % 20) - 10, 
+      y: 2, 
+      z: ((hash * 7) % 20) - 10 
+    };
+    
+    Logger.info(LogCategory.SESSION, `🎲 Generated new position for ${squirrelId}:`, position);
+    
+    try {
+      await this.saveGeneratedPosition(squirrelId, position);
+      Logger.info(LogCategory.SESSION, `✅ Generated position saved for ${squirrelId}:`, position);
+    } catch (error) {
+      Logger.warn(LogCategory.SESSION, `Failed to save generated position for ${squirrelId}:`, error);
+    }
+    
+    return {
+      position: position,
+      rotationY: 0,
+      stats: { found: 0, hidden: 0 }
+    };
+  }
+  private broadcastToOthers(excludeSquirrelId: string, message: any): void {
+    const now = Date.now();
+    
+    if (now - this.lastInterestUpdate > ForestManager.UPDATE_INTERVAL) {
+      this.updateInterestAreas();
+      this.lastInterestUpdate = now;
+    }
+    
+    const serializedMessage = JSON.stringify(message);
+    let sentCount = 0;
+    let totalPlayers = 0;
+    
+    for (const [squirrelId, playerConnection] of this.activePlayers) {
+      if (squirrelId === excludeSquirrelId) continue;
+      totalPlayers++;
+      
+      if (playerConnection.socket.readyState !== WebSocket.OPEN) {
+        Logger.warn(LogCategory.WEBSOCKET, `Skipped broadcast to ${squirrelId} - socket not open (state: ${playerConnection.socket.readyState})`);
+        continue;
+      }
+      
+      if (this.shouldSendToPlayer(excludeSquirrelId, squirrelId, message)) {
+        try {
+          playerConnection.socket.send(serializedMessage);
+          sentCount++;
+        } catch (error) {
+          Logger.error(LogCategory.WEBSOCKET, `Failed to send message to ${squirrelId}:`, error);
+        }
+      }
+    }
+    
+    if (totalPlayers > 0) {
+      const efficiency = ((sentCount / totalPlayers) * 100).toFixed(1);
+      Logger.debug(LogCategory.WEBSOCKET, `📊 Broadcast result: ${sentCount}/${totalPlayers} players received message (${efficiency}% efficiency)`);
+    }
+  }
+  private updateInterestAreas(): void {
+    const players = Array.from(this.activePlayers.entries());
+    let totalConnections = 0;
+    let inRangeConnections = 0;
+    
+    for (const [squirrelId, playerConnection] of players) {
+      totalConnections++;
+      
+      let nearbyPlayers = 0;
+      for (const [otherSquirrelId, otherPlayer] of players) {
+        if (squirrelId !== otherSquirrelId) {
+          const distance = this.calculateDistance(playerConnection.position, otherPlayer.position);
+          if (distance <= ForestManager.INTEREST_RADIUS) {
+            nearbyPlayers++;
+          }
+        }
+      }
+      
+      if (nearbyPlayers > 0) {
+        inRangeConnections++;
+      }
+      
+      playerConnection.nearbyPlayers = nearbyPlayers;
+    }
+    
+    if (totalConnections > 0) {
+      const inRangePercentage = ((inRangeConnections / totalConnections) * 100).toFixed(1);
+      Logger.debug(LogCategory.WEBSOCKET, `Interest areas: ${inRangeConnections}/${totalConnections} players in range (${inRangePercentage}%)`);
+    }
+  }
+  private shouldSendToPlayer(senderId: string, recipientId: string, message: any): boolean {
+    const sender = this.activePlayers.get(senderId);
+    const recipient = this.activePlayers.get(recipientId);
+    
+    if (!sender || !recipient) return false;
+    
+    if (message.type === 'player_joined' || message.type === 'player_disconnected' || 
+        message.type === 'map_reset' || message.type === 'world_state') {
+      return true;
+    }
+    
+    if (message.type === 'player_update') {
+      const distance = this.calculateDistance(sender.position, recipient.position);
+      const shouldSend = distance <= ForestManager.INTEREST_RADIUS;
+      
+      
+      return shouldSend;
+    }
+    
+    return true;
+  }
+  private sendMessage(socket: WebSocket, message: any): void {
+    if (socket.readyState === WebSocket.OPEN) {
+      try {
+        socket.send(JSON.stringify(message));
+      } catch (error) {
+        Logger.error(LogCategory.WEBSOCKET, "Failed to send message:", error);
+      }
+    }
+  }
+  async resetMap(): Promise<void> {
+    this.cycleStartTime = Date.now();
+    this.terrainSeed = Math.random() * 1000;
+    this.mapState = [{
+      id: "test-walnut",
+      ownerId: "system",
+      origin: "game" as WalnutOrigin,
+      hiddenIn: "buried" as HidingMethod,
+      location: { x: 0, y: 0, z: 0 },
+      found: false,
+      timestamp: Date.now()
+    }];
+    this.forestObjects = this.generateForestObjects();
+    await this.storage.put("cycleStart", this.cycleStartTime);
+    await this.storage.put("terrainSeed", this.terrainSeed);
+    await this.storage.put("mapState", this.mapState);
+    await this.storage.put("forestObjects", this.forestObjects);
+    Logger.info(LogCategory.MAP, 'Reset map with forestObjects:', this.forestObjects);
+    this.broadcast("map_reset", { mapState: this.mapState });
+  }
+  generateForestObjects(): ForestObject[] {
+    const objects: ForestObject[] = [];
+    
+    for (let i = 0; i < TREE_COUNT; i++) {
+      objects.push({
+        id: `tree-${crypto.randomUUID()}`,
+        type: "tree",
+        x: (Math.random() - 0.5) * TERRAIN_SIZE,
+        y: 0,
+        z: (Math.random() - 0.5) * TERRAIN_SIZE,
+        scale: 0.8 + Math.random() * 0.4
+      });
+    }
+    
+    for (let i = 0; i < SHRUB_COUNT; i++) {
+      objects.push({
+        id: `shrub-${crypto.randomUUID()}`,
+        type: "shrub",
+        x: (Math.random() - 0.5) * TERRAIN_SIZE,
+        y: 0,
+        z: (Math.random() - 0.5) * TERRAIN_SIZE,
+        scale: 0.7 + Math.random() * 0.3
+      });
+    }
+    
+    return objects;
+  }
+  generateWalnuts(count: number = 100): Walnut[] {
+    const walnuts: Walnut[] = [];
+    for (let i = 0; i < count; i++) {
+      walnuts.push({
+        id: `sys-${crypto.randomUUID()}`,
+        ownerId: "system",
+        origin: "game" as WalnutOrigin,
+        hiddenIn: Math.random() < 0.5 ? "buried" as HidingMethod : "bush" as HidingMethod,
+        location: {
+          x: Math.random() * 100,
+          y: 0,
+          z: Math.random() * 100
+        },
+        found: false,
+        timestamp: Date.now()
+      });
+    }
+    return walnuts;
+  }
+  async getRecentActivity(): Promise<Record<string, number>> {
+    return {
+      "zone-A": 3,
+      "zone-B": 7,
+      "zone-C": 2
+    };
+  }
+  handleFind(walnutId: string, squirrelId: string): Response {
+    return new Response(JSON.stringify({ message: "Walnut found!" }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+  handleRehide(walnutId: string, squirrelId: string, location: { x: number, y: number, z: number }): Response {
+    return new Response(JSON.stringify({ message: "Walnut rehidden!" }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+  private async initialize(): Promise<void> {
+    const storedMapState = await this.storage.get('mapState');
+    if (storedMapState) {
+      this.mapState = Array.isArray(storedMapState) ? storedMapState : [];
+      Logger.debug(LogCategory.MAP, 'Loaded mapState from storage:', this.mapState);
+    }
+    
+    const storedSeed = await this.storage.get('terrainSeed');
+    if (storedSeed !== null && typeof storedSeed === 'number') {
+      this.terrainSeed = storedSeed;
+      Logger.debug(LogCategory.MAP, 'Loaded terrainSeed from storage:', this.terrainSeed);
+    } else {
+      this.terrainSeed = Math.random() * 1000;
+      await this.storage.put('terrainSeed', this.terrainSeed);
+      Logger.debug(LogCategory.MAP, 'Initialized new terrainSeed:', this.terrainSeed);
+    }
+    
+    const storedForestObjects = await this.storage.get('forestObjects');
+    if (storedForestObjects) {
+      this.forestObjects = Array.isArray(storedForestObjects) ? storedForestObjects : [];
+      Logger.debug(LogCategory.MAP, 'Loaded forestObjects from storage:', this.forestObjects);
+    } else {
+      this.forestObjects = this.generateForestObjects();
+      await this.storage.put('forestObjects', this.forestObjects);
+      Logger.debug(LogCategory.MAP, 'Initialized forestObjects:', this.forestObjects);
+    }
+    
+    if (this.mapState.length === 0 || !this.mapState.some(w => w.id === "test-walnut")) {
+      const testWalnut: Walnut = {
+        id: "test-walnut",
+        ownerId: "system",
+        origin: "game" as WalnutOrigin,
+        hiddenIn: "buried" as HidingMethod,
+        location: { x: 0, y: 0, z: 0 },
+        found: false,
+        timestamp: Date.now()
+      };
+      if (this.mapState.length === 0) {
+        this.mapState = [testWalnut];
+      } else {
+        this.mapState.push(testWalnut);
+      }
+      await this.storage.put('mapState', this.mapState);
+      Logger.debug(LogCategory.MAP, 'Seeded test walnut:', testWalnut);
+    }
+  }
+  private async persistMapState(): Promise<void> {
+    await this.storage.put("mapState", this.mapState);
+  }
+  broadcast(type: string, data: object): void {
+    const message = { type, data };
+    const serializedMessage = JSON.stringify(message);
+    
+    Logger.debug(LogCategory.WEBSOCKET, `Broadcasting '${type}' event to ${this.sessions.size} connections`);
+    
+    let successCount = 0;
+    for (const socket of this.sessions) {
+      try {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(serializedMessage);
+          successCount++;
+        }
+      } catch (error) {
+        Logger.error(LogCategory.WEBSOCKET, `Error broadcasting:`, error);
+      }
+    }
+    
+    Logger.debug(LogCategory.WEBSOCKET, `Broadcast complete: ${successCount}/${this.sessions.size} connections received '${type}'`);
+  }
+  broadcastExceptSender(senderId: string, message: string | ArrayBuffer) {
+    for (const socket of this.sessions) {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(message);
+      }
+    }
+  }
+  private async loadServerMetrics(): Promise<void> {
+    try {
+      const savedMetrics = await this.storage.get<any>('serverMetrics');
+      const savedStartTime = await this.storage.get<number>('serverStartTime');
+      
+      if (savedStartTime) {
+        this.serverStartTime = savedStartTime;
+      }
+      
+      if (savedMetrics) {
+        this.serverMetrics.totalConnections = savedMetrics.totalConnections || 0;
+        this.serverMetrics.totalErrors = savedMetrics.totalErrors || 0;
+      }
+      
+      this.serverMetrics.activeConnections = this.activePlayers.size;
+      
+      Logger.debug(LogCategory.WEBSOCKET, 
+        `📊 Loaded server metrics: totalConn=${this.serverMetrics.totalConnections}, startTime=${this.serverStartTime}`
+      );
+    } catch (error) {
+      Logger.warn(LogCategory.WEBSOCKET, 'Failed to load server metrics from storage:', error);
+    }
+  }
+  private async saveServerMetrics(): Promise<void> {
+    try {
+      await this.storage.put('serverMetrics', {
+        totalConnections: this.serverMetrics.totalConnections,
+        totalErrors: this.serverMetrics.totalErrors
+      });
+      await this.storage.put('serverStartTime', this.serverStartTime);
+    } catch (error) {
+      Logger.warn(LogCategory.WEBSOCKET, 'Failed to save server metrics:', error);
+    }
+  }
+  private async savePlayerPositionImmediately(playerConnection: PlayerConnection): Promise<void> {
+    try {
+      Logger.info(LogCategory.SESSION, `💾 Saving position immediately for ${playerConnection.squirrelId}:`, playerConnection.position);
+      await this.storage.put(`player:${playerConnection.squirrelId}`, {
+        position: playerConnection.position,
+        rotationY: playerConnection.rotationY,
+        lastUpdate: Date.now()
+      });
+      Logger.info(LogCategory.SESSION, `✅ Position saved successfully for ${playerConnection.squirrelId}`);
+    } catch (error) {
+      Logger.error(LogCategory.SESSION, `❌ Error saving position for ${playerConnection.squirrelId}:`, error);
+      throw error;
+    }
+  }
+    private async saveGeneratedPosition(squirrelId: string, position: { x: number; y: number; z: number }): Promise<void> {
+      try {
+        Logger.info(LogCategory.SESSION, `💾 Saving generated position for ${squirrelId}:`, position);
+        await this.storage.put(`generatedPosition:${squirrelId}`, {
+          x: position.x,
+          y: position.y,
+          z: position.z,
+          timestamp: Date.now()
+        });
+        Logger.info(LogCategory.SESSION, `✅ Generated position saved successfully for ${squirrelId}`);
+      } catch (error) {
+        Logger.error(LogCategory.SESSION, `❌ Error saving generated position for ${squirrelId}:`, error);
+        throw error;
+      }
+    }
+    private async loadSavedPlayerPosition(squirrelId: string): Promise<any> {
+      try {
+        const storageKey = `player:${squirrelId}`;
+        Logger.info(LogCategory.SESSION, `🔍 Looking for saved data with key: ${storageKey}`);
+        
+        const savedPlayerData = await this.storage.get<{
+          position: { x: number; y: number; z: number };
+          rotationY: number;
+          lastUpdate: number;
+        }>(storageKey);
+        
+        Logger.info(LogCategory.SESSION, `📦 Storage lookup result for ${squirrelId}:`, savedPlayerData);
+        
+        if (savedPlayerData && savedPlayerData.position) {
+          Logger.info(LogCategory.SESSION, `✅ Found saved position for ${squirrelId}:`, savedPlayerData.position);
+          
+          const terrainHeight = this.getTerrainHeight(savedPlayerData.position.x, savedPlayerData.position.z);
+          let correctedPosition = this.correctPlayerPosition(savedPlayerData.position);
+          
+          
+          if (Math.abs(correctedPosition.y - savedPlayerData.position.y) > 0.1) {
+            Logger.info(LogCategory.SESSION, `🌍 Terrain correction for ${squirrelId}:`, {
+              original: savedPlayerData.position,
+              corrected: correctedPosition,
+              terrainHeight: terrainHeight
+            });
+            
+            await this.storage.put(storageKey, {
+              position: correctedPosition,
+              rotationY: savedPlayerData.rotationY || 0,
+              lastUpdate: Date.now()
+            });
+            
+            return {
+              position: correctedPosition,
+              rotationY: savedPlayerData.rotationY || 0,
+              stats: { found: 0, hidden: 0 }
+            };
+          } else {
+            Logger.info(LogCategory.SESSION, `✅ Loaded valid saved position for ${squirrelId}:`, savedPlayerData.position);
+            return {
+              position: savedPlayerData.position,
+              rotationY: savedPlayerData.rotationY || 0,
+              stats: { found: 0, hidden: 0 }
+            };
+          }
+        } else {
+          Logger.warn(LogCategory.SESSION, `⚠️ No saved position found for ${squirrelId} in storage`);
+        }
+      } catch (error) {
+        Logger.error(LogCategory.SESSION, `❌ Failed to load saved position for ${squirrelId}:`, error);
+      }
+      
+      return null;
+    }
+    private async loadGeneratedPlayerPosition(squirrelId: string): Promise<any> {
+      try {
+        const savedGeneratedPosition = await this.storage.get<{
+          x: number; y: number; z: number; timestamp: number;
+        }>(`generatedPosition:${squirrelId}`);
+        
+        if (savedGeneratedPosition) {
+          if (this.isValidPosition(savedGeneratedPosition)) {
+            Logger.info(LogCategory.SESSION, `🎲 Found valid saved generated position for ${squirrelId}:`, savedGeneratedPosition);
+            return {
+              position: { x: savedGeneratedPosition.x, y: savedGeneratedPosition.y, z: savedGeneratedPosition.z },
+              rotationY: 0,
+              stats: { found: 0, hidden: 0 }
+            };
+          } else {
+            Logger.warn(LogCategory.SESSION, `⚠️ Invalid generated position for ${squirrelId}:`, savedGeneratedPosition);
+          }
+        }
+      } catch (error) {
+        Logger.warn(LogCategory.SESSION, `Failed to load generated position for ${squirrelId}:`, error);
+      }
+      
+      return null;
+    }
+  }
+=== END FILE ===
+
+=== FILE: ./workers/objects/registry.ts ===
+export type DOName = 'forest' | 'squirrel' | 'walnuts' | 'leaderboard';
+export interface EnvWithBindings {
+  FOREST: DurableObjectNamespace;
+  SQUIRREL: DurableObjectNamespace;
+  WALNUTS: DurableObjectNamespace;
+  LEADERBOARD: DurableObjectNamespace;
+  
+  ENVIRONMENT: string;
+  CYCLE_DURATION_SECONDS: string;
+}
+export function getObjectId(
+  env: EnvWithBindings,
+  name: DOName,
+  key: string
+): DurableObjectId {
+  switch (name) {
+    case 'forest':
+      return env.FOREST.idFromName(key);
+    case 'squirrel':
+      return env.SQUIRREL.idFromName(key);
+    case 'walnuts':
+      return env.WALNUTS.idFromName(key);
+    case 'leaderboard':
+      return env.LEADERBOARD.idFromName(key);
+    default:
+      throw new Error(`Unknown DO name: ${name}`);
+  }
+}
+export function getObjectInstance(
+  env: EnvWithBindings,
+  name: DOName,
+  key: string
+): DurableObjectStub {
+  const id = getObjectId(env, name, key);
+  switch (name) {
+    case 'forest':
+      return env.FOREST.get(id);
+    case 'squirrel':
+      return env.SQUIRREL.get(id);
+    case 'walnuts':
+      return env.WALNUTS.get(id);
+    case 'leaderboard':
+      return env.LEADERBOARD.get(id);
+    default:
+      throw new Error(`Unknown DO name: ${name}`);
+  }
+}
+
+=== END FILE ===
+
+=== FILE: ./workers/objects/Leaderboard.ts ===
+import { Logger, LogCategory, initializeLogger } from '../Logger';
+interface DurableObjectState {
+  storage: DurableObjectStorage;
+  id: DurableObjectId;
+}
+interface DurableObjectStorage {
+  get<T>(key: string): Promise<T | null>;
+  put<T>(key: string, value: T): Promise<void>;
+  delete(key: string): Promise<boolean>;
+  deleteAll(): Promise<void>;
+  list<T>(options?: { prefix?: string }): Promise<Map<string, T>>;
+}
+interface DurableObjectId {
+  toString(): string;
+  equals(other: DurableObjectId): boolean;
+}
+type ScoreRecord = {
+    playerId: string;
+    rawScore: number;
+    multiplier: number;
+    bonuses: string[]; 
+    updatedAt: number;
+  };
+  
+  export default class Leaderboard {
+    state: DurableObjectState;
+    storage: DurableObjectStorage;
+    scores: Map<string, ScoreRecord> = new Map();
+  
+    constructor(state: DurableObjectState, env?: any) {
+      this.state = state;
+      this.storage = state.storage;
+      
+      if (env?.ENVIRONMENT) {
+        initializeLogger(env.ENVIRONMENT);
+      }
+    }
+  
+    async fetch(request: Request): Promise<Response> {
+      const url = new URL(request.url);
+      const path = url.pathname;
+  
+      if (path.endsWith("/report") && request.method === "POST") {
+        const record = await request.json() as ScoreRecord;
+        this.scores.set(record.playerId, record);
+        await this.storage.put(record.playerId, record);
+        return new Response("Score updated");
+      }
+  
+      if (path.endsWith("/top")) {
+        const top = this.getTopPlayers();
+        return new Response(JSON.stringify(top), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+  
+      if (path.endsWith("/reset")) {
+        this.scores.clear();
+        await this.storage.deleteAll();
+        return new Response("Leaderboard reset");
+      }
+  
+      return new Response("Not found", { status: 404 });
+    }
+  
+    getTopPlayers(limit: number = 10): Array<{ playerId: string; adjustedScore: number }> {
+      const ranked = Array.from(this.scores.values())
+        .map((r) => ({
+          playerId: r.playerId,
+          adjustedScore: Math.floor(r.rawScore * r.multiplier)
+        }))
+        .sort((a, b) => b.adjustedScore - a.adjustedScore)
+        .slice(0, limit);
+      return ranked;
+    }
+  
+    async alarm(): Promise<void> {
+    }
+  }
+  
+=== END FILE ===
+
+=== FILE: ./workers/objects/SquirrelSession.ts ===
+import { POINTS, PARTICIPATION_INTERVAL_SECONDS, PARTICIPATION_MAX_MULTIPLIER, DEFAULT_POWERUPS } from "../constants";
+import type { Squirrel, Walnut, HidingMethod } from "../types";
+import { getObjectInstance } from "./registry";
+import type { EnvWithBindings } from "./registry";
+import { Logger, LogCategory, initializeLogger } from '../Logger';
+interface DurableObjectState {
+  storage: DurableObjectStorage;
+  id: DurableObjectId;
+}
+interface DurableObjectStorage {
+  get<T>(key: string): Promise<T | null>;
+  put<T>(key: string, value: T): Promise<void>;
+  delete(key: string): Promise<boolean>;
+}
+interface DurableObjectId {
+  toString(): string;
+  equals(other: DurableObjectId): boolean;
+}
+interface SessionState {
+  squirrelId: string;
+  token: string;
+  isAuthenticated: boolean;
+  joinedAt: number;
+  lastActivity: number;
+  position: { x: number; y: number; z: number };
+  rotationY: number;
+  connectionState: 'connecting' | 'authenticated' | 'active' | 'disconnected';
+}
+interface PlayerStats {
+  walnuts: { hidden: number; found: number };
+  score: number;
+  timeOnline: number;
+}
+export default class SquirrelSession {
+  private state: DurableObjectState;
+  private sessionState: SessionState | null = null;
+  private playerStats: PlayerStats | null = null;
+  private sessionTimeout: any = null;
+  constructor(state: DurableObjectState, env: any) {
+    this.state = state;
+    
+    initializeLogger(env.ENVIRONMENT);
+  }
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    const pathname = url.pathname;
+    try {
+      if (pathname === "/join") {
+        return await this.handleJoin(request);
+      }
+      if (pathname === "/validate") {
+        return await this.handleValidation(request);
+      }
+      if (pathname === "/update-state") {
+        return await this.handleStateUpdate(request);
+      }
+      if (pathname === "/disconnect") {
+        return await this.handleDisconnect(request);
+      }
+      if (pathname === "/session-info") {
+        return await this.handleSessionInfo(request);
+      }
+      return new Response("Not Found", { status: 404 });
+    } catch (error) {
+      Logger.error(LogCategory.SESSION, "SquirrelSession error:", error);
+      return new Response(JSON.stringify({ 
+        error: "Internal Server Error",
+        message: error instanceof Error ? error.message : "Unknown error"
+      }), { 
+        status: 500, 
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+  }
+  private async handleJoin(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    const squirrelId = url.searchParams.get("squirrelId");
+    
+    if (!squirrelId) {
+      return new Response(JSON.stringify({
+        error: "Missing squirrelId parameter"
+      }), { status: 400, headers: { "Content-Type": "application/json" }});
+    }
+    const token = crypto.randomUUID();
+    const now = Date.now();
+    
+    const existingState = await this.state.storage.get<SessionState>("session");
+    const existingStats = await this.state.storage.get<PlayerStats>("stats");
+    
+    this.sessionState = {
+      squirrelId,
+      token,
+      isAuthenticated: true,
+      joinedAt: existingState?.joinedAt || now,
+      lastActivity: now,
+      position: existingState?.position || { x: 50, y: 2, z: 50 }, 
+      rotationY: existingState?.rotationY || 0,
+      connectionState: 'authenticated'
+    };
+    this.playerStats = existingStats || {
+      walnuts: { hidden: 0, found: 0 },
+      score: 0,
+      timeOnline: 0
+    };
+    await this.state.storage.put("session", this.sessionState);
+    await this.state.storage.put("stats", this.playerStats);
+    
+    this.scheduleSessionTimeout();
+    Logger.info(LogCategory.SESSION, `Player ${squirrelId} authenticated with token ${token.substring(0, 8)}...`);
+    
+    return new Response(JSON.stringify({
+      success: true,
+      token,
+      squirrelId,
+      position: this.sessionState.position,
+      rotationY: this.sessionState.rotationY,
+      stats: this.playerStats
+    }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+  private async handleValidation(request: Request): Promise<Response> {
+    if (request.method !== "POST") {
+      return new Response("Method not allowed", { status: 405 });
+    }
+    const body = await request.json() as { token: string };
+    
+    if (!this.sessionState) {
+      await this.loadSessionFromStorage();
+    }
+    const now = Date.now();
+    const sessionTimeout = 60 * 60 * 1000; 
+    const isExpired = this.sessionState && (now - this.sessionState.lastActivity) > sessionTimeout;
+    
+    if (isExpired && this.sessionState) {
+      this.sessionState.connectionState = 'disconnected';
+      this.sessionState.isAuthenticated = false;
+      await this.state.storage.put("session", this.sessionState);
+    }
+    const isValid = this.sessionState?.token === body.token && 
+                   this.sessionState?.isAuthenticated === true &&
+                   !isExpired;
+    if (isValid && this.sessionState) {
+      this.sessionState.lastActivity = now;
+      await this.state.storage.put("session", this.sessionState);
+      this.scheduleSessionTimeout();
+    }
+    return new Response(JSON.stringify({ 
+      valid: isValid,
+      squirrelId: isValid ? this.sessionState?.squirrelId : null
+    }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+  private async handleStateUpdate(request: Request): Promise<Response> {
+    if (request.method !== "POST") {
+      return new Response("Method not allowed", { status: 405 });
+    }
+    const body = await request.json() as { 
+      token: string; 
+      position?: { x: number; y: number; z: number };
+      rotationY?: number;
+      connectionState?: 'active' | 'disconnected';
+    };
+    if (!this.sessionState) {
+      await this.loadSessionFromStorage();
+    }
+    if (!this.sessionState || this.sessionState.token !== body.token) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+    if (body.position && this.isValidPosition(body.position)) {
+      this.sessionState.position = body.position;
+    }
+    
+    if (body.rotationY !== undefined) {
+      this.sessionState.rotationY = body.rotationY;
+    }
+    if (body.connectionState) {
+      this.sessionState.connectionState = body.connectionState;
+    }
+    this.sessionState.lastActivity = Date.now();
+    await this.state.storage.put("session", this.sessionState);
+    this.scheduleSessionTimeout();
+    return new Response(JSON.stringify({ 
+      success: true,
+      position: this.sessionState.position,
+      rotationY: this.sessionState.rotationY 
+    }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+  private async handleDisconnect(request: Request): Promise<Response> {
+    if (!this.sessionState) {
+      await this.loadSessionFromStorage();
+    }
+    if (this.sessionState) {
+      this.sessionState.connectionState = 'disconnected';
+      this.sessionState.lastActivity = Date.now();
+      
+      if (this.playerStats) {
+        this.playerStats.timeOnline += Date.now() - this.sessionState.joinedAt;
+        await this.state.storage.put("stats", this.playerStats);
+      }
+      
+      await this.state.storage.put("session", this.sessionState);
+    }
+    if (this.sessionTimeout) {
+      clearTimeout(this.sessionTimeout);
+      this.sessionTimeout = null;
+    }
+    console.log(`[SquirrelSession] Player ${this.sessionState?.squirrelId} disconnected gracefully`);
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+  private async handleSessionInfo(request: Request): Promise<Response> {
+    if (!this.sessionState) {
+      await this.loadSessionFromStorage();
+    }
+    if (!this.sessionState) {
+      return new Response(JSON.stringify({ error: "No active session" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+    return new Response(JSON.stringify({
+      squirrelId: this.sessionState.squirrelId,
+      isAuthenticated: this.sessionState.isAuthenticated,
+      connectionState: this.sessionState.connectionState,
+      position: this.sessionState.position,
+      rotationY: this.sessionState.rotationY,
+      stats: this.playerStats
+    }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+  private isValidPosition(position: { x: number; y: number; z: number }): boolean {
+    const MAX_COORDINATE = 200; 
+    const MIN_Y = 0;
+    const MAX_Y = 50;
+    return position.x >= -MAX_COORDINATE && position.x <= MAX_COORDINATE &&
+           position.z >= -MAX_COORDINATE && position.z <= MAX_COORDINATE &&
+           position.y >= MIN_Y && position.y <= MAX_Y;
+  }
+  private scheduleSessionTimeout(): void {
+    if (this.sessionTimeout) {
+      clearTimeout(this.sessionTimeout);
+      this.sessionTimeout = null;
+    }
+    
+    if (this.sessionState) {
+      this.sessionState.lastActivity = Date.now();
+    }
+  }
+  private async loadSessionFromStorage(): Promise<void> {
+    this.sessionState = await this.state.storage.get<SessionState>("session");
+    this.playerStats = await this.state.storage.get<PlayerStats>("stats");
+  }
+}
+
+=== END FILE ===
+
+=== FILE: ./workers/api.ts ===
+import { getObjectInstance } from "./objects/registry";
+import type { EnvWithBindings } from "./objects/registry";
+import { initializeLogger } from "./Logger";
+import ForestManager from "./objects/ForestManager";
+import SquirrelSession from "./objects/SquirrelSession";
+import WalnutRegistry from "./objects/WalnutRegistry";
+import Leaderboard from "./objects/Leaderboard";
+export { ForestManager, SquirrelSession, WalnutRegistry, Leaderboard };
+interface ExecutionContext {
+  waitUntil(promise: Promise<any>): void;
+  passThroughOnException(): void;
+}
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*", 
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type"
+};
+export default {
+  async fetch(request: Request, env: EnvWithBindings, ctx: ExecutionContext): Promise<Response> {
+    initializeLogger(env.ENVIRONMENT);
+    
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Max-Age': '86400',
+        },
+      });
+    }
+    const url = new URL(request.url);
+    const pathname = url.pathname;
+    try {
+      if (pathname === "/ws") {
+        const upgradeHeader = request.headers.get('Upgrade');
+        if (upgradeHeader !== 'websocket') {
+          return new Response('Expected Upgrade: websocket', { status: 426 });
+        }
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        console.log('Forwarding WebSocket request to ForestManager');
+        return forest.fetch(request);
+      }
+      if (pathname === "/join") {
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        console.log('Forwarding /join request to ForestManager for multiplayer');
+        const response = await forest.fetch(request);
+        
+        return new Response(response.body, {
+          status: response.status,
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "application/json"
+          }
+        });
+      }
+      if (pathname === "/hide") {
+        const id = url.searchParams.get("squirrelId");
+        
+        if (!id) {
+          return new Response(JSON.stringify({
+            error: "Missing squirrelId",
+            message: "A squirrelId query parameter is required"
+          }), { 
+            status: 400,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+        
+        const newUrl = new URL(request.url);
+        newUrl.pathname = "/hide";
+        
+        const squirrel = getObjectInstance(env, "squirrel", id);
+        return await squirrel.fetch(new Request(newUrl, request));
+      }
+      if (pathname === "/map-state") {
+        try {
+          const forest = getObjectInstance(env, "forest", "daily-forest");
+          console.log("Fetching map state from ForestManager");
+          const resp = await forest.fetch(request);
+          const result = await resp.text();
+          console.log("Map state response:", result);
+          return new Response(result, { 
+            status: resp.status, 
+            headers: {
+              ...CORS_HEADERS,
+              "Content-Type": "application/json"
+            }
+          });
+        } catch (error: any) {
+          console.error('Error in /map-state route:', error);
+          return new Response(JSON.stringify({ error: 'Internal Server Error', message: error?.message || 'Unknown error' }), {
+            status: 500,
+            headers: {
+              ...CORS_HEADERS,
+              "Content-Type": "application/json"
+            }
+          });
+        }
+      }
+      if (pathname === "/leaderboard") {
+        const leaderboard = getObjectInstance(env, "leaderboard", "global");
+        console.log("Fetching leaderboard data");
+        return await leaderboard.fetch(request);
+      }
+      if (pathname === "/rehide-test") {
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        console.log("Forwarding /rehide-test request to ForestManager");
+        const response = await forest.fetch(request);
+        const result = await response.json();
+        return new Response(JSON.stringify(result), {
+          status: response.status,
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "application/json"
+          }
+        });
+      }
+      if (pathname === "/reset") {
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        console.log("Resetting forest");
+        const response = await forest.fetch(request);
+        const result = await response.json();
+        return new Response(JSON.stringify(result), {
+          status: response.status,
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "application/json"
+          }
+        });
+      }
+      if (pathname === "/terrain-seed") {
+        const forest = getObjectInstance(env, "forest", "daily-forest");
+        console.log("Fetching terrain seed from ForestManager");
+        const resp = await forest.fetch(request);
+        const result = await resp.text();
+        console.log("Terrain seed response:", result);
+        return new Response(result, {
+          status: resp.status,
+          headers: {
+            ...CORS_HEADERS,
+            'Content-Type': 'application/json',
+          }
+        });
+      }
+      if (pathname === "/forest-objects") {
+        try {
+          const forest = getObjectInstance(env, "forest", "daily-forest");
+          console.log("Fetching forest objects from ForestManager");
+          const resp = await forest.fetch(request);
+          const result = await resp.text();
+          console.log("Forest objects response:", result);
+          return new Response(result, {
+            status: resp.status,
+            headers: {
+              ...CORS_HEADERS,
+              "Content-Type": "application/json"
+            }
+          });
+        } catch (error) {
+          console.error('Error in /forest-objects route:', error);
+          return new Response(JSON.stringify({ error: 'Internal server error' }), {
+            status: 500,
+            headers: {
+              ...CORS_HEADERS,
+              "Content-Type": "application/json"
+            }
+          });
+        }
+      }
+      if (pathname === "/server-metrics") {
+        try {
+          const forest = getObjectInstance(env, "forest", "daily-forest");
+          console.log("Fetching server metrics from ForestManager");
+          const resp = await forest.fetch(request);
+          const result = await resp.text();
+          console.log("Server metrics response:", result);
+          return new Response(result, {
+            status: resp.status,
+            headers: {
+              ...CORS_HEADERS,
+              "Content-Type": "application/json"
+            }
+          });
+        } catch (error) {
+          console.error('Error in /server-metrics route:', error);
+          return new Response(JSON.stringify({ error: 'Internal server error' }), {
+            status: 500,
+            headers: {
+              ...CORS_HEADERS,
+              "Content-Type": "application/json"
+            }
+          });
+        }
+      }
+      console.log("No matching route for:", pathname);
+      return new Response(JSON.stringify({
+        error: "Not found",
+        message: "The requested endpoint does not exist"
+      }), { 
+        status: 404,
+        headers: {
+          ...CORS_HEADERS,
+          "Content-Type": "application/json"
+        }
+      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error handling request:', {
+        path: pathname,
+        error: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      return new Response(JSON.stringify({
+        error: "Internal server error",
+        message: errorMessage
+      }), { 
+        status: 500,
+        headers: {
+          ...CORS_HEADERS,
+          "Content-Type": "application/json"
+        }
+      });
+    }
+  }
+};
+
+=== END FILE ===
+
+=== FILE: ./workers/types.ts ===
+export type WalnutOrigin = "game" | "player";
+export type HidingMethod = "buried" | "bush";
+export interface Walnut {
+  ownerId: string;
+  
+  hiddenIn: HidingMethod;
+  
+  found: boolean;
+  
+  timestamp: number;
+}
+export interface Squirrel {
+  joinedAt: number;
+  
+  participationSeconds: number;
+  
+  powerUps: Record<string, boolean>;
+  
+  foundWalnuts: string[];
+  
+  firstFinderAchieved: boolean;
+}
+export interface TerrainData {
+  seed: number; 
+}
+export interface ForestObject {
+  id: string;
+  type: 'tree' | 'shrub';
+  x: number;
+  y: number;
+  z: number;
+  scale: number;
+}
+
+=== END FILE ===
+
+=== FILE: ./workers/Logger.ts ===
+export enum LogLevel {
+  TRACE = 0,
+  DEBUG = 1,
+  INFO = 2,
+  WARN = 3,
+  ERROR = 4,
+  NONE = 5
+}
+export enum LogCategory {
+  CORE = 'Core',
+  NETWORK = 'Network',
+  AUTH = 'Auth',
+  WEBSOCKET = 'WebSocket',
+  PLAYER = 'Player',
+  FOREST = 'Forest',
+  SESSION = 'Session',
+  WALNUT = 'Walnut',
+  MAP = 'Map'
+}
+interface LogConfig {
+  level: LogLevel;
+  enabledCategories: Set<LogCategory>;
+  environment: 'development' | 'production' | 'preview';
+}
+class WorkerLogger {
+  private config: LogConfig;
+  private startTime: number = Date.now();
+  
+  constructor(environment?: string) {
+    const env = environment || 'development';
+    
+    this.config = {
+      level: this.getLogLevel(env),
+      enabledCategories: this.getEnabledCategories(env),
+      environment: env as 'development' | 'production' | 'preview'
+    };
+  }
+  public initializeEnvironment(environment: string): void {
+    this.config = {
+      level: this.getLogLevel(environment),
+      enabledCategories: this.getEnabledCategories(environment),
+      environment: environment as 'development' | 'production' | 'preview'
+    };
+  }
+  private getLogLevel(environment: string): LogLevel {
+    switch (environment) {
+      case 'development':
+      case 'dev':
+        return LogLevel.DEBUG;
+      case 'preview':
+        return LogLevel.INFO; 
+      case 'production':
+        return LogLevel.ERROR;
+      default:
+        return LogLevel.DEBUG;
+    }
+  }
+  private getEnabledCategories(environment: string): Set<LogCategory> {
+    switch (environment) {
+      case 'development':
+      case 'dev':
+        return new Set(Object.values(LogCategory)); 
+      case 'preview':
+        return new Set([
+          LogCategory.CORE, 
+          LogCategory.AUTH, 
+          LogCategory.PLAYER, 
+          LogCategory.WEBSOCKET
+        ]); 
+      case 'production':
+        return new Set([LogCategory.CORE, LogCategory.AUTH]); 
+      default:
+        return new Set([LogCategory.CORE, LogCategory.AUTH]);
+    }
+  }
+  trace(category: LogCategory, message: string, ...args: any[]): void {
+    this.log(LogLevel.TRACE, category, message, ...args);
+  }
+  debug(category: LogCategory, message: string, ...args: any[]): void {
+    this.log(LogLevel.DEBUG, category, message, ...args);
+  }
+  info(category: LogCategory, message: string, ...args: any[]): void {
+    this.log(LogLevel.INFO, category, message, ...args);
+  }
+  warn(category: LogCategory, message: string, ...args: any[]): void {
+    this.log(LogLevel.WARN, category, message, ...args);
+  }
+  error(category: LogCategory, message: string, ...args: any[]): void {
+    this.log(LogLevel.ERROR, category, message, ...args);
+  }
+  private log(level: LogLevel, category: LogCategory, message: string, ...args: any[]): void {
+    if (level < this.config.level || !this.config.enabledCategories.has(category)) {
+      return;
+    }
+    if (this.config.environment === 'production' && level < LogLevel.ERROR) {
+      return;
+    }
+    const timestamp = Date.now() - this.startTime;
+    const levelEmoji = this.getLevelEmoji(level);
+    const categoryTag = `[${category}]`;
+    const timeTag = `+${timestamp}ms`;
+    const envTag = this.getEnvironmentTag();
+    
+    const logMessage = `${levelEmoji} ${timeTag} ${envTag} ${categoryTag} ${message}`;
+    
+    switch (level) {
+      case LogLevel.TRACE:
+      case LogLevel.DEBUG:
+        console.debug(logMessage, ...args);
+        break;
+      case LogLevel.INFO:
+        console.info(logMessage, ...args);
+        break;
+      case LogLevel.WARN:
+        console.warn(logMessage, ...args);
+        break;
+      case LogLevel.ERROR:
+        console.error(logMessage, ...args);
+        break;
+    }
+  }
+  private getEnvironmentTag(): string {
+    switch (this.config.environment) {
+      case 'production':
+        return '[PROD]';
+      case 'preview':
+        return '[PREVIEW]';
+      case 'development':
+      default:
+        return '[DEV]';
+    }
+  }
+  private getLevelEmoji(level: LogLevel): string {
+    switch (level) {
+      case LogLevel.TRACE: return '🔍';
+      case LogLevel.DEBUG: return '🐛';
+      case LogLevel.INFO: return 'ℹ️';
+      case LogLevel.WARN: return '⚠️';
+      case LogLevel.ERROR: return '❌';
+      default: return '📝';
+    }
+  }
+  public getCurrentEnvironment(): string {
+    return this.config.environment;
+  }
+}
+export const Logger = new WorkerLogger(); 
+export function initializeLogger(environment?: string): void {
+  if (environment) {
+    Logger.initializeEnvironment(environment);
+  }
+} 
+=== END FILE ===
+
+=== FILE: ./workers/constants.ts ===
+export const CYCLE_DURATION_SECONDS = 86400; 
+export const PARTICIPATION_INTERVAL_SECONDS = 300;
+export const PARTICIPATION_MAX_MULTIPLIER = 2.0;
+export const NUT_RUSH_INTERVAL_HOURS = 4;
+export const NUT_RUSH_DURATION_MINUTES = 10;
+export const POINTS = {
+  GAME_BUSH: 1,
+  
+  PLAYER_BUSH: 1,
+  
+  FIRST_FINDER: 3
+};
+export const DEFAULT_POWERUPS = ["ScentSniff", "FastDig", "DecoyNut"];
+export const TERRAIN_SIZE = 200; 
+export const TERRAIN_HEIGHT = 20; 
+export const TREE_COUNT = 50; 
+export const SHRUB_COUNT = 100; 
+export const ANTI_CHEAT = {
+  MAX_TELEPORT_DISTANCE: 10.0,
+  
+  MIN_UPDATE_INTERVAL: 50, 
+  
+  SPEED_TOLERANCE: 1.2, 
+  
+  VIOLATION_WINDOW: 30000, 
+  
+  MIN_Y_COORDINATE: -5,
+  
+export const MOVEMENT_VALIDATION = {
+  MIN_TIME_FOR_SPEED_CALC: 0.05, 
+  
+  BURST_SPEED_WINDOW: 0.1 
+};
+
+=== END FILE ===
+
+=== FILE: ./client/public/characters.json ===
+[
+  {
+    "id": "colobus",
+    "name": "Colobus Monkey",
+    "modelPath": "/assets/models/characters/Colobus_LOD0.glb",
+    "animations": {
+      "idle": "/assets/animations/characters/Single/Colobus_Idle_A.glb",
+      "run": "/assets/animations/characters/Single/Colobus_Run.glb",
+      "jump": "/assets/animations/characters/Single/Colobus_Jump.glb"
+    },
+    "scale": 0.3
+  }
+]
+=== END FILE ===
+
+=== FILE: ./client/.gitignore ===
+# Vite build artifacts
+dist/
+.vite/
+# Local environment files (if not already covered by root .gitignore)
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+# Vite cache
+vite.config.ts.timestamp-*
+=== END FILE ===
+
+=== FILE: ./client/index/html ===
+<meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colobus Test</title>
+    <style>
+      body { margin: 0; padding: 0; overflow: hidden; }
+      canvas { display: block; width: 100vw; height: 100vh; }
+    </style>
+  
+  
+    <canvas id="canvas"></canvas>
+    <script type="module" src="/src/main.ts"></script>
+=== END FILE ===
+
+=== FILE: ./client/src/main.ts ===
+import { Game } from './Game';
+async function main() {
+  const selectDiv = document.getElementById('character-select') as HTMLDivElement;
+  const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
+  const select = document.getElementById('char-select') as HTMLSelectElement;
+  const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
+  if (!canvas) {
+    console.error('Canvas not found');
+    return;
+  }
+  canvas.classList.add('hidden');
+  startBtn.addEventListener('click', async () => {
+    selectDiv.classList.add('hidden');
+    canvas.classList.remove('hidden');
+    const game = new Game();
+    game.selectedCharacterId = select.value;
+    await game.init(canvas);
+    game.start();
+  });
+}
+main().catch(console.error);
+=== END FILE ===
+
+=== FILE: ./client/src/forest.ts ===
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { getTerrainHeight } from './terrain.js';
+const loader = new GLTFLoader();
+const TREE_COUNT = 50;
+const BUSH_COUNT = 30;
+export async function createForest(scene: THREE.Scene) {
+  for (let i = 0; i < TREE_COUNT; i++) {
+    const x = (Math.random() - 0.5) * 180;
+    const z = (Math.random() - 0.5) * 180;
+    const y = getTerrainHeight(x, z);
+    const tree = await loadModel('/assets/models/environment/Tree_01.glb');
+    tree.position.set(x, y, z);
+    tree.scale.set(1, 1, 1);
+    scene.add(tree);
+  }
+  for (let i = 0; i < BUSH_COUNT; i++) {
+    const x = (Math.random() - 0.5) * 180;
+    const z = (Math.random() - 0.5) * 180;
+    const y = getTerrainHeight(x, z);
+    const bush = await loadModel('/assets/models/environment/Bush_01.glb');
+    bush.position.set(x, y, z);
+    bush.scale.set(1, 1, 1);
+    scene.add(bush);
+  }
+  console.log('Forest created with heights applied');
+}
+async function loadModel(path: string): Promise<THREE.Group> {
+  try {
+    const gltf = await loader.loadAsync(path);
+    const model = gltf.scene.clone();
+    model.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    return model;
+  } catch (error) {
+    console.error(`Failed to load model ${path}:`, error);
+    const fallback = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 2, 1),
+      new THREE.MeshStandardMaterial({ color: 0xff0000 })
+    );
+    return fallback;
+  }
+}
+=== END FILE ===
+
+=== FILE: ./client/src/terrain.ts ===
+import * as THREE from 'three';
+function noise(nx: number, ny: number) {
+  return Math.sin(2 * nx) * Math.cos(2 * ny) * 5 + Math.sin(nx * ny) * 3;
+}
+export async function initializeTerrain(): Promise<void> {
+  console.log('🌍 Terrain initialized');
+}
+export function getTerrainHeight(x: number, z: number): number {
+  const nx = x * 0.05;
+  const nz = z * 0.05;
+  let height = noise(nx, nz) + 5; 
+  height += noise(nx * 2, nz * 2) * 3;
+  height += noise(nx * 4, nz * 4) * 1.5;
+  return Math.max(0, height);
+}
+export async function createTerrain(): Promise<THREE.Mesh> {
+  await initializeTerrain();
+  const size = 200;
+  const segments = 100;
+  const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
+  const vertices = geometry.attributes.position.array as Float32Array;
+  for (let i = 0; i < vertices.length; i += 3) {
+    const x = vertices[i];
+    const z = vertices[i + 2];
+    vertices[i + 1] = getTerrainHeight(x, z);
+  }
+  geometry.computeVertexNormals();
+  const material = new THREE.MeshPhongMaterial({ 
+    color: 0x228B22, 
+    shininess: 50,
+    flatShading: false,
+    side: THREE.DoubleSide 
+  });
+  const terrain = new THREE.Mesh(geometry, material);
+  terrain.rotation.x = -Math.PI / 2;
+  terrain.receiveShadow = true;
+  terrain.castShadow = true;
+  console.log('Terrain created with Perlin noise and Phong material'); 
+  return terrain;
+}
+=== END FILE ===
+
+=== FILE: ./client/src/vite-env.d.ts ===
+declare module 'three/examples/jsm/loaders/GLTFLoader' {
+    export class GLTFLoader {
+      constructor(manager?: THREE.LoadingManager);
+      load(
+        url: string,
+        onLoad: (gltf: any) => void,
+        onProgress?: (event: ProgressEvent) => void,
+        onError?: (event: ErrorEvent) => void
+      ): void;
+      loadAsync(url: string): Promise<any>;
+    }
+  }
+=== END FILE ===
+
+=== FILE: ./client/src/Game.ts ===
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { createTerrain } from './terrain.js';
+import { createForest } from './forest.js';
+import { getTerrainHeight } from './terrain.js';
+interface Character {
+  id: string;
+  modelPath: string;
+  animations: { [key: string]: string };
+  scale: number;
+}
+export class Game {
+  private scene!: THREE.Scene;
+  private camera!: THREE.PerspectiveCamera;
+  private renderer!: THREE.WebGLRenderer;
+  private character!: THREE.Group;
+  private mixer!: THREE.AnimationMixer;
+  private actions: { [key: string]: THREE.AnimationAction } = {};
+  private currentAction: THREE.AnimationAction | null = null;
+  private keys: Set<string> = new Set();
+  private clock = new THREE.Clock();
+  private velocity = new THREE.Vector3();
+  private direction = new THREE.Vector3();
+  private moveSpeed = 5;
+  private rotationSpeed = Math.PI;
+  private gravity = -9.8;
+  private jumpVelocity = 5;
+  private isJumping = false;
+  private characters: Character[] = [];
+  private selectedCharacterId = 'colobus';
+  async init(canvas: HTMLCanvasElement) {
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x87ceeb);
+    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.shadowMap.enabled = true;
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+    this.scene.add(ambient);
+    const directional = new THREE.DirectionalLight(0xffffff, 1);
+    directional.position.set(5, 10, 5);
+    directional.castShadow = true;
+    directional.shadow.mapSize.width = 1024;
+    directional.shadow.mapSize.height = 1024;
+    directional.shadow.camera.near = 0.5;
+    directional.shadow.camera.far = 500;
+    this.scene.add(directional);
+    const terrain = await createTerrain();
+    this.scene.add(terrain);
+    await createForest(this.scene);
+    try {
+      const response = await fetch('/characters.json');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch characters.json: ${response.status}`);
+      }
+      this.characters = await response.json();
+      console.log('Characters loaded:', this.characters);
+    } catch (error) {
+      console.error('Error loading characters.json:', error);
+      this.characters = [{
+        id: 'colobus',
+        modelPath: '/assets/models/characters/Colobus_LOD0.glb',
+        animations: {
+          "idle": "/assets/animations/characters/Single/Colobus_Idle_A.glb",
+          "run": "/assets/animations/characters/Single/Colobus_Run.glb",
+          "jump": "/assets/animations/characters/Single/Colobus_Jump.glb"
+        },
+        scale: 0.3
+      }];
+    }
+    await this.loadCharacter();
+    this.setupEvents();
+    window.addEventListener('resize', this.onResize.bind(this));
+  }
+  private async loadCharacter() {
+    const char = this.characters.find(c => c.id === this.selectedCharacterId);
+    if (!char) return;
+    const loader = new GLTFLoader();
+    try {
+      const gltf = await loader.loadAsync(char.modelPath);
+      this.character = gltf.scene;
+      this.character.scale.set(char.scale, char.scale, char.scale);
+      this.character.position.set(0, 0, 0);
+      this.character.rotation.y = Math.PI; 
+      this.character.castShadow = true;
+      this.scene.add(this.character);
+      this.mixer = new THREE.AnimationMixer(this.character);
+      for (const [name, path] of Object.entries(char.animations)) {
+        const clipGltf = await loader.loadAsync(path);
+        const clip = clipGltf.animations[0];
+        this.actions[name] = this.mixer.clipAction(clip);
+      }
+      this.setAction('idle');
+      this.character.position.y = getTerrainHeight(this.character.position.x, this.character.position.z);
+    } catch (error) {
+      console.error('Error loading character:', error);
+    }
+  }
+  private setAction(name: string) {
+    const newAction = this.actions[name];
+    if (!newAction || newAction === this.currentAction) return;
+    if (this.currentAction) {
+      this.currentAction.fadeOut(0.2);
+    }
+    newAction.reset().fadeIn(0.2).play();
+    this.currentAction = newAction;
+  }
+  private setupEvents() {
+    document.addEventListener('keydown', (e) => {
+      this.keys.add(e.key.toLowerCase());
+      if (e.key === ' ' && !this.isJumping) {
+        this.isJumping = true;
+        this.velocity.y = this.jumpVelocity;
+        this.setAction('jump');
+      }
+    });
+    document.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
+  }
+  private onResize() {
+    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+  start() {
+    this.animate();
+  }
+  private animate = () => {
+    requestAnimationFrame(this.animate);
+    const delta = this.clock.getDelta();
+    this.updatePlayer(delta);
+    this.updateCamera();
+    this.mixer.update(delta);
+    this.renderer.render(this.scene, this.camera);
+  };
+  private updatePlayer(delta: number) {
+    this.velocity.x = 0;
+    this.velocity.z = 0;
+    let moving = false;
+    if (this.keys.has('a')) {
+      this.character.rotation.y += this.rotationSpeed * delta;
+    }
+    if (this.keys.has('d')) {
+      this.character.rotation.y -= this.rotationSpeed * delta;
+    }
+    if (this.keys.has('w')) {
+      this.direction.set(0, 0, 1).applyQuaternion(this.character.quaternion); 
+      this.velocity.add(this.direction.multiplyScalar(this.moveSpeed));
+      moving = true;
+    }
+    if (this.keys.has('s')) {
+      this.direction.set(0, 0, -1).applyQuaternion(this.character.quaternion); 
+      this.velocity.add(this.direction.multiplyScalar(this.moveSpeed));
+      moving = true;
+    }
+    if (this.isJumping) {
+      this.velocity.y += this.gravity * delta;
+      this.character.position.y += this.velocity.y * delta;
+      if (this.character.position.y <= getTerrainHeight(this.character.position.x, this.character.position.z)) {
+        this.character.position.y = getTerrainHeight(this.character.position.x, this.character.position.z);
+        this.isJumping = false;
+        this.velocity.y = 0;
+        this.setAction(moving ? 'run' : 'idle');
+      }
+    }
+    this.character.position.add(this.velocity.clone().setY(0).multiplyScalar(delta));
+    this.character.position.y = getTerrainHeight(this.character.position.x, this.character.position.z);
+    if (!this.isJumping) {
+      this.setAction(moving ? 'run' : 'idle');
+    }
+  }
+  private updateCamera() {
+    const offset = new THREE.Vector3(0, 2, -5).applyQuaternion(this.character.quaternion);
+    this.camera.position.copy(this.character.position).add(offset);
+    this.camera.lookAt(this.character.position);
+  }
+}
+=== END FILE ===
+
+=== FILE: ./docs_files.txt ===
+./.claude/settings.local.json
+./docs/GameVision.md
+./docs/PROJECT_STRUCTURE.md
+./docs/conventions.md
+./docs/MVP_Simple_REVISED.md
+./docs/README_AI.md
+./docs/README.md
+./docs/DOCUMENTATION.md
+./docs/MVP_Plan_Hidden_Walnuts-2.md
+./README.md
+./package.json
+./tsconfig.json
+./workers/package.json
+./workers/tsconfig.json
+./wrangler.toml
+./DEVELOPMENT.md
+./client/simple-test.html
+./client/test-colobus.html
+./client/index.html
+./client/simple-camera.html
+./client/test-model-comparison.html
+./client/test-character.html
+./client/test-model-debug.html
+./client/test-animation.html
+./client/test-remote-player-creation.html
+./client/test-cube.html
+./client/DEBUG_REMOTE_PLAYER_VISIBILITY.md
+./client/public/characters.json
+./client/public/_routes.json
+./client/test-multiplayer.html
+./client/package.json
+./client/SYSTEMATIC_DEBUGGING_APPROACH.md
+./client/tsconfig.json
+./client/test-skinnedmesh-debug.html
+./client/camera-test.html
+./client/vite.config.ts
+./client/vitest.config.ts
+./CLAUDE.md
+
+=== END FILE ===
+

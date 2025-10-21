@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Camera Test</title>
+    <style>
+        body { margin: 0; background: #000; }
+        canvas { display: block; }
+        #controls { position: absolute; top: 10px; left: 10px; color: white; }
+    </style>
+</head>
+<body>
+    <div id="controls">Use WASD to move. Camera should follow.</div>
+    <canvas id="canvas"></canvas>
+    
+    <script type="module">
+        import * as THREE from 'three';
+        
+        const canvas = document.getElementById('canvas');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ canvas });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        
+        // Ground
+        const groundGeometry = new THREE.PlaneGeometry(20, 20);
+        const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x90EE90 });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
+        
+        // Player with clear front/back
+        const player = new THREE.Group();
+        
+        // Body (red cube)
+        const bodyGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        player.add(body);
+        
+        // Front indicator (green cube at front)
+        const frontGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+        const frontMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const front = new THREE.Mesh(frontGeometry, frontMaterial);
+        front.position.set(0, 0, -0.7); // Front is negative Z
+        player.add(front);
+        
+        // Back indicator (blue cube at back)
+        const backGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+        const backMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+        const back = new THREE.Mesh(backGeometry, backMaterial);
+        back.position.set(0, 0, 0.7); // Back is positive Z
+        player.add(back);
+        
+        player.position.set(0, 1, 0);
+        scene.add(player);
+        
+        // Standard third-person camera setup
+        const cameraDistance = 10;
+        const cameraHeight = 5;
+        
+        // Initial camera position (behind player - looking at blue cube)
+        camera.position.set(0, cameraHeight, cameraDistance);
+        camera.lookAt(player.position);
+        
+        // Input
+        const keys = new Set();
+        document.addEventListener('keydown', (e) => keys.add(e.key.toLowerCase()));
+        document.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+        
+        // Game loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const speed = 0.1;
+            let moveX = 0;
+            let moveZ = 0;
+            
+            // STANDARD PATTERN: Collect movement input
+            if (keys.has('w')) moveZ -= speed;
+            if (keys.has('s')) moveZ += speed;
+            if (keys.has('a')) moveX -= speed;
+            if (keys.has('d')) moveX += speed;
+            
+            // Apply movement and rotation
+            if (moveX !== 0 || moveZ !== 0) {
+                player.position.x += moveX;
+                player.position.z += moveZ;
+                
+                // Rotate player to face movement direction
+                player.rotation.y = Math.atan2(moveX, moveZ);
+            }
+            
+            // Camera ALWAYS follows behind player (behind blue cube)
+            // Player's front is -Z (green cube), back is +Z (blue cube)
+            // Camera should be positioned behind the back (blue cube)
+            const cameraX = player.position.x - Math.sin(player.rotation.y) * cameraDistance;
+            const cameraZ = player.position.z + Math.cos(player.rotation.y) * cameraDistance;
+            
+            camera.position.set(cameraX, player.position.y + cameraHeight, cameraZ);
+            camera.lookAt(player.position);
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+    </script>
+</body>
+</html>

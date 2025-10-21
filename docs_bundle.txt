@@ -1,0 +1,1397 @@
+=== FILE: ./docs/GameVision.md ===
+# Hidden Walnuts Game Vision
+## Overview
+*Hidden Walnuts* is a 3D online synchronous multiplayer game set in a persistent forest map that refreshes every 24 hours. Players hide and seek walnuts in a dynamic 3D world with predators and competitive scoring.
+## Core Features
+### Game World
+- **Persistent Forest Map**: 3D world resetting every 24 hours
+- **Walnut Placement**: 100 game-hidden walnuts + 3 per player
+- **Hot Zones**: Map indicators for recent activity
+### Gameplay Mechanics
+- **Entry**: Players join anytime, get Player ID + 3 walnuts
+- **Hiding**: Press "H" to hide walnuts (buried/bushes)
+- **Seeking**: Search for walnuts, steal/rehide others'
+- **Predators**: Hawks/wolves with defenses (chatter, projectiles)
+- **Power-Ups**: Scent Sniff, Fast Dig, Decoy Nut
+### Scoring & Participation
+- **Points**: Game walnuts (3 buried, 1 bushes), Player walnuts (2 buried, 1 bushes)
+- **Multiplier**: Scales with time played (1.1x to 2x)
+- **Leaderboard**: Real-time 24-hour cycle scoring
+### Asynchronous Play
+- **Persistent Walnuts**: Remain if players log off
+- **Catch-Up**: "Fresh Player Boost" for late joiners
+- **Mini-Events**: "Nut Rush" every 4 hours
+## Technical Architecture
+### Client
+- Three.js for 3D rendering (`game.hiddenwalnuts.com`)
+- WebSocket communication with backend
+- Handles player input and real-time updates
+- Simplified structure: Core logic in `Game.ts` (no ECS)
+### Server
+- Cloudflare Workers (`api.hiddenwalnuts.com`)
+- Durable Objects: ForestManager, PlayerSession, WalnutRegistry, Leaderboard
+- WebSocket protocol for real-time updates
+### Project Structure
+hidden-walnuts-game/
+├── client/ # Three.js game client
+├── workers/ # Cloudflare Workers backend
+├── docs/ # Documentation
+└── public/assets/ # 3D models, textures, animations
+## Implementation Status (Updated August 28, 2025)
+- ✅ Simplified Architecture: Single `Game.ts` for core logic, terrain, forest, and basic multiplayer foundation
+- ✅ Terrain System: Procedural generation with height mapping
+- ✅ Player Movement: WASD controls with camera following
+- ✅ Asset Loading: Basic 3D models and animations (focus: single-player character with idle/run/jump)
+- 🔄 Walnut Mechanics: Not yet implemented (next priority after single-player polish)
+- 📋 Scoring System: Backend ready (Leaderboard DO), client integration pending
+- 📋 Daily Reset: Backend configured, not active in single-player mode
+=== END FILE ===
+
+=== FILE: ./docs/PROJECT_STRUCTURE.md ===
+# Project Structure Documentation
+
+## Overview
+This document provides a guide to the **simplified** Hidden Walnuts game project structure. The project was streamlined to focus on simple gameplay, with current emphasis on single-player animated Colobus character in a Three.js scene.
+
+## Root Directory Structure
+hidden-walnuts-game/
+├── client/ # Three.js game client (simplified)
+├── workers/ # Cloudflare Workers backend
+├── public/ # Shared 3D assets
+├── docs/ # Documentation files
+└── configuration files # Build and deployment configs
+
+
+## Client Architecture (`client/`) - **SIMPLIFIED**
+### Current Simple Structure
+client/src/
+├── Game.ts # Main game logic class (scene, camera, renderer, character animation, movement)
+├── main.ts # Simple entry point with character selection
+├── terrain.ts # 3D terrain generation
+├── forest.ts # 3D forest objects
+├── vite-env.d.ts # Vite types
+└── index.html # Entry HTML with canvas and basic UI
+
+
+### Key Files
+**`main.ts`** - Simple application bootstrap
+- Shows character select (currently only Colobus)
+- Creates Game instance
+- Initializes 3D scene
+- Handles errors gracefully
+
+**`Game.ts`** - Core game logic (~300 lines total)
+- Three.js scene setup
+- Colobus character loading with basic animations (idle, run, jump)
+- Player movement with WASD
+- Camera following
+- Terrain and forest integration
+
+**`terrain.ts`** - 3D world generation
+- Procedural terrain creation
+- Height calculations
+- Material and texture application
+
+**`forest.ts`** - Environmental objects
+- Tree and shrub placement
+- 3D model loading
+- Forest object management
+
+## Server Architecture (`workers/`) - **KEPT SIMPLE**
+The backend remains functional with Durable Objects (multiplayer-ready, but current focus is single-player):
+**`api.ts`** - Main API router
+- HTTP and WebSocket handling
+- Route delegation to Durable Objects
+- Basic error handling
+
+**Durable Objects (`objects/`)**
+- `ForestManager.ts` - Map and multiplayer state (future use)
+- `SquirrelSession.ts` - Player sessions (future use)
+- `WalnutRegistry.ts` - Game object tracking (future use)
+- `Leaderboard.ts` - Scoring system (future use)
+
+## 3D Assets (`public/assets/`)
+**Models (`models/`)**
+- Environment: Trees, bushes, rocks, terrain
+- Characters: Colobus avatar with animations (idle, run, jump)
+- Game Objects: Walnuts and interactive items (pending)
+
+**Textures (`textures/`)**
+- Terrain textures and materials
+- Character textures and skins
+- Environmental surface materials
+
+## Configuration Files
+**Build & Deploy**
+- `package.json` - Dependencies and scripts
+- `tsconfig.json` - TypeScript configuration
+- `wrangler.toml` - Cloudflare Workers settings
+- `vite.config.ts` - Build configuration
+
+**Development**
+- `.gitignore` - Git ignore patterns
+- Environment files for different stages
+
+## Development Workflow
+### Local Development
+```bash
+# Start backend (terminal 1)
+cd workers && npx wrangler dev --port 8787
+# Start frontend (terminal 2)
+cd client && npm run dev
+# Game available at: http://localhost:5173
+# Backend API at: http://localhost:8787
+
+Simple Architecture Benefits
+
+Easy to understand - No complex patterns
+Quick to modify - Change game logic in Game.ts
+Fast development - No system dependencies
+Maintainable - Clear, focused code
+
+Game Controls
+
+WASD - Player movement
+Space - Jump (with animation)
+Auto - Idle animation when stopped
+
+Next Development Focus
+With the simplified architecture and single-player Colobus animation working:
+
+Polish Animations - Add more states if needed
+Add Walnuts - Basic hiding/seeking
+Enable Multiplayer - Sync positions/animations
+Deployment Testing - Verify preview/prod workflows
+=== END FILE ===
+
+=== FILE: ./docs/conventions.md ===
+Coding Conventions for Hidden Walnuts
+These conventions ensure consistency and maintainability, updated for the simplified architecture and single-player focus (Colobus character animation).
+File and Folder Naming
+
+Files: Use PascalCase for TypeScript classes (e.g., Game.ts), snake_case for others.
+Assets: Use PascalCase for 3D models (e.g., Colobus_LOD0.glb).
+Folders: Lowercase with hyphens (e.g., client/src, public/assets/models).
+
+Code Structure
+
+Language: TypeScript for frontend (client/src) and backend (workers).
+Types: Define interfaces in separate files if needed (e.g., no dedicated types.ts yet).
+Constants: Inline or in class (e.g., in Game.ts for speeds).
+Comments: Use // NOTE: for explanations; focus on clarity.
+Modules: Organize by feature (e.g., terrain.ts for terrain, forest.ts for foliage).
+
+Frontend (Three.js)
+
+Scene Setup: Initialize in Game.ts (scene, camera, renderer, lights, character).
+Assets: Store in <game-root>/public/assets/models/ (e.g., Colobus_LOD0.glb).
+Movement: WASD for character control; auto camera follow.
+Animations: Use Three.js AnimationMixer; states like idle/run/jump for Colobus.
+Rendering: Keep simple; update in animate loop.
+
+Backend (Cloudflare Workers)
+
+API: Route in api.ts (e.g., /ws for future multiplayer).
+Persistence: Use Durable Objects sparingly (multiplayer focus later).
+WebSocket: Basic position sync (pending full integration).
+
+Logging System - SIMPLIFIED
+Use basic console.log for development (client-side); workers retain Logger for categories if needed.
+=== END FILE ===
+
+=== FILE: ./docs/MVP_Simple_REVISED.md ===
+# 🎮 **REVISED**: Simple MVP Plan with Animated Characters
+
+**🎯 NEW FOCUS**: Get your **amazing animated character assets** into the game **quickly** while maintaining the simplified architecture approach.
+
+You have **8 character types** with **full animation sets** - let's use them immediately!
+
+---
+
+## 🦌 **Available Character Assets**
+
+### **Character Types** (8 total)
+- **Colobus** (monkey-like)
+- **Gecko** (lizard)  
+- **Herring** (fish)
+- **Inkfish** (squid)
+- **Muskrat** (rodent)
+- **Pudu** (small deer)
+- **Sparrow** (bird)
+- **Taipan** (snake)
+
+### **Animation Sets** (15+ animations each)
+- **Movement**: Run, Jump, Fly, Swim
+- **Actions**: Attack, Eat, Bounce, Roll, Sit
+- **States**: Idle_A, Idle_B, Idle_C, Fear, Hit, Death
+- **Interactive**: Clicked, Spin
+
+### **LOD Levels** (4 levels each)
+- **LOD0**: High detail (close up)
+- **LOD1**: Medium detail 
+- **LOD2**: Low detail
+- **LOD3**: Minimal detail (distant)
+
+---
+
+## 🚀 **MVP Simple 1.5: Animated Players** 🎯 **IMMEDIATE NEXT**
+
+**Objective**: Replace basic capsule players with your **animated character assets** - fast implementation.
+
+### **Quick Implementation Plan** (2-3 days)
+
+**Step 1: Character Selection** (Day 1)
+- Add simple character picker UI before game starts
+- Let players choose from 8 character types
+- Store choice in sessionStorage
+- Default to random character if no choice
+
+**Step 2: Animated Player Loading** (Day 1-2)  
+- Replace capsule geometry in `Game.ts` with GLTF loader
+- Load character model + animations based on selection
+- Implement basic animation states: Idle → Run → Idle
+- Use LOD0 for all players initially (optimize later)
+
+**Step 3: Animation State Machine** (Day 2-3)
+- Simple state machine: `idle`, `running`, `jumping`
+- Trigger `running` animation when WASD pressed
+- Return to `idle` when movement stops
+- Smooth animation blending with Three.js AnimationMixer
+
+**Step 4: Multiplayer Sync** (Day 3)
+- Send character type + animation state via WebSocket
+- Remote players show correct character and animations
+- Sync animation state changes across clients
+
+### **Technical Approach (Simple)**
+```typescript
+// In Game.ts - replace capsule with animated character
+class Game {
+  private animationMixer: THREE.AnimationMixer;
+  private currentAnimation: THREE.AnimationAction;
+  private animations = new Map<string, THREE.AnimationAction>();
+
+  async createPlayer(characterType: string) {
+    // Load character model + animations
+    const gltf = await this.loadCharacter(characterType);
+    
+    // Setup animation mixer
+    this.animationMixer = new THREE.AnimationMixer(gltf.scene);
+    
+    // Load all animations
+    gltf.animations.forEach(clip => {
+      const action = this.animationMixer.clipAction(clip);
+      this.animations.set(clip.name, action);
+    });
+    
+    // Start with idle
+    this.playAnimation('idle');
+  }
+
+  playAnimation(name: string) {
+    const newAnimation = this.animations.get(name);
+    if (newAnimation && newAnimation !== this.currentAnimation) {
+      this.currentAnimation?.fadeOut(0.2);
+      newAnimation.reset().fadeIn(0.2).play();
+      this.currentAnimation = newAnimation;
+    }
+  }
+}
+```
+
+**Estimated Time**: **2-3 days** (very doable!)
+
+---
+
+## 🦌 **MVP Simple 2: NPC Population** 🎯 **WEEK 2**
+
+**Objective**: Add **AI-controlled characters** roaming the forest using your animation sets.
+
+### **Simple NPC Implementation**
+
+**NPC Behavior** (Keep it simple):
+- **Wandering**: NPCs walk randomly through forest
+- **Idle States**: Occasionally stop and play idle animations (A/B/C)
+- **Character Variety**: Use different character types for NPCs
+- **Simple AI**: Basic waypoint system, no complex pathfinding
+
+**Animation Usage**:
+- **Walking**: Use `Run` animation at slow speed
+- **Stopping**: Cycle through `Idle_A`, `Idle_B`, `Idle_C`
+- **Interactions**: `Eat` animation near food sources
+- **Reactions**: `Fear` animation if player gets too close
+
+**Technical Approach**:
+```typescript
+class SimpleNPC {
+  private targetPosition: THREE.Vector3;
+  private moveSpeed = 1.0;
+  private idleTimer = 0;
+  private state: 'walking' | 'idle' = 'walking';
+
+  update(deltaTime: number) {
+    if (this.state === 'walking') {
+      this.moveTowardsTarget(deltaTime);
+      if (this.reachedTarget()) {
+        this.startIdling();
+      }
+    } else {
+      this.idleTimer += deltaTime;
+      if (this.idleTimer > 3.0) { // Idle for 3 seconds
+        this.pickNewTarget();
+      }
+    }
+  }
+}
+```
+
+**Population**: 5-10 NPCs wandering the forest for atmosphere.
+
+**Estimated Time**: **3-4 days**
+
+---
+
+## 🎮 **MVP Simple 3: Core Walnut Gameplay** 
+
+**Objective**: Add walnut hide/seek mechanics with **animated interactions**.
+
+### **Walnut Interactions with Animations**
+- **Hiding Walnuts**: `Eat` animation when hiding (squirrel burying)
+- **Finding Walnuts**: `Bounce` animation when collecting
+- **Celebration**: `Jump` animation when scoring points
+- **Searching**: `Idle_B` animation when looking around
+
+### **Enhanced Player Actions**
+- **H Key**: Hide walnut (triggers `Eat` animation)
+- **Click Walnut**: Collect (triggers `Bounce` animation) 
+- **Score Points**: Brief `Jump` celebration
+- **Look Around**: Passive `Idle` state variations
+
+**Estimated Time**: **1-2 weeks**
+
+---
+
+## 🏆 **MVP Simple 4: Character Progression**
+
+**Objective**: Make character choice meaningful and rewarding.
+
+### **Character Abilities** (Simple differences)
+- **Gecko**: Slightly faster movement (1.2x speed)
+- **Sparrow**: Can "fly" (jump higher/longer)
+- **Herring**: Better at finding water-area walnuts
+- **Pudu**: Quieter movement (harder for others to track)
+- **Colobus**: Better climbing (can reach tree walnuts)
+- **Others**: Unique idle animations and visual flair
+
+### **Unlockable Characters**
+- Start with 3 characters available
+- Unlock others by finding certain numbers of walnuts
+- Simple progression: 10 walnuts → unlock Gecko, etc.
+
+**Estimated Time**: **1 week**
+
+---
+
+## 🎨 **MVP Simple 5: Animation Polish**
+
+**Objective**: Use your **full animation library** for rich interactions.
+
+### **Expanded Animation Usage**
+- **Interaction Animations**: 
+  - `Attack` for competitive walnut stealing
+  - `Fear` when other players approach your hidden spots
+  - `Sit` for AFK/waiting states
+- **Environmental Reactions**:
+  - `Fly` animation for Sparrow when jumping
+  - `Swim` animation for Herring near water
+  - `Spin` animation for celebration
+- **Social Animations**:
+  - `Clicked` animation when other players interact
+  - Random `Bounce` and `Roll` animations for personality
+
+### **Performance Optimization**
+- **LOD System**: Use appropriate LOD levels based on distance
+- **Animation Culling**: Don't animate characters off-screen
+- **Batch Loading**: Load character assets efficiently
+
+**Estimated Time**: **1-2 weeks**
+
+---
+
+## 📊 **Revised Timeline**
+
+| MVP | Focus | Time | Characters/Animations |
+|-----|-------|------|----------------------|
+| **Simple 1.5** | **Animated Players** | **2-3 days** | Player selection, basic animations |
+| **Simple 2** | **NPC Population** | 3-4 days | AI characters with animations |
+| **Simple 3** | **Walnut Gameplay** | 1-2 weeks | Interaction animations |
+| **Simple 4** | **Character Progression** | 1 week | Character abilities, unlocks |
+| **Simple 5** | **Animation Polish** | 1-2 weeks | Full animation library usage |
+
+**Total**: **4-6 weeks** to fully utilize your character assets
+
+---
+
+## 🎯 **Implementation Strategy**
+
+### **Phase 1: Quick Win (THIS WEEK)**
+Focus on **MVP Simple 1.5** - get animated players working ASAP:
+1. Character selection screen (simple HTML)
+2. Replace capsule with one character type (Colobus)
+3. Basic idle ↔ run animation states
+4. Multiplayer sync of character choice
+
+### **Phase 2: Atmosphere (NEXT WEEK)** 
+Add **NPCs** to make the forest feel alive:
+1. 3-5 NPCs with simple wandering behavior
+2. Different character types for visual variety
+3. Basic animation states (walk/idle)
+
+### **Phase 3: Gameplay Enhancement**
+Integrate animations into core walnut mechanics.
+
+---
+
+## 🚀 **Key Advantages**
+
+### **Your Assets Are Amazing**
+- **8 character types** = 8x visual variety
+- **15+ animations each** = Rich interaction possibilities  
+- **LOD levels** = Performance optimization built-in
+- **Professional quality** = AAA game feel
+
+### **Simple Integration**
+- **Keep Game.ts architecture** - just enhance player creation
+- **WebSocket backend unchanged** - just add character type field
+- **Three.js AnimationMixer** - standard animation handling
+- **Gradual enhancement** - can ship basic version quickly
+
+Would you like me to **start implementing MVP Simple 1.5** right now? We can get you playing as an animated character today!
+=== END FILE ===
+
+=== FILE: ./docs/README.md ===
+# Hidden Walnuts - 3D Multiplayer Game
+
+A 3D multiplayer game where players hide and seek walnuts in a persistent forest environment. Built with Three.js, TypeScript, and Cloudflare Workers.
+
+## 🎯 **Current Status**
+
+- **Current Phase**: MVP Simple 1 (Simplified Architecture) ✅ **COMPLETED**
+- **Architecture**: Stripped down from complex ECS to simple, focused game logic
+- **Deployment**: Hosted on Cloudflare Workers with Durable Objects
+- **Focus**: Simple, fun gameplay over enterprise complexity
+
+## 🚀 **Key Features**
+
+### **Recently Completed** ✅
+- **Simple Game Architecture** - Replaced complex ECS with straightforward Game.ts class
+- **Basic Multiplayer** - WebSocket connection with position sync
+- **3D Forest Environment** - Terrain and forest with Three.js
+- **Player Movement** - WASD controls with camera following
+- **Clean Codebase** - Reduced from 31 files to 8 focused files
+
+### **Next Steps** 🎯
+- **Walnut Mechanics** - Hide and seek gameplay
+- **Scoring System** - Points for finding walnuts
+- **Player Synchronization** - Better multiplayer visual sync
+- **Game Polish** - Improved graphics and animations
+
+## 🛠️ **Technology Stack**
+
+- **Frontend**: Three.js, TypeScript, Vite
+- **Backend**: Cloudflare Workers, Durable Objects, WebSockets
+- **Architecture**: Simple, focused classes instead of complex ECS
+- **Deployment**: Cloudflare Pages and Workers
+
+## 📚 **Documentation**
+
+- [Game Vision](docs/GameVision.md) - Original game design vision
+- [MVP Plan](docs/MVP_Plan_Hidden_Walnuts-2.md) - Development roadmap (historical)
+- [Project Structure](docs/PROJECT_STRUCTURE.md) - Current codebase organization
+
+## 🚀 **Quick Start**
+
+```bash
+# Install dependencies
+npm run install:all
+
+# Start backend (separate terminal)
+npm run dev:worker
+
+# Start frontend (separate terminal)  
+npm run dev:client
+
+# Or manually:
+cd workers && npx wrangler dev --port 8787
+cd client && npm run dev
+```
+
+## 📊 **Simplified Architecture**
+
+Instead of complex enterprise patterns, we now have:
+
+- **Game.ts** - Main game logic (3D scene, multiplayer, input)
+- **main.ts** - Simple entry point
+- **terrain.ts & forest.ts** - 3D world generation
+- **Backend** - Cloudflare Workers with WebSocket support
+
+**Game runs at**: http://localhost:5173
+**Backend at**: http://localhost:8787
+
+## 🎮 **Controls**
+
+- **WASD** - Move player
+- **Mouse** - Look around (camera follows player)
+- **Game loads automatically** - No complex setup needed
+
+The focus is now on making a **fun, playable game** rather than an enterprise-grade system!
+=== END FILE ===
+
+=== FILE: ./docs/Deployment_Guide.md ===
+Deployment Guide for Hidden Walnuts
+Overview
+Deployment uses Cloudflare Pages (client) and Workers (backend). Git pushes trigger auto-deploys: "mvp*" branches to preview, main to production. Based on 2025 best practices (auto-builds, git integration via dashboard).
+Setup
+
+Cloudflare Dashboard:
+
+Connect GitHub repo to Pages (for client) and Workers (for backend).
+Set build command: npm run build (client Vite).
+Output dir: client/dist.
+
+
+wrangler.toml:
+
+Configures DOs, env vars (e.g., ENVIRONMENT="development").
+Enable logs: [observability.logs] enabled = true.
+
+
+
+Local Testing
+
+Client: cd client && npm run dev.
+Workers: cd workers && npx wrangler dev --port 8787.
+Test single-player: Load scene, verify Colobus animations/movement.
+
+Preview Deployment
+
+Push to "mvp*<feature>" branch (e.g., <code>mvp-colobus</code>).</feature>
+Auto-deploys to preview URL (e.g., <project>.pages.dev).</project>
+Validate: Character scene loads without errors.
+
+Production Deployment
+
+Merge to main → auto-deploys to production (<project>.pages.dev, api.<project>.workers.dev).</project></project>
+Monitor: Use Cloudflare dashboard for logs/metrics.
+
+Best Practices (2025)
+
+CI/CD: Optional GitHub Actions for tests before push.
+Rollback: Use branch deploys for quick reverts.
+Env Vars: Set in dashboard (e.g., ENVIRONMENT="production").
+Monitoring: Enable observability; check for errors post-deploy.
+Common Issues: Ensure wrangler.toml migrations are up-to-date for DOs.
+
+Validation
+
+After deploy: Test Colobus in browser; check console for logs.
+
+=== END FILE ===
+
+=== FILE: ./docs/MVP_Plan_Hidden_Walnuts-2.md ===
+# 🔄 **UPDATED**: Simplified MVP Plan for Hidden Walnuts
+
+**⚠️ MAJOR ARCHITECTURE CHANGE**: This plan has been **updated** to reflect the **simplified architecture** approach. The original complex ECS system has been replaced with a focus on **simple, fun gameplay**.
+
+---
+
+## 🎯 **Current Status - Architecture Simplification**
+
+- **Current Phase**: MVP Simple 1 ✅ **COMPLETED**
+- **Major Change**: **Stripped down** from complex enterprise architecture to simple game focus
+- **Files Reduced**: From **31 complex files** to **8 focused files** 
+- **Lines Removed**: **7,214 lines of over-engineered complexity**
+- **New Focus**: **Simple, playable game** instead of enterprise showcase
+
+---
+
+## 🚀 **MVP Simple 1: Architecture Simplification ✅ COMPLETED**
+
+**Objective**: Replace over-engineered complex system with simple, focused game architecture.
+
+**Key Achievements**:
+- ✅ **Removed Complex ECS** - Eliminated 10-system architecture 
+- ✅ **Created Simple Game.ts** - Single class handles all game logic (300 lines)
+- ✅ **Simplified main.ts** - Clean entry point (47 lines)
+- ✅ **Removed Enterprise Patterns** - No dependency injection, event bus, etc.
+- ✅ **Basic Multiplayer Working** - WebSocket connection with position sync
+- ✅ **3D Environment Working** - Terrain and forest still functional
+- ✅ **Clean Documentation** - Updated all docs to match reality
+
+**What We Removed**:
+- ❌ 10-system ECS architecture (InputSystem, NetworkSystem, etc.)
+- ❌ Dependency injection containers and service locators
+- ❌ Enterprise logging system with categories and levels
+- ❌ Client prediction and server reconciliation
+- ❌ Area of interest management and spatial optimization
+- ❌ Network compression and message batching
+- ❌ Complex event bus and observer patterns
+- ❌ PlayerManager and entity lifecycle systems
+
+**What We Kept**:
+- ✅ Cloudflare Workers backend (unchanged - working perfectly)
+- ✅ 3D scene with Three.js (terrain.ts, forest.ts)
+- ✅ Basic multiplayer via WebSocket
+- ✅ Player movement with WASD controls
+- ✅ Camera following player
+- ✅ Asset loading for 3D models
+
+**Result**: Clean, understandable codebase focused on **fun gameplay**.
+
+---
+
+## 🎮 **MVP Simple 2: Core Walnut Gameplay** 🎯 **NEXT UP**
+
+**Objective**: Add the core hide-and-seek walnut mechanics that make the game fun.
+
+**Planned Features**:
+- **Walnut Hiding** - Press H key to hide walnuts at current location
+- **Walnut Finding** - Click on hidden walnuts to collect them
+- **Basic Scoring** - Points for finding walnuts (3 points buried, 1 point bushes)
+- **Visual Feedback** - Show walnuts in world, particle effects
+- **Simple UI** - Score display and walnut count
+
+**Technical Approach**:
+- Add walnut logic directly to `Game.ts` class
+- Use simple array to track walnut positions
+- Basic click detection with Three.js raycasting
+- Send walnut actions via existing WebSocket connection
+- Use existing Cloudflare `WalnutRegistry` Durable Object
+
+**Estimated Time**: 1-2 weeks
+
+---
+
+## 🔄 **MVP Simple 3: Multiplayer Polish** 
+
+**Objective**: Improve the multiplayer experience with better synchronization.
+
+**Planned Features**:
+- **Better Player Sync** - Smooth remote player movement
+- **Player Names** - Display names above players
+- **Join/Leave Messages** - Show when players connect/disconnect
+- **Player Colors** - Different colors for each player
+- **Connection Status** - Show connection quality
+
+**Technical Approach**:
+- Enhance existing WebSocket message handling in `Game.ts`
+- Add interpolation for remote player positions
+- Simple name display with Three.js text
+- Extend existing player object structure
+
+**Estimated Time**: 1-2 weeks
+
+---
+
+## 🏆 **MVP Simple 4: Scoring & Leaderboards**
+
+**Objective**: Add competitive elements to make the game engaging.
+
+**Planned Features**:
+- **Real-time Leaderboard** - Show top players
+- **Daily Scores** - Reset scores every 24 hours
+- **Achievement Messages** - "Player found a walnut!"
+- **Personal Stats** - Track your own progress
+- **Simple UI** - Leaderboard overlay
+
+**Technical Approach**:
+- Use existing `Leaderboard` Durable Object from backend
+- Add simple UI overlay in `Game.ts`
+- Send score updates via WebSocket
+- Basic HTML overlay for leaderboard display
+
+**Estimated Time**: 1-2 weeks
+
+---
+
+## 🎨 **MVP Simple 5: Game Polish**
+
+**Objective**: Make the game feel polished and professional.
+
+**Planned Features**:
+- **Improved Graphics** - Better lighting, shadows, textures
+- **Sound Effects** - Walking, walnut collection, ambient forest
+- **UI Polish** - Clean menus and overlays
+- **Mobile Support** - Touch controls for mobile devices
+- **Loading Screen** - Nice loading experience
+
+**Technical Approach**:
+- Enhance Three.js scene setup in `Game.ts`
+- Add Web Audio API for sound effects
+- CSS improvements for UI elements
+- Touch event handling for mobile
+- Simple loading progress display
+
+**Estimated Time**: 2-3 weeks
+
+---
+
+## ~~Removed Complex MVPs~~
+
+The following complex MVPs have been **removed** as they focused on enterprise architecture instead of fun gameplay:
+
+- ~~MVP 7: Multiplayer Foundation~~ (over-engineered)
+- ~~MVP 8: Animated Characters~~ (premature complexity) 
+- ~~MVP 9: Enhanced Gameplay~~ (enterprise patterns)
+- ~~MVP 10-16~~ (architectural showcasing)
+
+## 🎯 **New Development Philosophy**
+
+### **Core Principles**
+1. **Fun First** - Gameplay over architecture
+2. **Simple Code** - Readable over clever
+3. **Working Game** - Playable over perfect
+4. **Fast Development** - Ship features quickly
+5. **User Focus** - What players want vs what developers want
+
+### **Technical Approach**
+- **Single File Logic** - Most game logic in `Game.ts`
+- **Direct Communication** - No complex event systems
+- **Basic Networking** - WebSocket messages, not enterprise patterns  
+- **Simple State** - Maps and arrays, not complex entity systems
+- **Standard Logging** - console.log, not enterprise logging
+
+### **Success Metrics**
+- **Is it fun to play?** (most important)
+- **Can you understand the code?** 
+- **Can you add features quickly?**
+- **Does multiplayer work smoothly?**
+- **Are players engaged?**
+
+---
+
+## 📊 **Comparison: Before vs After**
+
+| Aspect | Before (Complex) | After (Simple) |
+|--------|------------------|----------------|
+| **Files** | 31+ complex files | 8 focused files |
+| **Lines** | 7,214+ lines | ~1,000 lines |
+| **Systems** | 10 interconnected systems | 1 Game class |
+| **Dependencies** | Complex injection | Direct imports |
+| **Debugging** | Multi-system traces | Single file logic |
+| **Features** | Enterprise patterns | Game mechanics |
+| **Time to Add Feature** | Hours (system changes) | Minutes (direct code) |
+| **New Developer Onboarding** | Days (learn architecture) | Minutes (read Game.ts) |
+
+## 🚀 **Deployment Strategy**
+
+### **Development**
+- Frontend: `npm run dev:client` (localhost:5173)
+- Backend: `npm run dev:worker` (localhost:8787)
+- Hot reload for instant feedback
+
+### **Production** 
+- Frontend: Cloudflare Pages (static hosting)
+- Backend: Cloudflare Workers (existing setup works)
+- Global CDN for assets
+
+### **Quality Assurance**
+- **Manual Testing** - Play the game to ensure it's fun
+- **Performance Check** - 60 FPS in browser
+- **Multiplayer Test** - Multiple browser windows
+- **Mobile Test** - Works on phones/tablets
+
+---
+
+## 🎮 **The Goal**
+
+Create a **simple, fun multiplayer game** where:
+
+1. **Players can join instantly** and start playing
+2. **Hiding and seeking walnuts is engaging**
+3. **Multiplayer feels smooth and responsive**  
+4. **Scoring creates friendly competition**
+5. **Code is maintainable and extensible**
+
+**Success = Players having fun, not architectural perfection.**
+
+---
+
+This updated MVP plan focuses on **shipping a playable game** rather than showcasing enterprise development patterns. The simplified approach will result in faster development, easier maintenance, and most importantly - **a more fun game**!
+=== END FILE ===
+
+=== FILE: ./docs/Character_Implementation.md ===
+Character Implementation Guide
+Overview
+Current focus: Single-player animated Colobus character in Three.js scene. Expandable to more characters/animations later.
+Available Assets
+
+Colobus:
+
+Model: /assets/models/characters/Colobus_LOD0.glb
+Animations: idle (Colobus_Idle_A.glb), run (Colobus_Run.glb), jump (Colobus_Jump.glb)
+Scale: 0.3
+
+
+Defined in public/characters.json (array for future expansion).
+
+Implementation in Code
+
+Loading: In Game.ts, use GLTFLoader to load model/animations.
+Mixer: THREE.AnimationMixer for blending (fadeIn/fadeOut 0.2s).
+States: idle (default), run (WASD moving), jump (Space).
+Movement: Velocity/direction in updatePlayer; apply to position.y via terrain height.
+Camera: Follows behind character.
+
+Expansion Steps
+
+Add to characters.json: New entries with model/animations.
+UI: Enhance select in main.ts for multi-choice.
+Multiplayer: Sync character ID/animation state via WebSocket.
+NPCs: Add wandering logic with random animations.
+
+Testing
+
+Verify: Idle when still, run when moving, jump on space (no clipping).
+Debug: Console logs for mixer updates.
+=== END FILE ===
+
+=== FILE: ./README.md ===
+# 🐿️ Hidden Walnuts - Multiplayer 3D Game
+
+A **simplified** multiplayer 3D game where squirrels search for hidden walnuts in a procedurally generated forest. **Rebuilt with a focus on fun gameplay over enterprise complexity.**
+
+## 🎯 **Current Status - Simplified Architecture**
+
+- **Current Phase**: MVP Simple 1 ✅ **COMPLETED** 
+- **Architecture**: **Stripped down** from complex ECS to simple, focused game logic
+- **Files**: Reduced from **31 complex files** to **8 focused files**
+- **Focus**: **Simple, playable game** instead of enterprise patterns
+
+## 🏗️ **Simple Architecture Overview**
+
+### **Core Technologies**
+- **Frontend**: Vite + TypeScript + Three.js (simplified)
+- **Backend**: Cloudflare Workers + Durable Objects (unchanged)
+- **Architecture**: **Simple Game.ts class** (no ECS complexity)
+- **Networking**: **Basic WebSocket** with position sync
+
+### **Simplified System Diagram**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                 SIMPLE GAME CLIENT                      │
+├─────────────────────────────────────────────────────────┤
+│  main.ts (47 lines)                                    │
+│  ├── Creates Game instance                             │
+│  ├── Initializes 3D scene                             │
+│  ├── Connects multiplayer                             │
+│  └── Handles errors                                   │
+├─────────────────────────────────────────────────────────┤
+│  Game.ts (300 lines - ALL game logic)                  │
+│  ├── Three.js scene setup                             │
+│  ├── Player movement (WASD)                           │ 
+│  ├── Camera following                                  │
+│  ├── Basic multiplayer sync                           │
+│  └── WebSocket communication                          │
+├─────────────────────────────────────────────────────────┤
+│  World Generation                                       │
+│  ├── terrain.ts (3D terrain)                          │
+│  ├── forest.ts (trees, shrubs)                        │
+│  └── types.ts (basic types)                           │
+└─────────────────────────────────────────────────────────┘
+                              │
+                         WebSocket
+                              │
+┌─────────────────────────────────────────────────────────┐
+│            CLOUDFLARE WORKERS (unchanged)              │
+├─────────────────────────────────────────────────────────┤
+│  Durable Objects                                        │
+│  ├── ForestManager (World State)                       │
+│  ├── SquirrelSession (Player State)                    │
+│  ├── WalnutRegistry (Game Objects)                     │
+│  └── Leaderboard (Scoring)                             │
+└─────────────────────────────────────────────────────────┘
+```
+
+## 🚀 **What We Removed (Complexity → Simplicity)**
+
+### **❌ Removed Complex Systems**
+- ~~10-system ECS architecture~~ → **Single Game.ts class**
+- ~~Dependency injection containers~~ → **Direct instantiation**  
+- ~~Enterprise logging system~~ → **Simple console.log**
+- ~~Client prediction & reconciliation~~ → **Basic position sync**
+- ~~Area of interest management~~ → **See all players**
+- ~~Network compression & batching~~ → **Direct WebSocket messages**
+- ~~Complex event bus~~ → **Direct method calls**
+- ~~PlayerManager system~~ → **Simple player Map**
+
+### **✅ What We Kept (The Good Stuff)**
+- ✅ **3D forest environment** with terrain and trees
+- ✅ **Multiplayer connection** via WebSocket
+- ✅ **Player movement** with WASD controls  
+- ✅ **Camera following** player
+- ✅ **Cloudflare Workers backend** (working perfectly)
+- ✅ **Asset loading** for 3D models
+
+**Result**: **7,214 lines of complexity removed!** 🗑️
+
+## 🎮 **Current Game Features**
+
+- ✅ **3D Forest Environment** - Procedurally generated terrain with trees
+- ✅ **Basic Multiplayer** - See other players move around  
+- ✅ **Simple Controls** - WASD movement with camera following
+- ✅ **WebSocket Connection** - Real-time position sync
+- ✅ **Asset Loading** - 3D models and textures
+
+## 🚀 **Development Setup (Super Simple)**
+
+### **Quick Start**
+```bash
+# Install dependencies  
+npm run install:all
+
+# Terminal 1: Start backend
+npm run dev:worker
+
+# Terminal 2: Start frontend  
+npm run dev:client
+
+# Game available at: http://localhost:5173
+```
+
+### **Manual Setup**
+```bash
+# Backend (terminal 1)
+cd workers && npx wrangler dev --port 8787
+
+# Frontend (terminal 2)  
+cd client && npm run dev
+```
+
+## 📚 **Documentation**
+
+- **[📖 Documentation Index](docs/DOCUMENTATION.md)** - Updated for simplified architecture
+- **[🏗️ Project Structure](docs/PROJECT_STRUCTURE.md)** - Current 8-file structure
+- **[🎮 Game Vision](docs/GameVision.md)** - Original game design vision
+- **[📋 MVP Plan](docs/MVP_Plan_Hidden_Walnuts-2.md)** - Historical roadmap (reference)
+- **[⚙️ Conventions](docs/conventions.md)** - Simplified development standards
+
+## 🎯 **What's Next (Simple Additions)**
+
+### **Immediate Next Steps**
+1. **Walnut Mechanics** - Add hiding/seeking gameplay  
+2. **Player Sync** - Better visual synchronization
+3. **Scoring System** - Points for finding walnuts
+4. **Game Polish** - Improved graphics and UX
+
+### **Why This Approach Works**
+- **Faster Development** - No complex system dependencies
+- **Easier Debugging** - All logic in clear, focused files  
+- **Better Maintainability** - Simple code structure
+- **More Fun** - Focus on gameplay instead of architecture
+- **Still Production Ready** - Cloudflare backend handles scale
+
+## 🎮 **Controls & Gameplay**
+
+- **WASD** - Move your squirrel around
+- **Mouse** - Camera automatically follows player
+- **Multiplayer** - See other players in real-time
+- **3D World** - Navigate through forest terrain
+
+**Game URL**: http://localhost:5173
+
+## 📊 **Simple Architecture Benefits**
+
+Instead of enterprise complexity, you get:
+
+- **8 focused files** vs 31 complex files
+- **300-line Game.ts** vs 1000s of lines across systems  
+- **Simple console.log** vs complex logging infrastructure
+- **Direct method calls** vs event bus architecture
+- **Basic WebSocket** vs client prediction systems
+- **Clear code flow** vs dependency injection maze
+
+## 🏆 **Architecture Philosophy**
+
+**"Simple is better than complex. Fun is better than perfect."**
+
+- ✅ **Readability over cleverness**
+- ✅ **Working game over perfect architecture** 
+- ✅ **Fun gameplay over enterprise patterns**
+- ✅ **8 files over 31 files**
+- ✅ **300 lines over 7,214 lines**
+
+---
+
+**The focus is now on making a fun, playable game rather than showcasing enterprise architecture patterns!** 🎮
+=== END FILE ===
+
+=== FILE: ./workers/package.json ===
+{
+  "name": "hidden-walnuts-worker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc --project tsconfig.json"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250524.0",
+    "typescript": "^5.5.4",
+    "wrangler": "^4.16.1"
+  }
+}
+
+=== END FILE ===
+
+=== FILE: ./workers/tsconfig.json ===
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "lib": ["ESNext", "WebWorker", "es2015", "es2016", "es2017"],
+    "outDir": "dist/worker",
+    "rootDir": ".",
+    "strict": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["@cloudflare/workers-types"]
+  },
+  "include": ["api.ts", "objects/**/*"],
+  "exclude": ["node_modules", "dist"]
+} 
+=== END FILE ===
+
+=== FILE: ./wrangler.toml ===
+name = "hidden-walnuts-game"
+
+# CHEN'S FIX: Correct entry point for workers
+main = "workers/dist/worker/api.js"
+
+compatibility_date = "2024-01-01"
+
+[build]
+command = "npm run build"
+
+# Enable logging for debugging
+[observability.logs]
+enabled = true
+
+# Environment variables (merged properly)
+[vars]
+# Environment configuration - set to 'development' for local testing
+ENVIRONMENT = "development"
+CYCLE_DURATION_SECONDS = "86400"  # 24 hours in seconds
+
+# Durable Objects configuration (matching preview/production names)
+[[durable_objects.bindings]]
+name = "SQUIRREL"
+class_name = "SquirrelSession"
+
+[[durable_objects.bindings]]
+name = "FOREST"
+class_name = "ForestManager"
+
+[[durable_objects.bindings]]
+name = "WALNUTS"
+class_name = "WalnutRegistry"
+
+[[durable_objects.bindings]]
+name = "LEADERBOARD"
+class_name = "Leaderboard"
+
+# Durable Objects migrations
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = [
+  "ForestManager",
+  "SquirrelSession",
+  "WalnutRegistry",
+  "Leaderboard"
+]
+
+[[migrations]]
+tag = "v2"
+# v2 migration - maintaining consistency with deployed version
+# No changes needed as classes already exist
+
+# Environment configurations
+[env.preview]
+workers_dev = true
+[env.preview.vars]
+ENVIRONMENT = "preview"
+CYCLE_DURATION_SECONDS = "86400"
+[env.preview.durable_objects]
+bindings = [
+  { name = "FOREST", class_name = "ForestManager" },
+  { name = "SQUIRREL", class_name = "SquirrelSession" },
+  { name = "WALNUTS", class_name = "WalnutRegistry" },
+  { name = "LEADERBOARD", class_name = "Leaderboard" }
+]
+
+[env.production]
+workers_dev = false
+[env.production.vars]
+ENVIRONMENT = "production"
+CYCLE_DURATION_SECONDS = "86400"
+[env.production.durable_objects]
+bindings = [
+  { name = "FOREST", class_name = "ForestManager" },
+  { name = "SQUIRREL", class_name = "SquirrelSession" },
+  { name = "WALNUTS", class_name = "WalnutRegistry" },
+  { name = "LEADERBOARD", class_name = "Leaderboard" }
+]
+=== END FILE ===
+
+=== FILE: ./client/index.html ===
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Colobus Test</title>
+    <style>
+      body { margin: 0; padding: 0; overflow: hidden; }
+      canvas { display: block; width: 100vw; height: 100vh; }
+      #character-select {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: white;
+        padding: 10px;
+        border-radius: 5px;
+      }
+      #character-select.hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="character-select">
+      <h3>Select Character</h3>
+      <select id="char-select">
+        <option value="colobus">Colobus Monkey</option>
+      </select>
+      <button id="start-btn">Start</button>
+    </div>
+    <canvas id="gameCanvas" class="hidden"></canvas>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
+=== END FILE ===
+
+=== FILE: ./client/public/characters.json ===
+[
+  {
+    "id": "colobus",
+    "name": "Colobus Monkey",
+    "modelPath": "/assets/models/characters/Colobus_LOD0.glb",
+    "animations": {
+      "idle": "/assets/animations/characters/Single/Colobus_Idle_A.glb",
+      "run": "/assets/animations/characters/Single/Colobus_Run.glb",
+      "jump": "/assets/animations/characters/Single/Colobus_Jump.glb"
+    },
+    "scale": 0.3
+  }
+]
+=== END FILE ===
+
+=== FILE: ./client/package.json ===
+{
+  "name": "colobus-test",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "build:preview": "tsc && vite build --mode preview",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.3",
+    "vite": "^5.4.1"
+  },
+  "dependencies": {
+    "three": "^0.167.1"
+  }
+}
+=== END FILE ===
+
+=== FILE: ./client/tsconfig.json ===
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+    "noImplicitAny": false,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/test/**"]
+}
+=== END FILE ===
+
+=== FILE: ./client/camera-test.html ===
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Camera Test</title>
+    <style>
+        body { margin: 0; background: #000; }
+        canvas { display: block; }
+        #controls { position: absolute; top: 10px; left: 10px; color: white; }
+    </style>
+</head>
+<body>
+    <div id="controls">Use WASD to move. Camera should follow.</div>
+    <canvas id="canvas"></canvas>
+    
+    <script type="module">
+        import * as THREE from 'three';
+        
+        const canvas = document.getElementById('canvas');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ canvas });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        
+        // Ground
+        const groundGeometry = new THREE.PlaneGeometry(20, 20);
+        const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x90EE90 });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
+        
+        // Player with clear front/back
+        const player = new THREE.Group();
+        
+        // Body (red cube)
+        const bodyGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        player.add(body);
+        
+        // Front indicator (green cube at front)
+        const frontGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+        const frontMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const front = new THREE.Mesh(frontGeometry, frontMaterial);
+        front.position.set(0, 0, -0.7); // Front is negative Z
+        player.add(front);
+        
+        // Back indicator (blue cube at back)
+        const backGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+        const backMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+        const back = new THREE.Mesh(backGeometry, backMaterial);
+        back.position.set(0, 0, 0.7); // Back is positive Z
+        player.add(back);
+        
+        player.position.set(0, 1, 0);
+        scene.add(player);
+        
+        // Standard third-person camera setup
+        const cameraDistance = 10;
+        const cameraHeight = 5;
+        
+        // Initial camera position (behind player - looking at blue cube)
+        camera.position.set(0, cameraHeight, cameraDistance);
+        camera.lookAt(player.position);
+        
+        // Input
+        const keys = new Set();
+        document.addEventListener('keydown', (e) => keys.add(e.key.toLowerCase()));
+        document.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+        
+        // Game loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const speed = 0.1;
+            let moveX = 0;
+            let moveZ = 0;
+            
+            // STANDARD PATTERN: Collect movement input
+            if (keys.has('w')) moveZ -= speed;
+            if (keys.has('s')) moveZ += speed;
+            if (keys.has('a')) moveX -= speed;
+            if (keys.has('d')) moveX += speed;
+            
+            // Apply movement and rotation
+            if (moveX !== 0 || moveZ !== 0) {
+                player.position.x += moveX;
+                player.position.z += moveZ;
+                
+                // Rotate player to face movement direction
+                player.rotation.y = Math.atan2(moveX, moveZ);
+            }
+            
+            // Camera ALWAYS follows behind player (behind blue cube)
+            // Player's front is -Z (green cube), back is +Z (blue cube)
+            // Camera should be positioned behind the back (blue cube)
+            const cameraX = player.position.x - Math.sin(player.rotation.y) * cameraDistance;
+            const cameraZ = player.position.z + Math.cos(player.rotation.y) * cameraDistance;
+            
+            camera.position.set(cameraX, player.position.y + cameraHeight, cameraZ);
+            camera.lookAt(player.position);
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+    </script>
+</body>
+</html>
+=== END FILE ===
+
+=== FILE: ./client/vite.config.ts ===
+import { defineConfig } from 'vite';
+import path from 'path';
+
+export default defineConfig({
+  base: '/',
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  server: {
+    port: 5173,
+    open: true,
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          three: ['three'],
+        },
+      },
+    },
+  },
+  assetsInclude: ['**/*.glb'],
+});
+=== END FILE ===
+

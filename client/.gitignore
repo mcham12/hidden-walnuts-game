@@ -1,0 +1,12 @@
+# Vite build artifacts
+dist/
+.vite/
+
+# Local environment files (if not already covered by root .gitignore)
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Vite cache
+vite.config.ts.timestamp-*
