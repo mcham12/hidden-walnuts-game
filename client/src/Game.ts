@@ -1849,8 +1849,21 @@ export class Game {
         break;
 
       case 'player_update':  // Server sends position updates as "player_update"
-        if (this.validatePlayerData(data) && data.squirrelId !== this.playerId) {
-          this.updateRemotePlayer(data.squirrelId, data.position, data.rotationY, data.animation, data.velocity, data.animationStartTime, data.moveType, data.characterId);
+        if (this.validatePlayerData(data)) {
+          if (data.squirrelId === this.playerId) {
+            // MVP 8: Update local player's server-authoritative score and health
+            if (typeof data.score === 'number' && data.score !== this.playerScore) {
+              console.log(`🏆 Score updated from server: ${this.playerScore} → ${data.score}`);
+              this.playerScore = data.score;
+            }
+            if (typeof data.health === 'number' && data.health !== this.health) {
+              console.log(`❤️ Health updated from server: ${this.health} → ${data.health}`);
+              this.health = data.health;
+            }
+          } else {
+            // Remote player update
+            this.updateRemotePlayer(data.squirrelId, data.position, data.rotationY, data.animation, data.velocity, data.animationStartTime, data.moveType, data.characterId);
+          }
         }
         break;
 
@@ -5424,9 +5437,9 @@ export class Game {
       // MVP 5: Toast notification for finding your own walnut
       this.toastManager.info('Found your walnut');
     } else {
-      // MVP 8: FOUND SOMEONE ELSE'S WALNUT - Award points, server handles inventory
-      this.playerScore += points;
-      // (Server increments walnutInventory and sends inventory_update)
+      // MVP 8: FOUND SOMEONE ELSE'S WALNUT - Server awards points and handles inventory
+      // (Server increments walnutInventory, score, and sends updates via player_update)
+      // Note: Score update comes from server via player_update message (server-authoritative)
 
       // MVP 5: Visual feedback for scoring (audio already played for instant response)
       if (this.vfxManager && this.character) {
