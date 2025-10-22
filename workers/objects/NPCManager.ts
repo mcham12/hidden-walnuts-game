@@ -63,7 +63,7 @@ export class NPCManager {
   private npcCounter: number = 0;
 
   // Configuration
-  private readonly MAX_NPCS = 3; // Reduced for testing
+  private readonly MAX_NPCS = 2; // Reduced for testing (per user request)
   private readonly DESPAWN_PLAYER_THRESHOLD = 15; // Despawn NPCs if >15 real players
   private readonly NPC_SPEED = 2.4; // 80% of player speed (3.0 units/sec)
   // MVP 7.1: Increased from 0.15 to 0.20 (150ms → 200ms) for 25% cost reduction

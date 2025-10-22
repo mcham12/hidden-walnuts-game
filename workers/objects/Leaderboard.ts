@@ -50,9 +50,12 @@ export default class Leaderboard {
     if (path.endsWith("/report") && request.method === "POST") {
       try {
         const record = await request.json() as ScoreRecord;
-        
+
+        console.log(`📥 Leaderboard received score report: ${record.playerId} = ${record.score}`);
+
         // Validate record
         if (!record.playerId || typeof record.score !== 'number') {
+          console.error(`❌ Invalid score record:`, record);
           return new Response(JSON.stringify({
             error: "Invalid score record"
           }), {
@@ -64,7 +67,9 @@ export default class Leaderboard {
         record.updatedAt = Date.now();
         this.scores.set(record.playerId, record);
         await this.storage.put(record.playerId, record);
-        
+
+        console.log(`✅ Leaderboard saved: ${record.playerId} = ${record.score} (Total players: ${this.scores.size})`);
+
         return new Response(JSON.stringify({
           success: true,
           message: "Score updated"
@@ -72,6 +77,7 @@ export default class Leaderboard {
           headers: { "Content-Type": "application/json" }
         });
       } catch (error) {
+        console.error(`❌ Leaderboard error:`, error);
         return new Response(JSON.stringify({
           error: "Failed to update score"
         }), {
@@ -85,7 +91,9 @@ export default class Leaderboard {
     if (path.endsWith("/top")) {
       const limit = parseInt(url.searchParams.get("limit") || "10");
       const topPlayers = this.getTopPlayers(limit);
-      
+
+      console.log(`📊 Leaderboard /top request: ${topPlayers.length} players returned (${this.scores.size} total in DB)`);
+
       return new Response(JSON.stringify({
         leaderboard: topPlayers,
         count: topPlayers.length,

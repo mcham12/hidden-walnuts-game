@@ -1,4 +1,5 @@
 // MVP 7.1: Bot protection with Turnstile verification before game connection
+// Deployment test: 2025-10-21 - Verifying Cloudflare preview deployment
 import { Game } from './Game';
 import { AudioManager } from './AudioManager';
 import { LoadingScreen } from './LoadingScreen';

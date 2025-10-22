@@ -225,6 +225,63 @@ export class VFXManager {
   }
 
   /**
+   * MVP 8: Show animated damage floater (-X health!)
+   * Displays red damage numbers that float up and fade
+   */
+  showDamageFloater(damage: number, position: THREE.Vector3): void {
+    if (!this.popupContainer) {
+      return;
+    }
+
+    // Create damage element
+    const element = document.createElement('div');
+    element.textContent = `-${damage}`;
+    element.style.position = 'absolute';
+    element.style.fontSize = '28px';
+    element.style.fontWeight = 'bold';
+    element.style.color = '#FF4444'; // Red for damage
+    element.style.textShadow = '2px 2px 4px rgba(0,0,0,0.9)';
+    element.style.pointerEvents = 'none';
+    element.style.transition = 'all 1s ease-out';
+    element.style.zIndex = '101';
+
+    // Convert 3D position to screen position
+    const vector = position.clone();
+    vector.project(this.camera);
+
+    const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
+
+    element.style.left = `${x}px`;
+    element.style.top = `${y}px`;
+    element.style.transform = 'translate(-50%, -50%)';
+    element.style.opacity = '1'; // Explicitly set initial opacity
+
+    this.popupContainer.appendChild(element);
+
+    // Animate upward and fade
+    requestAnimationFrame(() => {
+      element.style.transform = 'translate(-50%, -150%)';
+      element.style.opacity = '0';
+    });
+
+    // Track for cleanup
+    this.scorePopups.push({
+      element,
+      startTime: Date.now(),
+      duration: 1000
+    });
+
+    // Remove after animation
+    setTimeout(() => {
+      if (this.popupContainer && element.parentNode) {
+        this.popupContainer.removeChild(element);
+      }
+      this.scorePopups = this.scorePopups.filter(p => p.element !== element);
+    }, 1000);
+  }
+
+  /**
    * Trigger screen shake effect
    */
   screenShake(intensity: number = 0.1, duration: number = 0.3): void {

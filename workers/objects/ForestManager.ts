@@ -555,6 +555,18 @@ export default class ForestManager extends DurableObject {
       await this.sendWorldState(socket, existingPlayer.position, existingPlayer.rotationY);
       await this.sendExistingPlayers(socket, squirrelId);
 
+      // MVP 8 FIX: Send initial inventory and health state to sync UI (prevents grayed-out buttons on reconnect)
+      this.sendMessage(socket, {
+        type: 'inventory_update',
+        walnutCount: existingPlayer.walnutInventory
+      });
+      this.sendMessage(socket, {
+        type: 'health_update',
+        playerId: squirrelId,
+        health: existingPlayer.health,
+        maxHealth: existingPlayer.maxHealth
+      });
+
       // MVP 8 FIX: Spawn NPCs if none exist (they may have been despawned when last player left)
       if (this.npcManager.getNPCCount() === 0) {
         console.log('🔄 No NPCs exist, spawning fresh batch...');
@@ -636,6 +648,9 @@ export default class ForestManager extends DurableObject {
 
       this.activePlayers.set(squirrelId, playerConnection);
 
+      // MVP 8: Report initial score to leaderboard (bootstrap with 0 score)
+      await this.reportScoreToLeaderboard(playerConnection);
+
       // MVP 5.8: Ensure alarm is scheduled for disconnect checking
       await this.ensureAlarmScheduled();
 
@@ -678,6 +693,18 @@ export default class ForestManager extends DurableObject {
       // Send initial data with spawn position (MVP 6: may be saved position or default)
       await this.sendWorldState(socket, playerConnection.position, playerConnection.rotationY);
       await this.sendExistingPlayers(socket, squirrelId);
+
+      // MVP 8 FIX: Send initial inventory and health state to sync UI (prevents grayed-out buttons)
+      this.sendMessage(socket, {
+        type: 'inventory_update',
+        walnutCount: playerConnection.walnutInventory
+      });
+      this.sendMessage(socket, {
+        type: 'health_update',
+        playerId: squirrelId,
+        health: playerConnection.health,
+        maxHealth: playerConnection.maxHealth
+      });
 
       // MVP 8 FIX: Spawn NPCs if none exist (they may have been despawned when last player left)
       if (this.npcManager.getNPCCount() === 0) {
@@ -774,6 +801,16 @@ export default class ForestManager extends DurableObject {
           return;
         }
 
+        // MVP 8: Validate player has walnuts to hide
+        if (playerConnection.walnutInventory <= 0) {
+          console.warn(`🚫 Hide rejected: No walnuts for ${playerConnection.squirrelId}`);
+          this.sendMessage(playerConnection.socket, {
+            type: 'hide_rejected',
+            reason: 'no_walnuts'
+          });
+          return;
+        }
+
         // Create new walnut in mapState
         const newWalnut: Walnut = {
           id: data.walnutId,
@@ -786,6 +823,9 @@ export default class ForestManager extends DurableObject {
         };
         this.mapState.push(newWalnut);
 
+        // MVP 8: Decrement player inventory
+        playerConnection.walnutInventory--;
+
         // Persist updated mapState
         await this.storage.put('mapState', this.mapState);
 
@@ -797,6 +837,12 @@ export default class ForestManager extends DurableObject {
           walnutType: data.walnutType,
           position: data.position,
           points: data.points
+        });
+
+        // MVP 8: Send inventory update to player
+        this.sendMessage(playerConnection.socket, {
+          type: 'inventory_update',
+          walnutCount: playerConnection.walnutInventory
         });
         break;
 
@@ -816,10 +862,10 @@ export default class ForestManager extends DurableObject {
           const MAX_INVENTORY = 10;
           if (playerConnection.walnutInventory < MAX_INVENTORY) {
             playerConnection.walnutInventory++;
-            console.log(`🌰 Player ${playerConnection.squirrelId} now has ${playerConnection.walnutInventory} walnuts`);
-          } else {
-            console.log(`⚠️ Player ${playerConnection.squirrelId} inventory full (${MAX_INVENTORY} walnuts)`);
           }
+
+          // MVP 8: Award +1 point for finding walnut
+          playerConnection.score += 1;
 
           // Persist updated mapState
           await this.storage.put('mapState', this.mapState);
@@ -832,11 +878,18 @@ export default class ForestManager extends DurableObject {
             points: data.points
           });
 
-          // MVP 8: Send inventory update to the player who found it
+          // MVP 8: Send inventory + score update to the player who found it
           this.sendMessage(playerConnection.socket, {
             type: 'inventory_update',
             walnutCount: playerConnection.walnutInventory
           });
+          this.sendMessage(playerConnection.socket, {
+            type: 'score_update',
+            score: playerConnection.score
+          });
+
+          // MVP 8: Report updated score to leaderboard
+          await this.reportScoreToLeaderboard(playerConnection);
         } else {
           console.warn(`⚠️ SERVER: Walnut ${data.walnutId} not found in mapState`);
         }
@@ -901,8 +954,6 @@ export default class ForestManager extends DurableObject {
         playerConnection.lastThrowTime = throwTime;
         playerConnection.walnutInventory--;
 
-        console.log(`🌰 Player ${playerConnection.squirrelId} threw walnut (${playerConnection.walnutInventory} remaining)`);
-
         // Broadcast throw event to ALL clients (including thrower for visual feedback)
         const throwEvent = {
           type: 'throw_event',
@@ -945,8 +996,6 @@ export default class ForestManager extends DurableObject {
 
         this.mapState.push(droppedWalnut);
         await this.storage.put('mapState', this.mapState);
-
-        console.log(`🌰 Dropped walnut created at (${data.position.x}, ${data.position.y}, ${data.position.z})`);
 
         // Broadcast to all players so they can see the new pickupable walnut
         this.activePlayers.forEach((player) => {
@@ -1008,7 +1057,12 @@ export default class ForestManager extends DurableObject {
         playerConnection.score += 2;
         playerConnection.combatStats.hits += 1;
 
-        console.log(`💥 ${playerConnection.username} hit ${target.username} for ${actualDamage} damage (${target.health}/${target.maxHealth} HP)`);
+        // MVP 8: Report score to leaderboard + send to player for HUD
+        await this.reportScoreToLeaderboard(playerConnection);
+        this.sendMessage(playerConnection.socket, {
+          type: 'score_update',
+          score: playerConnection.score
+        });
 
         // Broadcast damage event to all players
         this.activePlayers.forEach((player) => {
@@ -1058,8 +1112,6 @@ export default class ForestManager extends DurableObject {
         playerConnection.health = Math.min(playerConnection.maxHealth, playerConnection.health + EAT_HEAL_AMOUNT);
         const actualHealing = playerConnection.health - oldHp;
 
-        console.log(`🍽️ ${playerConnection.username} ate walnut (+${actualHealing} HP, ${playerConnection.walnutInventory} walnuts left)`);
-
         // Broadcast heal event
         this.activePlayers.forEach((player) => {
           this.sendMessage(player.socket, {
@@ -1097,6 +1149,18 @@ export default class ForestManager extends DurableObject {
     // Apply death penalty to victim (-2)
     victim.score = Math.max(0, victim.score - 2);
     victim.combatStats.deaths += 1;
+
+    // MVP 8: Report scores to leaderboard + send to players for HUD
+    await this.reportScoreToLeaderboard(killer);
+    await this.reportScoreToLeaderboard(victim);
+    this.sendMessage(killer.socket, {
+      type: 'score_update',
+      score: killer.score
+    });
+    this.sendMessage(victim.socket, {
+      type: 'score_update',
+      score: victim.score
+    });
 
     // Drop all walnuts at death location
     const droppedWalnuts = victim.walnutInventory;
@@ -1164,8 +1228,6 @@ export default class ForestManager extends DurableObject {
       victim.lastAttackerId = null;
       victim.invulnerableUntil = Date.now() + 3000; // 3s spawn protection
 
-      console.log(`♻️ ${victim.username} respawned at (${randomSpawn.x}, ${randomSpawn.z})`);
-
       // Broadcast respawn
       this.activePlayers.forEach((player) => {
         this.sendMessage(player.socket, {
@@ -1173,7 +1235,8 @@ export default class ForestManager extends DurableObject {
           playerId: victim.squirrelId,
           position: victim.position,
           health: victim.health,
-          invulnerableUntil: victim.invulnerableUntil
+          invulnerableUntil: victim.invulnerableUntil,
+          walnutInventory: victim.walnutInventory // MVP 8: Include inventory (should be 0 after death)
         });
       });
     }, 3000);
@@ -1285,6 +1348,39 @@ export default class ForestManager extends DurableObject {
           console.error(`Failed to broadcast to ${playerConnection.squirrelId}:`, error);
         }
       }
+    }
+  }
+
+  // MVP 8: Report player score to leaderboard
+  private async reportScoreToLeaderboard(playerConnection: any): Promise<void> {
+    try {
+      // Get leaderboard Durable Object
+      const leaderboardId = this.env.LEADERBOARD.idFromName("global");
+      const leaderboard = this.env.LEADERBOARD.get(leaderboardId);
+
+      // Prepare score record
+      const scoreRecord = {
+        playerId: playerConnection.username || playerConnection.squirrelId,
+        score: playerConnection.score,
+        walnuts: {
+          hidden: 0, // TODO: Track these stats
+          found: 0
+        },
+        updatedAt: Date.now()
+      };
+
+      // Report to leaderboard
+      const response = await leaderboard.fetch(new Request('http://leaderboard/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(scoreRecord)
+      }));
+
+      if (!response.ok) {
+        console.warn(`⚠️ Failed to report score to leaderboard for ${playerConnection.username} (status: ${response.status})`);
+      }
+    } catch (error) {
+      console.error('❌ Error reporting score to leaderboard:', error);
     }
   }
 

@@ -1194,21 +1194,28 @@
           min-width: 100px;
         }
 
-        /* FIX: Stack buttons vertically on RIGHT side without overlap */
-        /* Order from top: Settings (top: 130px) → Hide (mobile-actions at bottom: 80px) → Leaderboard (bottom: 180px) */
+        /* FIX: Prevent button overlap - stack with proper spacing */
+        /* Settings button below minimap */
         #settings-toggle {
           top: 130px; /* Below minimap (120px height + 10px gap) */
           right: 5px;
           bottom: auto;
         }
+        /* Mobile action buttons (Hide/Throw/Eat) - ensure enough space from bottom */
         #mobile-actions {
-          bottom: 80px;
+          bottom: 20px;
           right: 5px;
+          gap: 8px; /* Reduce gap between buttons */
         }
+        /* iPad: Leaderboard button - directly under Settings per user request */
         #leaderboard-toggle {
-          top: auto;
-          bottom: 180px;
+          top: 183px; /* 130px (settings top) + 48px (settings height) + 5px (gap) */
+          bottom: auto;
           right: 5px;
+          padding: 10px 14px; /* Same as Settings */
+          font-size: 14px; /* Same as Settings */
+          min-height: 48px; /* Same as Settings */
+          min-width: 100px; /* Same as Settings */
         }
 
         /* Make leaderboard responsive */
@@ -1353,53 +1360,57 @@
           right: max(5px, env(safe-area-inset-right));
         }
 
-        /* RIGHT SIDE VERTICAL STACK - All buttons SKINNY (50px wide) to fit without overlap */
-        /* Stack order from top: Minimap (70px) → Settings (32px) → Hide (32px) → Leaderboard (32px) */
+        /* LANDSCAPE REDESIGN: Settings and Leaderboard at TOP (horizontal), Hide/Throw/Eat on RIGHT */
 
-        /* Settings button - below minimap, skinny */
+        /* Settings button - TOP LEFT (next to HUD), horizontal with Leaderboard */
         #settings-toggle {
-          top: calc(max(5px, env(safe-area-inset-top)) + 70px + 3px);
-          right: max(5px, env(safe-area-inset-right));
-          bottom: auto; /* Override any bottom positioning */
-          padding: 4px 6px;
+          top: max(5px, env(safe-area-inset-top));
+          left: calc(max(5px, env(safe-area-inset-left)) + 200px); /* After HUD width */
+          right: auto;
+          bottom: auto;
+          padding: 4px 8px;
           font-size: 10px;
-          min-width: 50px;
-          min-height: 32px;
+          min-width: 70px;
+          min-height: 24px;
         }
 
-        /* Hide button (mobile-actions) - below settings, ULTRA SKINNY (35px) and SHORT (20px) to prevent overlap */
+        /* Leaderboard button - TOP, next to Settings button */
+        #leaderboard-toggle {
+          top: max(5px, env(safe-area-inset-top));
+          left: calc(max(5px, env(safe-area-inset-left)) + 200px + 70px + 5px); /* After HUD + Settings */
+          right: auto;
+          bottom: auto;
+          padding: 4px 8px;
+          font-size: 10px;
+          min-width: 70px;
+          min-height: 24px;
+        }
+
+        /* Hide/Throw/Eat buttons - moved lower and more left per user request */
         #mobile-actions {
-          top: calc(max(5px, env(safe-area-inset-top)) + 70px + 3px + 32px + 3px);
-          right: max(5px, env(safe-area-inset-right));
-          bottom: auto !important; /* Override bottom positioning from other media queries */
+          top: auto;
+          bottom: 15px; /* Slightly lower (was 5px with safe-area) */
+          right: 120px; /* More to the left (was 80px) */
+          left: auto;
+          flex-direction: column;
+          gap: 4px;
         }
         .mobile-action-btn {
-          min-width: 35px !important; /* Ultra skinny to fit without overlap */
-          max-width: 35px;
-          min-height: 16px; /* Even shorter button height - user reported 20px still too tall */
-          padding: 2px 3px;
-          font-size: 8px;
+          min-width: 50px; /* SAME AS PORTRAIT */
+          max-width: 50px;
+          min-height: 36px; /* SAME AS PORTRAIT */
+          padding: 4px 6px; /* Same as portrait */
+          font-size: 9px; /* Same as portrait */
         }
         .mobile-action-btn .btn-icon {
-          font-size: 13px;
+          font-size: 14px; /* Same as portrait */
         }
         .mobile-action-btn .btn-label {
-          font-size: 8px;
+          font-size: 9px; /* Same as portrait */
           line-height: 1;
         }
         .mobile-action-btn .btn-count {
-          font-size: 7px;
-        }
-
-        /* Leaderboard button - below hide button, skinny */
-        #leaderboard-toggle {
-          top: calc(max(5px, env(safe-area-inset-top)) + 70px + 3px + 32px + 3px + 16px + 3px);
-          right: max(5px, env(safe-area-inset-right));
-          bottom: auto; /* Override bottom positioning */
-          padding: 4px 6px;
-          font-size: 10px;
-          min-width: 50px;
-          min-height: 32px;
+          font-size: 8px; /* Same as portrait */
         }
 
         /* Leaderboard compact in landscape, respect safe areas */
@@ -1456,12 +1467,12 @@
           padding: 4px;
         }
 
-        /* Compact toast notifications in landscape, respect safe areas */
+        /* Compact toast notifications in landscape - slide from LEFT */
         #toast-container {
           top: max(5px, env(safe-area-inset-top));
-          left: 50%;
+          left: max(5px, env(safe-area-inset-left)); /* Slide from left, not center */
           right: auto;
-          transform: translateX(-50%);
+          transform: none; /* Remove center transform */
           max-width: 200px;
         }
         .toast {
@@ -1652,11 +1663,11 @@
         border: none;
         border-radius: 12px;
         font-family: 'Arial', sans-serif;
-        font-size: 16px;
+        font-size: 9px;
         font-weight: bold;
-        padding: 16px 20px;
-        min-width: 120px;
-        min-height: 64px;
+        padding: 4px 6px;
+        min-width: 50px;
+        min-height: 36px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.4);
         cursor: pointer;
         transition: all 0.2s;
@@ -1674,21 +1685,17 @@
         transform: scale(0.95);
         background: rgba(139, 69, 19, 1);
       }
-      .mobile-action-btn:disabled {
-        opacity: 0.4;
-        background: rgba(100, 100, 100, 0.6);
-        cursor: not-allowed;
-      }
+      /* State managed via inline style.opacity (like emote buttons) - no disabled classes needed */
       .mobile-action-btn .btn-icon {
-        font-size: 24px;
-        line-height: 1;
-      }
-      .mobile-action-btn .btn-label {
         font-size: 14px;
         line-height: 1;
       }
+      .mobile-action-btn .btn-label {
+        font-size: 9px;
+        line-height: 1;
+      }
       .mobile-action-btn .btn-count {
-        font-size: 12px;
+        font-size: 8px;
         opacity: 0.9;
       }
       /* Pulse animation for first-time hint */
@@ -1699,22 +1706,40 @@
         0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
         50% { box-shadow: 0 4px 20px rgba(255,215,0,0.8); }
       }
-      /* Adjust position for small phones */
+      /* iPhone portrait - Clean vertical layout on RIGHT side */
       @media (max-width: 430px) {
+        /* Settings button (top) */
+        #settings-toggle {
+          top: 130px;
+          right: 5px;
+        }
+
+        /* Leaderboard button (directly under settings) */
+        #leaderboard-toggle {
+          top: 183px; /* 130 + 48 (settings height) + 5 (gap) */
+          right: 5px;
+          bottom: auto; /* Override any bottom positioning */
+        }
+
+        /* Hide/Throw/Eat buttons (lower on screen per user request) */
         #mobile-actions {
-          right: 10px;
-          bottom: 70px;
+          right: 5px;
+          bottom: 60px; /* Lowered from 180px */
+          gap: 4px;
         }
         .mobile-action-btn {
-          min-width: 100px;
-          min-height: 56px;
-          padding: 12px 16px;
+          min-width: 50px;
+          min-height: 36px;
+          padding: 4px 6px;
         }
         .mobile-action-btn .btn-icon {
-          font-size: 20px;
+          font-size: 14px;
         }
         .mobile-action-btn .btn-label {
-          font-size: 13px;
+          font-size: 9px;
+        }
+        .mobile-action-btn .btn-count {
+          font-size: 8px;
         }
       }
 
@@ -1848,8 +1873,8 @@
       <div id="health-container">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 16px;">❤️</span>
-          <div id="health-bar-container" style="flex: 1; min-width: 100px; height: 16px; background: rgba(0,0,0,0.5); border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.3);">
-            <div id="health-bar" style="width: 100%; height: 100%; background: linear-gradient(90deg, #ff4444 0%, #ff6666 100%); transition: width 0.3s ease;"></div>
+          <div id="health-bar-container" style="position: relative; flex: 1; min-width: 100px; height: 16px; background: rgba(0,0,0,0.5); border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.3);">
+            <div id="health-bar" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; background: linear-gradient(90deg, #44ff44 0%, #66ff66 100%); transition: width 0.3s ease, background 0.3s ease; margin: 0; padding: 0;"></div>
           </div>
           <span id="health-text" style="min-width: 50px; text-align: right; font-weight: bold;">100/100</span>
         </div>
@@ -1926,20 +1951,21 @@
       <div style="margin-top: 8px; font-size: 12px; opacity: 0.7;">Tap here to dismiss</div>
     </div>
     <!-- MVP 5.7: Mobile Action Buttons (Hide/Throw/Eat) -->
+    <!-- COPY EMOTE BUTTON PATTERN: Simple buttons, state via style.opacity -->
     <div id="mobile-actions">
-      <button id="mobile-hide-btn" class="mobile-action-btn" title="Hide Walnut">
+      <button id="mobile-hide-btn" class="mobile-action-btn" style="opacity: 0.4" title="Hide Walnut">
         <span class="btn-icon">🥜</span>
         <span class="btn-label">HIDE</span>
-        <span class="btn-count" id="mobile-hide-count">(3)</span>
+        <span class="btn-count" id="mobile-hide-count">(0)</span>
       </button>
       <!-- MVP 8: Throw button -->
-      <button id="mobile-throw-btn" class="mobile-action-btn" title="Throw Walnut">
+      <button id="mobile-throw-btn" class="mobile-action-btn" style="opacity: 0.4" title="Throw Walnut">
         <span class="btn-icon">🌰</span>
         <span class="btn-label">THROW</span>
         <span class="btn-count" id="mobile-throw-count">(0)</span>
       </button>
       <!-- MVP 8 Phase 3: Eat button -->
-      <button id="mobile-eat-btn" class="mobile-action-btn" title="Eat Walnut (Heal +25 HP)">
+      <button id="mobile-eat-btn" class="mobile-action-btn" style="opacity: 0.4" title="Eat Walnut (Heal +25 HP)">
         <span class="btn-icon">🍽️</span>
         <span class="btn-label">EAT</span>
         <span class="btn-count" id="mobile-eat-count">(0)</span>

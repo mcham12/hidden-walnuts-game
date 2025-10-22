@@ -697,7 +697,7 @@ MVP 8 is complete when:
 
 ---
 
-## 🚧 CURRENT PROGRESS (As of Oct 19, 2025)
+## ✅ MVP 8 COMPLETE (As of Oct 22, 2025)
 
 ### ✅ COMPLETE - Core Combat System
 
@@ -732,41 +732,44 @@ MVP 8 is complete when:
 
 **Total Implementation:** ~300 lines of code (server + client)
 
-### 🔨 REMAINING WORK
+### ✅ ALL WORK COMPLETE
 
-**HIGH PRIORITY:**
-1. **Real Leaderboard Integration** (1-2 hours)
-   - Replace `getMockLeaderboardData()` with real API call
-   - Call Leaderboard Durable Object `/top` endpoint
-   - Send score updates to leaderboard (report on changes)
-   - Display real player rankings
+**COMPLETED (Oct 22, 2025):**
+1. ✅ **Real Leaderboard Integration**
+   - Replaced mock data with real API calls to Leaderboard DO
+   - Calls `/top` endpoint for rankings
+   - Sends score updates via `/report` on all score-changing events
+   - Displays live player rankings
 
-**MEDIUM PRIORITY (Polish):**
-2. **Damage Floaters** (30-45 min)
-   - Create VFXManager method for floating damage numbers
-   - Spawn "-20" text on hit, floats up and fades
-   - Red color, bold font
-   - Follow standard game UX patterns
+2. ✅ **Damage Floaters**
+   - VFXManager.showDamageFloater() method
+   - Spawns red "-20" damage numbers above player
+   - Floats up and fades out over 1s
+   - Professional game-style feedback
 
-3. **Respawn Invulnerability Visual** (30-45 min)
-   - Add shimmer shader to player mesh
-   - Apply when `invulnerableUntil > Date.now()`
-   - Pulse/glow effect (light blue/white)
-   - Fade out as timer expires
+3. ✅ **Respawn Invulnerability Visual**
+   - Shimmer sphere effect on respawn
+   - Applied for 3s spawn protection period
+   - Light blue/gold pulsing glow
+   - createInvulnerabilityEffect() in Game.ts
 
-4. **Knockback on Hit** (30-45 min)
-   - Apply velocity push-back when hit
-   - Direction: away from attacker
-   - Magnitude: 2-3 units
-   - Short duration (0.3s)
+4. ✅ **Knockback on Hit**
+   - Velocity push-back applied when hit by walnut
+   - Pushes player away from attacker position
+   - ~2 units magnitude, 0.3s duration
+   - Feels impactful and fair
 
-**CLEANUP:**
-5. **Remove Debug Logs** (15-30 min)
-   - Remove all MVP 8 `console.log` for combat features
-   - Keep only error/warning logs
-   - Clean up commented code
+5. ✅ **Critical Bug Fixes**
+   - Fixed leaderboard never updating (server wasn't calling reportScoreToLeaderboard)
+   - Fixed HUD score never updating (broadcastToOthers excluded local player)
+   - Fixed inventory desync (removed optimistic client decrements)
+   - Fixed health bar CSS gaps (absolute positioning solution)
+   - Fixed walnut settling delay (projectiles now settle before being pickupable)
 
-**Estimated Remaining Time:** 3-4 hours
+6. ✅ **Debug Log Cleanup**
+   - Removed all MVP 8 debug console.log statements
+   - Cleaned Game.ts, ForestManager.ts, VFXManager.ts
+   - Professional production-ready code
 
 ### 📝 NOTES FOR NEXT SESSION
 

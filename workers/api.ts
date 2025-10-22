@@ -1,5 +1,6 @@
 // API entry point for Hidden Walnuts game - Simplified
 // MVP 7.1: Bot protection with Turnstile and rate limiting
+// Deployment test: 2025-10-21 - Verifying Cloudflare preview deployment
 
 import { getObjectInstance } from "./objects/registry";
 import type { EnvWithBindings } from "./objects/registry";
@@ -129,10 +130,19 @@ export default {
       }
 
 
-      // Handle /leaderboard routes
-      if (pathname.startsWith("/leaderboard")) {
+      // Handle /api/leaderboard routes (MVP 8)
+      if (pathname.startsWith("/api/leaderboard")) {
         const leaderboard = getObjectInstance(env, "leaderboard", "global");
-        return await leaderboard.fetch(request);
+        const response = await leaderboard.fetch(request);
+
+        // Add CORS headers
+        return new Response(response.body, {
+          status: response.status,
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "application/json"
+          }
+        });
       }
 
       // Handle /admin/reset-mapstate route

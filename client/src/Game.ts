@@ -240,6 +240,11 @@ export class Game {
   private lastCollisionDamageTime: number = 0;
   private lastRegenTime: number = 0;
   private isDead: boolean = false;
+  // MVP 8: Spawn protection after respawn
+  private isInvulnerable: boolean = false;
+  private invulnerabilityEndTime: number = 0;
+  private readonly SPAWN_PROTECTION_DURATION = 3000; // 3 seconds
+  private invulnerabilityMesh: THREE.Mesh | null = null; // Visual effect for invulnerability
   // Note: MAX_INVENTORY enforced server-side (10 walnuts)
 
   // MVP 8 FIX: Shared walnut model for visual consistency
@@ -361,8 +366,8 @@ export class Game {
       // MVP 5: Initialize VFX Manager
       this.vfxManager = new VFXManager(this.scene, this.camera);
 
-      // MVP 8: Initialize Projectile Manager
-      this.projectileManager = new ProjectileManager(this.scene, this.vfxManager, this.audioManager);
+      // MVP 8: Initialize Projectile Manager (with collision system for tree/rock detection)
+      this.projectileManager = new ProjectileManager(this.scene, this.vfxManager, this.audioManager, this.collisionSystem);
 
       // MVP 8 FIX: Load shared walnut model for visual consistency
       await this.loadWalnutModel();
@@ -863,7 +868,7 @@ export class Game {
    * Note: Visibility is controlled by CSS media queries, not JavaScript
    */
   private initMobileActionButtons(): void {
-    // Hide button
+    // Hide button - COPY EMOTE BUTTON PATTERN: Simple, always clickable
     const hideButton = document.getElementById('mobile-hide-btn');
     if (hideButton) {
       hideButton.addEventListener('click', () => {
@@ -871,7 +876,7 @@ export class Game {
         if (navigator.vibrate) {
           navigator.vibrate(50);
         }
-        this.hideWalnut();
+        this.hideWalnut(); // Function already checks inventory
       });
 
       // Pulse animation on first load (tutorial hint)
@@ -890,7 +895,7 @@ export class Game {
       }
     }
 
-    // MVP 8: Wire up throw button for mobile
+    // MVP 8: Wire up throw button - COPY EMOTE BUTTON PATTERN: Simple, always clickable
     const throwButton = document.getElementById('mobile-throw-btn');
     if (throwButton) {
       throwButton.addEventListener('click', () => {
@@ -898,11 +903,11 @@ export class Game {
         if (navigator.vibrate) {
           navigator.vibrate(50);
         }
-        this.throwWalnut();
+        this.throwWalnut(); // Function already checks inventory
       });
     }
 
-    // MVP 8 Phase 3: Wire up eat button for mobile
+    // MVP 8 Phase 3: Wire up eat button - COPY EMOTE BUTTON PATTERN: Simple, always clickable
     const eatButton = document.getElementById('mobile-eat-btn');
     if (eatButton) {
       eatButton.addEventListener('click', () => {
@@ -910,10 +915,12 @@ export class Game {
         if (navigator.vibrate) {
           navigator.vibrate(50);
         }
-        this.eatWalnut();
+        this.eatWalnut(); // Function already checks inventory
       });
     }
 
+    // CRITICAL: Initialize button states immediately (don't wait for server)
+    this.updateMobileButtons();
   }
 
   private onResize() {
@@ -1018,14 +1025,29 @@ export class Game {
     // MVP 7: Update NPC interpolation
     this.updateNPCInterpolation(delta);
 
+    // MVP 8: Update invulnerability (check expiry and update visual)
+    if (this.isInvulnerable && Date.now() >= this.invulnerabilityEndTime) {
+      this.isInvulnerable = false;
+      this.removeInvulnerabilityEffect();
+      console.log('🛡️ Spawn protection expired');
+    }
+
+    // MVP 8: Update invulnerability visual effect
+    if (this.isInvulnerable && this.invulnerabilityMesh) {
+      this.updateInvulnerabilityEffect(delta);
+    }
+
     // MVP 8: Update projectiles (flying walnuts)
     if (this.projectileManager) {
       // Build entity map for hit detection
       const entities = new Map<string, { position: THREE.Vector3, isInvulnerable?: boolean }>();
 
-      // Add local player
+      // Add local player (with invulnerability flag)
       if (this.character) {
-        entities.set(this.playerId, { position: this.character.position.clone() });
+        entities.set(this.playerId, {
+          position: this.character.position.clone(),
+          isInvulnerable: this.isInvulnerable
+        });
       }
 
       // Add remote players
@@ -1065,6 +1087,10 @@ export class Game {
         this.displayedScore = this.playerScore;
       }
     }
+
+    // CRITICAL FIX: Always update HUD, not just during animation
+    // This ensures score displays even when not animating (displayedScore === playerScore)
+    this.updateWalnutHUD();
 
     // MVP 3: Update walnut labels
     this.updateWalnutLabels();
@@ -1827,8 +1853,19 @@ export class Game {
         break;
 
       case 'player_update':  // Server sends position updates as "player_update"
-        if (this.validatePlayerData(data) && data.squirrelId !== this.playerId) {
-          this.updateRemotePlayer(data.squirrelId, data.position, data.rotationY, data.animation, data.velocity, data.animationStartTime, data.moveType, data.characterId);
+        if (this.validatePlayerData(data)) {
+          if (data.squirrelId === this.playerId) {
+            // MVP 8: Update local player's server-authoritative score and health
+            if (typeof data.score === 'number' && data.score !== this.playerScore) {
+              this.playerScore = data.score;
+            }
+            if (typeof data.health === 'number' && data.health !== this.health) {
+              this.health = data.health;
+            }
+          } else {
+            // Remote player update
+            this.updateRemotePlayer(data.squirrelId, data.position, data.rotationY, data.animation, data.velocity, data.animationStartTime, data.moveType, data.characterId);
+          }
         }
         break;
 
@@ -1903,10 +1940,28 @@ export class Game {
         // MVP 8: Update player walnut inventory count
         if (typeof data.walnutCount === 'number') {
           this.walnutInventory = data.walnutCount;
-          console.log(`🌰 Inventory updated: ${this.walnutInventory} walnuts`);
           // Update all UI displays
           this.updateMobileButtons();
           this.updateWalnutHUD();
+        }
+        break;
+
+      case 'score_update':
+        // MVP 8: Direct score update from server (real-time HUD sync)
+        if (typeof data.score === 'number') {
+          this.playerScore = data.score;
+          // Note: HUD will update in next animation frame via updateWalnutHUD()
+        }
+        break;
+
+      case 'entity_healed':
+        // MVP 8: Someone healed (ate a walnut)
+        if (data.playerId && typeof data.healing === 'number' && typeof data.newHealth === 'number') {
+          if (data.playerId === this.playerId) {
+            // Local player healed - apply server-authoritative health
+            this.health = data.newHealth;
+            this.updateHealthUI();
+          }
         }
         break;
 
@@ -1915,6 +1970,23 @@ export class Game {
         if (data.throwerId && data.fromPosition && data.toPosition) {
           this.handleThrowEvent(data.throwerId, data.fromPosition, data.toPosition, data.targetId);
         }
+        break;
+
+      case 'player_respawn':
+        // MVP 8: Player respawned after death
+        if (data.playerId === this.playerId) {
+          // Local player respawn - apply server-authoritative state
+          if (typeof data.walnutInventory === 'number') {
+            this.walnutInventory = data.walnutInventory;
+            this.updateWalnutHUD();
+            this.updateMobileButtons();
+          }
+          if (typeof data.health === 'number') {
+            this.health = data.health;
+            this.updateHealthUI();
+          }
+        }
+        // Note: Remote player respawns are handled by position updates
         break;
 
       case 'throw_rejected':
@@ -2810,6 +2882,14 @@ export class Game {
         hitAction.reset().setLoop(THREE.LoopOnce, 1).play();
         hitAction.clampWhenFinished = true;
       }
+
+      // MVP 8: Show damage floater on remote player
+      console.log(`🎯 onProjectileHit: Remote player hit, showing damage floater (vfxManager=${!!this.vfxManager})`);
+      if (this.vfxManager) {
+        const damagePosition = remotePlayer.position.clone();
+        damagePosition.y += 2; // Show above player head
+        this.vfxManager.showDamageFloater(this.PROJECTILE_DAMAGE, damagePosition);
+      }
     }
 
     // Check if target is an NPC
@@ -2822,6 +2902,14 @@ export class Game {
         hitAction.timeScale = 0.65; // Slow down
         hitAction.reset().setLoop(THREE.LoopOnce, 1).play();
         hitAction.clampWhenFinished = true;
+      }
+
+      // MVP 8: Show damage floater on NPC
+      console.log(`🎯 onProjectileHit: NPC hit, showing damage floater (vfxManager=${!!this.vfxManager})`);
+      if (this.vfxManager) {
+        const damagePosition = npc.position.clone();
+        damagePosition.y += 2; // Show above NPC head
+        this.vfxManager.showDamageFloater(this.PROJECTILE_DAMAGE, damagePosition);
       }
     }
 
@@ -2837,14 +2925,6 @@ export class Game {
       data.position.z
     );
     data.mesh.position.copy(finalPosition);
-
-    console.log(`🌰 HIT walnut ${walnutId} positioned at:`, {
-      x: finalPosition.x.toFixed(2),
-      y: finalPosition.y.toFixed(2),
-      z: finalPosition.z.toFixed(2),
-      terrainHeight: terrainHeight.toFixed(2),
-      inScene: this.scene.children.includes(data.mesh)
-    });
 
     // Stop spinning animation (projectile was spinning in flight)
     data.mesh.rotation.set(0, 0, 0);
@@ -2890,8 +2970,6 @@ export class Game {
    * BEST PRACTICE: Transform projectile mesh into pickup walnut (no destroy/recreate)
    */
   private onProjectileMiss(data: { projectileId: string; ownerId: string; position: THREE.Vector3; mesh: THREE.Group }): void {
-    console.log(`🌰 Projectile missed! Transforming to pickupable walnut at position:`, data.position);
-
     // BEST PRACTICE: Transform projectile mesh into pickup walnut (no destroy/recreate)
     const walnutId = `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -2983,9 +3061,51 @@ export class Game {
    */
   private takeDamage(amount: number, attackerId: string): void {
     if (this.isDead) return; // Can't damage dead players
+    if (this.isInvulnerable) {
+      console.log(`🛡️ Damage blocked by spawn protection!`);
+      return; // Invulnerable - no damage taken
+    }
 
     this.health = Math.max(0, this.health - amount);
-    console.log(`💔 Took ${amount} damage from ${attackerId}. Health: ${this.health}/${this.MAX_HEALTH}`);
+
+    // MVP 8: Show damage floater on local player
+    if (this.character && this.vfxManager) {
+      const damagePosition = this.character.position.clone();
+      damagePosition.y += 2; // Show above player head
+      this.vfxManager.showDamageFloater(amount, damagePosition);
+    }
+
+    // MVP 8: Apply knockback effect (push away from attacker)
+    if (this.character) {
+      let attackerPos: THREE.Vector3 | null = null;
+
+      // Find attacker position
+      const remotePlayer = this.remotePlayers.get(attackerId);
+      if (remotePlayer) {
+        attackerPos = remotePlayer.position;
+      } else {
+        const npc = this.npcs.get(attackerId);
+        if (npc) {
+          attackerPos = npc.position;
+        }
+      }
+
+      // Apply knockback if attacker found
+      if (attackerPos) {
+        // Calculate knockback direction (from attacker to victim)
+        const knockbackDir = new THREE.Vector3()
+          .subVectors(this.character.position, attackerPos)
+          .normalize();
+
+        // Apply knockback impulse (2.5 units horizontal, 1.5 units vertical)
+        const knockbackStrength = 2.5;
+        this.velocity.x += knockbackDir.x * knockbackStrength;
+        this.velocity.z += knockbackDir.z * knockbackStrength;
+        this.velocity.y += 1.5; // Small upward boost for visual effect
+
+        console.log(`💥 Knockback applied: direction (${knockbackDir.x.toFixed(2)}, ${knockbackDir.z.toFixed(2)})`);
+      }
+    }
 
     // Send damage event to server
     this.sendMessage({
@@ -3015,8 +3135,6 @@ export class Game {
     const actualHeal = this.health - oldHealth;
 
     if (actualHeal > 0) {
-      console.log(`💚 Healed ${actualHeal} HP. Health: ${this.health}/${this.MAX_HEALTH}`);
-
       // Send heal event to server
       this.sendMessage({
         type: 'player_healed',
@@ -3206,8 +3324,6 @@ export class Game {
    * MVP 8 UX: Enhanced with random teleport and fade effects
    */
   private respawn(): void {
-    console.log('🔄 Respawning player...');
-
     // Reset health
     this.health = this.MAX_HEALTH;
     this.isDead = false;
@@ -3250,11 +3366,74 @@ export class Game {
       }, 500); // Match transition duration
     }
 
+    // MVP 8: Enable spawn protection (3 seconds invulnerability)
+    this.isInvulnerable = true;
+    this.invulnerabilityEndTime = Date.now() + this.SPAWN_PROTECTION_DURATION;
+    this.createInvulnerabilityEffect();
+    console.log('🛡️ Spawn protection active for 3 seconds');
+
     // Update UI
     this.updateHealthUI();
     this.updateWalnutHUD();
+  }
 
-    console.log('✅ Respawn complete!');
+  /**
+   * MVP 8: Create invulnerability visual effect (shimmer sphere)
+   */
+  private createInvulnerabilityEffect(): void {
+    if (!this.character || this.invulnerabilityMesh) return; // Already has effect
+
+    // Create transparent shimmering sphere around player
+    const geometry = new THREE.SphereGeometry(1.5, 32, 32);
+    const material = new THREE.MeshBasicMaterial({
+      color: 0x00FFFF, // Cyan shimmer
+      transparent: true,
+      opacity: 0.3,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+
+    this.invulnerabilityMesh = new THREE.Mesh(geometry, material);
+    this.invulnerabilityMesh.position.copy(this.character.position);
+    this.invulnerabilityMesh.position.y += 1; // Center on player
+    this.scene.add(this.invulnerabilityMesh);
+  }
+
+  /**
+   * MVP 8: Remove invulnerability visual effect
+   */
+  private removeInvulnerabilityEffect(): void {
+    if (this.invulnerabilityMesh) {
+      this.scene.remove(this.invulnerabilityMesh);
+      this.invulnerabilityMesh.geometry.dispose();
+      (this.invulnerabilityMesh.material as THREE.Material).dispose();
+      this.invulnerabilityMesh = null;
+    }
+  }
+
+  /**
+   * MVP 8: Update invulnerability effect (call every frame)
+   */
+  private updateInvulnerabilityEffect(delta: number): void {
+    if (!this.invulnerabilityMesh || !this.character) return;
+
+    // Follow player position
+    this.invulnerabilityMesh.position.copy(this.character.position);
+    this.invulnerabilityMesh.position.y += 1; // Center on player
+
+    // Pulse animation (scale and opacity)
+    const time = Date.now() * 0.003; // Slow pulse
+    const pulse = Math.sin(time) * 0.1 + 1.0; // Oscillate between 0.9 and 1.1
+    this.invulnerabilityMesh.scale.setScalar(pulse);
+
+    // Opacity pulse (more subtle)
+    const material = this.invulnerabilityMesh.material as THREE.MeshBasicMaterial;
+    material.opacity = 0.2 + Math.sin(time * 2) * 0.1; // Oscillate between 0.1 and 0.3
+
+    // Rotate for shimmer effect
+    this.invulnerabilityMesh.rotation.y += delta * 1.5;
+    this.invulnerabilityMesh.rotation.x += delta * 0.5;
   }
 
   /**
@@ -3264,18 +3443,9 @@ export class Game {
     const healthBar = document.getElementById('health-bar');
     const healthText = document.getElementById('health-text');
 
-    console.log('🏥 updateHealthUI called:', {
-      health: this.health,
-      maxHealth: this.MAX_HEALTH,
-      healthBarFound: !!healthBar,
-      healthTextFound: !!healthText
-    });
-
     if (healthBar) {
       const healthPercent = Math.max(0, Math.min(100, (this.health / this.MAX_HEALTH) * 100));
       healthBar.style.width = `${healthPercent}%`;
-
-      console.log(`❤️ Health bar updated: ${healthPercent.toFixed(1)}% (${this.health}/${this.MAX_HEALTH})`);
 
       // Color changes based on health level
       if (healthPercent > 60) {
@@ -3291,9 +3461,6 @@ export class Game {
 
     if (healthText) {
       healthText.textContent = `${Math.round(this.health)}/${this.MAX_HEALTH}`;
-      console.log(`📝 Health text updated: ${healthText.textContent}`);
-    } else {
-      console.error('❌ Health text element not found! ID: health-text');
     }
   }
 
@@ -3888,6 +4055,7 @@ export class Game {
 
   /**
    * MVP 5.7: Update mobile button states (Hide, Throw, Eat)
+   * COPY PATTERN FROM WORKING BUTTONS: Just change opacity, no disabled state
    */
   private updateMobileButtons(): void {
     // Update HIDE button
@@ -3895,13 +4063,8 @@ export class Game {
     const hideCountSpan = document.getElementById('mobile-hide-count');
     if (hideButton && hideCountSpan) {
       hideCountSpan.textContent = `(${this.walnutInventory})`;
-      if (this.walnutInventory <= 0) {
-        hideButton.disabled = true;
-        hideButton.style.opacity = '0.4';
-      } else {
-        hideButton.disabled = false;
-        hideButton.style.opacity = '1';
-      }
+      // Just change opacity - keep button always clickable like emote buttons
+      hideButton.style.opacity = this.walnutInventory <= 0 ? '0.4' : '1';
     }
 
     // Update THROW button
@@ -3909,13 +4072,7 @@ export class Game {
     const throwCountSpan = document.getElementById('mobile-throw-count');
     if (throwButton && throwCountSpan) {
       throwCountSpan.textContent = `(${this.walnutInventory})`;
-      if (this.walnutInventory <= 0) {
-        throwButton.disabled = true;
-        throwButton.style.opacity = '0.4';
-      } else {
-        throwButton.disabled = false;
-        throwButton.style.opacity = '1';
-      }
+      throwButton.style.opacity = this.walnutInventory <= 0 ? '0.4' : '1';
     }
 
     // MVP 8 Phase 3: Update EAT button
@@ -3923,14 +4080,9 @@ export class Game {
     const eatCountSpan = document.getElementById('mobile-eat-count');
     if (eatButton && eatCountSpan) {
       eatCountSpan.textContent = `(${this.walnutInventory})`;
-      // Disable if no walnuts OR already at full health
-      if (this.walnutInventory <= 0 || this.health >= this.MAX_HEALTH) {
-        eatButton.disabled = true;
-        eatButton.style.opacity = '0.4';
-      } else {
-        eatButton.disabled = false;
-        eatButton.style.opacity = '1';
-      }
+      // Dim if no walnuts OR already at full health
+      const canEat = this.walnutInventory > 0 && this.health < this.MAX_HEALTH;
+      eatButton.style.opacity = canEat ? '1' : '0.4';
     }
   }
 
@@ -4080,39 +4232,27 @@ export class Game {
   private createBuriedWalnutVisual(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
 
-    // MVP 8 FIX: Use shared walnut mesh (partially buried above mound)
+    // MVP 8 FIX: Use shared walnut mesh (sits on ground patch)
     const walnut = this.createWalnutMesh();
-    walnut.position.y = 0.04; // Partially visible above dirt mound
+    walnut.position.y = 0.03; // Slightly above ground
     walnut.castShadow = true;
     walnut.receiveShadow = true;
     group.add(walnut);
 
-    // Dirt mound around walnut (smaller, more subtle)
-    const moundGeometry = new THREE.SphereGeometry(0.12, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2); // Reduced from 0.16 to 0.12
-    const moundMaterial = new THREE.MeshStandardMaterial({
-      color: 0x5a4a3a, // Lighter soil color (more visible than before)
-      roughness: 0.95,
-      metalness: 0.1
-    });
-    const mound = new THREE.Mesh(moundGeometry, moundMaterial);
-    mound.scale.set(1, 0.3, 1); // Flatter mound
-    mound.position.y = 0.01;
-    mound.receiveShadow = true;
-    mound.castShadow = true;
-    group.add(mound);
-
-    // Add a darker ring at base for depth
-    const ringGeometry = new THREE.RingGeometry(0.18, 0.25, 16);
-    const ringMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4a3a2a,
-      roughness: 0.98,
+    // Simple brownish ground patch - flat disc slightly bigger than walnut
+    // Walnut radius: 0.06, patch radius: 0.10 (just slightly bigger)
+    const patchGeometry = new THREE.CircleGeometry(0.10, 16);
+    const patchMaterial = new THREE.MeshStandardMaterial({
+      color: 0x6B5A4D, // Slightly brownish, earthy color
+      roughness: 0.9,
+      metalness: 0.0,
       side: THREE.DoubleSide
     });
-    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.005;
-    ring.receiveShadow = true;
-    group.add(ring);
+    const patch = new THREE.Mesh(patchGeometry, patchMaterial);
+    patch.rotation.x = -Math.PI / 2; // Lay flat on ground
+    patch.position.y = 0.01; // Just above terrain to prevent z-fighting
+    patch.receiveShadow = true;
+    group.add(patch);
 
     // Add invisible collision sphere for easier clicking (MVP 5: Increased to 1.2 for even better click detection)
     const collisionGeometry = new THREE.SphereGeometry(1.2, 8, 8);
@@ -4599,41 +4739,43 @@ export class Game {
       }
     }
 
-    // Draw local player
-    const playerPos = worldToMinimap(this.character.position.x, this.character.position.z);
+    // Draw local player (MVP 8 FIX: Hide indicator while dead, show after respawn)
+    if (!this.isDead && this.character) {
+      const playerPos = worldToMinimap(this.character.position.x, this.character.position.z);
 
-    // Player dot
-    ctx.fillStyle = '#00ff00';
-    ctx.beginPath();
-    ctx.arc(playerPos.x, playerPos.y, 6, 0, Math.PI * 2);
-    ctx.fill();
+      // Player dot
+      ctx.fillStyle = '#00ff00';
+      ctx.beginPath();
+      ctx.arc(playerPos.x, playerPos.y, 6, 0, Math.PI * 2);
+      ctx.fill();
 
-    // Player border
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+      // Player border
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
 
-    // Draw player direction indicator (arrow showing rotation)
-    // Player rotation: 0 = facing +Z (south), Math.PI = facing -Z (north)
-    // Canvas: rotation 0 = up (north), PI = down (south), -PI/2 = right (east), PI/2 = left (west)
-    ctx.save();
-    ctx.translate(playerPos.x, playerPos.y);
-    ctx.rotate(Math.PI - this.character.rotation.y); // Correct mapping for static north-up minimap
+      // Draw player direction indicator (arrow showing rotation)
+      // Player rotation: 0 = facing +Z (south), Math.PI = facing -Z (north)
+      // Canvas: rotation 0 = up (north), PI = down (south), -PI/2 = right (east), PI/2 = left (west)
+      ctx.save();
+      ctx.translate(playerPos.x, playerPos.y);
+      ctx.rotate(Math.PI - this.character.rotation.y); // Correct mapping for static north-up minimap
 
-    // Draw direction arrow
-    ctx.strokeStyle = '#00ff00';
-    ctx.fillStyle = '#00ff00';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, -10);  // Arrow tip
-    ctx.lineTo(-4, -4);
-    ctx.lineTo(0, 0);
-    ctx.lineTo(4, -4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+      // Draw direction arrow
+      ctx.strokeStyle = '#00ff00';
+      ctx.fillStyle = '#00ff00';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, -10);  // Arrow tip
+      ctx.lineTo(-4, -4);
+      ctx.lineTo(0, 0);
+      ctx.lineTo(4, -4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
 
-    ctx.restore();
+      ctx.restore();
+    }
   }
 
   /**
@@ -4772,6 +4914,8 @@ export class Game {
     // Add to scene and registry
     walnutGroup.userData.ownerId = this.playerId;
     walnutGroup.userData.id = walnutId;
+    // MVP 8 FIX: Add settling cooldown to prevent immediate pickup (same as thrown projectiles)
+    walnutGroup.userData.settlingUntil = Date.now() + 2000; // 2 second cooldown
     this.scene.add(walnutGroup);
     this.walnuts.set(walnutId, walnutGroup);
 
@@ -4779,9 +4923,8 @@ export class Game {
     const label = this.createLabel(labelText, labelColor);
     this.walnutLabels.set(walnutId, label);
 
-    // MVP 8: Decrement unified walnut inventory
-    this.walnutInventory--;
-    this.updateMobileButtons(); // Update UI (all action buttons)
+    // MVP 8: Server will decrement inventory and send inventory_update
+    // (Removed optimistic decrement to prevent desync)
 
     // MVP 5: Spawn dirt particles (sound already played at start for instant feedback)
     if (this.vfxManager) {
@@ -4927,8 +5070,6 @@ export class Game {
       },
       targetId: targetId
     });
-
-    console.log(`🌰 Throw request sent (inventory: ${this.walnutInventory}, target: ${targetId || 'none'})`);
   }
 
   /**
@@ -4951,16 +5092,13 @@ export class Game {
       return;
     }
 
-    // Consume one walnut
-    this.walnutInventory--;
-    this.updateWalnutHUD();
-
-    // Heal player
+    // MVP 8: Server will decrement inventory and send inventory_update
+    // (Removed optimistic decrement to prevent double-decrement)
+    // Optimistically heal for instant UX (server will confirm via entity_healed)
     this.heal(25);
 
     // MIGRATION PHASE 2.2: Use state machine for eat animation
     if (this.actions['eat']) {
-      console.log('🍽️ Playing eat animation for healing');
       const eatAction = this.actions['eat'];
       eatAction.timeScale = 1.0;
 
@@ -4976,7 +5114,6 @@ export class Game {
 
     // Visual/audio feedback
     this.toastManager.success('+25 HP!');
-    console.log(`🍽️ Ate walnut for healing. Health: ${this.health}/${this.MAX_HEALTH}, Inventory: ${this.walnutInventory}`);
   }
 
   /**
@@ -5249,14 +5386,12 @@ export class Game {
 
     // MVP 8 FIX: Check settling delay FIRST (walnut just landed from projectile)
     if (walnutGroup.userData.settlingUntil && now < walnutGroup.userData.settlingUntil) {
-      console.log(`⏳ Walnut ${walnutId} is settling (${Math.round((walnutGroup.userData.settlingUntil - now))}ms remaining)`);
       return; // Walnut still settling, not yet pickupable
     }
 
     // MVP 8: Check immunity (legacy - now using settling delay instead)
     if (walnutGroup.userData.immunePlayerId === this.playerId && walnutGroup.userData.immuneUntil) {
       if (now < walnutGroup.userData.immuneUntil) {
-        console.log(`⚠️ Player is immune to walnut ${walnutId} (${Math.round((walnutGroup.userData.immuneUntil - now) / 1000)}s remaining)`);
         return; // Player is still immune, cannot pick up
       }
     }
@@ -5297,9 +5432,9 @@ export class Game {
       // MVP 5: Toast notification for finding your own walnut
       this.toastManager.info('Found your walnut');
     } else {
-      // MVP 8: FOUND SOMEONE ELSE'S WALNUT - Award points, server handles inventory
-      this.playerScore += points;
-      // (Server increments walnutInventory and sends inventory_update)
+      // MVP 8: FOUND SOMEONE ELSE'S WALNUT - Server awards points and handles inventory
+      // (Server increments walnutInventory, score, and sends updates via player_update)
+      // Note: Score update comes from server via player_update message (server-authoritative)
 
       // MVP 5: Visual feedback for scoring (audio already played for instant response)
       if (this.vfxManager && this.character) {
@@ -5326,7 +5461,6 @@ export class Game {
     // Server increments walnutInventory (sent via inventory_update message)
     // Play eat animation for ~1 second, blocks movement briefly
     if (this.actions['eat']) {
-      console.log('🍽️ Playing eat animation for pickup');
       const eatAction = this.actions['eat'];
       eatAction.timeScale = 1.0; // Normal speed
 
@@ -5337,8 +5471,6 @@ export class Game {
       // Fixed 1s duration - animation plays, then player can continue if W still held
       this.requestAnimation('eat', this.ANIM_PRIORITY_ACTION, 1000, true);
     }
-
-    console.log(`📥 Picked up walnut! Inventory will be updated by server.`);
 
     // MULTIPLAYER: Send to server for sync
     this.sendMessage({
@@ -5577,9 +5709,36 @@ export class Game {
    */
   private async updateLeaderboard(): Promise<void> {
     try {
-      // For now, use mock data since server doesn't have leaderboard yet
-      // TODO: Fetch from server endpoint
-      const leaderboardData = this.getMockLeaderboardData();
+      // MVP 8: Fetch real leaderboard data from server
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+      console.log(`🏆 Fetching leaderboard from: ${apiUrl}/api/leaderboard/top?limit=10`);
+
+      const response = await fetch(`${apiUrl}/api/leaderboard/top?limit=10`);
+
+      let leaderboardData;
+      if (!response.ok) {
+        console.warn(`⚠️ Leaderboard fetch failed (${response.status} ${response.statusText}), using mock data`);
+        leaderboardData = this.getMockLeaderboardData();
+      } else {
+        const data = await response.json();
+        console.log('✅ Leaderboard API response:', data);
+        console.log(`📊 Leaderboard stats: ${data.count} entries shown, ${data.totalPlayers} total players in DB`);
+
+        if (data.leaderboard.length === 0) {
+          console.warn('⚠️ Leaderboard is empty! No scores have been reported yet. Falling back to mock data.');
+          leaderboardData = this.getMockLeaderboardData();
+        } else {
+          leaderboardData = data.leaderboard.map((entry: any) => ({
+            playerId: entry.playerId,
+            displayName: entry.playerId === this.playerId
+              ? (this.username ? `You (${this.username})` : 'You')
+              : entry.playerId.substring(0, 8), // Show first 8 chars of player ID
+            score: entry.score
+          }));
+
+          console.log('🏆 Processed leaderboard data:', leaderboardData);
+        }
+      }
 
       const leaderboardList = document.getElementById('leaderboard-list');
       if (!leaderboardList) return;
@@ -5588,7 +5747,7 @@ export class Game {
       leaderboardList.innerHTML = '';
 
       // Add entries (top 10)
-      leaderboardData.slice(0, 10).forEach((entry, index) => {
+      leaderboardData.slice(0, 10).forEach((entry: any, index: number) => {
         const li = document.createElement('li');
 
         // Highlight current player
