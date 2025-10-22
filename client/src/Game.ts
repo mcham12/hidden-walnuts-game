@@ -1949,6 +1949,15 @@ export class Game {
         }
         break;
 
+      case 'score_update':
+        // MVP 8: Direct score update from server (real-time HUD sync)
+        if (typeof data.score === 'number') {
+          console.log(`🏆 Direct score update from server: ${this.playerScore} → ${data.score}`);
+          this.playerScore = data.score;
+          // Note: HUD will update in next animation frame via updateWalnutHUD()
+        }
+        break;
+
       case 'entity_healed':
         // MVP 8: Someone healed (ate a walnut)
         if (data.playerId && typeof data.healing === 'number' && typeof data.newHealth === 'number') {

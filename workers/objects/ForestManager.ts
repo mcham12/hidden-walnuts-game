@@ -883,10 +883,14 @@ export default class ForestManager extends DurableObject {
             points: data.points
           });
 
-          // MVP 8: Send inventory update to the player who found it
+          // MVP 8: Send inventory + score update to the player who found it
           this.sendMessage(playerConnection.socket, {
             type: 'inventory_update',
             walnutCount: playerConnection.walnutInventory
+          });
+          this.sendMessage(playerConnection.socket, {
+            type: 'score_update',
+            score: playerConnection.score
           });
 
           // MVP 8: Report updated score to leaderboard
@@ -1062,8 +1066,12 @@ export default class ForestManager extends DurableObject {
         playerConnection.score += 2;
         playerConnection.combatStats.hits += 1;
 
-        // MVP 8: Report score to leaderboard
+        // MVP 8: Report score to leaderboard + send to player for HUD
         await this.reportScoreToLeaderboard(playerConnection);
+        this.sendMessage(playerConnection.socket, {
+          type: 'score_update',
+          score: playerConnection.score
+        });
 
         console.log(`💥 ${playerConnection.username} hit ${target.username} for ${actualDamage} damage (${target.health}/${target.maxHealth} HP)`);
 
@@ -1155,9 +1163,17 @@ export default class ForestManager extends DurableObject {
     victim.score = Math.max(0, victim.score - 2);
     victim.combatStats.deaths += 1;
 
-    // MVP 8: Report scores to leaderboard
+    // MVP 8: Report scores to leaderboard + send to players for HUD
     await this.reportScoreToLeaderboard(killer);
     await this.reportScoreToLeaderboard(victim);
+    this.sendMessage(killer.socket, {
+      type: 'score_update',
+      score: killer.score
+    });
+    this.sendMessage(victim.socket, {
+      type: 'score_update',
+      score: victim.score
+    });
 
     // Drop all walnuts at death location
     const droppedWalnuts = victim.walnutInventory;
