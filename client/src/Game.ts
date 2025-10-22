@@ -110,12 +110,18 @@ export class Game {
   // MVP 6: Remote player username labels (Map playerId → HTML label element)
   private remotePlayerNameLabels: Map<string, HTMLElement> = new Map();
 
+  // MVP 9: Health bars for remote players (Map playerId → { container, fill })
+  private remotePlayerHealthBars: Map<string, { container: HTMLElement; fill: HTMLElement; }> = new Map();
+
   // MVP 7: NPC System - AI characters rendered on client
   private npcs: Map<string, THREE.Group> = new Map();
   private npcMixers: Map<string, THREE.AnimationMixer> = new Map();
   private npcActions: Map<string, { [key: string]: THREE.AnimationAction }> = new Map();
   private npcCurrentAnimations: Map<string, string> = new Map(); // Track current animation to prevent unnecessary resets
   private npcNameLabels: Map<string, HTMLElement> = new Map();
+
+  // MVP 9: Health bars for NPCs (Map npcId → { container, fill })
+  private npcHealthBars: Map<string, { container: HTMLElement; fill: HTMLElement; }> = new Map();
   private npcInterpolationBuffers: Map<string, Array<{ position: THREE.Vector3; quaternion: THREE.Quaternion; timestamp: number }>> = new Map();
   private npcPendingUpdates: Map<string, Array<{ position: any; rotationY: number; animation?: string; velocity?: any; behavior?: string; timestamp: number }>> = new Map();
 
@@ -1098,8 +1104,14 @@ export class Game {
     // MVP 6: Update remote player username labels
     this.updateRemotePlayerNameLabels();
 
+    // MVP 9: Update remote player health bars
+    this.updateRemotePlayerHealthBars();
+
     // MVP 7: Update NPC name labels
     this.updateNPCNameLabels();
+
+    // MVP 9: Update NPC health bars
+    this.updateNPCHealthBars();
 
     // MVP 3: Update proximity indicators
     this.updateProximityIndicators();
@@ -1864,7 +1876,7 @@ export class Game {
             }
           } else {
             // Remote player update
-            this.updateRemotePlayer(data.squirrelId, data.position, data.rotationY, data.animation, data.velocity, data.animationStartTime, data.moveType, data.characterId);
+            this.updateRemotePlayer(data.squirrelId, data.position, data.rotationY, data.animation, data.velocity, data.animationStartTime, data.moveType, data.characterId, data.health);
           }
         }
         break;
@@ -1901,7 +1913,7 @@ export class Game {
       case 'npc_update':
         // MVP 7: NPC position/animation update from server (legacy single update)
         if (data.npcId) {
-          this.updateNPC(data.npcId, data.position, data.rotationY, data.animation, data.velocity, data.behavior);
+          this.updateNPC(data.npcId, data.position, data.rotationY, data.animation, data.velocity, data.behavior, data.health);
         }
         break;
 
@@ -1909,7 +1921,7 @@ export class Game {
         // MVP 7.1: Batched NPC updates (all NPCs in single message for efficiency)
         if (data.npcs && Array.isArray(data.npcs)) {
           for (const npcData of data.npcs) {
-            this.updateNPC(npcData.npcId, npcData.position, npcData.rotationY, npcData.animation, npcData.velocity, npcData.behavior);
+            this.updateNPC(npcData.npcId, npcData.position, npcData.rotationY, npcData.animation, npcData.velocity, npcData.behavior, npcData.health);
           }
         }
         break;
@@ -2164,6 +2176,13 @@ export class Game {
         this.remotePlayerNameLabels.set(playerId, usernameLabel);
       }
 
+      // MVP 9: Create health bar for remote player
+      const healthBar = this.createHealthBar();
+      this.remotePlayerHealthBars.set(playerId, healthBar);
+      // Store initial health in userData (will be updated by player_update messages)
+      remoteCharacter.userData.health = 100; // Default to full health
+      remoteCharacter.userData.maxHealth = 100;
+
       // MVP 5.5: Add remote player collision with proper radius
       if (this.collisionSystem) {
         this.collisionSystem.addPlayerCollider(
@@ -2177,9 +2196,14 @@ export class Game {
     }
   }
 
-  private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, _moveType?: string, _characterId?: string): void {
+  private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, _moveType?: string, _characterId?: string, health?: number): void {
     const remotePlayer = this.remotePlayers.get(playerId);
     if (remotePlayer) {
+      // MVP 9: Update health in userData if provided
+      if (typeof health === 'number') {
+        remotePlayer.userData.health = health;
+      }
+
       // STANDARD: Calculate ground position using raycasting
       const groundY = this.positionRemotePlayerOnGround(remotePlayer, position.x, position.z);
 
@@ -2405,6 +2429,13 @@ export class Game {
         this.labelsContainer.removeChild(nameLabel);
         this.remotePlayerNameLabels.delete(playerId);
       }
+
+      // MVP 9: Remove health bar
+      const healthBar = this.remotePlayerHealthBars.get(playerId);
+      if (healthBar && this.labelsContainer) {
+        this.labelsContainer.removeChild(healthBar.container);
+        this.remotePlayerHealthBars.delete(playerId);
+      }
     }
   }
 
@@ -2477,7 +2508,7 @@ export class Game {
   private async createNPC(npcId: string, position: { x: number; y: number; z: number }, rotationY: number, characterId: string, username: string, animation: string): Promise<void> {
     if (this.npcs.has(npcId)) {
       // NPC already exists, just update position
-      this.updateNPC(npcId, position, rotationY, animation, undefined, undefined);
+      this.updateNPC(npcId, position, rotationY, animation, undefined, undefined, undefined);
       return;
     }
 
@@ -2625,6 +2656,13 @@ export class Game {
         console.error('❌ No labels container found for NPC label');
       }
 
+      // MVP 9: Create health bar for NPC
+      const healthBar = this.createHealthBar();
+      this.npcHealthBars.set(npcId, healthBar);
+      // Store initial health in userData (will be updated by npc_update messages)
+      npcCharacter.userData.health = 100; // Default to full health
+      npcCharacter.userData.maxHealth = 100;
+
       console.log(`🤖 Created NPC: ${username} (${characterId}) at (${position.x.toFixed(1)}, ${position.z.toFixed(1)})`);
 
       // Process any pending updates that arrived while NPC was loading
@@ -2632,7 +2670,7 @@ export class Game {
       if (pendingQueue && pendingQueue.length > 0) {
         console.log(`📦 Processing ${pendingQueue.length} queued updates for ${npcId}`);
         for (const update of pendingQueue) {
-          this.updateNPC(npcId, update.position, update.rotationY, update.animation, update.velocity, update.behavior);
+          this.updateNPC(npcId, update.position, update.rotationY, update.animation, update.velocity, update.behavior, undefined);
         }
         this.npcPendingUpdates.delete(npcId);
       }
@@ -2649,9 +2687,14 @@ export class Game {
   /**
    * MVP 7: Update NPC position and animation from server
    */
-  private updateNPC(npcId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; z: number }, behavior?: string): void {
+  private updateNPC(npcId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; z: number }, behavior?: string, health?: number): void {
     const npc = this.npcs.get(npcId);
     if (npc) {
+      // MVP 9: Update health in userData if provided
+      if (typeof health === 'number') {
+        npc.userData.health = health;
+      }
+
       // Calculate ground position
       const groundY = this.positionRemotePlayerOnGround(npc, position.x, position.z);
 
@@ -2766,6 +2809,13 @@ export class Game {
       if (nameLabel && this.labelsContainer) {
         this.labelsContainer.removeChild(nameLabel);
         this.npcNameLabels.delete(npcId);
+      }
+
+      // MVP 9: Remove health bar
+      const healthBar = this.npcHealthBars.get(npcId);
+      if (healthBar && this.labelsContainer) {
+        this.labelsContainer.removeChild(healthBar.container);
+        this.npcHealthBars.delete(npcId);
       }
 
       console.log(`🤖 Removed NPC: ${npcId}`);
@@ -4121,6 +4171,61 @@ export class Game {
   }
 
   /**
+   * MVP 9: Create health bar for remote player or NPC
+   * Returns { container, fill } for updating health later
+   */
+  private createHealthBar(): { container: HTMLElement; fill: HTMLElement } {
+    // Create container (background)
+    const container = document.createElement('div');
+    container.className = 'health-bar-container';
+    container.style.position = 'absolute';
+    container.style.width = '60px';
+    container.style.height = '6px';
+    container.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+    container.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+    container.style.borderRadius = '3px';
+    container.style.overflow = 'hidden';
+    container.style.pointerEvents = 'none';
+    container.style.zIndex = '999';
+
+    // Create fill (foreground - health percentage)
+    const fill = document.createElement('div');
+    fill.className = 'health-bar-fill';
+    fill.style.position = 'absolute';
+    fill.style.top = '0';
+    fill.style.left = '0';
+    fill.style.height = '100%';
+    fill.style.width = '100%'; // Start at full health
+    fill.style.backgroundColor = '#44ff44'; // Green
+    fill.style.transition = 'width 0.3s ease, background-color 0.3s ease';
+
+    container.appendChild(fill);
+
+    if (this.labelsContainer) {
+      this.labelsContainer.appendChild(container);
+    }
+
+    return { container, fill };
+  }
+
+  /**
+   * MVP 9: Update health bar fill and color based on health percentage
+   */
+  private updateHealthBar(fill: HTMLElement, currentHealth: number, maxHealth: number): void {
+    const healthPercent = Math.max(0, Math.min(100, (currentHealth / maxHealth) * 100));
+    fill.style.width = `${healthPercent}%`;
+
+    // Color-coded based on health percentage
+    if (healthPercent > 60) {
+      fill.style.backgroundColor = '#44ff44'; // Green
+    } else if (healthPercent > 30) {
+      fill.style.backgroundColor = '#ffaa44'; // Yellow/Orange
+    } else {
+      fill.style.backgroundColor = '#ff4444'; // Red
+    }
+  }
+
+  /**
    * MVP 6: Update remote player username labels (always visible, positioned above player)
    */
   private updateRemotePlayerNameLabels(): void {
@@ -4131,6 +4236,46 @@ export class Game {
         const labelPos = player.position.clone();
         labelPos.y += 2.5;
         this.updateLabelPosition(label, labelPos);
+      }
+    }
+  }
+
+  /**
+   * MVP 9: Update remote player health bars (position and fill)
+   */
+  private updateRemotePlayerHealthBars(): void {
+    for (const [playerId, healthBar] of this.remotePlayerHealthBars) {
+      const player = this.remotePlayers.get(playerId);
+      if (player) {
+        // Position health bar below username (2.0 units up)
+        const barPos = player.position.clone();
+        barPos.y += 2.0;
+        this.updateLabelPosition(healthBar.container, barPos);
+
+        // Update health bar fill based on userData
+        const health = player.userData.health || 100;
+        const maxHealth = player.userData.maxHealth || 100;
+        this.updateHealthBar(healthBar.fill, health, maxHealth);
+      }
+    }
+  }
+
+  /**
+   * MVP 9: Update NPC health bars (position and fill)
+   */
+  private updateNPCHealthBars(): void {
+    for (const [npcId, healthBar] of this.npcHealthBars) {
+      const npc = this.npcs.get(npcId);
+      if (npc) {
+        // Position health bar below username (2.0 units up)
+        const barPos = npc.position.clone();
+        barPos.y += 2.0;
+        this.updateLabelPosition(healthBar.container, barPos);
+
+        // Update health bar fill based on userData
+        const health = npc.userData.health || 100;
+        const maxHealth = npc.userData.maxHealth || 100;
+        this.updateHealthBar(healthBar.fill, health, maxHealth);
       }
     }
   }
