@@ -1945,6 +1945,21 @@ export class Game {
         }
         break;
 
+      case 'entity_healed':
+        // MVP 8: Someone healed (ate a walnut)
+        if (data.playerId && typeof data.healing === 'number' && typeof data.newHealth === 'number') {
+          if (data.playerId === this.playerId) {
+            // Local player healed - apply server-authoritative health
+            console.log(`💚 Received heal confirmation from server: +${data.healing} HP → ${data.newHealth} HP`);
+            this.health = data.newHealth;
+            this.updateHealthUI();
+          } else {
+            // Remote player healed - could show visual feedback
+            console.log(`💚 ${data.playerId} healed: +${data.healing} HP`);
+          }
+        }
+        break;
+
       case 'throw_event':
         // MVP 8: Someone threw a walnut - spawn projectile
         if (data.throwerId && data.fromPosition && data.toPosition) {
