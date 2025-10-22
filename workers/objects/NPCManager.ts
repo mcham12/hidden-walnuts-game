@@ -40,6 +40,8 @@ interface NPC {
   walnutInventory: number;
   lastThrowTime: number;
   aggressionLevel: number;
+  health: number; // MVP 9: NPC health (0-100)
+  maxHealth: number; // MVP 9: Maximum health
 }
 
 interface PlayerConnection {
@@ -203,7 +205,9 @@ export class NPCManager {
       animation: 'idle',
       walnutInventory: 0,
       lastThrowTime: 0,
-      aggressionLevel
+      aggressionLevel,
+      health: 100, // MVP 9: NPCs start with full health
+      maxHealth: 100
     };
   }
 
