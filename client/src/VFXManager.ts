@@ -229,14 +229,9 @@ export class VFXManager {
    * Displays red damage numbers that float up and fade
    */
   showDamageFloater(damage: number, position: THREE.Vector3): void {
-    console.log(`💥 showDamageFloater called: damage=${damage}, position=`, position);
-
     if (!this.popupContainer) {
-      console.error('❌ DAMAGE FLOATER: popupContainer is null!');
       return;
     }
-
-    console.log('✅ DAMAGE FLOATER: popupContainer exists:', this.popupContainer);
 
     // Create damage element
     const element = document.createElement('div');
@@ -257,21 +252,17 @@ export class VFXManager {
     const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
     const y = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
 
-    console.log(`📍 DAMAGE FLOATER: Screen position: x=${x.toFixed(0)}, y=${y.toFixed(0)} (window: ${window.innerWidth}x${window.innerHeight})`);
-
     element.style.left = `${x}px`;
     element.style.top = `${y}px`;
     element.style.transform = 'translate(-50%, -50%)';
     element.style.opacity = '1'; // Explicitly set initial opacity
 
     this.popupContainer.appendChild(element);
-    console.log('✅ DAMAGE FLOATER: Element appended to container');
 
     // Animate upward and fade
     requestAnimationFrame(() => {
       element.style.transform = 'translate(-50%, -150%)';
       element.style.opacity = '0';
-      console.log('🎬 DAMAGE FLOATER: Animation started');
     });
 
     // Track for cleanup
@@ -285,7 +276,6 @@ export class VFXManager {
     setTimeout(() => {
       if (this.popupContainer && element.parentNode) {
         this.popupContainer.removeChild(element);
-        console.log('🗑️ DAMAGE FLOATER: Element removed after animation');
       }
       this.scorePopups = this.scorePopups.filter(p => p.element !== element);
     }, 1000);

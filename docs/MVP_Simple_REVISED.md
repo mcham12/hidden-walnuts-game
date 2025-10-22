@@ -1,6 +1,6 @@
 # 🎮 Hidden Walnuts - MVP Development Plan
 
-**Current Status**: MVP 8 (Combat & Health) - 🎯 **READY TO START**
+**Current Status**: MVP 9 (Animation Polish) - 🎯 **NEXT**
 
 ---
 
@@ -20,6 +20,7 @@
 - **MVP 6**: Player Authentication & Identity - Username system, session tokens, position persistence
 - **MVP 7**: NPC Characters & World Life - Server-side AI with behaviors, walnut gathering, animation/collision fixes
 - **MVP 7.1**: Cloudflare Cost Mitigation & Bot Protection - Turnstile, rate limiting, cost optimizations
+- **MVP 8**: Combat, Health & Resource Management - Projectile throwing, damage/health system, eating walnuts, death/respawn, inventory limits
 
 ---
 
@@ -905,8 +906,8 @@ velocity.y += gravity * delta  // -9.8 m/s²
 | 6 | Player Identity (Simple) | ✅ Complete |
 | 7 | NPC Characters | ✅ Complete |
 | 7.1 | Cost Mitigation & Bot Protection | ✅ Complete |
-| **8** | **Combat & Health** | 🎯 **NEXT** |
-| 9 | Animation Polish (Optional) | Pending |
+| 8 | Combat & Health | ✅ Complete |
+| **9** | **Animation Polish (Optional)** | 🎯 **NEXT** |
 | 10 | Predators & Polish | Pending |
 | 11 | Full Authentication | Pending |
 | 12 | Advanced Systems | Future |
@@ -954,4 +955,4 @@ Remove unused ECS code. Do last when features stable. (TBD)
 
 ---
 
-**Next Step**: Begin MVP 8 (Combat & Health) 🥊
+**Next Step**: Begin MVP 9 (Animation Polish) 🎨

@@ -1857,11 +1857,9 @@ export class Game {
           if (data.squirrelId === this.playerId) {
             // MVP 8: Update local player's server-authoritative score and health
             if (typeof data.score === 'number' && data.score !== this.playerScore) {
-              console.log(`🏆 Score updated from server: ${this.playerScore} → ${data.score}`);
               this.playerScore = data.score;
             }
             if (typeof data.health === 'number' && data.health !== this.health) {
-              console.log(`❤️ Health updated from server: ${this.health} → ${data.health}`);
               this.health = data.health;
             }
           } else {
@@ -1942,7 +1940,6 @@ export class Game {
         // MVP 8: Update player walnut inventory count
         if (typeof data.walnutCount === 'number') {
           this.walnutInventory = data.walnutCount;
-          console.log(`🌰 Inventory updated: ${this.walnutInventory} walnuts`);
           // Update all UI displays
           this.updateMobileButtons();
           this.updateWalnutHUD();
@@ -1952,7 +1949,6 @@ export class Game {
       case 'score_update':
         // MVP 8: Direct score update from server (real-time HUD sync)
         if (typeof data.score === 'number') {
-          console.log(`🏆 Direct score update from server: ${this.playerScore} → ${data.score}`);
           this.playerScore = data.score;
           // Note: HUD will update in next animation frame via updateWalnutHUD()
         }
@@ -1963,12 +1959,8 @@ export class Game {
         if (data.playerId && typeof data.healing === 'number' && typeof data.newHealth === 'number') {
           if (data.playerId === this.playerId) {
             // Local player healed - apply server-authoritative health
-            console.log(`💚 Received heal confirmation from server: +${data.healing} HP → ${data.newHealth} HP`);
             this.health = data.newHealth;
             this.updateHealthUI();
-          } else {
-            // Remote player healed - could show visual feedback
-            console.log(`💚 ${data.playerId} healed: +${data.healing} HP`);
           }
         }
         break;
@@ -1985,7 +1977,6 @@ export class Game {
         if (data.playerId === this.playerId) {
           // Local player respawn - apply server-authoritative state
           if (typeof data.walnutInventory === 'number') {
-            console.log(`♻️ Respawn: inventory set to ${data.walnutInventory} from server`);
             this.walnutInventory = data.walnutInventory;
             this.updateWalnutHUD();
             this.updateMobileButtons();
@@ -2935,14 +2926,6 @@ export class Game {
     );
     data.mesh.position.copy(finalPosition);
 
-    console.log(`🌰 HIT walnut ${walnutId} positioned at:`, {
-      x: finalPosition.x.toFixed(2),
-      y: finalPosition.y.toFixed(2),
-      z: finalPosition.z.toFixed(2),
-      terrainHeight: terrainHeight.toFixed(2),
-      inScene: this.scene.children.includes(data.mesh)
-    });
-
     // Stop spinning animation (projectile was spinning in flight)
     data.mesh.rotation.set(0, 0, 0);
 
@@ -2987,8 +2970,6 @@ export class Game {
    * BEST PRACTICE: Transform projectile mesh into pickup walnut (no destroy/recreate)
    */
   private onProjectileMiss(data: { projectileId: string; ownerId: string; position: THREE.Vector3; mesh: THREE.Group }): void {
-    console.log(`🌰 Projectile missed! Transforming to pickupable walnut at position:`, data.position);
-
     // BEST PRACTICE: Transform projectile mesh into pickup walnut (no destroy/recreate)
     const walnutId = `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -3086,17 +3067,12 @@ export class Game {
     }
 
     this.health = Math.max(0, this.health - amount);
-    console.log(`💔 Took ${amount} damage from ${attackerId}. Health: ${this.health}/${this.MAX_HEALTH}`);
 
     // MVP 8: Show damage floater on local player
-    console.log(`🩹 takeDamage: Attempting to show damage floater (character=${!!this.character}, vfxManager=${!!this.vfxManager})`);
     if (this.character && this.vfxManager) {
       const damagePosition = this.character.position.clone();
       damagePosition.y += 2; // Show above player head
-      console.log(`🎯 Calling vfxManager.showDamageFloater with amount=${amount}, position=`, damagePosition);
       this.vfxManager.showDamageFloater(amount, damagePosition);
-    } else {
-      console.warn(`⚠️ Cannot show damage floater: character=${!!this.character}, vfxManager=${!!this.vfxManager}`);
     }
 
     // MVP 8: Apply knockback effect (push away from attacker)
@@ -3159,8 +3135,6 @@ export class Game {
     const actualHeal = this.health - oldHealth;
 
     if (actualHeal > 0) {
-      console.log(`💚 Healed ${actualHeal} HP. Health: ${this.health}/${this.MAX_HEALTH}`);
-
       // Send heal event to server
       this.sendMessage({
         type: 'player_healed',
@@ -3350,8 +3324,6 @@ export class Game {
    * MVP 8 UX: Enhanced with random teleport and fade effects
    */
   private respawn(): void {
-    console.log('🔄 Respawning player...');
-
     // Reset health
     this.health = this.MAX_HEALTH;
     this.isDead = false;
@@ -3403,8 +3375,6 @@ export class Game {
     // Update UI
     this.updateHealthUI();
     this.updateWalnutHUD();
-
-    console.log('✅ Respawn complete!');
   }
 
   /**
@@ -3473,18 +3443,9 @@ export class Game {
     const healthBar = document.getElementById('health-bar');
     const healthText = document.getElementById('health-text');
 
-    console.log('🏥 updateHealthUI called:', {
-      health: this.health,
-      maxHealth: this.MAX_HEALTH,
-      healthBarFound: !!healthBar,
-      healthTextFound: !!healthText
-    });
-
     if (healthBar) {
       const healthPercent = Math.max(0, Math.min(100, (this.health / this.MAX_HEALTH) * 100));
       healthBar.style.width = `${healthPercent}%`;
-
-      console.log(`❤️ Health bar updated: ${healthPercent.toFixed(1)}% (${this.health}/${this.MAX_HEALTH})`);
 
       // Color changes based on health level
       if (healthPercent > 60) {
@@ -3500,9 +3461,6 @@ export class Game {
 
     if (healthText) {
       healthText.textContent = `${Math.round(this.health)}/${this.MAX_HEALTH}`;
-      console.log(`📝 Health text updated: ${healthText.textContent}`);
-    } else {
-      console.error('❌ Health text element not found! ID: health-text');
     }
   }
 
@@ -5112,8 +5070,6 @@ export class Game {
       },
       targetId: targetId
     });
-
-    console.log(`🌰 Throw request sent (inventory: ${this.walnutInventory}, target: ${targetId || 'none'})`);
   }
 
   /**
@@ -5143,7 +5099,6 @@ export class Game {
 
     // MIGRATION PHASE 2.2: Use state machine for eat animation
     if (this.actions['eat']) {
-      console.log('🍽️ Playing eat animation for healing');
       const eatAction = this.actions['eat'];
       eatAction.timeScale = 1.0;
 
@@ -5159,7 +5114,6 @@ export class Game {
 
     // Visual/audio feedback
     this.toastManager.success('+25 HP!');
-    console.log(`🍽️ Ate walnut for healing. Health: ${this.health}/${this.MAX_HEALTH}, Inventory: ${this.walnutInventory}`);
   }
 
   /**
@@ -5432,14 +5386,12 @@ export class Game {
 
     // MVP 8 FIX: Check settling delay FIRST (walnut just landed from projectile)
     if (walnutGroup.userData.settlingUntil && now < walnutGroup.userData.settlingUntil) {
-      console.log(`⏳ Walnut ${walnutId} is settling (${Math.round((walnutGroup.userData.settlingUntil - now))}ms remaining)`);
       return; // Walnut still settling, not yet pickupable
     }
 
     // MVP 8: Check immunity (legacy - now using settling delay instead)
     if (walnutGroup.userData.immunePlayerId === this.playerId && walnutGroup.userData.immuneUntil) {
       if (now < walnutGroup.userData.immuneUntil) {
-        console.log(`⚠️ Player is immune to walnut ${walnutId} (${Math.round((walnutGroup.userData.immuneUntil - now) / 1000)}s remaining)`);
         return; // Player is still immune, cannot pick up
       }
     }
@@ -5509,7 +5461,6 @@ export class Game {
     // Server increments walnutInventory (sent via inventory_update message)
     // Play eat animation for ~1 second, blocks movement briefly
     if (this.actions['eat']) {
-      console.log('🍽️ Playing eat animation for pickup');
       const eatAction = this.actions['eat'];
       eatAction.timeScale = 1.0; // Normal speed
 
@@ -5520,8 +5471,6 @@ export class Game {
       // Fixed 1s duration - animation plays, then player can continue if W still held
       this.requestAnimation('eat', this.ANIM_PRIORITY_ACTION, 1000, true);
     }
-
-    console.log(`📥 Picked up walnut! Inventory will be updated by server.`);
 
     // MULTIPLAYER: Send to server for sync
     this.sendMessage({

@@ -825,7 +825,6 @@ export default class ForestManager extends DurableObject {
 
         // MVP 8: Decrement player inventory
         playerConnection.walnutInventory--;
-        console.log(`🥜 ${playerConnection.username} hid walnut (${playerConnection.walnutInventory} walnuts left)`);
 
         // Persist updated mapState
         await this.storage.put('mapState', this.mapState);
@@ -863,14 +862,10 @@ export default class ForestManager extends DurableObject {
           const MAX_INVENTORY = 10;
           if (playerConnection.walnutInventory < MAX_INVENTORY) {
             playerConnection.walnutInventory++;
-            console.log(`🌰 Player ${playerConnection.squirrelId} now has ${playerConnection.walnutInventory} walnuts`);
-          } else {
-            console.log(`⚠️ Player ${playerConnection.squirrelId} inventory full (${MAX_INVENTORY} walnuts)`);
           }
 
           // MVP 8: Award +1 point for finding walnut
           playerConnection.score += 1;
-          console.log(`🏆 Player ${playerConnection.username} earned +1 point (now ${playerConnection.score} points)`);
 
           // Persist updated mapState
           await this.storage.put('mapState', this.mapState);
@@ -959,8 +954,6 @@ export default class ForestManager extends DurableObject {
         playerConnection.lastThrowTime = throwTime;
         playerConnection.walnutInventory--;
 
-        console.log(`🌰 Player ${playerConnection.squirrelId} threw walnut (${playerConnection.walnutInventory} remaining)`);
-
         // Broadcast throw event to ALL clients (including thrower for visual feedback)
         const throwEvent = {
           type: 'throw_event',
@@ -1003,8 +996,6 @@ export default class ForestManager extends DurableObject {
 
         this.mapState.push(droppedWalnut);
         await this.storage.put('mapState', this.mapState);
-
-        console.log(`🌰 Dropped walnut created at (${data.position.x}, ${data.position.y}, ${data.position.z})`);
 
         // Broadcast to all players so they can see the new pickupable walnut
         this.activePlayers.forEach((player) => {
@@ -1073,8 +1064,6 @@ export default class ForestManager extends DurableObject {
           score: playerConnection.score
         });
 
-        console.log(`💥 ${playerConnection.username} hit ${target.username} for ${actualDamage} damage (${target.health}/${target.maxHealth} HP)`);
-
         // Broadcast damage event to all players
         this.activePlayers.forEach((player) => {
           this.sendMessage(player.socket, {
@@ -1122,8 +1111,6 @@ export default class ForestManager extends DurableObject {
         const oldHp = playerConnection.health;
         playerConnection.health = Math.min(playerConnection.maxHealth, playerConnection.health + EAT_HEAL_AMOUNT);
         const actualHealing = playerConnection.health - oldHp;
-
-        console.log(`🍽️ ${playerConnection.username} ate walnut (+${actualHealing} HP, ${playerConnection.walnutInventory} walnuts left)`);
 
         // Broadcast heal event
         this.activePlayers.forEach((player) => {
@@ -1240,8 +1227,6 @@ export default class ForestManager extends DurableObject {
       victim.health = victim.maxHealth;
       victim.lastAttackerId = null;
       victim.invulnerableUntil = Date.now() + 3000; // 3s spawn protection
-
-      console.log(`♻️ ${victim.username} respawned at (${randomSpawn.x}, ${randomSpawn.z})`);
 
       // Broadcast respawn
       this.activePlayers.forEach((player) => {
@@ -1384,8 +1369,6 @@ export default class ForestManager extends DurableObject {
         updatedAt: Date.now()
       };
 
-      console.log(`🏆 Reporting score to leaderboard: ${scoreRecord.playerId} = ${scoreRecord.score} points`);
-
       // Report to leaderboard
       const response = await leaderboard.fetch(new Request('http://leaderboard/report', {
         method: 'POST',
@@ -1395,8 +1378,6 @@ export default class ForestManager extends DurableObject {
 
       if (!response.ok) {
         console.warn(`⚠️ Failed to report score to leaderboard for ${playerConnection.username} (status: ${response.status})`);
-      } else {
-        console.log(`✅ Score reported successfully for ${scoreRecord.playerId}`);
       }
     } catch (error) {
       console.error('❌ Error reporting score to leaderboard:', error);
