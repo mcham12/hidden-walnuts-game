@@ -1967,6 +1967,24 @@ export class Game {
         }
         break;
 
+      case 'player_respawn':
+        // MVP 8: Player respawned after death
+        if (data.playerId === this.playerId) {
+          // Local player respawn - apply server-authoritative state
+          if (typeof data.walnutInventory === 'number') {
+            console.log(`♻️ Respawn: inventory set to ${data.walnutInventory} from server`);
+            this.walnutInventory = data.walnutInventory;
+            this.updateWalnutHUD();
+            this.updateMobileButtons();
+          }
+          if (typeof data.health === 'number') {
+            this.health = data.health;
+            this.updateHealthUI();
+          }
+        }
+        // Note: Remote player respawns are handled by position updates
+        break;
+
       case 'throw_rejected':
         // MVP 8: Server rejected throw (cooldown or no ammo)
         if (data.reason === 'cooldown') {
@@ -4934,9 +4952,8 @@ export class Game {
     const label = this.createLabel(labelText, labelColor);
     this.walnutLabels.set(walnutId, label);
 
-    // MVP 8: Decrement unified walnut inventory
-    this.walnutInventory--;
-    this.updateMobileButtons(); // Update UI (all action buttons)
+    // MVP 8: Server will decrement inventory and send inventory_update
+    // (Removed optimistic decrement to prevent desync)
 
     // MVP 5: Spawn dirt particles (sound already played at start for instant feedback)
     if (this.vfxManager) {
@@ -5106,11 +5123,9 @@ export class Game {
       return;
     }
 
-    // Consume one walnut
-    this.walnutInventory--;
-    this.updateWalnutHUD();
-
-    // Heal player
+    // MVP 8: Server will decrement inventory and send inventory_update
+    // (Removed optimistic decrement to prevent double-decrement)
+    // Optimistically heal for instant UX (server will confirm via entity_healed)
     this.heal(25);
 
     // MIGRATION PHASE 2.2: Use state machine for eat animation

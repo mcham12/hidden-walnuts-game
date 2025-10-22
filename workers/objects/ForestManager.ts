@@ -801,6 +801,16 @@ export default class ForestManager extends DurableObject {
           return;
         }
 
+        // MVP 8: Validate player has walnuts to hide
+        if (playerConnection.walnutInventory <= 0) {
+          console.warn(`🚫 Hide rejected: No walnuts for ${playerConnection.squirrelId}`);
+          this.sendMessage(playerConnection.socket, {
+            type: 'hide_rejected',
+            reason: 'no_walnuts'
+          });
+          return;
+        }
+
         // Create new walnut in mapState
         const newWalnut: Walnut = {
           id: data.walnutId,
@@ -813,6 +823,10 @@ export default class ForestManager extends DurableObject {
         };
         this.mapState.push(newWalnut);
 
+        // MVP 8: Decrement player inventory
+        playerConnection.walnutInventory--;
+        console.log(`🥜 ${playerConnection.username} hid walnut (${playerConnection.walnutInventory} walnuts left)`);
+
         // Persist updated mapState
         await this.storage.put('mapState', this.mapState);
 
@@ -824,6 +838,12 @@ export default class ForestManager extends DurableObject {
           walnutType: data.walnutType,
           position: data.position,
           points: data.points
+        });
+
+        // MVP 8: Send inventory update to player
+        this.sendMessage(playerConnection.socket, {
+          type: 'inventory_update',
+          walnutCount: playerConnection.walnutInventory
         });
         break;
 
@@ -1214,7 +1234,8 @@ export default class ForestManager extends DurableObject {
           playerId: victim.squirrelId,
           position: victim.position,
           health: victim.health,
-          invulnerableUntil: victim.invulnerableUntil
+          invulnerableUntil: victim.invulnerableUntil,
+          walnutInventory: victim.walnutInventory // MVP 8: Include inventory (should be 0 after death)
         });
       });
     }, 3000);
