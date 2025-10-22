@@ -260,7 +260,8 @@ export class NPCManager {
         rotationY: npc.rotationY,
         velocity: npc.velocity,
         animation: npc.animation,
-        behavior: npc.currentBehavior
+        behavior: npc.currentBehavior,
+        health: npc.health // MVP 9: Include health for client health bars
       });
     }
 
