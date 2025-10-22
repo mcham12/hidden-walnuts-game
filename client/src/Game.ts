@@ -2383,9 +2383,18 @@ export class Game {
     for (const [npcId, label] of this.npcNameLabels) {
       const npc = this.npcs.get(npcId);
       if (npc) {
-        // Position label above NPC's head (2.5 units up, same as players)
+        // MVP 9: Dynamic height adjustment based on distance to camera
+        const distanceToCamera = this.camera.position.distanceTo(npc.position);
+        let nameLabelYOffset = 2.5; // Default position above NPC's head
+
+        // When close to NPC (< 6 units), lower the label for better visibility
+        if (distanceToCamera < 6) {
+          nameLabelYOffset = 1.8; // Lower when close
+        }
+
+        // Position label above NPC's head (same as players)
         const labelPos = npc.position.clone();
-        labelPos.y += 2.5;
+        labelPos.y += nameLabelYOffset;
         this.updateLabelPosition(label, labelPos);
       }
     }
@@ -4232,9 +4241,18 @@ export class Game {
     for (const [playerId, label] of this.remotePlayerNameLabels) {
       const player = this.remotePlayers.get(playerId);
       if (player) {
-        // Position label above player's head (2.5 units up)
+        // MVP 9: Dynamic height adjustment based on distance to camera
+        const distanceToCamera = this.camera.position.distanceTo(player.position);
+        let nameLabelYOffset = 2.5; // Default position above player's head
+
+        // When close to player (< 6 units), lower the label for better visibility
+        if (distanceToCamera < 6) {
+          nameLabelYOffset = 1.8; // Lower when close
+        }
+
+        // Position label above player's head
         const labelPos = player.position.clone();
-        labelPos.y += 2.5;
+        labelPos.y += nameLabelYOffset;
         this.updateLabelPosition(label, labelPos);
       }
     }
@@ -4247,9 +4265,18 @@ export class Game {
     for (const [playerId, healthBar] of this.remotePlayerHealthBars) {
       const player = this.remotePlayers.get(playerId);
       if (player) {
-        // Position health bar below username (2.0 units up)
+        // MVP 9: Dynamic height adjustment based on distance to camera
+        const distanceToCamera = this.camera.position.distanceTo(player.position);
+        let healthBarYOffset = 2.0; // Default position below username
+
+        // When close to player (< 6 units), lower the health bar for better visibility
+        if (distanceToCamera < 6) {
+          healthBarYOffset = 1.5; // Lower when close
+        }
+
+        // Position health bar below username
         const barPos = player.position.clone();
-        barPos.y += 2.0;
+        barPos.y += healthBarYOffset;
         this.updateLabelPosition(healthBar.container, barPos);
 
         // Update health bar fill based on userData
@@ -4267,9 +4294,18 @@ export class Game {
     for (const [npcId, healthBar] of this.npcHealthBars) {
       const npc = this.npcs.get(npcId);
       if (npc) {
-        // Position health bar below username (2.0 units up)
+        // MVP 9: Dynamic height adjustment based on distance to camera
+        const distanceToCamera = this.camera.position.distanceTo(npc.position);
+        let healthBarYOffset = 2.0; // Default position below username
+
+        // When close to NPC (< 6 units), lower the health bar for better visibility
+        if (distanceToCamera < 6) {
+          healthBarYOffset = 1.5; // Lower when close
+        }
+
+        // Position health bar below username
         const barPos = npc.position.clone();
-        barPos.y += 2.0;
+        barPos.y += healthBarYOffset;
         this.updateLabelPosition(healthBar.container, barPos);
 
         // Update health bar fill based on userData

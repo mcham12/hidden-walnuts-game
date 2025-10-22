@@ -847,4 +847,70 @@ export class NPCManager {
   getNPCCount(): number {
     return this.npcs.size;
   }
+
+  /**
+   * MVP 9: Get NPC by ID
+   */
+  getNPCById(npcId: string): NPC | undefined {
+    return this.npcs.get(npcId);
+  }
+
+  /**
+   * MVP 9: Apply damage to NPC
+   * Returns the actual damage dealt (0 if NPC not found or already dead)
+   */
+  applyDamageToNPC(npcId: string, damage: number): number {
+    const npc = this.npcs.get(npcId);
+    if (!npc) {
+      return 0;
+    }
+
+    const oldHealth = npc.health;
+    npc.health = Math.max(0, npc.health - damage);
+    const actualDamage = oldHealth - npc.health;
+
+    return actualDamage;
+  }
+
+  /**
+   * MVP 9: Handle NPC death and respawn
+   * Drops all walnuts and respawns after 30 seconds
+   */
+  async handleNPCDeath(npcId: string): Promise<void> {
+    const npc = this.npcs.get(npcId);
+    if (!npc) {
+      return;
+    }
+
+    console.log(`💀 NPC ${npcId} (${npc.username}) died!`);
+
+    // Drop all walnuts at death position
+    if (npc.walnutInventory > 0) {
+      const dropCount = npc.walnutInventory;
+      npc.walnutInventory = 0;
+
+      // Drop walnuts in a circle around death position
+      for (let i = 0; i < dropCount; i++) {
+        const angle = (i / dropCount) * Math.PI * 2;
+        const radius = 1.5;
+        const dropPosition = {
+          x: npc.position.x + Math.cos(angle) * radius,
+          y: 0.3,
+          z: npc.position.z + Math.sin(angle) * radius
+        };
+
+        await this.forestManager.addWalnut(dropPosition, 'game');
+      }
+
+      console.log(`🌰 NPC ${npcId} dropped ${dropCount} walnuts`);
+    }
+
+    // Remove NPC
+    this.broadcastNPCDespawn(npcId);
+    this.npcs.delete(npcId);
+
+    // Respawn after 30 seconds as a different character
+    // The spawnNPCs method will handle respawning on next tick (maintain MAX_NPCS)
+    console.log(`⏱️ NPC will respawn on next spawn check (30s respawn timer would be here)`);
+  }
 }

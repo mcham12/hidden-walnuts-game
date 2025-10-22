@@ -1010,12 +1010,14 @@ export default class ForestManager extends DurableObject {
         break;
 
       case "player_hit":
-        // MVP 8: Server-side hit validation and damage application
+        // MVP 8/9: Server-side hit validation and damage application (players and NPCs)
         const { targetId, damage: requestedDamage, position: hitPosition } = data;
 
-        // Validate target exists
-        const target = this.activePlayers.get(targetId);
-        if (!target) {
+        // MVP 9: Check if target is a player or NPC
+        const targetPlayer = this.activePlayers.get(targetId);
+        const targetNPC = this.npcManager.getNPCById(targetId);
+
+        if (!targetPlayer && !targetNPC) {
           console.warn(`🚫 Hit rejected: Target ${targetId} not found`);
           return;
         }
@@ -1026,16 +1028,19 @@ export default class ForestManager extends DurableObject {
           return;
         }
 
-        // Validate target is not invulnerable (spawn protection)
-        if (target.invulnerableUntil && Date.now() < target.invulnerableUntil) {
+        // Get target position (either player or NPC)
+        const targetPosition = targetPlayer ? targetPlayer.position : targetNPC!.position;
+
+        // Validate target is not invulnerable (spawn protection - players only)
+        if (targetPlayer && targetPlayer.invulnerableUntil && Date.now() < targetPlayer.invulnerableUntil) {
           console.warn(`🚫 Hit rejected: Target ${targetId} has spawn protection`);
           return;
         }
 
         // Validate distance (prevent cheating - max projectile range is ~15 units)
         const distance = Math.sqrt(
-          Math.pow(target.position.x - playerConnection.position.x, 2) +
-          Math.pow(target.position.z - playerConnection.position.z, 2)
+          Math.pow(targetPosition.x - playerConnection.position.x, 2) +
+          Math.pow(targetPosition.z - playerConnection.position.z, 2)
         );
         if (distance > 20) { // 20 units = generous validation (15 range + 5 margin)
           console.warn(`🚫 Hit rejected: Distance too far (${distance.toFixed(1)} units)`);
@@ -1044,13 +1049,24 @@ export default class ForestManager extends DurableObject {
 
         // Apply damage (server authoritative - ignore client damage value)
         const DAMAGE_PER_HIT = 20;
-        const oldHealth = target.health;
-        target.health = Math.max(0, target.health - DAMAGE_PER_HIT);
-        const actualDamage = oldHealth - target.health;
+        let actualDamage = 0;
+        let newHealth = 0;
 
-        // Track attacker for knockout credit
-        if (actualDamage > 0) {
-          target.lastAttackerId = playerConnection.squirrelId;
+        if (targetPlayer) {
+          // Damage player
+          const oldHealth = targetPlayer.health;
+          targetPlayer.health = Math.max(0, targetPlayer.health - DAMAGE_PER_HIT);
+          actualDamage = oldHealth - targetPlayer.health;
+          newHealth = targetPlayer.health;
+
+          // Track attacker for knockout credit
+          if (actualDamage > 0) {
+            targetPlayer.lastAttackerId = playerConnection.squirrelId;
+          }
+        } else if (targetNPC) {
+          // MVP 9: Damage NPC
+          actualDamage = this.npcManager.applyDamageToNPC(targetId, DAMAGE_PER_HIT);
+          newHealth = targetNPC.health; // Get updated health from NPC
         }
 
         // Award +2 points for successful hit
@@ -1071,14 +1087,19 @@ export default class ForestManager extends DurableObject {
             targetId: targetId,
             attackerId: playerConnection.squirrelId,
             damage: actualDamage,
-            newHealth: target.health,
-            position: target.position
+            newHealth: newHealth,
+            position: targetPosition
           });
         });
 
         // Check for death/knockout
-        if (target.health <= 0) {
-          await this.handlePlayerDeath(target, playerConnection);
+        if (newHealth <= 0) {
+          if (targetPlayer) {
+            await this.handlePlayerDeath(targetPlayer, playerConnection);
+          } else if (targetNPC) {
+            // MVP 9: Handle NPC death
+            await this.npcManager.handleNPCDeath(targetId);
+          }
         }
         break;
 
