@@ -1086,6 +1086,9 @@ export class Game {
       if (Math.abs(this.playerScore - this.displayedScore) < 0.1) {
         this.displayedScore = this.playerScore;
       }
+
+      // Update HUD to show the animated score
+      this.updateWalnutHUD();
     }
 
     // MVP 3: Update walnut labels
