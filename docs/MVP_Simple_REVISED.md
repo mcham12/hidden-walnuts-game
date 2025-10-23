@@ -60,18 +60,19 @@
 - Clean up stale/corrupted entries
 - Persistent storage optimization
 
-**6. fix collision between players
--  it appears that players collide when they are visually too far apart
--  find a solution to make it appear that collisions happen when players are close together
--  don't negatively impact other collision, like with trees, rocks, etc
+**6. Fix Collision Between Players**
+- It appears that players collide when they are visually too far apart
+- Find a solution to make it appear that collisions happen when players are close together
+- Don't negatively impact other collision, like with trees, rocks, etc
 
-**7. fix floating rock issie
--  one specific rock model floats above the train. other rock models do not
-- debug, maybe with a temporary label on the rocks, so we can find the culprit model
-- fix
-- remove temporary labels from rocks
+**7. Fix Floating Rock Issue**
+- One specific rock model floats above the terrain, other rock models do not
+- Debug, maybe with a temporary label on the rocks, so we can find the culprit model
+- Fix the floating rock
+- Remove temporary labels from rocks
 
-**8. remove any debug logging added for this MVP, both client and worker
+**8. Remove Debug Logging**
+- Remove any debug logging added for this MVP, both client and worker
 
 ### Success Criteria
 - ✅ Can see everyone's health at a glance
