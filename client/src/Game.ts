@@ -1932,6 +1932,7 @@ export class Game {
 
       case 'npc_despawned':
         // MVP 7: NPC despawned on server, remove from client
+        console.log(`📨 Received npc_despawned for: ${data.npcId}`);
         if (data.npcId) {
           this.removeNPC(data.npcId);
         }
@@ -2670,6 +2671,7 @@ export class Game {
       const npcGroundOffset = -box.min.y;
 
       // Store metadata
+      npcCharacter.userData.username = username; // MVP 9: Store username for kill notifications
       npcCharacter.userData.characterId = characterId;
       npcCharacter.userData.collisionRadius = collisionRadius;
       npcCharacter.userData.size = size;
@@ -2875,8 +2877,10 @@ export class Game {
    * MVP 7: Remove NPC from client (server despawn)
    */
   private removeNPC(npcId: string): void {
+    console.log(`🗑️ removeNPC called for: ${npcId}`);
     const npc = this.npcs.get(npcId);
     if (npc) {
+      console.log(`✅ Removing NPC ${npcId} from scene`);
       // Clean up geometry and materials
       npc.traverse((child: any) => {
         if (child.isMesh) {
