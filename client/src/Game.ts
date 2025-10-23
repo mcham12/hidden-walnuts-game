@@ -4369,8 +4369,9 @@ export class Game {
         this.updateLabelPosition(healthBar.container, barPos);
 
         // Update health bar fill based on userData
-        const health = player.userData.health || 100;
-        const maxHealth = player.userData.maxHealth || 100;
+        // MVP 9 FIX: Use ?? instead of || to avoid treating 0 health as falsy (which would default to 100)
+        const health = player.userData.health ?? 100;
+        const maxHealth = player.userData.maxHealth ?? 100;
         this.updateHealthBar(healthBar.fill, health, maxHealth);
       }
     }
@@ -4398,8 +4399,9 @@ export class Game {
         this.updateLabelPosition(healthBar.container, barPos);
 
         // Update health bar fill based on userData
-        const health = npc.userData.health || 100;
-        const maxHealth = npc.userData.maxHealth || 100;
+        // MVP 9 FIX: Use ?? instead of || to avoid treating 0 health as falsy (which would default to 100)
+        const health = npc.userData.health ?? 100;
+        const maxHealth = npc.userData.maxHealth ?? 100;
         this.updateHealthBar(healthBar.fill, health, maxHealth);
       }
     }
