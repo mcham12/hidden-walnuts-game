@@ -162,7 +162,8 @@ export class NPCManager {
    */
   private createNPC(): NPC {
     this.npcCounter++;
-    const id = `npc-${String(this.npcCounter).padStart(3, '0')}`;
+    // MVP 9 FIX: Add timestamp to ensure unique IDs even if Durable Object resets
+    const id = `npc-${Date.now()}-${String(this.npcCounter).padStart(3, '0')}`;
 
     // Random character type
     const characterId = this.CHARACTER_TYPES[Math.floor(Math.random() * this.CHARACTER_TYPES.length)];
