@@ -258,7 +258,7 @@ export class NPCManager {
       this.updateMovement(npc, delta);
 
       // Collect NPC state for batched broadcast
-      const npcUpdate = {
+      npcUpdates.push({
         npcId: npc.id,
         position: npc.position,
         rotationY: npc.rotationY,
@@ -266,14 +266,7 @@ export class NPCManager {
         animation: npc.animation,
         behavior: npc.currentBehavior,
         health: npc.health // MVP 9: Include health for client health bars
-      };
-
-      // MVP 9 DEBUG: Log when NPC health is not 100
-      if (npc.health !== 100) {
-        console.log(`📊 [SERVER-BATCH] Including NPC ${npc.id} with health=${npc.health}`);
-      }
-
-      npcUpdates.push(npcUpdate);
+      });
     }
 
     // MVP 7.1: Batch broadcast all NPC updates in single message
@@ -875,8 +868,6 @@ export class NPCManager {
     const oldHealth = npc.health;
     npc.health = Math.max(0, npc.health - damage);
     const actualDamage = oldHealth - npc.health;
-
-    console.log(`🩸 [SERVER] NPC ${npcId} damaged: ${oldHealth} → ${npc.health} (damage: ${damage}, actual: ${actualDamage})`);
 
     return actualDamage;
   }

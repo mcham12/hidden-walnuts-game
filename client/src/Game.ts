@@ -2027,12 +2027,9 @@ export class Game {
 
             const npc = this.npcs.get(data.targetId);
             if (npc) {
-              const oldHealth = npc.userData.health || 100;
               npc.userData.health = data.newHealth;
               // MVP 9 FIX: Mark timestamp to prevent stale npc_updates_batch from overwriting
-              const timestamp = Date.now();
-              this.lastNPCHealthUpdateTime.set(data.targetId, timestamp);
-              console.log(`🩸 [COMBAT] NPC ${data.targetId} damaged: ${oldHealth} → ${data.newHealth} (timestamp: ${timestamp})`);
+              this.lastNPCHealthUpdateTime.set(data.targetId, Date.now());
 
               // Show blood particles at NPC position
               if (this.vfxManager) {
@@ -2786,16 +2783,12 @@ export class Game {
         const lastCombatTime = this.lastNPCHealthUpdateTime.get(npcId) || 0;
         const timeSinceCombat = Date.now() - lastCombatTime;
         const COMBAT_COOLDOWN = 1000; // 1 second cooldown after combat events
-        const oldHealth = npc.userData.health || 100;
 
         if (timeSinceCombat > COMBAT_COOLDOWN) {
           // Safe to sync health (no recent combat or initial sync)
           npc.userData.health = health;
-          console.log(`📊 [BATCH] NPC ${npcId} health update ACCEPTED: ${oldHealth} → ${health} (timeSinceCombat: ${timeSinceCombat}ms)`);
-        } else {
-          // Ignore stale health data from npc_updates_batch
-          console.log(`🚫 [BATCH] NPC ${npcId} health update REJECTED: tried to set ${oldHealth} → ${health} (timeSinceCombat: ${timeSinceCombat}ms, lastCombat: ${lastCombatTime})`);
         }
+        // Otherwise ignore stale health data from npc_updates_batch
       }
 
       // Calculate ground position

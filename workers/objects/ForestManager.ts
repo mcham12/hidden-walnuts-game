@@ -1065,10 +1065,10 @@ export default class ForestManager extends DurableObject {
           }
         } else if (targetNPC) {
           // MVP 9: Damage NPC
-          const healthBefore = targetNPC.health;
           actualDamage = this.npcManager.applyDamageToNPC(targetId, DAMAGE_PER_HIT);
-          newHealth = targetNPC.health; // Get updated health from NPC
-          console.log(`🎯 [SERVER-HIT] NPC ${targetId} healthBefore=${healthBefore}, newHealth=${newHealth}, actualDamage=${actualDamage}`);
+          // Get fresh NPC reference to ensure we have the updated health value
+          const updatedNPC = this.npcManager.getNPCById(targetId);
+          newHealth = updatedNPC ? updatedNPC.health : 0;
         }
 
         // Award +2 points for successful hit
@@ -1083,7 +1083,6 @@ export default class ForestManager extends DurableObject {
         });
 
         // Broadcast damage event to all players
-        console.log(`📡 [SERVER-BROADCAST] entity_damaged: targetId=${targetId}, newHealth=${newHealth}, damage=${actualDamage}`);
         this.activePlayers.forEach((player) => {
           this.sendMessage(player.socket, {
             type: 'entity_damaged',

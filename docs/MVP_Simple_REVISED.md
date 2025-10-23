@@ -71,7 +71,14 @@
 - Fix the floating rock
 - Remove temporary labels from rocks
 
-**8. Remove Debug Logging**
+**8. Updated Hide Walnut Mechanism: Grow Trees!**
+- If a player hides a walnut, make it glow green (same effect as the system golden walnut, but make it green glow)
+- If, after x time (make it 2 minutes to start), no other player picks up your walnut, then it grows into a tree, and the player who hid the walnut instantly gets 5 "Tree grown, 5 bonus walnuts!"
+- If a player picks up another player's hidden walnut, they get extra 5 points, and just a normal walnut added to inventory
+- Consider a creative way to make the tree grow: if the walnut is too close to other objects, make it nearby, not in the hidden walnut's exact hidden location. Consider some scaling mechanism as the tree grows, use the internet as a resource to come up with a good solution
+- Moving forward, the tree should be added to the normal tree pool, and will drop walnuts at the normal frequency
+
+**9. Remove Debug Logging**
 - Remove any debug logging added for this MVP, both client and worker
 
 ### Success Criteria
