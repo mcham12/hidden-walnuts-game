@@ -1321,10 +1321,9 @@
           margin: 0;
           white-space: nowrap; /* MVP 9 FIX: Prevent text wrapping */
         }
-        #walnut-hud hr,
-        #walnut-hud div:nth-child(3),
-        #walnut-hud div:nth-child(4) {
-          display: none !important; /* Hide location and instructions in landscape */
+        /* MVP 9 FIX: Don't hide health container (it's the 3rd div) */
+        #walnut-hud hr {
+          display: none !important; /* Hide any separators */
         }
         .walnut-icon {
           width: 10px;

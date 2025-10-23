@@ -125,6 +125,10 @@ export class Game {
   private npcInterpolationBuffers: Map<string, Array<{ position: THREE.Vector3; quaternion: THREE.Quaternion; timestamp: number }>> = new Map();
   private npcPendingUpdates: Map<string, Array<{ position: any; rotationY: number; animation?: string; velocity?: any; behavior?: string; timestamp: number }>> = new Map();
 
+  // MVP 9 FIX: Track last combat event timestamp to prevent stale health data from overwriting fresh combat data
+  private lastPlayerHealthUpdateTime: Map<string, number> = new Map(); // playerId → timestamp
+  private lastNPCHealthUpdateTime: Map<string, number> = new Map(); // npcId → timestamp
+
   private idleVariationInterval: number = 10000; // 10 seconds between idle variations
   private availableIdleAnimations: string[] = ['idle', 'idle_b', 'idle_c'];
   // PHASE 3 CLEANUP: isPlayingOneShotAnimation removed - now handled by animState.overrideAnimation
@@ -1973,6 +1977,23 @@ export class Game {
             // Local player healed - apply server-authoritative health
             this.health = data.newHealth;
             this.updateHealthUI();
+          } else {
+            // MVP 9 FIX: Remote player or NPC healed - update their health
+            const remotePlayer = this.remotePlayers.get(data.playerId);
+            if (remotePlayer) {
+              remotePlayer.userData.health = data.newHealth;
+              // Mark timestamp to prevent stale player_update from overwriting
+              this.lastPlayerHealthUpdateTime.set(data.playerId, Date.now());
+              console.log(`💚 Remote player ${data.playerId} healed to: ${data.newHealth}`);
+            }
+
+            const npc = this.npcs.get(data.playerId);
+            if (npc) {
+              npc.userData.health = data.newHealth;
+              // Mark timestamp to prevent stale npc_updates_batch from overwriting
+              this.lastNPCHealthUpdateTime.set(data.playerId, Date.now());
+              console.log(`💚 NPC ${data.playerId} healed to: ${data.newHealth}`);
+            }
           }
         }
         break;
@@ -1994,6 +2015,8 @@ export class Game {
             const remotePlayer = this.remotePlayers.get(data.targetId);
             if (remotePlayer) {
               remotePlayer.userData.health = data.newHealth;
+              // MVP 9 FIX: Mark timestamp to prevent stale player_update from overwriting
+              this.lastPlayerHealthUpdateTime.set(data.targetId, Date.now());
               console.log(`🩸 Remote player ${data.targetId} health: ${data.newHealth}`);
 
               // Show blood particles at remote player position
@@ -2005,6 +2028,8 @@ export class Game {
             const npc = this.npcs.get(data.targetId);
             if (npc) {
               npc.userData.health = data.newHealth;
+              // MVP 9 FIX: Mark timestamp to prevent stale npc_updates_batch from overwriting
+              this.lastNPCHealthUpdateTime.set(data.targetId, Date.now());
               console.log(`🩸 NPC ${data.targetId} health: ${data.newHealth}`);
 
               // Show blood particles at NPC position
@@ -2036,8 +2061,16 @@ export class Game {
             this.health = data.health;
             this.updateHealthUI();
           }
+        } else {
+          // MVP 9 FIX: Remote player respawned - update their health
+          const remotePlayer = this.remotePlayers.get(data.playerId);
+          if (remotePlayer && typeof data.health === 'number') {
+            remotePlayer.userData.health = data.health;
+            // Mark timestamp so player_update doesn't overwrite immediately
+            this.lastPlayerHealthUpdateTime.set(data.playerId, Date.now());
+            console.log(`🔄 Remote player ${data.playerId} respawned with health: ${data.health}`);
+          }
         }
-        // Note: Remote player respawns are handled by position updates
         break;
 
       case 'throw_rejected':
@@ -2235,12 +2268,21 @@ export class Game {
     }
   }
 
-  private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, _moveType?: string, _characterId?: string, _health?: number): void {
+  private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, _moveType?: string, _characterId?: string, health?: number): void {
     const remotePlayer = this.remotePlayers.get(playerId);
     if (remotePlayer) {
-      // MVP 9 FIX: Don't update health from player_update (causes race condition with entity_damaged)
-      // Health is ONLY updated from entity_damaged and entity_healed messages
-      // The health parameter is kept for backwards compatibility but ignored
+      // MVP 9 FIX: Only update health if no recent combat event (prevents stale data from overwriting fresh combat data)
+      if (typeof health === 'number') {
+        const lastCombatTime = this.lastPlayerHealthUpdateTime.get(playerId) || 0;
+        const timeSinceCombat = Date.now() - lastCombatTime;
+        const COMBAT_COOLDOWN = 1000; // 1 second cooldown after combat events
+
+        if (timeSinceCombat > COMBAT_COOLDOWN) {
+          // Safe to sync health (no recent combat or initial sync)
+          remotePlayer.userData.health = health;
+        }
+        // Otherwise ignore stale health data from player_update
+      }
 
       // STANDARD: Calculate ground position using raycasting
       const groundY = this.positionRemotePlayerOnGround(remotePlayer, position.x, position.z);
@@ -2734,12 +2776,21 @@ export class Game {
   /**
    * MVP 7: Update NPC position and animation from server
    */
-  private updateNPC(npcId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; z: number }, behavior?: string, _health?: number): void {
+  private updateNPC(npcId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; z: number }, behavior?: string, health?: number): void {
     const npc = this.npcs.get(npcId);
     if (npc) {
-      // MVP 9 FIX: Don't update health from npc_updates_batch (causes race condition with entity_damaged)
-      // Health is ONLY updated from entity_damaged and entity_healed messages
-      // The health parameter is kept for backwards compatibility but ignored
+      // MVP 9 FIX: Only update health if no recent combat event (prevents stale data from overwriting fresh combat data)
+      if (typeof health === 'number') {
+        const lastCombatTime = this.lastNPCHealthUpdateTime.get(npcId) || 0;
+        const timeSinceCombat = Date.now() - lastCombatTime;
+        const COMBAT_COOLDOWN = 1000; // 1 second cooldown after combat events
+
+        if (timeSinceCombat > COMBAT_COOLDOWN) {
+          // Safe to sync health (no recent combat or initial sync)
+          npc.userData.health = health;
+        }
+        // Otherwise ignore stale health data from npc_updates_batch
+      }
 
       // Calculate ground position
       const groundY = this.positionRemotePlayerOnGround(npc, position.x, position.z);
