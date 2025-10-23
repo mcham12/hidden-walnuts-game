@@ -1977,6 +1977,45 @@ export class Game {
         }
         break;
 
+      case 'entity_damaged':
+        // MVP 9: Someone took damage from a projectile
+        if (data.targetId && typeof data.newHealth === 'number') {
+          if (data.targetId === this.playerId) {
+            // Local player took damage - apply server-authoritative health
+            this.health = data.newHealth;
+            this.updateHealthUI();
+
+            // Show visual feedback (blood particles)
+            if (this.vfxManager && this.character) {
+              this.vfxManager.spawnParticles('sparkle',this.character.position, 15);
+            }
+          } else {
+            // Remote player or NPC took damage - update their health in userData
+            const remotePlayer = this.remotePlayers.get(data.targetId);
+            if (remotePlayer) {
+              remotePlayer.userData.health = data.newHealth;
+              console.log(`🩸 Remote player ${data.targetId} health: ${data.newHealth}`);
+
+              // Show blood particles at remote player position
+              if (this.vfxManager) {
+                this.vfxManager.spawnParticles('sparkle',remotePlayer.position, 15);
+              }
+            }
+
+            const npc = this.npcs.get(data.targetId);
+            if (npc) {
+              npc.userData.health = data.newHealth;
+              console.log(`🩸 NPC ${data.targetId} health: ${data.newHealth}`);
+
+              // Show blood particles at NPC position
+              if (this.vfxManager) {
+                this.vfxManager.spawnParticles('sparkle',npc.position, 15);
+              }
+            }
+          }
+        }
+        break;
+
       case 'throw_event':
         // MVP 8: Someone threw a walnut - spawn projectile
         if (data.throwerId && data.fromPosition && data.toPosition) {
@@ -2387,9 +2426,9 @@ export class Game {
         const distanceToCamera = this.camera.position.distanceTo(npc.position);
         let nameLabelYOffset = 2.5; // Default position above NPC's head
 
-        // When close to NPC (< 6 units), lower the label for better visibility
-        if (distanceToCamera < 6) {
-          nameLabelYOffset = 1.8; // Lower when close
+        // When close to NPC (< 8 units), lower the label for better visibility
+        if (distanceToCamera < 8) {
+          nameLabelYOffset = 1.2; // Much lower when close
         }
 
         // Position label above NPC's head (same as players)
@@ -4245,9 +4284,9 @@ export class Game {
         const distanceToCamera = this.camera.position.distanceTo(player.position);
         let nameLabelYOffset = 2.5; // Default position above player's head
 
-        // When close to player (< 6 units), lower the label for better visibility
-        if (distanceToCamera < 6) {
-          nameLabelYOffset = 1.8; // Lower when close
+        // When close to player (< 8 units), lower the label for better visibility
+        if (distanceToCamera < 8) {
+          nameLabelYOffset = 1.2; // Much lower when close
         }
 
         // Position label above player's head
@@ -4269,15 +4308,19 @@ export class Game {
         const distanceToCamera = this.camera.position.distanceTo(player.position);
         let healthBarYOffset = 2.0; // Default position below username
 
-        // When close to player (< 6 units), lower the health bar for better visibility
-        if (distanceToCamera < 6) {
-          healthBarYOffset = 1.5; // Lower when close
+        // When close to player (< 8 units), lower the health bar for better visibility
+        if (distanceToCamera < 8) {
+          healthBarYOffset = 0.8; // Much lower when close
         }
 
         // Position health bar below username
         const barPos = player.position.clone();
         barPos.y += healthBarYOffset;
         this.updateLabelPosition(healthBar.container, barPos);
+
+        // MVP 9: Shift health bar left slightly to align better with username label
+        const currentLeft = parseInt(healthBar.container.style.left) || 0;
+        healthBar.container.style.left = `${currentLeft - 5}px`;
 
         // Update health bar fill based on userData
         const health = player.userData.health || 100;
@@ -4298,15 +4341,19 @@ export class Game {
         const distanceToCamera = this.camera.position.distanceTo(npc.position);
         let healthBarYOffset = 2.0; // Default position below username
 
-        // When close to NPC (< 6 units), lower the health bar for better visibility
-        if (distanceToCamera < 6) {
-          healthBarYOffset = 1.5; // Lower when close
+        // When close to NPC (< 8 units), lower the health bar for better visibility
+        if (distanceToCamera < 8) {
+          healthBarYOffset = 0.8; // Much lower when close
         }
 
         // Position health bar below username
         const barPos = npc.position.clone();
         barPos.y += healthBarYOffset;
         this.updateLabelPosition(healthBar.container, barPos);
+
+        // MVP 9: Shift health bar left slightly to align better with username label
+        const currentLeft = parseInt(healthBar.container.style.left) || 0;
+        healthBar.container.style.left = `${currentLeft - 5}px`;
 
         // Update health bar fill based on userData
         const health = npc.userData.health || 100;

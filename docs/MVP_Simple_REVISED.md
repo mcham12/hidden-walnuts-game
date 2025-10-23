@@ -60,6 +60,19 @@
 - Clean up stale/corrupted entries
 - Persistent storage optimization
 
+**6. fix collision between players
+-  it appears that players collide when they are visually too far apart
+-  find a solution to make it appear that collisions happen when players are close together
+-  don't negatively impact other collision, like with trees, rocks, etc
+
+**7. fix floating rock issie
+-  one specific rock model floats above the train. other rock models do not
+- debug, maybe with a temporary label on the rocks, so we can find the culprit model
+- fix
+- remove temporary labels from rocks
+
+**8. remove any debug logging added for this MVP, both client and worker
+
 ### Success Criteria
 - ✅ Can see everyone's health at a glance
 - ✅ NPCs behave intelligently (eat, flee when low HP)
@@ -94,6 +107,9 @@
 - Victory/defeat voiceovers
 - Optional: Narrator intro ("Welcome to the forest...")
 
+**4. remove any debug logging added for this MVP, both client and worker
+
+
 ### Success Criteria
 - ✅ Rich audio environment (not silent)
 - ✅ Sound effects enhance gameplay feedback
@@ -125,6 +141,8 @@
 - Predators avoid NPCs (or treat them equally)
 - Visual/audio warnings before attack
 - Respawn at random intervals
+
+**4. remove any debug logging added for this MVP, both client and worker
 
 ### Success Criteria
 - ✅ Hawks and wolves add meaningful danger
@@ -169,6 +187,8 @@
 - Session expiration/refresh
 - HTTPS enforcement
 - Input sanitization
+
+**6. remove any debug logging added for this MVP, both client and worker
 
 ### Success Criteria
 - ✅ Players can create secure accounts
