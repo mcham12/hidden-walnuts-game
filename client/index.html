@@ -1143,7 +1143,7 @@
           left: 5px;
           padding: 6px 10px;
           font-size: 12px;
-          max-width: 150px;
+          max-width: 200px; /* MVP 9 FIX: Increased from 150px to prevent text overflow on iPad */
         }
         #walnut-hud div {
           margin: 2px 0;
@@ -1303,23 +1303,23 @@
           overflow: hidden !important;
         }
 
-        /* SUPER COMPACT HUD - Single line only, respects notch */
+        /* MVP 9 FIX: COMPACT HUD - Stack health bar below for better fit */
         #walnut-hud {
           top: max(5px, env(safe-area-inset-top));
           left: max(5px, env(safe-area-inset-left));
-          padding: 4px 8px;
+          padding: 4px 6px;
           font-size: 9px;
-          max-width: none;
+          max-width: 160px; /* MVP 9 FIX: Set max width to prevent overflow */
           display: flex;
-          flex-direction: row;
-          gap: 8px;
-          align-items: center;
+          flex-direction: column; /* MVP 9 FIX: Stack vertically instead of horizontal */
+          gap: 2px;
+          align-items: flex-start;
           background: rgba(139, 69, 19, 0.85);
           border-radius: 4px;
         }
         #walnut-hud div {
           margin: 0;
-          display: inline;
+          white-space: nowrap; /* MVP 9 FIX: Prevent text wrapping */
         }
         #walnut-hud hr,
         #walnut-hud div:nth-child(3),
@@ -1332,24 +1332,27 @@
           margin-right: 3px;
         }
 
-        /* MVP 8 Phase 3: Ultra-compact health bar for landscape mode */
+        /* MVP 9 FIX: Ultra-compact health bar for landscape mode */
         #health-container {
           margin-top: 0;
+          width: 100%; /* MVP 9 FIX: Full width within HUD */
         }
         #health-container > div {
-          gap: 4px !important;
+          gap: 3px !important;
+          display: flex !important;
+          align-items: center !important;
         }
         #health-container span:first-child {
-          font-size: 12px !important; /* Heart emoji */
+          font-size: 10px !important; /* Heart emoji */
         }
         #health-bar-container {
-          min-width: 50px !important;
-          height: 10px !important;
-          border-radius: 5px !important;
+          min-width: 60px !important; /* MVP 9 FIX: Wider for better visibility */
+          height: 8px !important;
+          border-radius: 4px !important;
         }
         #health-text {
           font-size: 8px !important;
-          min-width: 35px !important;
+          min-width: 38px !important;
         }
 
         /* Smaller minimap in landscape, respects notch */

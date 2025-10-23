@@ -909,8 +909,9 @@ export class NPCManager {
     this.broadcastNPCDespawn(npcId);
     this.npcs.delete(npcId);
 
-    // Respawn after 30 seconds as a different character
-    // The spawnNPCs method will handle respawning on next tick (maintain MAX_NPCS)
-    console.log(`⏱️ NPC will respawn on next spawn check (30s respawn timer would be here)`);
+    // MVP 9 FIX: Immediately trigger respawn to maintain NPC population
+    // Previously relied on spawnNPCs being called on player join, which was inconsistent
+    console.log(`⏱️ Triggering immediate NPC respawn check...`);
+    this.spawnNPCs();
   }
 }

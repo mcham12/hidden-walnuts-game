@@ -2235,13 +2235,12 @@ export class Game {
     }
   }
 
-  private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, _moveType?: string, _characterId?: string, health?: number): void {
+  private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, _moveType?: string, _characterId?: string, _health?: number): void {
     const remotePlayer = this.remotePlayers.get(playerId);
     if (remotePlayer) {
-      // MVP 9: Update health in userData if provided
-      if (typeof health === 'number') {
-        remotePlayer.userData.health = health;
-      }
+      // MVP 9 FIX: Don't update health from player_update (causes race condition with entity_damaged)
+      // Health is ONLY updated from entity_damaged and entity_healed messages
+      // The health parameter is kept for backwards compatibility but ignored
 
       // STANDARD: Calculate ground position using raycasting
       const groundY = this.positionRemotePlayerOnGround(remotePlayer, position.x, position.z);
@@ -2735,13 +2734,12 @@ export class Game {
   /**
    * MVP 7: Update NPC position and animation from server
    */
-  private updateNPC(npcId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; z: number }, behavior?: string, health?: number): void {
+  private updateNPC(npcId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; z: number }, behavior?: string, _health?: number): void {
     const npc = this.npcs.get(npcId);
     if (npc) {
-      // MVP 9: Update health in userData if provided
-      if (typeof health === 'number') {
-        npc.userData.health = health;
-      }
+      // MVP 9 FIX: Don't update health from npc_updates_batch (causes race condition with entity_damaged)
+      // Health is ONLY updated from entity_damaged and entity_healed messages
+      // The health parameter is kept for backwards compatibility but ignored
 
       // Calculate ground position
       const groundY = this.positionRemotePlayerOnGround(npc, position.x, position.z);
@@ -4235,6 +4233,8 @@ export class Game {
     container.style.overflow = 'hidden';
     container.style.pointerEvents = 'none';
     container.style.zIndex = '999';
+    // MVP 9 FIX: Center health bar horizontally like username labels
+    container.style.transform = 'translateX(-50%)';
 
     // Create fill (foreground - health percentage)
     const fill = document.createElement('div');
@@ -4318,10 +4318,6 @@ export class Game {
         barPos.y += healthBarYOffset;
         this.updateLabelPosition(healthBar.container, barPos);
 
-        // MVP 9: Shift health bar left slightly to align better with username label
-        const currentLeft = parseInt(healthBar.container.style.left) || 0;
-        healthBar.container.style.left = `${currentLeft - 5}px`;
-
         // Update health bar fill based on userData
         const health = player.userData.health || 100;
         const maxHealth = player.userData.maxHealth || 100;
@@ -4350,10 +4346,6 @@ export class Game {
         const barPos = npc.position.clone();
         barPos.y += healthBarYOffset;
         this.updateLabelPosition(healthBar.container, barPos);
-
-        // MVP 9: Shift health bar left slightly to align better with username label
-        const currentLeft = parseInt(healthBar.container.style.left) || 0;
-        healthBar.container.style.left = `${currentLeft - 5}px`;
 
         // Update health bar fill based on userData
         const health = npc.userData.health || 100;
