@@ -2023,6 +2023,11 @@ export class Game {
               if (this.vfxManager) {
                 this.vfxManager.spawnParticles('sparkle',remotePlayer.position, 15);
               }
+
+              // MVP 9: Show kill notification if local player got the kill
+              if (data.newHealth <= 0 && data.attackerId === this.playerId) {
+                this.showKillNotification(remotePlayer.userData.username || 'Player');
+              }
             }
 
             const npc = this.npcs.get(data.targetId);
@@ -2034,6 +2039,11 @@ export class Game {
               // Show blood particles at NPC position
               if (this.vfxManager) {
                 this.vfxManager.spawnParticles('sparkle',npc.position, 15);
+              }
+
+              // MVP 9: Show kill notification if local player got the kill
+              if (data.newHealth <= 0 && data.attackerId === this.playerId) {
+                this.showKillNotification(npc.userData.username || 'NPC');
               }
             }
           }
@@ -3608,6 +3618,41 @@ export class Game {
     if (healthText) {
       healthText.textContent = `${Math.round(this.health)}/${this.MAX_HEALTH}`;
     }
+  }
+
+  /**
+   * MVP 9: Show kill notification when player eliminates an NPC or remote player
+   */
+  private showKillNotification(targetName: string): void {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.style.position = 'fixed';
+    notification.style.top = '50%';
+    notification.style.left = '50%';
+    notification.style.transform = 'translate(-50%, -50%)';
+    notification.style.padding = '20px 40px';
+    notification.style.backgroundColor = 'rgba(255, 215, 0, 0.95)';
+    notification.style.color = '#2b1810';
+    notification.style.fontSize = '32px';
+    notification.style.fontWeight = 'bold';
+    notification.style.borderRadius = '10px';
+    notification.style.border = '3px solid #ffd700';
+    notification.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.6)';
+    notification.style.zIndex = '10000';
+    notification.style.pointerEvents = 'none';
+    notification.style.fontFamily = 'Arial, sans-serif';
+    notification.textContent = `Eliminated ${targetName}!`;
+
+    document.body.appendChild(notification);
+
+    // Animate fade out and remove
+    setTimeout(() => {
+      notification.style.transition = 'opacity 0.5s ease';
+      notification.style.opacity = '0';
+      setTimeout(() => {
+        document.body.removeChild(notification);
+      }, 500);
+    }, 2000);
   }
 
   /**
