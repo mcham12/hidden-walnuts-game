@@ -1053,6 +1053,12 @@ export default class ForestManager extends DurableObject {
         let newHealth = 0;
 
         if (targetPlayer) {
+          // MVP 9: Check if player is already dead (prevent double-death from rapid hits)
+          if (targetPlayer.health <= 0) {
+            console.warn(`🚫 Hit rejected: Player ${targetId} is already dead`);
+            return;
+          }
+
           // Damage player
           const oldHealth = targetPlayer.health;
           targetPlayer.health = Math.max(0, targetPlayer.health - DAMAGE_PER_HIT);
@@ -1064,6 +1070,12 @@ export default class ForestManager extends DurableObject {
             targetPlayer.lastAttackerId = playerConnection.squirrelId;
           }
         } else if (targetNPC) {
+          // MVP 9: Check if NPC is already dead (prevent double-death from rapid hits)
+          if (targetNPC.health <= 0) {
+            console.warn(`🚫 Hit rejected: NPC ${targetId} is already dead`);
+            return;
+          }
+
           // MVP 9: Damage NPC
           console.log(`[NPC-HIT] Before damage: ${targetNPC.username} health=${targetNPC.health}`);
           actualDamage = this.npcManager.applyDamageToNPC(targetId, DAMAGE_PER_HIT);
