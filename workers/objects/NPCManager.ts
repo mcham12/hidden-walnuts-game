@@ -909,9 +909,11 @@ export class NPCManager {
     this.broadcastNPCDespawn(npcId);
     this.npcs.delete(npcId);
 
-    // MVP 9 FIX: Immediately trigger respawn to maintain NPC population
-    // Previously relied on spawnNPCs being called on player join, which was inconsistent
-    console.log(`⏱️ Triggering immediate NPC respawn check...`);
-    this.spawnNPCs();
+    // MVP 9 FIX: Delay respawn slightly to let clients process death
+    // Immediate respawn caused race conditions with health updates
+    console.log(`⏱️ Scheduling NPC respawn in 1 second...`);
+    setTimeout(() => {
+      this.spawnNPCs();
+    }, 1000);
   }
 }
