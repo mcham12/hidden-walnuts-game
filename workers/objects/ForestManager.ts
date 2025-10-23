@@ -1065,10 +1065,12 @@ export default class ForestManager extends DurableObject {
           }
         } else if (targetNPC) {
           // MVP 9: Damage NPC
+          console.log(`[NPC-HIT] Before damage: ${targetNPC.username} health=${targetNPC.health}`);
           actualDamage = this.npcManager.applyDamageToNPC(targetId, DAMAGE_PER_HIT);
           // Get fresh NPC reference to ensure we have the updated health value
           const updatedNPC = this.npcManager.getNPCById(targetId);
           newHealth = updatedNPC ? updatedNPC.health : 0;
+          console.log(`[NPC-HIT] After damage: actualDamage=${actualDamage}, newHealth=${newHealth}, updatedNPC exists=${!!updatedNPC}`);
         }
 
         // Award +2 points for successful hit
@@ -1095,12 +1097,17 @@ export default class ForestManager extends DurableObject {
         });
 
         // Check for death/knockout
+        console.log(`[DEATH-CHECK] newHealth=${newHealth}, newHealth <= 0 is ${newHealth <= 0}, targetPlayer=${!!targetPlayer}, targetNPC=${!!targetNPC}`);
         if (newHealth <= 0) {
           if (targetPlayer) {
+            console.log(`[DEATH-CHECK] Handling player death`);
             await this.handlePlayerDeath(targetPlayer, playerConnection);
           } else if (targetNPC) {
             // MVP 9: Handle NPC death
+            console.log(`[DEATH-CHECK] Handling NPC death for ${targetId}`);
             await this.npcManager.handleNPCDeath(targetId);
+          } else {
+            console.log(`[DEATH-CHECK] WARNING: newHealth <= 0 but no target found!`);
           }
         }
         break;
