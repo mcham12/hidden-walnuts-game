@@ -78,7 +78,10 @@
 - Consider a creative way to make the tree grow: if the walnut is too close to other objects, make it nearby, not in the hidden walnut's exact hidden location. Consider some scaling mechanism as the tree grows, use the internet as a resource to come up with a good solution
 - Moving forward, the tree should be added to the normal tree pool, and will drop walnuts at the normal frequency
 
-**9. Remove Debug Logging**
+**9. make sure NPCs face their target before throwing walnuts at the target**
+-  It appears that NPCs can face away from their target but still throw at a target. doesn't seem realistic and hurts game consistency and feel
+
+**10. Remove Debug Logging**
 - Remove any debug logging added for this MVP, both client and worker
 
 ### Success Criteria

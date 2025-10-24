@@ -1205,39 +1205,44 @@ export default class ForestManager extends DurableObject {
     });
 
     // Drop all walnuts at death location
+    // MVP 9 FIX: Wrap in try-catch to ensure death broadcast happens even if walnut drop fails
     const droppedWalnuts = victim.walnutInventory;
     if (droppedWalnuts > 0) {
-      // Create dropped walnuts at death position
-      for (let i = 0; i < droppedWalnuts; i++) {
-        const walnutId = `death-drop-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const walnut: Walnut = {
-          id: walnutId,
-          ownerId: 'game', // Dropped walnuts are neutral
-          origin: 'game',
-          hiddenIn: 'ground',
-          location: {
-            x: victim.position.x + (Math.random() - 0.5) * 2, // Spread around death location
-            y: victim.position.y,
-            z: victim.position.z + (Math.random() - 0.5) * 2
-          },
-          found: false,
-          timestamp: Date.now()
-        };
+      try {
+        // Create dropped walnuts at death position
+        for (let i = 0; i < droppedWalnuts; i++) {
+          const walnutId = `death-drop-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const walnut: Walnut = {
+            id: walnutId,
+            ownerId: 'game', // Dropped walnuts are neutral
+            origin: 'game',
+            hiddenIn: 'ground',
+            location: {
+              x: victim.position.x + (Math.random() - 0.5) * 2, // Spread around death location
+              y: victim.position.y,
+              z: victim.position.z + (Math.random() - 0.5) * 2
+            },
+            found: false,
+            timestamp: Date.now()
+          };
 
-        this.mapState.push(walnut);
+          this.mapState.push(walnut);
 
-        // Broadcast dropped walnut
-        this.activePlayers.forEach((player) => {
-          this.sendMessage(player.socket, {
-            type: 'walnut_dropped',
-            walnutId: walnut.id,
-            position: walnut.location
+          // Broadcast dropped walnut
+          this.activePlayers.forEach((player) => {
+            this.sendMessage(player.socket, {
+              type: 'walnut_dropped',
+              walnutId: walnut.id,
+              position: walnut.location
+            });
           });
-        });
-      }
+        }
 
-      await this.storage.put('mapState', this.mapState);
-      victim.walnutInventory = 0;
+        await this.storage.put('mapState', this.mapState);
+        victim.walnutInventory = 0;
+      } catch (error) {
+        console.error(`❌ Failed to drop walnuts for ${victim.username}:`, error);
+      }
     }
 
     // Broadcast death event
