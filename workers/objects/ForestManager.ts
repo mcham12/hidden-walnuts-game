@@ -113,6 +113,10 @@ export default class ForestManager extends DurableObject {
   // MVP 7.1: Reduced from 150ms to 200ms (7Hz → 5Hz) for 25% cost reduction while maintaining smooth movement
   private readonly NPC_UPDATE_INTERVAL = 200; // 200ms = 5 updates/sec (cost-optimized)
 
+  // MVP 9: Tree walnut drop system
+  private lastTreeWalnutDrop: number = 0;
+  private nextTreeDropInterval: number = 60000 + Math.random() * 60000; // 60-120 seconds random
+
   // MVP 7.1: Rate limiting state
   private connectionAttempts: Map<string, number[]> = new Map(); // IP -> timestamps
   private messageRateLimits: Map<string, {
@@ -279,6 +283,14 @@ export default class ForestManager extends DurableObject {
     if (hasNPCs && now - this.lastNPCUpdate >= this.NPC_UPDATE_INTERVAL) {
       this.npcManager.update();
       this.lastNPCUpdate = now;
+    }
+
+    // MVP 9: Tree walnut drops (only if players exist - no need to drop for NPCs only)
+    if (hasPlayers && now - this.lastTreeWalnutDrop >= this.nextTreeDropInterval) {
+      await this.dropTreeWalnut();
+      this.lastTreeWalnutDrop = now;
+      // Randomize next drop interval (60-120 seconds)
+      this.nextTreeDropInterval = 60000 + Math.random() * 60000;
     }
 
     // MVP 5.8: Check player disconnects every 10 seconds
@@ -1784,6 +1796,59 @@ export default class ForestManager extends DurableObject {
     } catch (error) {
       console.error(`❌ Failed to save position for session ${sessionToken.substring(0, 8)}...:`, error);
     }
+  }
+
+  /**
+   * MVP 9: Drop a walnut from a random tree
+   * Creates walnut at ground level and broadcasts animation event to clients
+   */
+  private async dropTreeWalnut(): Promise<void> {
+    // Get all trees
+    const trees = this.forestObjects.filter(obj => obj.type === 'tree');
+    if (trees.length === 0) {
+      console.warn('⚠️ No trees available for walnut drop');
+      return;
+    }
+
+    // Pick random tree
+    const tree = trees[Math.floor(Math.random() * trees.length)];
+
+    // Create walnut at ground level under tree
+    const walnutPosition = {
+      x: tree.x,
+      y: 0.3, // Ground level (same as other walnuts)
+      z: tree.z
+    };
+
+    // Create walnut in mapState
+    const walnutId = `tree-drop-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const walnut: Walnut = {
+      id: walnutId,
+      ownerId: 'game',
+      origin: 'game',
+      hiddenIn: 'ground',
+      location: walnutPosition,
+      found: false,
+      timestamp: Date.now()
+    };
+
+    this.mapState.push(walnut);
+    await this.storage.put('mapState', this.mapState);
+
+    console.log(`🌳 Tree ${tree.id} dropped walnut at (${tree.x.toFixed(1)}, ${tree.z.toFixed(1)})`);
+
+    // Broadcast drop event to all players with tree canopy position for falling animation
+    const treeCanopyHeight = 8 + (tree.scale * 2); // Approximate canopy height based on tree scale
+    this.broadcastToAll({
+      type: 'tree_walnut_drop',
+      treePosition: {
+        x: tree.x,
+        y: treeCanopyHeight,
+        z: tree.z
+      },
+      groundPosition: walnutPosition,
+      walnutId: walnutId
+    });
   }
 
   // Validate and constrain position within world bounds

@@ -1820,6 +1820,13 @@ export class Game {
         }
         break;
 
+      case 'tree_walnut_drop':
+        // MVP 9: Tree dropped walnut - animate falling from canopy
+        if (data.treePosition && data.groundPosition && data.walnutId) {
+          this.animateTreeWalnutFall(data.treePosition, data.groundPosition, data.walnutId);
+        }
+        break;
+
       case 'existing_players':
         if (Array.isArray(data.players)) {
           for (const player of data.players) {
@@ -5874,6 +5881,65 @@ export class Game {
     // Add label
     const label = this.createLabel(labelText, labelColor);
     this.walnutLabels.set(data.walnutId, label);
+  }
+
+  /**
+   * MVP 9: Animate walnut falling from tree canopy with physics
+   */
+  private animateTreeWalnutFall(
+    treePos: { x: number; y: number; z: number },
+    groundPos: { x: number; y: number; z: number },
+    walnutId: string
+  ): void {
+    // Create temporary falling walnut
+    const geometry = new THREE.SphereGeometry(this.WALNUT_SIZE / 2, 8, 8);
+    const material = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+    const fallingWalnut = new THREE.Mesh(geometry, material);
+    fallingWalnut.position.set(treePos.x, treePos.y, treePos.z);
+    fallingWalnut.castShadow = true;
+    this.scene.add(fallingWalnut);
+
+    // Physics state
+    let velocity = 0;
+    const gravity = -20; // m/s²
+    let bounces = 0;
+    const maxBounces = 2;
+
+    // Animation loop
+    const startTime = Date.now();
+    const animate = () => {
+      const delta = Math.min((Date.now() - startTime) / 1000, 0.05);
+
+      // Apply gravity
+      velocity += gravity * delta;
+      fallingWalnut.position.y += velocity * delta;
+
+      // Bounce on ground
+      if (fallingWalnut.position.y <= groundPos.y) {
+        if (bounces < maxBounces) {
+          velocity = -velocity * 0.5; // Bounce with 50% energy loss
+          fallingWalnut.position.y = groundPos.y;
+          bounces++;
+          requestAnimationFrame(animate);
+        } else {
+          // Settled - remove temp and create real walnut
+          this.scene.remove(fallingWalnut);
+          geometry.dispose();
+          material.dispose();
+          this.createRemoteWalnut({
+            walnutId,
+            ownerId: 'game',
+            walnutType: 'ground',
+            position: groundPos,
+            points: 1
+          });
+        }
+      } else {
+        requestAnimationFrame(animate);
+      }
+    };
+
+    animate();
   }
 
   // MVP 3: Tutorial system methods
