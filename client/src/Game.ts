@@ -1834,18 +1834,25 @@ export class Game {
             data.groundPosition.z + (Math.random() - 0.5) * randomOffset
           );
 
+          console.log(`🌳 DEBUG: Tree drop event - treeY=${data.treePosition.y.toFixed(1)}, ground=(${data.groundPosition.x.toFixed(1)},${data.groundPosition.z.toFixed(1)})`);
+
           // Spawn projectile from tree canopy to ground using proven physics system
           const projectileId = this.projectileManager.spawnProjectile(
             new THREE.Vector3(data.treePosition.x, data.treePosition.y, data.treePosition.z),
             toPosition,
-            'tree', // ownerId = 'tree' so it doesn't hit the tree's own collider
+            'game', // ownerId = 'game' so CollisionSystem won't skip any specific collider (tree walnuts should pass through trees)
             undefined // no target
           );
 
-          // Track server's walnut ID so we use it when projectile lands
-          this.treeWalnutProjectiles.set(projectileId, data.walnutId);
+          console.log(`🌳 DEBUG: spawnProjectile returned ID="${projectileId}" (empty=${projectileId === ''})`);
 
-          console.log(`🌳 Tree walnut spawned via ProjectileManager from Y=${data.treePosition.y.toFixed(1)} to ground (projectile ${projectileId} -> walnut ${data.walnutId})`);
+          if (projectileId === '') {
+            console.error(`❌ TREE WALNUT SPAWN FAILED: ProjectileManager walnut model not loaded yet!`);
+          } else {
+            // Track server's walnut ID so we use it when projectile lands
+            this.treeWalnutProjectiles.set(projectileId, data.walnutId);
+            console.log(`✅ Tree walnut projectile tracked: ${projectileId} -> ${data.walnutId}`);
+          }
         }
         break;
 
@@ -3157,11 +3164,16 @@ export class Game {
    * BEST PRACTICE: Transform projectile mesh into pickup walnut (no destroy/recreate)
    */
   private onProjectileMiss(data: { projectileId: string; ownerId: string; position: THREE.Vector3; mesh: THREE.Group }): void {
+    console.log(`🎯 DEBUG: onProjectileMiss called - projectileId=${data.projectileId}, ownerId=${data.ownerId}, pos=(${data.position.x.toFixed(1)},${data.position.y.toFixed(1)},${data.position.z.toFixed(1)})`);
+    console.log(`🎯 DEBUG: mesh type=${data.mesh.type}, children=${data.mesh.children.length}, visible=${data.mesh.visible}`);
+
     // MVP 9: Check if this is a tree walnut (has server-provided ID)
     const isTreeWalnut = this.treeWalnutProjectiles.has(data.projectileId);
     const walnutId = isTreeWalnut
       ? this.treeWalnutProjectiles.get(data.projectileId)!
       : `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    console.log(`🎯 DEBUG: isTreeWalnut=${isTreeWalnut}, walnutId=${walnutId}`);
 
     // Cleanup tree walnut tracking
     if (isTreeWalnut) {

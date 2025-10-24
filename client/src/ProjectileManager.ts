@@ -233,7 +233,8 @@ export class ProjectileManager {
       }
 
       // MVP 8: Check collision with trees/rocks (must be after entity check, before ground check)
-      if (this.collisionSystem) {
+      // MVP 9: Skip tree collision for tree-dropped walnuts (ownerId === 'game')
+      if (this.collisionSystem && projectile.ownerId !== 'game') {
         // Calculate next position for raycast collision check
         const nextPos = projectile.position.clone().add(
           projectile.velocity.clone().multiplyScalar(delta)
