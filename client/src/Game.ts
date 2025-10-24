@@ -5907,15 +5907,21 @@ export class Game {
     const gravity = -20; // m/s²
     let bounces = 0;
     const maxBounces = 2;
+    let lastTime = Date.now();
+
+    console.log(`🎬 Starting animation: walnut at Y=${treePos.y}, target ground Y=${groundPos.y}`);
 
     // Animation loop
-    const startTime = Date.now();
     const animate = () => {
-      const delta = Math.min((Date.now() - startTime) / 1000, 0.05);
+      const now = Date.now();
+      const delta = Math.min((now - lastTime) / 1000, 0.05); // Time since LAST FRAME
+      lastTime = now;
 
       // Apply gravity
       velocity += gravity * delta;
       fallingWalnut.position.y += velocity * delta;
+
+      console.log(`📍 Walnut Y=${fallingWalnut.position.y.toFixed(2)}, velocity=${velocity.toFixed(2)}, delta=${delta.toFixed(3)}`);
 
       // Bounce on ground
       if (fallingWalnut.position.y <= groundPos.y) {
@@ -5923,9 +5929,11 @@ export class Game {
           velocity = -velocity * 0.5; // Bounce with 50% energy loss
           fallingWalnut.position.y = groundPos.y;
           bounces++;
+          console.log(`🏀 BOUNCE ${bounces}! velocity now ${velocity.toFixed(2)}`);
           requestAnimationFrame(animate);
         } else {
           // Settled - remove temp and create real walnut
+          console.log(`✅ Walnut settled at ground. Creating real walnut.`);
           this.scene.remove(fallingWalnut);
           geometry.dispose();
           material.dispose();
