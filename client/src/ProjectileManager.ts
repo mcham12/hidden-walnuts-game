@@ -131,6 +131,12 @@ export class ProjectileManager {
     const mesh = this.walnutModel.clone();
     mesh.position.copy(fromPos);
 
+    // MVP 9: Make tree-dropped walnuts bigger during fall for visibility
+    if (ownerId === 'game') {
+      mesh.scale.multiplyScalar(8); // 8x bigger during fall (0.06 → 0.48 radius)
+      mesh.userData.isTreeWalnut = true; // Flag for shrinking on landing
+    }
+
     // Add to scene
     this.scene.add(mesh);
 
@@ -403,6 +409,12 @@ export class ProjectileManager {
    * @param projectile - Projectile that missed
    */
   private onProjectileMiss(projectile: Projectile): void {
+    // MVP 9: Shrink tree walnuts back to normal size on landing
+    if (projectile.mesh.userData.isTreeWalnut) {
+      projectile.mesh.scale.divideScalar(8); // Shrink back to normal (0.48 → 0.06 radius)
+      delete projectile.mesh.userData.isTreeWalnut;
+    }
+
     // Small impact particles (dirt puff for ground hit)
     this.vfxManager.spawnParticles(
       'dirt',
