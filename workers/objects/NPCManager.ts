@@ -829,10 +829,12 @@ export class NPCManager {
    * Broadcast NPC despawn to all players
    */
   private broadcastNPCDespawn(npcId: string): void {
+    console.log(`📡 Broadcasting npc_despawned for: ${npcId}`);
     this.forestManager.broadcastToAll({
       type: 'npc_despawned',
       npcId
     });
+    console.log(`✅ Broadcast complete for: ${npcId}`);
   }
 
   /**
