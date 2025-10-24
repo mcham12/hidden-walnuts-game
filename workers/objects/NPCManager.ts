@@ -20,7 +20,8 @@ enum NPCBehavior {
   WANDER = 'wander',
   APPROACH = 'approach',
   GATHER = 'gather',
-  THROW = 'throw'
+  THROW = 'throw',
+  EAT = 'eat' // MVP 9: Eat walnut to heal when health low
 }
 
 interface NPC {
@@ -390,6 +391,9 @@ export class NPCManager {
       case NPCBehavior.THROW:
         this.executeBehaviorThrow(npc, nearbyPlayers, nearbyNPCs);
         break;
+      case NPCBehavior.EAT:
+        this.executeBehaviorEat(npc);
+        break;
     }
   }
 
@@ -429,6 +433,16 @@ export class NPCManager {
           npc.targetStartTime = undefined;
           return NPCBehavior.WANDER;
         }
+      }
+    }
+
+    // MVP 9: HIGHEST PRIORITY - Eat walnut to heal when health < 50
+    // NPCs prioritize survival over aggression when low HP
+    if (npc.health < 50 && npc.walnutInventory > 0) {
+      // Keep at least 1 walnut if very low health, otherwise save some for combat
+      const shouldEat = npc.health < 30 || npc.walnutInventory > 2;
+      if (shouldEat) {
+        return NPCBehavior.EAT;
       }
     }
 
@@ -483,6 +497,8 @@ export class NPCManager {
         return 5 + Math.random() * 5; // 5-10 seconds
       case NPCBehavior.THROW:
         return 1.5; // Throw animation duration
+      case NPCBehavior.EAT:
+        return 2.0; // MVP 9: Eating duration (instant effect but animation time)
       default:
         return 5;
     }
@@ -657,6 +673,30 @@ export class NPCManager {
     npc.currentBehavior = NPCBehavior.IDLE;
     npc.behaviorTimer = 0;
     npc.targetEntityId = undefined;
+  }
+
+  /**
+   * MVP 9: Execute EAT behavior - NPC eats walnut to heal
+   */
+  private executeBehaviorEat(npc: NPC): void {
+    if (npc.walnutInventory === 0) {
+      npc.currentBehavior = NPCBehavior.IDLE;
+      return;
+    }
+
+    // Eat walnut
+    npc.walnutInventory--;
+    const healAmount = 20; // Same as player
+    npc.health = Math.min(npc.maxHealth, npc.health + healAmount);
+
+    console.log(`🍴 NPC ${npc.id} (${npc.username}) ate walnut: ${npc.health}/${npc.maxHealth} HP (inventory: ${npc.walnutInventory})`);
+
+    // Play idle animation while eating (no special eat animation yet)
+    npc.animation = 'idle';
+
+    // Return to idle after eating
+    npc.currentBehavior = NPCBehavior.IDLE;
+    npc.behaviorTimer = 0;
   }
 
   /**
