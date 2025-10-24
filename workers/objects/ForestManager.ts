@@ -1803,52 +1803,55 @@ export default class ForestManager extends DurableObject {
    * Creates walnut at ground level and broadcasts animation event to clients
    */
   private async dropTreeWalnut(): Promise<void> {
-    // Get all trees
+    // TEMPORARY: Make EVERY tree drop a walnut for testing
     const trees = this.forestObjects.filter(obj => obj.type === 'tree');
     if (trees.length === 0) {
       console.warn('⚠️ No trees available for walnut drop');
       return;
     }
 
-    // Pick random tree
-    const tree = trees[Math.floor(Math.random() * trees.length)];
+    console.log(`🌳🌳🌳 DROPPING WALNUTS FROM ALL ${trees.length} TREES!`);
 
-    // Create walnut at ground level under tree
-    const walnutPosition = {
-      x: tree.x,
-      y: 0.3, // Ground level (same as other walnuts)
-      z: tree.z
-    };
-
-    // Create walnut in mapState
-    const walnutId = `tree-drop-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const walnut: Walnut = {
-      id: walnutId,
-      ownerId: 'game',
-      origin: 'game',
-      hiddenIn: 'ground',
-      location: walnutPosition,
-      found: false,
-      timestamp: Date.now()
-    };
-
-    this.mapState.push(walnut);
-    await this.storage.put('mapState', this.mapState);
-
-    console.log(`🌳 Tree ${tree.id} dropped walnut at (${tree.x.toFixed(1)}, ${tree.z.toFixed(1)})`);
-
-    // Broadcast drop event to all players with tree canopy position for falling animation
-    const treeCanopyHeight = 8 + (tree.scale * 2); // Approximate canopy height based on tree scale
-    this.broadcastToAll({
-      type: 'tree_walnut_drop',
-      treePosition: {
+    // Drop walnut from EVERY tree
+    for (const tree of trees) {
+      // Create walnut at ground level under tree
+      const walnutPosition = {
         x: tree.x,
-        y: treeCanopyHeight,
+        y: 0.3, // Ground level (same as other walnuts)
         z: tree.z
-      },
-      groundPosition: walnutPosition,
-      walnutId: walnutId
-    });
+      };
+
+      // Create walnut in mapState
+      const walnutId = `tree-drop-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const walnut: Walnut = {
+        id: walnutId,
+        ownerId: 'game',
+        origin: 'game',
+        hiddenIn: 'ground',
+        location: walnutPosition,
+        found: false,
+        timestamp: Date.now()
+      };
+
+      this.mapState.push(walnut);
+
+      console.log(`🌳 Tree ${tree.id} dropped walnut at (${tree.x.toFixed(1)}, ${tree.z.toFixed(1)})`);
+
+      // Broadcast drop event to all players with tree canopy position for falling animation
+      const treeCanopyHeight = 8 + (tree.scale * 2); // Approximate canopy height based on tree scale
+      this.broadcastToAll({
+        type: 'tree_walnut_drop',
+        treePosition: {
+          x: tree.x,
+          y: treeCanopyHeight,
+          z: tree.z
+        },
+        groundPosition: walnutPosition,
+        walnutId: walnutId
+      });
+    }
+
+    await this.storage.put('mapState', this.mapState);
   }
 
   // Validate and constrain position within world bounds
