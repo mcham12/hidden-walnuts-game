@@ -1687,11 +1687,6 @@ export class Game {
       return;
     }
 
-    // MVP 9 DEBUG: Log ALL incoming messages to diagnose npc_despawned issue
-    if (data.type === 'npc_despawned' || data.type.startsWith('npc')) {
-      console.log(`🔍 RECEIVED MESSAGE: ${data.type}`, data);
-    }
-
     switch (data.type) {
       case 'world_state':
         // Create forest from server data (only once)
@@ -1937,7 +1932,6 @@ export class Game {
 
       case 'npc_despawned':
         // MVP 7: NPC despawned on server, remove from client
-        console.log(`📨 Received npc_despawned for: ${data.npcId}`);
         if (data.npcId) {
           this.removeNPC(data.npcId);
         }
@@ -2882,10 +2876,8 @@ export class Game {
    * MVP 7: Remove NPC from client (server despawn)
    */
   private removeNPC(npcId: string): void {
-    console.log(`🗑️ removeNPC called for: ${npcId}`);
     const npc = this.npcs.get(npcId);
     if (npc) {
-      console.log(`✅ Removing NPC ${npcId} from scene`);
       // Clean up geometry and materials
       npc.traverse((child: any) => {
         if (child.isMesh) {
