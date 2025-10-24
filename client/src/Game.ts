@@ -239,6 +239,9 @@ export class Game {
   private lastThrowTime: number = 0; // For throw cooldown tracking
   private readonly THROW_COOLDOWN = 1500; // 1.5 seconds in milliseconds
 
+  // MVP 9: Track tree-dropped walnut IDs (projectileId -> serverWalnutId)
+  private treeWalnutProjectiles: Map<string, string> = new Map();
+
   // MVP 8 Phase 3: Health & Combat system
   private health: number = 100; // Current health (0-100)
   private readonly MAX_HEALTH = 100;
@@ -1821,9 +1824,28 @@ export class Game {
         break;
 
       case 'tree_walnut_drop':
-        // MVP 9: Tree dropped walnut - animate falling from canopy
-        if (data.treePosition && data.groundPosition && data.walnutId) {
-          this.animateTreeWalnutFall(data.treePosition, data.groundPosition, data.walnutId);
+        // MVP 9: Tree dropped walnut - use ProjectileManager for physics (same as thrown walnuts)
+        if (data.treePosition && data.groundPosition && data.walnutId && this.projectileManager) {
+          // Add slight horizontal randomness so walnuts don't all land in exact same spot
+          const randomOffset = 0.3;
+          const toPosition = new THREE.Vector3(
+            data.groundPosition.x + (Math.random() - 0.5) * randomOffset,
+            data.groundPosition.y,
+            data.groundPosition.z + (Math.random() - 0.5) * randomOffset
+          );
+
+          // Spawn projectile from tree canopy to ground using proven physics system
+          const projectileId = this.projectileManager.spawnProjectile(
+            new THREE.Vector3(data.treePosition.x, data.treePosition.y, data.treePosition.z),
+            toPosition,
+            'tree', // ownerId = 'tree' so it doesn't hit the tree's own collider
+            undefined // no target
+          );
+
+          // Track server's walnut ID so we use it when projectile lands
+          this.treeWalnutProjectiles.set(projectileId, data.walnutId);
+
+          console.log(`🌳 Tree walnut spawned via ProjectileManager from Y=${data.treePosition.y.toFixed(1)} to ground (projectile ${projectileId} -> walnut ${data.walnutId})`);
         }
         break;
 
@@ -3131,11 +3153,20 @@ export class Game {
 
   /**
    * MVP 8: Handle projectile missing (hit ground)
+   * MVP 9: Also handles tree-dropped walnuts (reuses server ID, doesn't notify server)
    * BEST PRACTICE: Transform projectile mesh into pickup walnut (no destroy/recreate)
    */
   private onProjectileMiss(data: { projectileId: string; ownerId: string; position: THREE.Vector3; mesh: THREE.Group }): void {
-    // BEST PRACTICE: Transform projectile mesh into pickup walnut (no destroy/recreate)
-    const walnutId = `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // MVP 9: Check if this is a tree walnut (has server-provided ID)
+    const isTreeWalnut = this.treeWalnutProjectiles.has(data.projectileId);
+    const walnutId = isTreeWalnut
+      ? this.treeWalnutProjectiles.get(data.projectileId)!
+      : `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Cleanup tree walnut tracking
+    if (isTreeWalnut) {
+      this.treeWalnutProjectiles.delete(data.projectileId);
+    }
 
     // MVP 8 FIX: Explicitly set all coordinates (not just Y) to prevent drift at close range
     // At close range with fast projectiles, mesh position must match hit position exactly
@@ -3168,16 +3199,21 @@ export class Game {
     const label = this.createLabel('Dropped Walnut (1 pt)', '#CD853F');
     this.walnutLabels.set(walnutId, label);
 
-    // Notify server to sync with other clients
-    this.sendMessage({
-      type: 'spawn_dropped_walnut',
-      position: {
-        x: data.mesh.position.x,
-        y: data.mesh.position.y,
-        z: data.mesh.position.z
-      }
-      // No immunity for misses
-    });
+    // MVP 9: Only notify server for player-thrown walnuts, NOT tree walnuts
+    // (Server already knows about tree walnuts, notified all clients)
+    if (!isTreeWalnut) {
+      this.sendMessage({
+        type: 'spawn_dropped_walnut',
+        position: {
+          x: data.mesh.position.x,
+          y: data.mesh.position.y,
+          z: data.mesh.position.z
+        }
+        // No immunity for misses
+      });
+    }
+
+    console.log(`${isTreeWalnut ? '🌳' : '🌰'} Projectile landed -> walnut ${walnutId} ${isTreeWalnut ? '(tree drop)' : '(player throw)'}`);
   }
 
   /**
@@ -5884,94 +5920,10 @@ export class Game {
   }
 
   /**
-   * MVP 9: Animate walnut falling from tree canopy with physics
+   * MVP 9: Tree walnut animation - REMOVED
+   * Now uses ProjectileManager (same as thrown walnuts) - see tree_walnut_drop case handler
+   * This eliminates 90 lines of duplicate physics code and all associated bugs
    */
-  private animateTreeWalnutFall(
-    treePos: { x: number; y: number; z: number },
-    groundPos: { x: number; y: number; z: number },
-    walnutId: string
-  ): void {
-    // Prevent duplicate animations for same walnut
-    if (this.walnuts.has(walnutId)) {
-      console.warn(`⚠️ Walnut ${walnutId} already exists, skipping animation`);
-      return;
-    }
-
-    console.log(`🌳 TREE WALNUT DROP! Animating fall from tree`);
-
-    // Create temporary falling walnut - BRIGHT MAGENTA FOR TESTING
-    const geometry = new THREE.SphereGeometry(1.0, 16, 16);
-    const material = new THREE.MeshStandardMaterial({
-      color: 0xFF00FF, // BRIGHT MAGENTA
-      emissive: 0xFF00FF,
-      emissiveIntensity: 0.8
-    });
-    const fallingWalnut = new THREE.Mesh(geometry, material);
-    fallingWalnut.position.set(treePos.x, treePos.y, treePos.z);
-    fallingWalnut.castShadow = true;
-    this.scene.add(fallingWalnut);
-
-    console.log(`🎬 Started falling animation at (${treePos.x.toFixed(1)}, ${treePos.y.toFixed(1)}, ${treePos.z.toFixed(1)})`);
-
-    // Physics state
-    let velocity = 0;
-    const gravity = -20; // m/s²
-    let bounces = 0;
-    const maxBounces = 2;
-    let lastTime = Date.now();
-    let animationCancelled = false;
-
-    // Cleanup function
-    const cleanup = () => {
-      animationCancelled = true;
-      this.scene.remove(fallingWalnut);
-      geometry.dispose();
-      material.dispose();
-    };
-
-    // Animation loop
-    const animate = () => {
-      if (animationCancelled) return; // Stop if cleaned up
-
-      const now = Date.now();
-      const delta = Math.min((now - lastTime) / 1000, 0.05); // Time since LAST FRAME
-      lastTime = now;
-
-      // Apply gravity
-      velocity += gravity * delta;
-      fallingWalnut.position.y += velocity * delta;
-
-      // Bounce on ground
-      if (fallingWalnut.position.y <= groundPos.y) {
-        if (bounces < maxBounces) {
-          velocity = -velocity * 0.5; // Bounce with 50% energy loss
-          fallingWalnut.position.y = groundPos.y;
-          bounces++;
-          console.log(`🏀 Bounce ${bounces}`);
-          requestAnimationFrame(animate);
-        } else {
-          // Settled - remove temp and create REAL GROUND walnut
-          console.log(`✅ Animation complete. Creating ground walnut.`);
-          cleanup();
-
-          // Create the actual pickable walnut (only if not already created)
-          if (!this.walnuts.has(walnutId)) {
-            this.createRemoteWalnut({
-              walnutId,
-              ownerId: 'game',
-              walnutType: 'ground', // Ground walnut, not game walnut
-              position: groundPos,
-              points: 1
-            });
-          }
-        }
-      } else {
-        requestAnimationFrame(animate);
-      }
-    };
-
-    animate();
-  }
 
   // MVP 3: Tutorial system methods
 
