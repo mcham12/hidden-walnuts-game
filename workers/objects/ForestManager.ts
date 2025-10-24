@@ -1813,6 +1813,7 @@ export default class ForestManager extends DurableObject {
     console.log(`🌳🌳🌳 DROPPING WALNUTS FROM ALL ${trees.length} TREES!`);
 
     // Drop walnut from EVERY tree
+    // MVP 9 FIX: Don't add to mapState yet - let clients animate first, they'll confirm pickup later
     for (const tree of trees) {
       // Create walnut at ground level under tree
       const walnutPosition = {
@@ -1821,23 +1822,12 @@ export default class ForestManager extends DurableObject {
         z: tree.z
       };
 
-      // Create walnut in mapState
       const walnutId = `tree-drop-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const walnut: Walnut = {
-        id: walnutId,
-        ownerId: 'game',
-        origin: 'game',
-        hiddenIn: 'ground',
-        location: walnutPosition,
-        found: false,
-        timestamp: Date.now()
-      };
 
-      this.mapState.push(walnut);
+      console.log(`🌳 Tree ${tree.id} dropping walnut at (${tree.x.toFixed(1)}, ${tree.z.toFixed(1)})`);
 
-      console.log(`🌳 Tree ${tree.id} dropped walnut at (${tree.x.toFixed(1)}, ${tree.z.toFixed(1)})`);
-
-      // Broadcast drop event to all players with tree canopy position for falling animation
+      // Broadcast drop event FIRST so clients can animate
+      // Clients will create the walnut when animation completes
       const treeCanopyHeight = 8 + (tree.scale * 2); // Approximate canopy height based on tree scale
       this.broadcastToAll({
         type: 'tree_walnut_drop',
@@ -1847,11 +1837,12 @@ export default class ForestManager extends DurableObject {
           z: tree.z
         },
         groundPosition: walnutPosition,
-        walnutId: walnutId
+        walnutId: walnutId,
+        ownerId: 'game' // Add this so client knows it's a game walnut
       });
     }
 
-    await this.storage.put('mapState', this.mapState);
+    // Don't save to mapState - tree walnuts are client-created during animation
   }
 
   // Validate and constrain position within world bounds
