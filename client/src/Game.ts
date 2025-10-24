@@ -1687,6 +1687,11 @@ export class Game {
       return;
     }
 
+    // MVP 9 DEBUG: Log ALL incoming messages to diagnose npc_despawned issue
+    if (data.type === 'npc_despawned' || data.type.startsWith('npc')) {
+      console.log(`🔍 RECEIVED MESSAGE: ${data.type}`, data);
+    }
+
     switch (data.type) {
       case 'world_state':
         // Create forest from server data (only once)
