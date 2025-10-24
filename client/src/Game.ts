@@ -5889,68 +5889,52 @@ export class Game {
   private animateTreeWalnutFall(
     treePos: { x: number; y: number; z: number },
     groundPos: { x: number; y: number; z: number },
-    walnutId: string
+    _walnutId: string
   ): void {
     // TEMPORARY: Console log for testing
     console.log(`🌳 TREE WALNUT DROP! Falling from (${treePos.x.toFixed(1)}, ${treePos.y.toFixed(1)}, ${treePos.z.toFixed(1)}) to ground at (${groundPos.x.toFixed(1)}, ${groundPos.z.toFixed(1)})`);
 
-    // Create temporary falling walnut starting at tree canopy
-    const geometry = new THREE.SphereGeometry(this.WALNUT_SIZE / 2, 8, 8);
-    const material = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+    // Create temporary falling walnut starting at tree canopy - MAKE IT HUGE AND BRIGHT FOR TESTING
+    const geometry = new THREE.SphereGeometry(2.0, 16, 16); // HUGE walnut for visibility
+    const material = new THREE.MeshStandardMaterial({
+      color: 0xFF00FF, // BRIGHT MAGENTA so you can't miss it
+      emissive: 0xFF00FF,
+      emissiveIntensity: 0.5
+    });
     const fallingWalnut = new THREE.Mesh(geometry, material);
     fallingWalnut.position.set(treePos.x, treePos.y, treePos.z);
     fallingWalnut.castShadow = true;
     this.scene.add(fallingWalnut);
 
-    // Physics state
-    let velocity = 0;
-    const gravity = -20; // m/s²
-    let bounces = 0;
-    const maxBounces = 2;
-    let lastTime = Date.now();
+    console.log(`🎨 Created BRIGHT MAGENTA falling walnut at (${treePos.x}, ${treePos.y}, ${treePos.z})`);
+    console.log(`🔍 Scene children count: ${this.scene.children.length}`);
+    console.log(`📷 Camera position: (${this.camera.position.x.toFixed(1)}, ${this.camera.position.y.toFixed(1)}, ${this.camera.position.z.toFixed(1)})`);
+    console.log(`👤 Player position: (${this.character?.position.x.toFixed(1)}, ${this.character?.position.y.toFixed(1)}, ${this.character?.position.z.toFixed(1)})`);
 
-    console.log(`🎬 Starting animation: walnut at Y=${treePos.y}, target ground Y=${groundPos.y}`);
+    // Check distance to player
+    if (this.character) {
+      const dx = treePos.x - this.character.position.x;
+      const dz = treePos.z - this.character.position.z;
+      const distance = Math.sqrt(dx * dx + dz * dz);
+      console.log(`📏 Distance from player to tree: ${distance.toFixed(1)} units`);
+    }
 
-    // Animation loop
-    const animate = () => {
-      const now = Date.now();
-      const delta = Math.min((now - lastTime) / 1000, 0.05); // Time since LAST FRAME
-      lastTime = now;
+    // Make sure it's in a layer that's visible
+    fallingWalnut.layers.enableAll();
+    console.log(`🎨 Walnut visible: ${fallingWalnut.visible}, layers: ${fallingWalnut.layers.mask}`);
 
-      // Apply gravity
-      velocity += gravity * delta;
-      fallingWalnut.position.y += velocity * delta;
+    // TEMPORARY: Skip animation entirely - just leave the sphere floating to see if it's visible
+    console.log(`⚠️ SKIPPING ANIMATION - HUGE BRIGHT MAGENTA sphere should stay floating at tree canopy`);
 
-      console.log(`📍 Walnut Y=${fallingWalnut.position.y.toFixed(2)}, velocity=${velocity.toFixed(2)}, delta=${delta.toFixed(3)}`);
-
-      // Bounce on ground
-      if (fallingWalnut.position.y <= groundPos.y) {
-        if (bounces < maxBounces) {
-          velocity = -velocity * 0.5; // Bounce with 50% energy loss
-          fallingWalnut.position.y = groundPos.y;
-          bounces++;
-          console.log(`🏀 BOUNCE ${bounces}! velocity now ${velocity.toFixed(2)}`);
-          requestAnimationFrame(animate);
-        } else {
-          // Settled - remove temp and create real walnut
-          console.log(`✅ Walnut settled at ground. Creating real walnut.`);
-          this.scene.remove(fallingWalnut);
-          geometry.dispose();
-          material.dispose();
-          this.createRemoteWalnut({
-            walnutId,
-            ownerId: 'game',
-            walnutType: 'ground',
-            position: groundPos,
-            points: 1
-          });
-        }
-      } else {
-        requestAnimationFrame(animate);
+    // After 5 seconds, log if it's still in scene
+    setTimeout(() => {
+      const stillInScene = this.scene.children.includes(fallingWalnut);
+      console.log(`⏱️ After 5s: Walnut still in scene? ${stillInScene}`);
+      if (stillInScene) {
+        console.log(`⏱️ Walnut position: (${fallingWalnut.position.x.toFixed(1)}, ${fallingWalnut.position.y.toFixed(1)}, ${fallingWalnut.position.z.toFixed(1)})`);
+        console.log(`⏱️ Walnut visible: ${fallingWalnut.visible}`);
       }
-    };
-
-    animate();
+    }, 5000);
   }
 
   // MVP 3: Tutorial system methods
