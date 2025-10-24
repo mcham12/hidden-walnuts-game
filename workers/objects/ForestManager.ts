@@ -115,7 +115,7 @@ export default class ForestManager extends DurableObject {
 
   // MVP 9: Tree walnut drop system
   private lastTreeWalnutDrop: number = 0;
-  private nextTreeDropInterval: number = 60000 + Math.random() * 60000; // 60-120 seconds random
+  private nextTreeDropInterval: number = 10000 + Math.random() * 10000; // TEMPORARY: 10-20 seconds for testing (normally 60-120s)
 
   // MVP 7.1: Rate limiting state
   private connectionAttempts: Map<string, number[]> = new Map(); // IP -> timestamps
@@ -289,8 +289,8 @@ export default class ForestManager extends DurableObject {
     if (hasPlayers && now - this.lastTreeWalnutDrop >= this.nextTreeDropInterval) {
       await this.dropTreeWalnut();
       this.lastTreeWalnutDrop = now;
-      // Randomize next drop interval (60-120 seconds)
-      this.nextTreeDropInterval = 60000 + Math.random() * 60000;
+      // Randomize next drop interval - TEMPORARY: 10-20s for testing (normally 60-120s)
+      this.nextTreeDropInterval = 10000 + Math.random() * 10000;
     }
 
     // MVP 5.8: Check player disconnects every 10 seconds

@@ -5891,7 +5891,10 @@ export class Game {
     groundPos: { x: number; y: number; z: number },
     walnutId: string
   ): void {
-    // Create temporary falling walnut
+    // TEMPORARY: Console log for testing
+    console.log(`🌳 TREE WALNUT DROP! Falling from (${treePos.x.toFixed(1)}, ${treePos.y.toFixed(1)}, ${treePos.z.toFixed(1)}) to ground at (${groundPos.x.toFixed(1)}, ${groundPos.z.toFixed(1)})`);
+
+    // Create temporary falling walnut starting at tree canopy
     const geometry = new THREE.SphereGeometry(this.WALNUT_SIZE / 2, 8, 8);
     const material = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
     const fallingWalnut = new THREE.Mesh(geometry, material);
