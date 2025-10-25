@@ -1826,8 +1826,9 @@ export class Game {
       case 'tree_walnut_drop':
         // MVP 9: Tree dropped walnut - spawn at random canopy position, falls straight down with bounce/roll
         if (data.treePosition && data.walnutId && this.projectileManager) {
-          // Random radial position around tree canopy (not trunk center)
-          const canopyOffset = 1.0; // 1 unit from trunk (reduced from 2.0 - closer to tree)
+          // Random radial distance and angle for natural distribution
+          // Min 0.6 (avoids trunk collision radius ~0.3-0.36), Max 1.5 (realistic canopy spread)
+          const canopyOffset = 0.6 + Math.random() * 0.9; // 0.6-1.5 units from trunk center
           const randomAngle = Math.random() * Math.PI * 2;
           const spawnPos = new THREE.Vector3(
             data.treePosition.x + Math.cos(randomAngle) * canopyOffset,
@@ -3171,7 +3172,7 @@ export class Game {
 
     // MVP 9 FIX: Use same 5-point terrain sampling as ProjectileManager (prevents underground bug)
     // Single-point sampling can give lower height on concave/steep terrain
-    const walnutRadius = this.WALNUT_SIZE / 2;
+    const walnutRadius = this.WALNUT_SIZE; // WALNUT_SIZE is already the radius (not diameter)
     const cornerDist = walnutRadius;
     const terrainCenter = getTerrainHeight(data.position.x, data.position.z);
     const terrainNE = getTerrainHeight(data.position.x + cornerDist, data.position.z + cornerDist);

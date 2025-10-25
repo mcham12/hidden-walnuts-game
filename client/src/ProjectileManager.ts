@@ -362,8 +362,8 @@ export class ProjectileManager {
           const mass = 1.0; // Normalized mass
           const horizontalSpeed = new THREE.Vector2(projectile.velocity.x, projectile.velocity.z).length();
 
-          // Velocity-based friction (proven technique)
-          const frictionCoefficient = 0.15;
+          // Velocity-based friction (proven technique) - reduced for more visible rolling
+          const frictionCoefficient = 0.08; // Reduced from 0.15 for better slope rolling
           const frictionForce = (horizontalSpeed / delta) * frictionCoefficient;
 
           // Acceleration = (gravity component - friction) / mass
