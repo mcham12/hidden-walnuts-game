@@ -3172,21 +3172,13 @@ export class Game {
       this.treeWalnutProjectiles.delete(data.projectileId);
     }
 
-    // Use SAME multi-point sampling as ProjectileManager physics (must match!)
-    const walnutRadius = this.WALNUT_SIZE;
-    const cornerDist = walnutRadius;
-    const terrainCenter = getTerrainHeight(data.position.x, data.position.z);
-    const terrainNE = getTerrainHeight(data.position.x + cornerDist, data.position.z + cornerDist);
-    const terrainNW = getTerrainHeight(data.position.x - cornerDist, data.position.z + cornerDist);
-    const terrainSE = getTerrainHeight(data.position.x + cornerDist, data.position.z - cornerDist);
-    const terrainSW = getTerrainHeight(data.position.x - cornerDist, data.position.z - cornerDist);
-    const terrainHeight = Math.max(terrainCenter, terrainNE, terrainNW, terrainSE, terrainSW);
-
-    data.mesh.position.set(
-      data.position.x,
-      terrainHeight + walnutRadius,
-      data.position.z
-    );
+    // Trust ProjectileManager's final position (already calculated with multi-point sampling)
+    // Mesh position was already set correctly before calling this method
+    // Just verify position matches mesh (should already be in sync)
+    if (data.mesh.position.distanceTo(data.position) > 0.01) {
+      console.warn('⚠️ Position/mesh desync detected, using mesh position');
+      data.position.copy(data.mesh.position);
+    }
 
     // Stop spinning animation (projectile was spinning in flight)
     data.mesh.rotation.set(0, 0, 0);
@@ -3215,6 +3207,7 @@ export class Game {
     if (!isTreeWalnut) {
       this.sendMessage({
         type: 'spawn_dropped_walnut',
+        walnutId: walnutId, // Send OUR ID so server echoes it back
         position: {
           x: data.mesh.position.x,
           y: data.mesh.position.y,

@@ -990,7 +990,8 @@ export default class ForestManager extends DurableObject {
 
       case "spawn_dropped_walnut":
         // MVP 8: Create pickupable walnut on ground where projectile landed
-        const droppedWalnutId = `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        // Use client's ID to prevent duplicates (client already created local walnut)
+        const droppedWalnutId = data.walnutId || `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const dropTime = Date.now();
 
         const droppedWalnut: Walnut = {
