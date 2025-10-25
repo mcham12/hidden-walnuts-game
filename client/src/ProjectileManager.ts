@@ -396,6 +396,18 @@ export class ProjectileManager {
           }
         }
 
+        // CRITICAL: Resample terrain at CURRENT position (rolling may have changed XZ)
+        // Must use same multi-point sampling to match settle logic
+        const finalTerrainCenter = getTerrainHeight(projectile.position.x, projectile.position.z);
+        const finalTerrainNE = getTerrainHeight(projectile.position.x + cornerDist, projectile.position.z + cornerDist);
+        const finalTerrainNW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z + cornerDist);
+        const finalTerrainSE = getTerrainHeight(projectile.position.x + cornerDist, projectile.position.z - cornerDist);
+        const finalTerrainSW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z - cornerDist);
+        const finalGroundY = Math.max(finalTerrainCenter, finalTerrainNE, finalTerrainNW, finalTerrainSE, finalTerrainSW) + walnutRadius;
+
+        // Clamp to current terrain height (handles rolling to different slopes)
+        projectile.position.y = finalGroundY;
+
         // Update mesh position after all ground physics (bouncing/rolling done)
         projectile.mesh.position.copy(projectile.position);
       }
