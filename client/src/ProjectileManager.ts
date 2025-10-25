@@ -307,8 +307,8 @@ export class ProjectileManager {
       const terrainAtProjectile = Math.max(terrainCenter, terrainNE, terrainNW, terrainSE, terrainSW);
       const groundY = terrainAtProjectile + walnutRadius;
 
-      // ALWAYS clamp to ground when close (not just when below) - prevents sinking on steep terrain
-      const isOnGround = projectile.position.y <= groundY + 0.1; // Small buffer for detection
+      // Standard physics: Only apply ground collision when sphere touches/penetrates ground
+      const isOnGround = projectile.position.y <= groundY;
 
       if (isOnGround) {
         // Ground hit - apply bounce physics
