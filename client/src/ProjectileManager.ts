@@ -301,7 +301,7 @@ export class ProjectileManager {
         // Ground hit - apply bounce physics
         const MAX_BOUNCES = 2;
         const BOUNCE_DAMPING = 0.25; // Reduced from 0.5 - less bouncy
-        const FRICTION = 0.88; // Horizontal friction per frame (increased from 0.92)
+        const FRICTION = 0.85; // Horizontal friction per frame (more friction for realistic roll)
         const SETTLE_THRESHOLD = 0.3; // m/s - velocity below this = settled (reduced from 0.5)
 
         if (projectile.bounces < MAX_BOUNCES && Math.abs(projectile.velocity.y) > SETTLE_THRESHOLD) {
@@ -313,32 +313,37 @@ export class ProjectileManager {
           // Apply friction to horizontal velocity
           projectile.velocity.x *= FRICTION;
           projectile.velocity.z *= FRICTION;
+        }
 
-          // MVP 9: Apply terrain-slope-based rolling (game-standard physics)
-          // Calculate terrain slope by sampling nearby points
-          const slopeCheckDist = 0.5;
-          const terrainAhead = getTerrainHeight(
-            projectile.position.x + (projectile.velocity.x > 0 ? slopeCheckDist : -slopeCheckDist),
-            projectile.position.z + (projectile.velocity.z > 0 ? slopeCheckDist : -slopeCheckDist)
-          );
-          const slope = (terrainAhead - terrainAtProjectile) / slopeCheckDist;
+        // MVP 9: Apply terrain-slope-based rolling (ALWAYS, even when settled)
+        // Calculate terrain gradient by sampling in X and Z directions separately
+        const gradientSampleDist = 0.3;
 
-          // Apply downhill acceleration (standard rolling physics)
-          const ROLL_ACCELERATION = 2.0; // m/s² downhill force
-          if (Math.abs(slope) > 0.05) { // Only roll on slopes > 5%
-            // Calculate slope direction (downhill)
-            const slopeDir = new THREE.Vector2(
-              projectile.velocity.x,
-              projectile.velocity.z
-            ).normalize();
+        // Sample terrain in cardinal directions to get gradient
+        const terrainX_pos = getTerrainHeight(projectile.position.x + gradientSampleDist, projectile.position.z);
+        const terrainX_neg = getTerrainHeight(projectile.position.x - gradientSampleDist, projectile.position.z);
+        const terrainZ_pos = getTerrainHeight(projectile.position.x, projectile.position.z + gradientSampleDist);
+        const terrainZ_neg = getTerrainHeight(projectile.position.x, projectile.position.z - gradientSampleDist);
 
-            // Add downhill force
-            projectile.velocity.x += slopeDir.x * slope * ROLL_ACCELERATION * delta;
-            projectile.velocity.z += slopeDir.y * slope * ROLL_ACCELERATION * delta;
-          }
-        } else {
-          // FULLY SETTLED - now convert to pickup walnut
-          projectile.position.y = groundY; // Final ground position
+        // Calculate slope gradient (rise over run)
+        const slopeX = (terrainX_pos - terrainX_neg) / (2 * gradientSampleDist);
+        const slopeZ = (terrainZ_pos - terrainZ_neg) / (2 * gradientSampleDist);
+
+        // Apply gravity component along slope (standard physics: F = m*g*sin(θ))
+        const ROLL_FORCE = 5.0; // Increased from 2.0 for more visible rolling
+        const MIN_SLOPE = 0.03; // Roll on slopes > 3% (reduced from 5%)
+
+        if (Math.abs(slopeX) > MIN_SLOPE || Math.abs(slopeZ) > MIN_SLOPE) {
+          // Downhill is negative gradient direction
+          projectile.velocity.x -= slopeX * ROLL_FORCE * delta;
+          projectile.velocity.z -= slopeZ * ROLL_FORCE * delta;
+        }
+
+        // Check if fully settled AFTER applying rolling
+        if (projectile.bounces >= MAX_BOUNCES && Math.abs(projectile.velocity.y) <= SETTLE_THRESHOLD) {
+          // FULLY SETTLED - recalculate terrain height at FINAL position (not initial)
+          const finalTerrainHeight = getTerrainHeight(projectile.position.x, projectile.position.z);
+          projectile.position.y = finalTerrainHeight + walnutRadius;
           projectile.velocity.set(0, 0, 0); // Stop all movement
           projectile.hasHit = true;
           this.onProjectileMiss(projectile);
