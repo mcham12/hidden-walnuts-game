@@ -246,7 +246,7 @@ export class ProjectileManager {
       projectile.position.add(
         projectile.velocity.clone().multiplyScalar(delta)
       );
-      projectile.mesh.position.copy(projectile.position);
+      // DON'T update mesh yet - wait until after ground clamping (line 331/340)
 
       // Spin walnut for visual effect
       projectile.mesh.rotation.x += delta * 10;
@@ -310,7 +310,10 @@ export class ProjectileManager {
       // Standard physics: Only apply ground collision when sphere touches/penetrates ground
       const isOnGround = projectile.position.y <= groundY;
 
-      if (isOnGround) {
+      if (!isOnGround) {
+        // Flying - update mesh to follow position (no ground clamping needed)
+        projectile.mesh.position.copy(projectile.position);
+      } else {
         // Ground hit - apply bounce physics
         const MAX_BOUNCES = 2;
         const BOUNCE_DAMPING = 0.25; // Reduced from 0.5 - less bouncy
@@ -393,7 +396,8 @@ export class ProjectileManager {
           }
         }
 
-        // Settle check moved earlier (line 335) to prevent rolling after settlement
+        // Update mesh position after all ground physics (bouncing/rolling done)
+        projectile.mesh.position.copy(projectile.position);
       }
     });
 
