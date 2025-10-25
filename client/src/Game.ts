@@ -1824,43 +1824,23 @@ export class Game {
         break;
 
       case 'tree_walnut_drop':
-        // MVP 9: Tree dropped walnut - use ProjectileManager for physics (same as thrown walnuts)
-        if (data.treePosition && data.groundPosition && data.walnutId && this.projectileManager) {
-          // Offset walnut spawn position away from tree trunk (canopy edge, not center)
-          const canopyOffset = 2.0; // Spawn 2 units from trunk center
-          const randomAngle = Math.random() * Math.PI * 2; // Random direction around tree
-          const fromPosition = new THREE.Vector3(
+        // MVP 9: Tree dropped walnut - spawn at random canopy position, falls straight down with bounce/roll
+        if (data.treePosition && data.walnutId && this.projectileManager) {
+          // Random radial position around tree canopy (not trunk center)
+          const canopyOffset = 2.0; // 2 units from trunk
+          const randomAngle = Math.random() * Math.PI * 2;
+          const spawnPos = new THREE.Vector3(
             data.treePosition.x + Math.cos(randomAngle) * canopyOffset,
-            data.treePosition.y,
+            data.treePosition.y, // Canopy height from server
             data.treePosition.z + Math.sin(randomAngle) * canopyOffset
           );
 
-          // Landing position offset from trunk as well
-          const landingOffset = 2.5; // Land 2.5 units from trunk
-          const toPosition = new THREE.Vector3(
-            data.groundPosition.x + Math.cos(randomAngle) * landingOffset + (Math.random() - 0.5) * 0.5,
-            data.groundPosition.y,
-            data.groundPosition.z + Math.sin(randomAngle) * landingOffset + (Math.random() - 0.5) * 0.5
-          );
+          // Spawn with zero initial velocity - gravity pulls straight down
+          const projectileId = this.projectileManager.spawnFallingWalnut(spawnPos, 'game');
 
-          console.log(`🌳 DEBUG: Tree drop - from canopy (${fromPosition.x.toFixed(1)},${fromPosition.y.toFixed(1)},${fromPosition.z.toFixed(1)}) to ground (${toPosition.x.toFixed(1)},${toPosition.z.toFixed(1)})`);
-
-          // Spawn projectile from tree canopy edge to ground
-          const projectileId = this.projectileManager.spawnProjectile(
-            fromPosition,
-            toPosition,
-            'game', // ownerId = 'game' so CollisionSystem won't skip any specific collider (tree walnuts should pass through trees)
-            undefined // no target
-          );
-
-          console.log(`🌳 DEBUG: spawnProjectile returned ID="${projectileId}" (empty=${projectileId === ''})`);
-
-          if (projectileId === '') {
-            console.error(`❌ TREE WALNUT SPAWN FAILED: ProjectileManager walnut model not loaded yet!`);
-          } else {
-            // Track server's walnut ID so we use it when projectile lands
+          if (projectileId) {
             this.treeWalnutProjectiles.set(projectileId, data.walnutId);
-            console.log(`✅ Tree walnut projectile tracked: ${projectileId} -> ${data.walnutId}`);
+            console.log(`🌳 Tree walnut falling from (${spawnPos.x.toFixed(1)},${spawnPos.y.toFixed(1)},${spawnPos.z.toFixed(1)})`);
           }
         }
         break;

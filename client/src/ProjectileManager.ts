@@ -25,6 +25,7 @@ interface Projectile {
   targetId?: string; // Who it's aimed at (for tracking)
   spawnTime: number;
   hasHit: boolean;
+  bounces: number; // MVP 9: Track bounce count for settling
 }
 
 export class ProjectileManager {
@@ -146,7 +147,8 @@ export class ProjectileManager {
       ownerId,
       targetId,
       spawnTime: Date.now(),
-      hasHit: false
+      hasHit: false,
+      bounces: 0 // MVP 9: Start with zero bounces
     };
 
     this.projectiles.set(id, projectile);
@@ -155,6 +157,38 @@ export class ProjectileManager {
     // TODO Phase 2: Add dedicated throw sound
     // this.audioManager.playSound('whoosh');
 
+    return id;
+  }
+
+  /**
+   * MVP 9: Spawn falling walnut (tree drop) with zero initial velocity
+   * Gravity pulls it straight down, then bounces/rolls on ground
+   */
+  spawnFallingWalnut(position: THREE.Vector3, ownerId: string): string {
+    if (!this.walnutModel) {
+      console.warn('Walnut model not loaded yet, skipping falling walnut spawn');
+      return '';
+    }
+
+    const id = `projectile-${this.nextProjectileId++}`;
+    const mesh = this.walnutModel.clone();
+    mesh.position.copy(position);
+    this.scene.add(mesh);
+
+    // Start with zero velocity - gravity will pull down
+    const projectile: Projectile = {
+      id,
+      mesh,
+      position: position.clone(),
+      velocity: new THREE.Vector3(0, 0, 0), // Straight down via gravity only
+      ownerId,
+      targetId: undefined,
+      spawnTime: Date.now(),
+      hasHit: false,
+      bounces: 0
+    };
+
+    this.projectiles.set(id, projectile);
     return id;
   }
 
@@ -258,14 +292,36 @@ export class ProjectileManager {
         }
       }
 
-      // Check if hit ground (only if no entity/barrier hit detected)
+      // MVP 9: Bounce/roll physics on ground hit (industry-standard game physics)
       const terrainAtProjectile = getTerrainHeight(projectile.position.x, projectile.position.z);
-      const groundBuffer = 0.1; // Small buffer to trigger slightly before visual ground contact
-      if (projectile.position.y <= terrainAtProjectile + groundBuffer) {
-        projectile.hasHit = true;
-        this.onProjectileMiss(projectile);
-        toRemove.push(id);
-        return;
+      const walnutRadius = 0.06; // Match WALNUT_SIZE from Game.ts
+      const groundY = terrainAtProjectile + walnutRadius;
+
+      if (projectile.position.y <= groundY) {
+        // Ground hit - apply bounce physics
+        const MAX_BOUNCES = 2;
+        const BOUNCE_DAMPING = 0.5; // Keep 50% of energy on bounce
+        const FRICTION = 0.92; // Horizontal friction per frame
+        const SETTLE_THRESHOLD = 0.5; // m/s - velocity below this = settled
+
+        if (projectile.bounces < MAX_BOUNCES && Math.abs(projectile.velocity.y) > SETTLE_THRESHOLD) {
+          // Bounce: reverse Y velocity with damping
+          projectile.velocity.y = -projectile.velocity.y * BOUNCE_DAMPING;
+          projectile.position.y = groundY; // Snap to ground (prevent sinking)
+          projectile.bounces++;
+
+          // Apply friction to horizontal velocity (rolling)
+          projectile.velocity.x *= FRICTION;
+          projectile.velocity.z *= FRICTION;
+        } else {
+          // Settled - convert to pickup walnut
+          projectile.position.y = groundY; // Final ground position
+          projectile.velocity.set(0, 0, 0); // Stop all movement
+          projectile.hasHit = true;
+          this.onProjectileMiss(projectile);
+          toRemove.push(id);
+          return;
+        }
       }
     });
 
