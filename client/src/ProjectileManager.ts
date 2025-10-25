@@ -328,14 +328,18 @@ export class ProjectileManager {
         const isSettled = projectile.bounces >= MAX_BOUNCES && Math.abs(projectile.velocity.y) <= SETTLE_THRESHOLD;
 
         if (isSettled) {
-          // FULLY SETTLED - lock position immediately
-          projectile.position.y = groundY;
+          // FULLY SETTLED - resample terrain at CURRENT position for accurate placement
+          // (walnut may have rolled from initial groundY sample position)
+          const settleTerrainHeight = getTerrainHeight(projectile.position.x, projectile.position.z);
+          const settleGroundY = settleTerrainHeight + walnutRadius;
+
+          projectile.position.y = settleGroundY;
           projectile.mesh.position.copy(projectile.position);
           projectile.velocity.set(0, 0, 0);
 
           // DEBUG: Log final settled position
           if (projectile.ownerId === 'game') {
-            console.log(`✅ Walnut SETTLED at (${projectile.position.x.toFixed(2)}, ${projectile.position.y.toFixed(2)}, ${projectile.position.z.toFixed(2)})`);
+            console.log(`✅ Walnut SETTLED at (${projectile.position.x.toFixed(2)}, ${projectile.position.y.toFixed(2)}, ${projectile.position.z.toFixed(2)}) terrainH=${settleTerrainHeight.toFixed(3)}`);
           }
 
           projectile.hasHit = true;
