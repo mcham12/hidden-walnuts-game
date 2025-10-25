@@ -300,9 +300,9 @@ export class ProjectileManager {
       if (projectile.position.y <= groundY) {
         // Ground hit - apply bounce physics
         const MAX_BOUNCES = 2;
-        const BOUNCE_DAMPING = 0.5; // Keep 50% of energy on bounce
-        const FRICTION = 0.92; // Horizontal friction per frame
-        const SETTLE_THRESHOLD = 0.5; // m/s - velocity below this = settled
+        const BOUNCE_DAMPING = 0.25; // Reduced from 0.5 - less bouncy
+        const FRICTION = 0.88; // Horizontal friction per frame (increased from 0.92)
+        const SETTLE_THRESHOLD = 0.3; // m/s - velocity below this = settled (reduced from 0.5)
 
         if (projectile.bounces < MAX_BOUNCES && Math.abs(projectile.velocity.y) > SETTLE_THRESHOLD) {
           // Bounce: reverse Y velocity with damping
@@ -310,11 +310,34 @@ export class ProjectileManager {
           projectile.position.y = groundY; // Snap to ground (prevent sinking)
           projectile.bounces++;
 
-          // Apply friction to horizontal velocity (rolling)
+          // Apply friction to horizontal velocity
           projectile.velocity.x *= FRICTION;
           projectile.velocity.z *= FRICTION;
+
+          // MVP 9: Apply terrain-slope-based rolling (game-standard physics)
+          // Calculate terrain slope by sampling nearby points
+          const slopeCheckDist = 0.5;
+          const terrainAhead = getTerrainHeight(
+            projectile.position.x + (projectile.velocity.x > 0 ? slopeCheckDist : -slopeCheckDist),
+            projectile.position.z + (projectile.velocity.z > 0 ? slopeCheckDist : -slopeCheckDist)
+          );
+          const slope = (terrainAhead - terrainAtProjectile) / slopeCheckDist;
+
+          // Apply downhill acceleration (standard rolling physics)
+          const ROLL_ACCELERATION = 2.0; // m/s² downhill force
+          if (Math.abs(slope) > 0.05) { // Only roll on slopes > 5%
+            // Calculate slope direction (downhill)
+            const slopeDir = new THREE.Vector2(
+              projectile.velocity.x,
+              projectile.velocity.z
+            ).normalize();
+
+            // Add downhill force
+            projectile.velocity.x += slopeDir.x * slope * ROLL_ACCELERATION * delta;
+            projectile.velocity.z += slopeDir.y * slope * ROLL_ACCELERATION * delta;
+          }
         } else {
-          // Settled - convert to pickup walnut
+          // FULLY SETTLED - now convert to pickup walnut
           projectile.position.y = groundY; // Final ground position
           projectile.velocity.set(0, 0, 0); // Stop all movement
           projectile.hasHit = true;

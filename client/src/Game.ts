@@ -1827,7 +1827,7 @@ export class Game {
         // MVP 9: Tree dropped walnut - spawn at random canopy position, falls straight down with bounce/roll
         if (data.treePosition && data.walnutId && this.projectileManager) {
           // Random radial position around tree canopy (not trunk center)
-          const canopyOffset = 2.0; // 2 units from trunk
+          const canopyOffset = 1.0; // 1 unit from trunk (reduced from 2.0 - closer to tree)
           const randomAngle = Math.random() * Math.PI * 2;
           const spawnPos = new THREE.Vector3(
             data.treePosition.x + Math.cos(randomAngle) * canopyOffset,
