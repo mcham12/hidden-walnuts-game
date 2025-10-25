@@ -331,7 +331,22 @@ export class ProjectileManager {
           projectile.position.y = groundY;
         }
 
+        // Check if settled BEFORE applying rolling (prevents post-settle drift)
+        const isSettled = projectile.bounces >= MAX_BOUNCES && Math.abs(projectile.velocity.y) <= SETTLE_THRESHOLD;
+
+        if (isSettled) {
+          // FULLY SETTLED - lock position immediately
+          projectile.position.y = groundY;
+          projectile.mesh.position.copy(projectile.position);
+          projectile.velocity.set(0, 0, 0);
+          projectile.hasHit = true;
+          this.onProjectileMiss(projectile);
+          toRemove.push(id);
+          return;
+        }
+
         // MVP 9: Proven rolling physics (from "The Physics of Golf" via GameDev Stack Exchange)
+        // Only apply if NOT settled (prevents post-settle drift)
         // Formula: a = ((m * g * sin(theta)) - Ff) / m
         // Calculate terrain normal from gradient sampling
         const gradientSampleDist = 0.3;
@@ -378,17 +393,7 @@ export class ProjectileManager {
           }
         }
 
-        // Check if fully settled AFTER applying rolling
-        if (projectile.bounces >= MAX_BOUNCES && Math.abs(projectile.velocity.y) <= SETTLE_THRESHOLD) {
-          // FULLY SETTLED - ensure final position is correct
-          projectile.position.y = groundY; // Final clamp with multi-point height
-          projectile.mesh.position.copy(projectile.position); // Update mesh
-          projectile.velocity.set(0, 0, 0); // Stop all movement
-          projectile.hasHit = true;
-          this.onProjectileMiss(projectile);
-          toRemove.push(id);
-          return;
-        }
+        // Settle check moved earlier (line 335) to prevent rolling after settlement
       }
     });
 
