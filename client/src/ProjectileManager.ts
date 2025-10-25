@@ -241,12 +241,20 @@ export class ProjectileManager {
         return;
       }
 
-      // Update physics
-      projectile.velocity.y += this.GRAVITY * delta;
-      projectile.position.add(
-        projectile.velocity.clone().multiplyScalar(delta)
-      );
-      // DON'T update mesh yet - wait until after ground clamping (line 331/340)
+      // Check ground FIRST to determine if we apply gravity/velocity
+      const walnutRadius = 0.06;
+      const terrainHeight = getTerrainHeight(projectile.position.x, projectile.position.z);
+      const groundY = terrainHeight + walnutRadius;
+      const isOnGround = projectile.position.y <= groundY;
+
+      // Only apply gravity and velocity when NOT on ground (flying)
+      if (!isOnGround) {
+        projectile.velocity.y += this.GRAVITY * delta;
+        projectile.position.add(
+          projectile.velocity.clone().multiplyScalar(delta)
+        );
+      }
+      // DON'T update mesh yet - wait until after ground clamping
 
       // Spin walnut for visual effect
       projectile.mesh.rotation.x += delta * 10;
@@ -293,15 +301,7 @@ export class ProjectileManager {
       }
 
       // MVP 9: Bounce/roll physics on ground hit (industry-standard game physics)
-      const walnutRadius = 0.06; // Match WALNUT_SIZE from Game.ts
-
-      // Standard sphere-terrain collision (proven technique used in Unity, Unreal, etc.)
-      // For spheres, sample at center point only (multi-point sampling is for boxes/capsules)
-      const terrainHeight = getTerrainHeight(projectile.position.x, projectile.position.z);
-      const groundY = terrainHeight + walnutRadius;
-
-      // Standard physics: Only apply ground collision when sphere touches/penetrates ground
-      const isOnGround = projectile.position.y <= groundY;
+      // (terrainHeight, groundY, isOnGround already calculated at top of update loop)
 
       if (!isOnGround) {
         // Flying - update mesh to follow position (no ground clamping needed)
