@@ -380,7 +380,9 @@ export class ProjectileManager {
 
         // Check if fully settled AFTER applying rolling
         if (projectile.bounces >= MAX_BOUNCES && Math.abs(projectile.velocity.y) <= SETTLE_THRESHOLD) {
-          // FULLY SETTLED - position already set by multi-point sampling above
+          // FULLY SETTLED - ensure final position is correct
+          projectile.position.y = groundY; // Final clamp with multi-point height
+          projectile.mesh.position.copy(projectile.position); // Update mesh
           projectile.velocity.set(0, 0, 0); // Stop all movement
           projectile.hasHit = true;
           this.onProjectileMiss(projectile);

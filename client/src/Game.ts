@@ -1802,23 +1802,26 @@ export class Game {
 
       case 'walnut_dropped':
         // MVP 8: A projectile hit/missed and created a pickupable walnut on ground
-        this.createRemoteWalnut({
-          walnutId: data.walnutId,
-          ownerId: 'game', // No specific owner
-          walnutType: 'ground', // New type for dropped walnuts
-          position: data.position,
-          points: 1 // Same as bush walnut
-        });
+        // Skip if we already have this walnut (prevents duplicate from our own throw)
+        if (!this.walnuts.has(data.walnutId)) {
+          this.createRemoteWalnut({
+            walnutId: data.walnutId,
+            ownerId: 'game', // No specific owner
+            walnutType: 'ground', // New type for dropped walnuts
+            position: data.position,
+            points: 1 // Same as bush walnut
+          });
 
-        // MVP 8 FIX: Add settling delay to remote dropped walnuts
-        const droppedWalnut = this.walnuts.get(data.walnutId);
-        if (droppedWalnut) {
-          droppedWalnut.userData.settlingUntil = Date.now() + 500; // Match local settling time
+          // MVP 8 FIX: Add settling delay to remote dropped walnuts
+          const droppedWalnut = this.walnuts.get(data.walnutId);
+          if (droppedWalnut) {
+            droppedWalnut.userData.settlingUntil = Date.now() + 500; // Match local settling time
 
-          // Legacy immunity (now using settling delay instead)
-          if (data.immunePlayerId) {
-            droppedWalnut.userData.immunePlayerId = data.immunePlayerId;
-            droppedWalnut.userData.immuneUntil = data.immuneUntil;
+            // Legacy immunity (now using settling delay instead)
+            if (data.immunePlayerId) {
+              droppedWalnut.userData.immunePlayerId = data.immunePlayerId;
+              droppedWalnut.userData.immuneUntil = data.immuneUntil;
+            }
           }
         }
         break;

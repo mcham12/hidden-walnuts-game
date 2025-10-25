@@ -54,6 +54,7 @@
 - Visual: Walnut appears in tree, falls, bounces to rest
 - Server-authoritative (prevents exploits)
 
+
 **5. Leaderboard Admin Tools** (30-60 min)
 - Admin command to reset leaderboard
 - Basic anti-cheat: Server validates score changes
@@ -85,6 +86,7 @@
 - Remove any debug logging added for this MVP, both client and worker
 
 ### Success Criteria
+
 - ✅ Can see everyone's health at a glance
 - ✅ NPCs behave intelligently (eat, flee when low HP)
 - ✅ NPCs die and respawn properly
