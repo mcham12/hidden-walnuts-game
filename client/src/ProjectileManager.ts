@@ -293,8 +293,15 @@ export class ProjectileManager {
       }
 
       // MVP 9: Bounce/roll physics on ground hit (industry-standard game physics)
-      const terrainAtProjectile = getTerrainHeight(projectile.position.x, projectile.position.z);
       const walnutRadius = 0.06; // Match WALNUT_SIZE from Game.ts
+
+      // Multi-point terrain sampling (proven technique - prevents clipping into concave terrain)
+      const cornerDist = walnutRadius * 0.7;
+      const terrainNE = getTerrainHeight(projectile.position.x + cornerDist, projectile.position.z + cornerDist);
+      const terrainNW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z + cornerDist);
+      const terrainSE = getTerrainHeight(projectile.position.x + cornerDist, projectile.position.z - cornerDist);
+      const terrainSW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z - cornerDist);
+      const terrainAtProjectile = Math.max(terrainNE, terrainNW, terrainSE, terrainSW); // Use HIGHEST
       const groundY = terrainAtProjectile + walnutRadius;
 
       if (projectile.position.y <= groundY) {
@@ -313,6 +320,9 @@ export class ProjectileManager {
           // Apply friction to horizontal velocity
           projectile.velocity.x *= FRICTION;
           projectile.velocity.z *= FRICTION;
+        } else {
+          // Not bouncing - clamp to ground (rolling or settling)
+          projectile.position.y = groundY;
         }
 
         // MVP 9: Proven rolling physics (from "The Physics of Golf" via GameDev Stack Exchange)
@@ -364,18 +374,7 @@ export class ProjectileManager {
 
         // Check if fully settled AFTER applying rolling
         if (projectile.bounces >= MAX_BOUNCES && Math.abs(projectile.velocity.y) <= SETTLE_THRESHOLD) {
-          // FULLY SETTLED - use multi-point terrain sampling (proven technique from Stack Overflow)
-          // Sample terrain at 4 corners of walnut base to prevent clipping into concave terrain
-          const cornerDist = walnutRadius * 0.7; // Approximate corner distance for circular object
-          const terrainNE = getTerrainHeight(projectile.position.x + cornerDist, projectile.position.z + cornerDist);
-          const terrainNW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z + cornerDist);
-          const terrainSE = getTerrainHeight(projectile.position.x + cornerDist, projectile.position.z - cornerDist);
-          const terrainSW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z - cornerDist);
-
-          // Use HIGHEST point to prevent clipping (proven method)
-          const maxTerrainHeight = Math.max(terrainNE, terrainNW, terrainSE, terrainSW);
-          projectile.position.y = maxTerrainHeight + walnutRadius;
-
+          // FULLY SETTLED - position already set by multi-point sampling above
           projectile.velocity.set(0, 0, 0); // Stop all movement
           projectile.hasHit = true;
           this.onProjectileMiss(projectile);
