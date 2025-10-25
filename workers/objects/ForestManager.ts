@@ -1839,7 +1839,8 @@ export default class ForestManager extends DurableObject {
       this.mapState.push(treeWalnut);
 
       // Broadcast drop event so clients can animate
-      const treeCanopyHeight = 8 + (tree.scale * 2); // Approximate canopy height based on tree scale
+      // Tree model: crown sphere (radius 1.5) at y=2.5, so top = 2.5 + 1.5 = 4 units (unscaled)
+      const treeCanopyHeight = 4 * tree.scale; // Actual canopy height from forest.ts tree model
       this.broadcastToAll({
         type: 'tree_walnut_drop',
         treePosition: {

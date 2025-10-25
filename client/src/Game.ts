@@ -3169,12 +3169,20 @@ export class Game {
       this.treeWalnutProjectiles.delete(data.projectileId);
     }
 
-    // MVP 8 FIX: Explicitly set all coordinates (not just Y) to prevent drift at close range
-    // At close range with fast projectiles, mesh position must match hit position exactly
-    const terrainHeight = getTerrainHeight(data.position.x, data.position.z);
+    // MVP 9 FIX: Use same 5-point terrain sampling as ProjectileManager (prevents underground bug)
+    // Single-point sampling can give lower height on concave/steep terrain
+    const walnutRadius = this.WALNUT_SIZE / 2;
+    const cornerDist = walnutRadius;
+    const terrainCenter = getTerrainHeight(data.position.x, data.position.z);
+    const terrainNE = getTerrainHeight(data.position.x + cornerDist, data.position.z + cornerDist);
+    const terrainNW = getTerrainHeight(data.position.x - cornerDist, data.position.z + cornerDist);
+    const terrainSE = getTerrainHeight(data.position.x + cornerDist, data.position.z - cornerDist);
+    const terrainSW = getTerrainHeight(data.position.x - cornerDist, data.position.z - cornerDist);
+    const terrainHeight = Math.max(terrainCenter, terrainNE, terrainNW, terrainSE, terrainSW);
+
     data.mesh.position.set(
       data.position.x,
-      terrainHeight + (this.WALNUT_SIZE / 2), // Radius offset so bottom touches ground
+      terrainHeight + walnutRadius, // Use radius offset so bottom touches ground
       data.position.z
     );
 
