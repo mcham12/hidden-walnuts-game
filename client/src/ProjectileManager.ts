@@ -295,16 +295,10 @@ export class ProjectileManager {
       // MVP 9: Bounce/roll physics on ground hit (industry-standard game physics)
       const walnutRadius = 0.06; // Match WALNUT_SIZE from Game.ts
 
-      // Multi-point terrain sampling (proven technique - prevents clipping into concave terrain)
-      // Sample at CURRENT position to check if we're on ground
-      const cornerDist = walnutRadius;
-      const terrainCenter = getTerrainHeight(projectile.position.x, projectile.position.z);
-      const terrainNE = getTerrainHeight(projectile.position.x + cornerDist, projectile.position.z + cornerDist);
-      const terrainNW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z + cornerDist);
-      const terrainSE = getTerrainHeight(projectile.position.x + cornerDist, projectile.position.z - cornerDist);
-      const terrainSW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z - cornerDist);
-      const terrainAtProjectile = Math.max(terrainCenter, terrainNE, terrainNW, terrainSE, terrainSW);
-      const groundY = terrainAtProjectile + walnutRadius;
+      // Standard sphere-terrain collision (proven technique used in Unity, Unreal, etc.)
+      // For spheres, sample at center point only (multi-point sampling is for boxes/capsules)
+      const terrainHeight = getTerrainHeight(projectile.position.x, projectile.position.z);
+      const groundY = terrainHeight + walnutRadius;
 
       // Standard physics: Only apply ground collision when sphere touches/penetrates ground
       const isOnGround = projectile.position.y <= groundY;
@@ -398,12 +392,8 @@ export class ProjectileManager {
 
         // CRITICAL: After rolling physics changes XZ, resample terrain at FINAL position
         // This ensures Y matches the actual XZ position after all physics
-        const finalTerrainCenter = getTerrainHeight(projectile.position.x, projectile.position.z);
-        const finalTerrainNE = getTerrainHeight(projectile.position.x + cornerDist, projectile.position.z + cornerDist);
-        const finalTerrainNW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z + cornerDist);
-        const finalTerrainSE = getTerrainHeight(projectile.position.x + cornerDist, projectile.position.z - cornerDist);
-        const finalTerrainSW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z - cornerDist);
-        const finalGroundY = Math.max(finalTerrainCenter, finalTerrainNE, finalTerrainNW, finalTerrainSE, finalTerrainSW) + walnutRadius;
+        const finalTerrainHeight = getTerrainHeight(projectile.position.x, projectile.position.z);
+        const finalGroundY = finalTerrainHeight + walnutRadius;
 
         // Clamp to terrain at FINAL position (after all physics)
         projectile.position.y = finalGroundY;
