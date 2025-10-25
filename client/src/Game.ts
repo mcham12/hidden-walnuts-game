@@ -3169,11 +3169,19 @@ export class Game {
       this.treeWalnutProjectiles.delete(data.projectileId);
     }
 
-    // Standard placement: terrain height + radius (WALNUT_SIZE is already the radius)
-    const terrainHeight = getTerrainHeight(data.position.x, data.position.z);
+    // Use SAME multi-point sampling as ProjectileManager physics (must match!)
+    const walnutRadius = this.WALNUT_SIZE;
+    const cornerDist = walnutRadius;
+    const terrainCenter = getTerrainHeight(data.position.x, data.position.z);
+    const terrainNE = getTerrainHeight(data.position.x + cornerDist, data.position.z + cornerDist);
+    const terrainNW = getTerrainHeight(data.position.x - cornerDist, data.position.z + cornerDist);
+    const terrainSE = getTerrainHeight(data.position.x + cornerDist, data.position.z - cornerDist);
+    const terrainSW = getTerrainHeight(data.position.x - cornerDist, data.position.z - cornerDist);
+    const terrainHeight = Math.max(terrainCenter, terrainNE, terrainNW, terrainSE, terrainSW);
+
     data.mesh.position.set(
       data.position.x,
-      terrainHeight + this.WALNUT_SIZE, // WALNUT_SIZE = 0.06 (radius), not diameter
+      terrainHeight + walnutRadius,
       data.position.z
     );
 
