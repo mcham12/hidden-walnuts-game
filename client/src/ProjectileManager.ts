@@ -296,15 +296,21 @@ export class ProjectileManager {
       const walnutRadius = 0.06; // Match WALNUT_SIZE from Game.ts
 
       // Multi-point terrain sampling (proven technique - prevents clipping into concave terrain)
-      const cornerDist = walnutRadius * 0.7;
+      // Use full walnut radius for sampling to capture full footprint
+      const cornerDist = walnutRadius; // Changed from 0.7 to 1.0 for better coverage
+      const terrainCenter = getTerrainHeight(projectile.position.x, projectile.position.z);
       const terrainNE = getTerrainHeight(projectile.position.x + cornerDist, projectile.position.z + cornerDist);
       const terrainNW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z + cornerDist);
       const terrainSE = getTerrainHeight(projectile.position.x + cornerDist, projectile.position.z - cornerDist);
       const terrainSW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z - cornerDist);
-      const terrainAtProjectile = Math.max(terrainNE, terrainNW, terrainSE, terrainSW); // Use HIGHEST
+      // Use MAX of all 5 samples (center + 4 corners) for maximum safety
+      const terrainAtProjectile = Math.max(terrainCenter, terrainNE, terrainNW, terrainSE, terrainSW);
       const groundY = terrainAtProjectile + walnutRadius;
 
-      if (projectile.position.y <= groundY) {
+      // ALWAYS clamp to ground when close (not just when below) - prevents sinking on steep terrain
+      const isOnGround = projectile.position.y <= groundY + 0.1; // Small buffer for detection
+
+      if (isOnGround) {
         // Ground hit - apply bounce physics
         const MAX_BOUNCES = 2;
         const BOUNCE_DAMPING = 0.25; // Reduced from 0.5 - less bouncy
