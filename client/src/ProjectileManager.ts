@@ -332,6 +332,12 @@ export class ProjectileManager {
           projectile.position.y = groundY;
           projectile.mesh.position.copy(projectile.position);
           projectile.velocity.set(0, 0, 0);
+
+          // DEBUG: Log final settled position
+          if (projectile.ownerId === 'game') {
+            console.log(`✅ Walnut SETTLED at (${projectile.position.x.toFixed(2)}, ${projectile.position.y.toFixed(2)}, ${projectile.position.z.toFixed(2)})`);
+          }
+
           projectile.hasHit = true;
           this.onProjectileMiss(projectile);
           toRemove.push(id);
@@ -394,6 +400,11 @@ export class ProjectileManager {
         // This ensures Y matches the actual XZ position after all physics
         const finalTerrainHeight = getTerrainHeight(projectile.position.x, projectile.position.z);
         const finalGroundY = finalTerrainHeight + walnutRadius;
+
+        // DEBUG: Log terrain sampling for tree-dropped walnuts
+        if (projectile.ownerId === 'game') {
+          console.log(`🌰 Walnut settle: pos=(${projectile.position.x.toFixed(2)}, ${projectile.position.z.toFixed(2)}) terrainH=${finalTerrainHeight.toFixed(3)} groundY=${finalGroundY.toFixed(3)} finalY=${projectile.position.y.toFixed(3)}`);
+        }
 
         // Clamp to terrain at FINAL position (after all physics)
         projectile.position.y = finalGroundY;
