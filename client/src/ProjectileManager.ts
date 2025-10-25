@@ -315,35 +315,67 @@ export class ProjectileManager {
           projectile.velocity.z *= FRICTION;
         }
 
-        // MVP 9: Apply terrain-slope-based rolling (ALWAYS, even when settled)
-        // Calculate terrain gradient by sampling in X and Z directions separately
+        // MVP 9: Proven rolling physics (from "The Physics of Golf" via GameDev Stack Exchange)
+        // Formula: a = ((m * g * sin(theta)) - Ff) / m
+        // Calculate terrain normal from gradient sampling
         const gradientSampleDist = 0.3;
-
-        // Sample terrain in cardinal directions to get gradient
         const terrainX_pos = getTerrainHeight(projectile.position.x + gradientSampleDist, projectile.position.z);
         const terrainX_neg = getTerrainHeight(projectile.position.x - gradientSampleDist, projectile.position.z);
         const terrainZ_pos = getTerrainHeight(projectile.position.x, projectile.position.z + gradientSampleDist);
         const terrainZ_neg = getTerrainHeight(projectile.position.x, projectile.position.z - gradientSampleDist);
 
-        // Calculate slope gradient (rise over run)
-        const slopeX = (terrainX_pos - terrainX_neg) / (2 * gradientSampleDist);
-        const slopeZ = (terrainZ_pos - terrainZ_neg) / (2 * gradientSampleDist);
+        // Calculate terrain normal (cross product of tangent vectors)
+        const dx = new THREE.Vector3(2 * gradientSampleDist, terrainX_pos - terrainX_neg, 0);
+        const dz = new THREE.Vector3(0, terrainZ_pos - terrainZ_neg, 2 * gradientSampleDist);
+        const terrainNormal = new THREE.Vector3().crossVectors(dz, dx).normalize();
 
-        // Apply gravity component along slope (standard physics: F = m*g*sin(θ))
-        const ROLL_FORCE = 5.0; // Increased from 2.0 for more visible rolling
-        const MIN_SLOPE = 0.03; // Roll on slopes > 3% (reduced from 5%)
+        // Calculate slope angle from normal (angle between normal and up vector)
+        const upVector = new THREE.Vector3(0, 1, 0);
+        const slopeAngle = Math.acos(terrainNormal.dot(upVector));
 
-        if (Math.abs(slopeX) > MIN_SLOPE || Math.abs(slopeZ) > MIN_SLOPE) {
-          // Downhill is negative gradient direction
-          projectile.velocity.x -= slopeX * ROLL_FORCE * delta;
-          projectile.velocity.z -= slopeZ * ROLL_FORCE * delta;
+        // Only apply rolling if slope is significant
+        const MIN_SLOPE_ANGLE = 0.05; // ~3 degrees in radians
+        if (Math.abs(slopeAngle) > MIN_SLOPE_ANGLE) {
+          // Calculate downhill direction (project gravity onto terrain plane)
+          const gravity = new THREE.Vector3(0, -9.81, 0);
+          const gravityOnPlane = gravity.clone().sub(
+            terrainNormal.clone().multiplyScalar(gravity.dot(terrainNormal))
+          );
+
+          // Physics formula from "The Physics of Golf"
+          const mass = 1.0; // Normalized mass
+          const horizontalSpeed = new THREE.Vector2(projectile.velocity.x, projectile.velocity.z).length();
+
+          // Velocity-based friction (proven technique)
+          const frictionCoefficient = 0.15;
+          const frictionForce = (horizontalSpeed / delta) * frictionCoefficient;
+
+          // Acceleration = (gravity component - friction) / mass
+          const gravityMagnitude = gravityOnPlane.length();
+          const acceleration = Math.max(0, (gravityMagnitude - frictionForce / mass));
+
+          // Apply acceleration in downhill direction
+          if (gravityOnPlane.length() > 0.01) {
+            const accelDir = gravityOnPlane.clone().normalize();
+            projectile.velocity.x += accelDir.x * acceleration * delta;
+            projectile.velocity.z += accelDir.z * acceleration * delta;
+          }
         }
 
         // Check if fully settled AFTER applying rolling
         if (projectile.bounces >= MAX_BOUNCES && Math.abs(projectile.velocity.y) <= SETTLE_THRESHOLD) {
-          // FULLY SETTLED - recalculate terrain height at FINAL position (not initial)
-          const finalTerrainHeight = getTerrainHeight(projectile.position.x, projectile.position.z);
-          projectile.position.y = finalTerrainHeight + walnutRadius;
+          // FULLY SETTLED - use multi-point terrain sampling (proven technique from Stack Overflow)
+          // Sample terrain at 4 corners of walnut base to prevent clipping into concave terrain
+          const cornerDist = walnutRadius * 0.7; // Approximate corner distance for circular object
+          const terrainNE = getTerrainHeight(projectile.position.x + cornerDist, projectile.position.z + cornerDist);
+          const terrainNW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z + cornerDist);
+          const terrainSE = getTerrainHeight(projectile.position.x + cornerDist, projectile.position.z - cornerDist);
+          const terrainSW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z - cornerDist);
+
+          // Use HIGHEST point to prevent clipping (proven method)
+          const maxTerrainHeight = Math.max(terrainNE, terrainNW, terrainSE, terrainSW);
+          projectile.position.y = maxTerrainHeight + walnutRadius;
+
           projectile.velocity.set(0, 0, 0); // Stop all movement
           projectile.hasHit = true;
           this.onProjectileMiss(projectile);
