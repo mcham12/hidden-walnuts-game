@@ -5,17 +5,48 @@ function noise(nx: number, ny: number) {
   return Math.sin(2 * nx) * Math.cos(2 * ny) * 5 + Math.sin(nx * ny) * 3;
 }
 
+// Store terrain mesh reference for raycasting
+let terrainMesh: THREE.Mesh | null = null;
+const raycaster = new THREE.Raycaster();
+
+export function setTerrainMesh(mesh: THREE.Mesh): void {
+  terrainMesh = mesh;
+}
+
 export async function initializeTerrain(): Promise<void> {
   console.log('🌍 Terrain initialized');
 }
 
-export function getTerrainHeight(x: number, z: number): number {
+// Mathematical height function (used for initial mesh generation)
+function getTerrainHeightMath(x: number, z: number): number {
   const nx = x * 0.02; // Reduced frequency for smoother terrain
   const nz = z * 0.02;
   let height = noise(nx, nz) * 0.5 + 2; // Reduced amplitude and base height
   height += noise(nx * 2, nz * 2) * 0.3;
   height += noise(nx * 4, nz * 4) * 0.1;
   return Math.max(0.5, height); // Ensure minimum height of 0.5 for character positioning
+}
+
+// Get actual terrain height by raycasting against the mesh (matches visual rendering)
+export function getTerrainHeight(x: number, z: number): number {
+  if (!terrainMesh) {
+    // Fallback to math function if mesh not initialized
+    return getTerrainHeightMath(x, z);
+  }
+
+  // Raycast from high above downward to hit terrain
+  const rayOrigin = new THREE.Vector3(x, 1000, z);
+  const rayDirection = new THREE.Vector3(0, -1, 0);
+  raycaster.set(rayOrigin, rayDirection);
+
+  const intersects = raycaster.intersectObject(terrainMesh);
+
+  if (intersects.length > 0) {
+    return intersects[0].point.y;
+  }
+
+  // Fallback if raycast misses (shouldn't happen)
+  return getTerrainHeightMath(x, z);
 }
 
 export async function createTerrain(): Promise<THREE.Mesh> {
@@ -35,7 +66,7 @@ export async function createTerrain(): Promise<THREE.Mesh> {
     for (let x = 0; x <= segments; x++) {
       const xPos = (x / segments - 0.5) * size;
       const zPos = (z / segments - 0.5) * size;
-      const yPos = getTerrainHeight(xPos, zPos);
+      const yPos = getTerrainHeightMath(xPos, zPos);
       
       vertices.push(xPos, yPos, zPos);
       

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { createTerrain } from './terrain.js';
+import { createTerrain, setTerrainMesh } from './terrain.js';
 import { createForestFromServer, bushPositions } from './forest.js';
 import { getTerrainHeight } from './terrain.js';
 import { AudioManager } from './AudioManager.js';
@@ -332,6 +332,9 @@ export class Game {
       // Terrain
       this.terrain = await createTerrain();
       this.scene.add(this.terrain);
+
+      // Set terrain mesh for raycasting-based height sampling
+      setTerrainMesh(this.terrain);
 
       // Forest will be created from server data when we receive world_state
 
