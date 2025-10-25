@@ -296,14 +296,13 @@ export class ProjectileManager {
       const walnutRadius = 0.06; // Match WALNUT_SIZE from Game.ts
 
       // Multi-point terrain sampling (proven technique - prevents clipping into concave terrain)
-      // Use full walnut radius for sampling to capture full footprint
-      const cornerDist = walnutRadius; // Changed from 0.7 to 1.0 for better coverage
+      // Sample at CURRENT position to check if we're on ground
+      const cornerDist = walnutRadius;
       const terrainCenter = getTerrainHeight(projectile.position.x, projectile.position.z);
       const terrainNE = getTerrainHeight(projectile.position.x + cornerDist, projectile.position.z + cornerDist);
       const terrainNW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z + cornerDist);
       const terrainSE = getTerrainHeight(projectile.position.x + cornerDist, projectile.position.z - cornerDist);
       const terrainSW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z - cornerDist);
-      // Use MAX of all 5 samples (center + 4 corners) for maximum safety
       const terrainAtProjectile = Math.max(terrainCenter, terrainNE, terrainNW, terrainSE, terrainSW);
       const groundY = terrainAtProjectile + walnutRadius;
 
@@ -323,15 +322,12 @@ export class ProjectileManager {
         if (projectile.bounces < MAX_BOUNCES && Math.abs(projectile.velocity.y) > SETTLE_THRESHOLD) {
           // Bounce: reverse Y velocity with damping
           projectile.velocity.y = -projectile.velocity.y * BOUNCE_DAMPING;
-          projectile.position.y = groundY; // Snap to ground (prevent sinking)
+          // DON'T clamp Y yet - let rolling physics run first, then clamp once at end
           projectile.bounces++;
 
           // Apply friction to horizontal velocity
           projectile.velocity.x *= FRICTION;
           projectile.velocity.z *= FRICTION;
-        } else {
-          // Not bouncing - clamp to ground (rolling or settling)
-          projectile.position.y = groundY;
         }
 
         // Check if settled BEFORE applying rolling (prevents post-settle drift)
@@ -393,11 +389,15 @@ export class ProjectileManager {
             const accelDir = gravityOnPlane.clone().normalize();
             projectile.velocity.x += accelDir.x * acceleration * delta;
             projectile.velocity.z += accelDir.z * acceleration * delta;
+
+            // Integrate rolling velocity into position immediately (standard physics integration)
+            projectile.position.x += accelDir.x * acceleration * delta * delta;
+            projectile.position.z += accelDir.z * acceleration * delta * delta;
           }
         }
 
-        // CRITICAL: Resample terrain at CURRENT position (rolling may have changed XZ)
-        // Must use same multi-point sampling to match settle logic
+        // CRITICAL: After rolling physics changes XZ, resample terrain at FINAL position
+        // This ensures Y matches the actual XZ position after all physics
         const finalTerrainCenter = getTerrainHeight(projectile.position.x, projectile.position.z);
         const finalTerrainNE = getTerrainHeight(projectile.position.x + cornerDist, projectile.position.z + cornerDist);
         const finalTerrainNW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z + cornerDist);
@@ -405,7 +405,7 @@ export class ProjectileManager {
         const finalTerrainSW = getTerrainHeight(projectile.position.x - cornerDist, projectile.position.z - cornerDist);
         const finalGroundY = Math.max(finalTerrainCenter, finalTerrainNE, finalTerrainNW, finalTerrainSE, finalTerrainSW) + walnutRadius;
 
-        // Clamp to current terrain height (handles rolling to different slopes)
+        // Clamp to terrain at FINAL position (after all physics)
         projectile.position.y = finalGroundY;
 
         // Update mesh position after all ground physics (bouncing/rolling done)
