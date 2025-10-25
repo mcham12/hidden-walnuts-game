@@ -3169,12 +3169,11 @@ export class Game {
       this.treeWalnutProjectiles.delete(data.projectileId);
     }
 
-    // MVP 8 FIX: Explicitly set all coordinates (not just Y) to prevent drift at close range
-    // At close range with fast projectiles, mesh position must match hit position exactly
+    // Standard placement: terrain height + radius (WALNUT_SIZE is already the radius)
     const terrainHeight = getTerrainHeight(data.position.x, data.position.z);
     data.mesh.position.set(
       data.position.x,
-      terrainHeight + (this.WALNUT_SIZE / 2), // Radius offset so bottom touches ground
+      terrainHeight + this.WALNUT_SIZE, // WALNUT_SIZE = 0.06 (radius), not diameter
       data.position.z
     );
 
