@@ -25,7 +25,8 @@ interface Projectile {
   targetId?: string; // Who it's aimed at (for tracking)
   spawnTime: number;
   hasHit: boolean;
-  bounces: number; // MVP 9: Track bounce count for settling
+  bounces: number; // Track bounce count for settling
+  restTimer: number; // Time (seconds) spent below rest velocity threshold
 }
 
 export class ProjectileManager {
@@ -44,6 +45,18 @@ export class ProjectileManager {
   private readonly MAX_LIFETIME = 5.0; // seconds (cleanup timeout)
   private readonly HIT_RADIUS = 0.8; // units (collision detection radius - increased for easier hits)
   private readonly NEAR_MISS_RADIUS = 2.0; // units (radius for near-miss detection)
+
+  // Ground physics constants (INDUSTRY STANDARD: time-based, not frame-based)
+  private readonly WALNUT_RADIUS = 0.06; // units
+  private readonly MAX_BOUNCES = 2;
+  private readonly BOUNCE_DAMPING = 0.25;
+  private readonly BOUNCE_THRESHOLD = 0.3; // m/s - minimum Y velocity to bounce
+  private readonly FRICTION_COEFFICIENT = 0.85; // Exponential decay per second (time-based)
+  private readonly ROLLING_FRICTION = 0.15; // Resistance to downhill rolling
+  private readonly MIN_SLOPE_ANGLE = 0.05; // radians (~3 degrees) - minimum slope to roll
+  private readonly REST_VELOCITY_THRESHOLD = 0.1; // m/s - speed below which object can rest
+  private readonly REST_TIME_REQUIRED = 0.3; // seconds - how long to be slow before settling
+  private readonly GROUND_EPSILON = 0.01; // units - tolerance for ground detection
 
   // Track entities that have had near misses (prevent spam)
   private nearMissCooldowns: Map<string, number> = new Map();
@@ -148,7 +161,8 @@ export class ProjectileManager {
       targetId,
       spawnTime: Date.now(),
       hasHit: false,
-      bounces: 0 // MVP 9: Start with zero bounces
+      bounces: 0, // Start with zero bounces
+      restTimer: 0 // Start with zero rest time
     };
 
     this.projectiles.set(id, projectile);
@@ -185,7 +199,8 @@ export class ProjectileManager {
       targetId: undefined,
       spawnTime: Date.now(),
       hasHit: false,
-      bounces: 0
+      bounces: 0,
+      restTimer: 0
     };
 
     this.projectiles.set(id, projectile);
@@ -241,31 +256,136 @@ export class ProjectileManager {
         return;
       }
 
-      // Check ground FIRST to determine if we apply gravity/velocity
-      const walnutRadius = 0.06;
-      const terrainHeight = getTerrainHeight(projectile.position.x, projectile.position.z);
-      const groundY = terrainHeight + walnutRadius;
-      const isOnGround = projectile.position.y <= groundY;
+      // ========================================
+      // INDUSTRY-STANDARD SPHERE-TERRAIN PHYSICS
+      // ========================================
 
-      // Only apply gravity and velocity when NOT on ground (flying)
-      if (!isOnGround) {
+      // Sample terrain height at CURRENT position (before any updates)
+      const terrainHeight = getTerrainHeight(projectile.position.x, projectile.position.z);
+      const groundY = terrainHeight + this.WALNUT_RADIUS;
+      const isAboveGround = projectile.position.y > groundY + this.GROUND_EPSILON;
+
+      if (isAboveGround) {
+        // ===== FLYING STATE =====
+        // Apply gravity to Y velocity
         projectile.velocity.y += this.GRAVITY * delta;
+
+        // Update position with full 3D velocity
         projectile.position.add(
           projectile.velocity.clone().multiplyScalar(delta)
         );
-      }
-      // DON'T update mesh yet - wait until after ground clamping
 
-      // Spin walnut for visual effect
+        // Reset rest timer (object is moving through air)
+        projectile.restTimer = 0;
+
+      } else {
+        // ===== GROUNDED STATE =====
+        // Correct any terrain penetration
+        projectile.position.y = Math.max(projectile.position.y, groundY);
+
+        // --- BOUNCE PHYSICS ---
+        // If Y velocity is significant and haven't bounced too much, bounce
+        if (Math.abs(projectile.velocity.y) > this.BOUNCE_THRESHOLD && projectile.bounces < this.MAX_BOUNCES) {
+          projectile.velocity.y = -projectile.velocity.y * this.BOUNCE_DAMPING;
+          projectile.bounces++;
+          projectile.restTimer = 0; // Reset rest timer on bounce
+        } else {
+          // Stop vertical bouncing
+          projectile.velocity.y = 0;
+        }
+
+        // --- SLOPE-BASED ROLLING PHYSICS (SIMPLIFIED) ---
+        // Calculate terrain slope at current position
+        const sampleDist = 0.3;
+        const hX_pos = getTerrainHeight(projectile.position.x + sampleDist, projectile.position.z);
+        const hX_neg = getTerrainHeight(projectile.position.x - sampleDist, projectile.position.z);
+        const hZ_pos = getTerrainHeight(projectile.position.x, projectile.position.z + sampleDist);
+        const hZ_neg = getTerrainHeight(projectile.position.x, projectile.position.z - sampleDist);
+
+        // Gradient components (negative = downhill in that direction)
+        const slopeX = (hX_neg - hX_pos) / (2 * sampleDist);
+        const slopeZ = (hZ_neg - hZ_pos) / (2 * sampleDist);
+        const slopeAngle = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
+
+        // Apply rolling acceleration if slope is significant
+        if (slopeAngle > this.MIN_SLOPE_ANGLE) {
+          // Normalize slope direction
+          const slopeDirX = slopeX / slopeAngle;
+          const slopeDirZ = slopeZ / slopeAngle;
+
+          // Rolling acceleration = g * sin(angle) * (1 - friction)
+          // For small angles: sin(angle) ≈ angle
+          const rollAccel = Math.abs(this.GRAVITY) * slopeAngle * (1 - this.ROLLING_FRICTION);
+
+          // Apply acceleration in downhill direction
+          projectile.velocity.x += slopeDirX * rollAccel * delta;
+          projectile.velocity.z += slopeDirZ * rollAccel * delta;
+        }
+
+        // --- FRICTION (TIME-BASED, NOT FRAME-BASED) ---
+        // Exponential decay: v(t) = v(0) * friction^t
+        const frictionFactor = Math.pow(this.FRICTION_COEFFICIENT, delta);
+        projectile.velocity.x *= frictionFactor;
+        projectile.velocity.z *= frictionFactor;
+
+        // --- UPDATE POSITION WITH HORIZONTAL VELOCITY ---
+        const oldPosX = projectile.position.x;
+        const oldPosZ = projectile.position.z;
+        projectile.position.x += projectile.velocity.x * delta;
+        projectile.position.z += projectile.velocity.z * delta;
+
+        // --- CRITICAL: RE-SAMPLE TERRAIN AT NEW XZ POSITION ---
+        // This prevents float/sink when rolling across slopes
+        const newTerrainHeight = getTerrainHeight(projectile.position.x, projectile.position.z);
+        const newGroundY = newTerrainHeight + this.WALNUT_RADIUS;
+        projectile.position.y = newGroundY;
+
+        // DEBUG: Log terrain resampling for tree-dropped walnuts
+        if (projectile.ownerId === 'game' && (Math.abs(oldPosX - projectile.position.x) > 0.01 || Math.abs(oldPosZ - projectile.position.z) > 0.01)) {
+          console.log(`🌰 Walnut rolled: XZ=(${oldPosX.toFixed(2)},${oldPosZ.toFixed(2)}) → (${projectile.position.x.toFixed(2)},${projectile.position.z.toFixed(2)}), terrainH=${terrainHeight.toFixed(3)} → ${newTerrainHeight.toFixed(3)}, Y=${projectile.position.y.toFixed(3)}`);
+        }
+
+        // --- REST DETECTION (3D velocity + sleep timer) ---
+        const speed3D = Math.sqrt(
+          projectile.velocity.x * projectile.velocity.x +
+          projectile.velocity.y * projectile.velocity.y +
+          projectile.velocity.z * projectile.velocity.z
+        );
+
+        if (speed3D < this.REST_VELOCITY_THRESHOLD) {
+          projectile.restTimer += delta;
+
+          if (projectile.restTimer >= this.REST_TIME_REQUIRED) {
+            // Object has come to rest - mark as settled
+            projectile.velocity.set(0, 0, 0);
+            projectile.hasHit = true;
+
+            // DEBUG: Log final settled position
+            if (projectile.ownerId === 'game') {
+              console.log(`✅ Walnut SETTLED at (${projectile.position.x.toFixed(2)}, ${projectile.position.y.toFixed(2)}, ${projectile.position.z.toFixed(2)}), terrainH=${newTerrainHeight.toFixed(3)}, restTime=${projectile.restTimer.toFixed(2)}s`);
+            }
+
+            this.onProjectileMiss(projectile);
+            toRemove.push(id);
+            return;
+          }
+        } else {
+          // Object is still moving, reset rest timer
+          projectile.restTimer = 0;
+        }
+      }
+
+      // Spin walnut for visual effect (applies to both flying and grounded)
       projectile.mesh.rotation.x += delta * 10;
       projectile.mesh.rotation.y += delta * 15;
+
+      // Update mesh position
+      projectile.mesh.position.copy(projectile.position);
 
       // MVP 8: Near-miss detection (check early for responsive feedback)
       this.checkNearMissDetection(projectile, entities, now);
 
-      // MVP 8 FIX: Check hit detection BEFORE ground check (prevents close-range misses)
-      // At close range, high velocity can cause projectile to pass through hit radius
-      // and hit ground in same frame. Hit detection must take priority.
+      // MVP 8: Check hit detection (must happen while projectile is flying, before settling)
       const hitEntityId = this.checkHitDetection(projectile, entities);
       if (hitEntityId) {
         projectile.hasHit = true;
@@ -274,17 +394,14 @@ export class ProjectileManager {
         return;
       }
 
-      // MVP 8: Check collision with trees/rocks (must be after entity check, before ground check)
-      // MVP 9: Skip tree collision for tree-dropped walnuts (ownerId === 'game')
+      // MVP 8: Check collision with trees/rocks (skip for tree-dropped walnuts)
       if (this.collisionSystem && projectile.ownerId !== 'game') {
         // Calculate next position for raycast collision check
         const nextPos = projectile.position.clone().add(
           projectile.velocity.clone().multiplyScalar(delta)
         );
 
-        // CRITICAL FIX: Pass ownerId (not projectile ID) so collision system skips thrower's capsule
-        // CollisionSystem has logic: "if (collider.id === playerId) continue"
-        // This prevents projectile from immediately hitting thrower's collision and being auto-eaten
+        // Pass ownerId so collision system skips thrower's capsule
         const collisionResult = this.collisionSystem.checkCollision(
           projectile.ownerId,  // Use thrower ID to skip their collider
           projectile.position,
@@ -298,123 +415,6 @@ export class ProjectileManager {
           toRemove.push(id);
           return;
         }
-      }
-
-      // MVP 9: Bounce/roll physics on ground hit (industry-standard game physics)
-      // (terrainHeight, groundY, isOnGround already calculated at top of update loop)
-
-      if (!isOnGround) {
-        // Flying - update mesh to follow position (no ground clamping needed)
-        projectile.mesh.position.copy(projectile.position);
-      } else {
-        // Ground hit - apply bounce physics
-        const MAX_BOUNCES = 2;
-        const BOUNCE_DAMPING = 0.25; // Reduced from 0.5 - less bouncy
-        const FRICTION = 0.85; // Horizontal friction per frame (more friction for realistic roll)
-        const SETTLE_THRESHOLD = 0.3; // m/s - velocity below this = settled (reduced from 0.5)
-
-        if (projectile.bounces < MAX_BOUNCES && Math.abs(projectile.velocity.y) > SETTLE_THRESHOLD) {
-          // Bounce: reverse Y velocity with damping
-          projectile.velocity.y = -projectile.velocity.y * BOUNCE_DAMPING;
-          // DON'T clamp Y yet - let rolling physics run first, then clamp once at end
-          projectile.bounces++;
-
-          // Apply friction to horizontal velocity
-          projectile.velocity.x *= FRICTION;
-          projectile.velocity.z *= FRICTION;
-        }
-
-        // Check if settled BEFORE applying rolling (prevents post-settle drift)
-        const isSettled = projectile.bounces >= MAX_BOUNCES && Math.abs(projectile.velocity.y) <= SETTLE_THRESHOLD;
-
-        if (isSettled) {
-          // FULLY SETTLED - resample terrain at CURRENT position for accurate placement
-          // (walnut may have rolled from initial groundY sample position)
-          const settleTerrainHeight = getTerrainHeight(projectile.position.x, projectile.position.z);
-          const settleGroundY = settleTerrainHeight + walnutRadius;
-
-          projectile.position.y = settleGroundY;
-          projectile.mesh.position.copy(projectile.position);
-          projectile.velocity.set(0, 0, 0);
-
-          // DEBUG: Log final settled position
-          if (projectile.ownerId === 'game') {
-            console.log(`✅ Walnut SETTLED at (${projectile.position.x.toFixed(2)}, ${projectile.position.y.toFixed(2)}, ${projectile.position.z.toFixed(2)}) terrainH=${settleTerrainHeight.toFixed(3)}`);
-          }
-
-          projectile.hasHit = true;
-          this.onProjectileMiss(projectile);
-          toRemove.push(id);
-          return;
-        }
-
-        // MVP 9: Proven rolling physics (from "The Physics of Golf" via GameDev Stack Exchange)
-        // Only apply if NOT settled (prevents post-settle drift)
-        // Formula: a = ((m * g * sin(theta)) - Ff) / m
-        // Calculate terrain normal from gradient sampling
-        const gradientSampleDist = 0.3;
-        const terrainX_pos = getTerrainHeight(projectile.position.x + gradientSampleDist, projectile.position.z);
-        const terrainX_neg = getTerrainHeight(projectile.position.x - gradientSampleDist, projectile.position.z);
-        const terrainZ_pos = getTerrainHeight(projectile.position.x, projectile.position.z + gradientSampleDist);
-        const terrainZ_neg = getTerrainHeight(projectile.position.x, projectile.position.z - gradientSampleDist);
-
-        // Calculate terrain normal (cross product of tangent vectors)
-        const dx = new THREE.Vector3(2 * gradientSampleDist, terrainX_pos - terrainX_neg, 0);
-        const dz = new THREE.Vector3(0, terrainZ_pos - terrainZ_neg, 2 * gradientSampleDist);
-        const terrainNormal = new THREE.Vector3().crossVectors(dz, dx).normalize();
-
-        // Calculate slope angle from normal (angle between normal and up vector)
-        const upVector = new THREE.Vector3(0, 1, 0);
-        const slopeAngle = Math.acos(terrainNormal.dot(upVector));
-
-        // Only apply rolling if slope is significant
-        const MIN_SLOPE_ANGLE = 0.05; // ~3 degrees in radians
-        if (Math.abs(slopeAngle) > MIN_SLOPE_ANGLE) {
-          // Calculate downhill direction (project gravity onto terrain plane)
-          const gravity = new THREE.Vector3(0, -9.81, 0);
-          const gravityOnPlane = gravity.clone().sub(
-            terrainNormal.clone().multiplyScalar(gravity.dot(terrainNormal))
-          );
-
-          // Physics formula from "The Physics of Golf"
-          const mass = 1.0; // Normalized mass
-          const horizontalSpeed = new THREE.Vector2(projectile.velocity.x, projectile.velocity.z).length();
-
-          // Velocity-based friction (proven technique)
-          const frictionCoefficient = 0.15;
-          const frictionForce = (horizontalSpeed / delta) * frictionCoefficient;
-
-          // Acceleration = (gravity component - friction) / mass
-          const gravityMagnitude = gravityOnPlane.length();
-          const acceleration = Math.max(0, (gravityMagnitude - frictionForce / mass));
-
-          // Apply acceleration in downhill direction
-          if (gravityOnPlane.length() > 0.01) {
-            const accelDir = gravityOnPlane.clone().normalize();
-            projectile.velocity.x += accelDir.x * acceleration * delta;
-            projectile.velocity.z += accelDir.z * acceleration * delta;
-
-            // Integrate rolling velocity into position immediately (standard physics integration)
-            projectile.position.x += accelDir.x * acceleration * delta * delta;
-            projectile.position.z += accelDir.z * acceleration * delta * delta;
-          }
-        }
-
-        // CRITICAL: After rolling physics changes XZ, resample terrain at FINAL position
-        // This ensures Y matches the actual XZ position after all physics
-        const finalTerrainHeight = getTerrainHeight(projectile.position.x, projectile.position.z);
-        const finalGroundY = finalTerrainHeight + walnutRadius;
-
-        // DEBUG: Log terrain sampling for tree-dropped walnuts
-        if (projectile.ownerId === 'game') {
-          console.log(`🌰 Walnut settle: pos=(${projectile.position.x.toFixed(2)}, ${projectile.position.z.toFixed(2)}) terrainH=${finalTerrainHeight.toFixed(3)} groundY=${finalGroundY.toFixed(3)} finalY=${projectile.position.y.toFixed(3)}`);
-        }
-
-        // Clamp to terrain at FINAL position (after all physics)
-        projectile.position.y = finalGroundY;
-
-        // Update mesh position after all ground physics (bouncing/rolling done)
-        projectile.mesh.position.copy(projectile.position);
       }
     });
 
