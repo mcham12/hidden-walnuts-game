@@ -263,7 +263,25 @@ export class ProjectileManager {
     this.projectiles.forEach((projectile, id) => {
       // Check timeout
       const lifetime = (now - projectile.spawnTime) / 1000;
-      if (lifetime > this.MAX_LIFETIME || projectile.hasHit) {
+      if (lifetime > this.MAX_LIFETIME) {
+        // CRITICAL FIX: If projectile timed out while on/near ground, treat as miss
+        // This handles slow-flying projectiles (player throws at ground with no target)
+        const terrainHeight = getTerrainHeight(projectile.position.x, projectile.position.z);
+        const groundY = terrainHeight + this.WALNUT_RADIUS;
+        const isNearGround = projectile.position.y <= groundY + 1.0; // Within 1 unit of ground
+
+        if (isNearGround) {
+          console.log(`⏱️ Projectile ${id} timed out near ground - treating as miss`);
+          projectile.hasHit = true;
+          this.onProjectileMiss(projectile);
+        } else {
+          console.log(`⏱️ Projectile ${id} timed out mid-flight - removing (no pickup)`);
+        }
+        toRemove.push(id);
+        return;
+      }
+
+      if (projectile.hasHit) {
         toRemove.push(id);
         return;
       }
