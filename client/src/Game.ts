@@ -5922,9 +5922,11 @@ export class Game {
     // Add to scene and registry
     walnutGroup.userData.id = data.walnutId;
     walnutGroup.userData.ownerId = data.ownerId;
+    walnutGroup.userData.type = data.walnutType; // CRITICAL: Set type for findWalnut checks
+    walnutGroup.userData.points = data.points; // CRITICAL: Set points for scoring
+    walnutGroup.userData.clickPosition = walnutGroup.position.clone(); // CRITICAL: Set clickPosition for proximity
     this.scene.add(walnutGroup);
     this.walnuts.set(data.walnutId, walnutGroup);
-
 
     // Add label
     const label = this.createLabel(labelText, labelColor);
