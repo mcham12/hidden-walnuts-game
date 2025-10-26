@@ -57,7 +57,8 @@ export default class Leaderboard {
   state: DurableObjectState;
   storage: DurableObjectStorage;
   env: Env;
-  scores: Map<string, ScoreRecord> = new Map();
+  scores: Map<string, ScoreRecord> = new Map(); // Weekly scores (reset every Monday)
+  alltimeScores: Map<string, ScoreRecord> = new Map(); // All-time scores (never reset)
   metadata: LeaderboardMetadata | null = null;
   initialized = false;
 
@@ -78,6 +79,7 @@ export default class Leaderboard {
     // Initialize scores from storage
     if (!this.initialized) {
       await this.loadScores();
+      await this.loadAllTimeScores(); // MVP 9: Load all-time scores
       await this.loadMetadata();
       this.initialized = true;
     }
@@ -87,17 +89,24 @@ export default class Leaderboard {
       return this.handleScoreReport(request);
     }
 
-    // Get top players
+    // Get top players (weekly by default, or all-time if specified)
     if (path.endsWith("/top")) {
       const limit = parseInt(url.searchParams.get("limit") || "10");
-      const topPlayers = this.getTopPlayers(limit);
+      const type = url.searchParams.get("type") || "weekly"; // MVP 9: Support ?type=alltime
 
-      console.log(`📊 Leaderboard /top request: ${topPlayers.length} players returned (${this.scores.size} total in DB)`);
+      const topPlayers = type === "alltime"
+        ? this.getTopPlayers(limit, this.alltimeScores)
+        : this.getTopPlayers(limit, this.scores);
+
+      const totalPlayers = type === "alltime" ? this.alltimeScores.size : this.scores.size;
+
+      console.log(`📊 Leaderboard /top request (${type}): ${topPlayers.length} players returned (${totalPlayers} total in DB)`);
 
       return new Response(JSON.stringify({
         leaderboard: topPlayers,
         count: topPlayers.length,
-        totalPlayers: this.scores.size,
+        totalPlayers,
+        type, // Include type in response
         lastResetAt: this.metadata?.lastResetAt,
         resetCount: this.metadata?.resetCount
       }), {
@@ -207,10 +216,20 @@ export default class Leaderboard {
 
       record.updatedAt = now;
       record.lastScoreIncrease = now;
+
+      // MVP 9: Update both weekly and all-time leaderboards
+      // Weekly leaderboard (resets every Monday)
       this.scores.set(record.playerId, record);
       await this.storage.put(record.playerId, record);
 
-      console.log(`✅ Leaderboard saved: ${record.playerId} = ${record.score} (Total players: ${this.scores.size})`);
+      // All-time leaderboard (never resets) - only update if score is higher
+      const existingAllTimeRecord = this.alltimeScores.get(record.playerId);
+      if (!existingAllTimeRecord || record.score > existingAllTimeRecord.score) {
+        this.alltimeScores.set(record.playerId, record);
+        await this.storage.put(`alltime_${record.playerId}`, record);
+      }
+
+      console.log(`✅ Leaderboard saved: ${record.playerId} = ${record.score} (Weekly: ${this.scores.size}, All-time: ${this.alltimeScores.size})`);
 
       return new Response(JSON.stringify({
         success: true,
@@ -254,9 +273,18 @@ export default class Leaderboard {
       // Archive current leaderboard before reset
       const archiveKey = await this.archiveCurrentLeaderboard('manual', adminNote);
 
-      // Reset leaderboard
+      // MVP 9: Reset weekly leaderboard only (preserve all-time and metadata)
       this.scores.clear();
-      await this.storage.deleteAll();
+
+      // Delete only weekly scores (not alltime_ prefixed or _metadata)
+      const keysToDelete: string[] = [];
+      const allKeys = await this.storage.list();
+      for (const key of allKeys.keys()) {
+        if (!key.startsWith('alltime_') && !key.startsWith('_')) {
+          keysToDelete.push(key);
+        }
+      }
+      await Promise.all(keysToDelete.map(key => this.storage.delete(key)));
 
       // Update metadata
       const newMetadata: LeaderboardMetadata = {
@@ -471,9 +499,18 @@ export default class Leaderboard {
       // Archive current leaderboard
       const archiveKey = await this.archiveCurrentLeaderboard('weekly');
 
-      // Reset leaderboard
+      // MVP 9: Reset weekly leaderboard only (preserve all-time and metadata)
       this.scores.clear();
-      await this.storage.deleteAll();
+
+      // Delete only weekly scores (not alltime_ prefixed or _metadata)
+      const keysToDelete: string[] = [];
+      const allKeys = await this.storage.list();
+      for (const key of allKeys.keys()) {
+        if (!key.startsWith('alltime_') && !key.startsWith('_')) {
+          keysToDelete.push(key);
+        }
+      }
+      await Promise.all(keysToDelete.map(key => this.storage.delete(key)));
 
       // Update metadata
       const newMetadata: LeaderboardMetadata = {
@@ -490,9 +527,9 @@ export default class Leaderboard {
     }
   }
 
-  // Get top players by score
-  private getTopPlayers(limit: number = 10): Array<{ playerId: string; score: number; walnuts: { hidden: number; found: number }; rank: number }> {
-    const sortedPlayers = Array.from(this.scores.values())
+  // Get top players by score (MVP 9: Support both weekly and all-time)
+  private getTopPlayers(limit: number = 10, scoresMap: Map<string, ScoreRecord> = this.scores): Array<{ playerId: string; score: number; walnuts: { hidden: number; found: number }; rank: number }> {
+    const sortedPlayers = Array.from(scoresMap.values())
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
       .map((record, index) => ({
@@ -519,18 +556,32 @@ export default class Leaderboard {
     return rank >= 0 ? rank + 1 : -1;
   }
 
-  // Load scores from storage
+  // Load weekly scores from storage
   private async loadScores(): Promise<void> {
     try {
       const scoresMap = await this.storage.list<ScoreRecord>({ prefix: '' });
-      // Filter out metadata
+      // Filter out metadata and alltime scores
       for (const [key, value] of scoresMap) {
-        if (!key.startsWith('_')) {
+        if (!key.startsWith('_') && !key.startsWith('alltime_')) {
           this.scores.set(key, value);
         }
       }
     } catch (error) {
-      console.error('Error loading scores from storage:', error);
+      console.error('Error loading weekly scores from storage:', error);
+    }
+  }
+
+  // MVP 9: Load all-time scores from storage
+  private async loadAllTimeScores(): Promise<void> {
+    try {
+      const alltimeScoresMap = await this.storage.list<ScoreRecord>({ prefix: 'alltime_' });
+      for (const [key, value] of alltimeScoresMap) {
+        // Remove the 'alltime_' prefix when storing in map
+        const playerId = key.replace('alltime_', '');
+        this.alltimeScores.set(playerId, value);
+      }
+    } catch (error) {
+      console.error('Error loading all-time scores from storage:', error);
     }
   }
 

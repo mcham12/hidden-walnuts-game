@@ -201,6 +201,7 @@ export class Game {
   // MVP 4: Leaderboard system
   private leaderboardVisible: boolean = false;
   private leaderboardUpdateInterval: number = 0;
+  private currentLeaderboardTab: 'weekly' | 'alltime' = 'weekly'; // MVP 9: Default to weekly
 
   // MVP 4: Chat and Emotes
   private playerChatLabels: Map<string, HTMLElement> = new Map(); // Chat labels for players
@@ -6063,6 +6064,35 @@ export class Game {
         }
       });
 
+      // MVP 9: Tab switching for All-Time vs Weekly
+      const weeklyTab = leaderboardDiv.querySelector('[data-tab="weekly"]') as HTMLElement;
+      const alltimeTab = leaderboardDiv.querySelector('[data-tab="alltime"]') as HTMLElement;
+
+      if (weeklyTab && alltimeTab) {
+        // Set weekly as default active tab
+        weeklyTab.classList.add('active');
+
+        // Weekly tab click handler
+        weeklyTab.addEventListener('click', () => {
+          if (this.currentLeaderboardTab !== 'weekly') {
+            this.currentLeaderboardTab = 'weekly';
+            weeklyTab.classList.add('active');
+            alltimeTab.classList.remove('active');
+            this.updateLeaderboard();
+          }
+        });
+
+        // All-time tab click handler
+        alltimeTab.addEventListener('click', () => {
+          if (this.currentLeaderboardTab !== 'alltime') {
+            this.currentLeaderboardTab = 'alltime';
+            alltimeTab.classList.add('active');
+            weeklyTab.classList.remove('active');
+            this.updateLeaderboard();
+          }
+        });
+      }
+
       // Click outside to dismiss leaderboard (user-requested feature)
       document.addEventListener('click', (event) => {
         const target = event.target as HTMLElement;
@@ -6093,11 +6123,14 @@ export class Game {
    */
   private async updateLeaderboard(): Promise<void> {
     try {
-      // MVP 8: Fetch real leaderboard data from server
+      // MVP 9: Fetch leaderboard data based on selected tab (weekly or all-time)
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
-      console.log(`🏆 Fetching leaderboard from: ${apiUrl}/api/leaderboard/top?limit=10`);
+      const leaderboardType = this.currentLeaderboardTab; // 'weekly' or 'alltime'
+      const endpoint = `${apiUrl}/api/leaderboard/top?limit=10&type=${leaderboardType}`;
 
-      const response = await fetch(`${apiUrl}/api/leaderboard/top?limit=10`);
+      console.log(`🏆 Fetching ${leaderboardType} leaderboard from: ${endpoint}`);
+
+      const response = await fetch(endpoint);
 
       let leaderboardData;
       if (!response.ok) {

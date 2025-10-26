@@ -269,6 +269,35 @@
         border-bottom: 2px solid rgba(255, 215, 0, 0.3);
         padding-bottom: 8px;
       }
+      /* MVP 9: Leaderboard tabs styling */
+      .leaderboard-tabs {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 10px;
+      }
+      .leaderboard-tab {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.3);
+        color: #ccc;
+        border: 1px solid rgba(255, 215, 0, 0.2);
+        border-radius: 4px;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-family: 'Arial', sans-serif;
+        cursor: pointer;
+        transition: all 0.2s;
+        touch-action: manipulation;
+      }
+      .leaderboard-tab:hover {
+        background: rgba(0, 0, 0, 0.4);
+        border-color: rgba(255, 215, 0, 0.4);
+      }
+      .leaderboard-tab.active {
+        background: rgba(255, 215, 0, 0.3);
+        color: #FFD700;
+        border-color: rgba(255, 215, 0, 0.6);
+        font-weight: bold;
+      }
       #leaderboard-list {
         list-style: none;
         padding: 0;
@@ -1905,6 +1934,11 @@
     <button id="leaderboard-toggle" class="hidden">🏆 Leaderboard</button>
     <div id="leaderboard" class="hidden">
       <h3>🏆 Top Players</h3>
+      <!-- MVP 9: Tabs for All-Time vs Weekly -->
+      <div class="leaderboard-tabs">
+        <button class="leaderboard-tab" data-tab="weekly">Weekly</button>
+        <button class="leaderboard-tab" data-tab="alltime">All-Time</button>
+      </div>
       <ul id="leaderboard-list">
         <li>
           <span class="leaderboard-rank">#1</span>

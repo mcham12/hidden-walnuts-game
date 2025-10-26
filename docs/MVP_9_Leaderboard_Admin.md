@@ -34,42 +34,232 @@ Industry-standard leaderboard reset system with archival, anti-cheat, and admin 
 
 ## Setup Instructions
 
-### Step 1: Create KV Namespace
+Follow these steps **in order**. Do not skip steps.
 
+### Step 1: Create KV Namespace for Leaderboard Archives
+
+This stores historical leaderboard data after resets.
+
+**1.1 Generate a strong secret key (save this somewhere safe)**
 ```bash
-# Development environment
-npx wrangler kv:namespace create "LEADERBOARD_ARCHIVES"
+openssl rand -hex 32
+```
+**Output example:** `a3f2e1d4c5b6a7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d2c3b4a5f6e7d8c9f0e1d2`
 
-# Production environment
-npx wrangler kv:namespace create "LEADERBOARD_ARCHIVES" --env production
+**Save this** - you'll need it in Step 2.
+
+**1.2 Create the KV namespace**
+```bash
+npx wrangler kv:namespace create "LEADERBOARD_ARCHIVES"
 ```
 
-**Important**: Copy the namespace ID from the output and update `wrangler.toml`:
+**Expected Output:**
+```
+🌀 Creating namespace with title "hidden-walnuts-api-LEADERBOARD_ARCHIVES"
+✨ Success!
+Add the following to your wrangler.toml:
+[[kv_namespaces]]
+binding = "LEADERBOARD_ARCHIVES"
+id = "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+```
 
+**1.3 Copy the ID from the output**
+
+In the output above, copy: `a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6` (your ID will be different)
+
+**1.4 Update wrangler.toml**
+
+Open `/Users/mattcarroll/Documents/hiddenwalnuts/hidden-walnuts-game/wrangler.toml`
+
+Find this section (around line 27):
 ```toml
 [[kv_namespaces]]
 binding = "LEADERBOARD_ARCHIVES"
-id = "YOUR_KV_ID_HERE"  # Replace with actual ID
+id = "leaderboard_archives_dev"  # Will be different for production
 ```
 
-### Step 2: Set Admin Secret
+Replace `leaderboard_archives_dev` with the ID you copied:
+```toml
+[[kv_namespaces]]
+binding = "LEADERBOARD_ARCHIVES"
+id = "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"  # YOUR ACTUAL ID
+```
 
+**Save the file**.
+
+### Step 2: Set Admin Secret in Cloudflare
+
+This authenticates admin operations (reset, cleanup).
+
+**2.1 Set the secret for development/preview**
 ```bash
-# Development (add to .env or wrangler secret)
 npx wrangler secret put ADMIN_SECRET
+```
 
-# Production
+**Prompt will appear:**
+```
+Enter a secret value:
+```
+
+**Paste the secret from Step 1.1** (the output of `openssl rand -hex 32`)
+
+Press Enter.
+
+**Expected Output:**
+```
+🌀 Creating the secret for the Worker "hidden-walnuts-api-preview"
+✨ Success! Uploaded secret ADMIN_SECRET
+```
+
+**2.2 Set the secret for production (if deploying to production)**
+```bash
 npx wrangler secret put ADMIN_SECRET --env production
 ```
 
-When prompted, enter a strong secret (e.g., generated with `openssl rand -hex 32`).
+Again, paste the same secret from Step 1.1.
 
-### Step 3: Deploy
-
+**Verification:**
 ```bash
+npx wrangler secret list
+```
+
+**Expected Output:**
+```
+[
+  {
+    "name": "ADMIN_SECRET",
+    "type": "secret_text"
+  },
+  {
+    "name": "TURNSTILE_SECRET",
+    "type": "secret_text"
+  }
+]
+```
+
+You should see `ADMIN_SECRET` in the list.
+
+### Step 3: Build and Deploy
+
+**3.1 Build the project**
+```bash
+cd /Users/mattcarroll/Documents/hiddenwalnuts/hidden-walnuts-game
 npm run build
+```
+
+**Expected Output (should end with):**
+```
+✓ built in X.XXs
+```
+
+**3.2 Deploy to Cloudflare**
+```bash
 npx wrangler deploy
 ```
+
+**Expected Output:**
+```
+Total Upload: XX.XX KiB / gzip: XX.XX KiB
+Uploaded hidden-walnuts-api-preview (X.XX sec)
+Published hidden-walnuts-api-preview (X.XX sec)
+  https://hidden-walnuts-api-preview.mattmcarroll.workers.dev
+```
+
+**3.3 Verify deployment**
+
+Open your browser to:
+```
+https://hidden-walnuts-api-preview.mattmcarroll.workers.dev/api/leaderboard/top
+```
+
+**Expected Response:**
+```json
+{
+  "leaderboard": [],
+  "count": 0,
+  "totalPlayers": 0,
+  "lastResetAt": 0,
+  "resetCount": 0
+}
+```
+
+If you see this JSON response, deployment succeeded.
+
+### Step 4: Verify KV Namespace is Working
+
+**4.1 Check KV namespace binding**
+```bash
+npx wrangler kv:namespace list
+```
+
+**Expected Output:**
+```
+[
+  {
+    "id": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+    "title": "hidden-walnuts-api-LEADERBOARD_ARCHIVES"
+  }
+]
+```
+
+Your namespace should appear in the list.
+
+### Step 5: Test Admin Reset (Optional but Recommended)
+
+**5.1 Get your admin secret**
+
+If you saved it from Step 1.1, use that. Otherwise, generate a new one:
+```bash
+openssl rand -hex 32
+npx wrangler secret put ADMIN_SECRET
+```
+
+**5.2 Test manual reset**
+```bash
+curl -X POST https://hidden-walnuts-api-preview.mattmcarroll.workers.dev/api/leaderboard/reset \
+  -H "X-Admin-Secret: YOUR_SECRET_FROM_STEP_1" \
+  -H "Content-Type: application/json" \
+  -d '{"note": "Initial deployment test"}'
+```
+
+**Replace `YOUR_SECRET_FROM_STEP_1`** with the actual secret.
+
+**Expected Response:**
+```json
+{
+  "success": true,
+  "message": "Leaderboard reset and archived",
+  "archiveKey": "manual-2025-10-26-1729958400000",
+  "resetCount": 1
+}
+```
+
+If you see this, the reset system works!
+
+**5.3 Verify archive was created**
+```bash
+curl https://hidden-walnuts-api-preview.mattmcarroll.workers.dev/api/leaderboard/archives
+```
+
+**Expected Response:**
+```json
+{
+  "archives": [
+    {
+      "key": "manual-2025-10-26-1729958400000",
+      "timestamp": 1729958400000,
+      "resetType": "manual",
+      "playerCount": 0,
+      "topPlayers": []
+    }
+  ],
+  "count": 1
+}
+```
+
+### ✅ Setup Complete
+
+Your leaderboard admin system is now fully configured and deployed!
 
 ---
 
