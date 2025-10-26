@@ -54,7 +54,7 @@ export class Game {
   public username: string = ''; // MVP 6: Player username
   public turnstileToken: string | null = null; // MVP 7.1: Cloudflare Turnstile bot protection token
   private characterGroundOffset = 0; // Offset from character pivot to feet
-  private characterCollisionRadius = 0.5; // Collision radius calculated from bounding box
+  private characterCollisionRadius = 0.3; // MVP 9: Reduced for tighter player collisions (was 0.5)
 
   // MVP 6: Spawn coordination - prevent character updates until spawn position received from server
   // This fixes race condition where render loop starts before world_state arrives
@@ -454,7 +454,7 @@ export class Game {
         this.collisionSystem.addPlayerCollider(
           this.playerId,
           this.character.position,
-          0.5 // Character collision radius
+          this.characterCollisionRadius // MVP 9: Use calculated radius
         );
       }
 
@@ -503,8 +503,11 @@ export class Game {
       // Formula: position.y = groundY - box.min.y places feet exactly on ground
       this.characterGroundOffset = -box.min.y;
 
-      // Calculate collision radius based on character size (use XZ plane for horizontal radius)
-      this.characterCollisionRadius = Math.max(size.x, size.z) * 0.5;
+      // MVP 9: Calculate collision radius based on character size
+      // Industry standard: Use 0.35 instead of 0.5 for tighter player collisions
+      // 0.5 = cylinder matches bounding box (too loose, includes empty space)
+      // 0.35 = tighter fit around actual character mesh (proven in Unity/Three.js games)
+      this.characterCollisionRadius = Math.max(size.x, size.z) * 0.35;
 
 
       this.setAction('idle');
@@ -2221,8 +2224,8 @@ export class Game {
       const box = new THREE.Box3().setFromObject(remoteCharacter);
       const size = box.getSize(new THREE.Vector3());
 
-      // Calculate collision radius based on character size (use XZ plane for horizontal radius)
-      const collisionRadius = Math.max(size.x, size.z) * 0.5;
+      // MVP 9: Calculate collision radius (same formula as local player)
+      const collisionRadius = Math.max(size.x, size.z) * 0.35;
 
       // INDUSTRY STANDARD: Ground offset = distance from pivot to feet (no margin)
       // Formula: position.y = groundY - box.min.y places feet exactly on ground
@@ -2702,7 +2705,7 @@ export class Game {
       npcCharacter.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(npcCharacter);
       const size = box.getSize(new THREE.Vector3());
-      const collisionRadius = Math.max(size.x, size.z) * 0.5;
+      const collisionRadius = Math.max(size.x, size.z) * 0.35; // MVP 9: Same as players
       const npcGroundOffset = -box.min.y;
 
       // Store metadata
