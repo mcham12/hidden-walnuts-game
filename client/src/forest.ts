@@ -11,7 +11,14 @@ const BUSH_COUNT = 30;
 let treeModel: THREE.Group | null = null;
 let bushModel: THREE.Group | null = null;
 let rockModels: (THREE.Group | null)[] = [null, null, null, null, null]; // Rock_01 through Rock_05
-let rockHeightOffsets: number[] = [0, 0, 0, 0, 0]; // Calculated offsets for each rock variant
+let rockHeightOffsets: number[] = [0, 0, 0, 0, 0]; // Calculated Y offsets for each rock variant
+let rockCenterOffsets: THREE.Vector3[] = [
+  new THREE.Vector3(0, 0, 0),
+  new THREE.Vector3(0, 0, 0),
+  new THREE.Vector3(0, 0, 0),
+  new THREE.Vector3(0, 0, 0),
+  new THREE.Vector3(0, 0, 0)
+]; // MVP 9: X/Z center offsets for off-center models
 let stumpModel: THREE.Group | null = null;
 
 // Export bush positions for walnut hiding
@@ -38,14 +45,25 @@ export async function createForestFromServer(
         const box = new THREE.Box3().setFromObject(rockModels[i]!);
         const size = box.getSize(new THREE.Vector3());
         const minY = box.min.y;
+        const center = box.getCenter(new THREE.Vector3());
 
-        // Standard Three.js approach: offset = -minY
-        // This positions the bottom of the bounding box at terrain level
-        // If minY is negative (bottom below pivot), offset is positive (lift up)
-        // If minY is positive (bottom above pivot), offset is negative (push down)
-        rockHeightOffsets[i] = -minY;
-
-        console.log(`Rock_0${i + 1}: height=${size.y.toFixed(2)}, minY=${minY.toFixed(2)}, offset=${rockHeightOffsets[i].toFixed(2)}`);
+        // MVP 9: Rock_02 has off-center pivot - use center approach for both Y and X/Z
+        // For off-center models, we need to align the center of the bounding box
+        // to the terrain, then offset by half the height
+        if (i === 1) { // Rock_02 (index 1)
+          rockHeightOffsets[i] = -center.y + (size.y / 2);
+          // Store horizontal centering offset (negated because we add it to position)
+          rockCenterOffsets[i] = new THREE.Vector3(-center.x, 0, -center.z);
+          console.log(`Rock_0${i + 1}: height=${size.y.toFixed(2)}, center=(${center.x.toFixed(2)}, ${center.y.toFixed(2)}, ${center.z.toFixed(2)}), offsets=(${rockCenterOffsets[i].x.toFixed(2)}, ${rockHeightOffsets[i].toFixed(2)}, ${rockCenterOffsets[i].z.toFixed(2)}) [OFF-CENTER FIX]`);
+        } else {
+          // Standard Three.js approach: offset = -minY
+          // This positions the bottom of the bounding box at terrain level
+          // If minY is negative (bottom below pivot), offset is positive (lift up)
+          // If minY is positive (bottom above pivot), offset is negative (push down)
+          rockHeightOffsets[i] = -minY;
+          rockCenterOffsets[i] = new THREE.Vector3(0, 0, 0); // No horizontal offset needed
+          console.log(`Rock_0${i + 1}: height=${size.y.toFixed(2)}, minY=${minY.toFixed(2)}, offset=${rockHeightOffsets[i].toFixed(2)}`);
+        }
       }
     }
 
@@ -99,9 +117,15 @@ export async function createForestFromServer(
           const rock = rockModel.clone();
 
           // MVP 8: Use calculated height offset for each rock variant (fixes floating rocks)
+          // MVP 9: Apply horizontal centering for off-center models (Rock_02)
           // Each rock model has different dimensions and pivot points
           const rockHeightOffset = rockHeightOffsets[rockIndex] * obj.scale;
-          rock.position.set(obj.x, y + rockHeightOffset, obj.z);
+          const centerOffset = rockCenterOffsets[rockIndex].clone().multiplyScalar(obj.scale);
+          rock.position.set(
+            obj.x + centerOffset.x,
+            y + rockHeightOffset,
+            obj.z + centerOffset.z
+          );
           rock.scale.set(obj.scale, obj.scale, obj.scale);
           scene.add(rock);
 
