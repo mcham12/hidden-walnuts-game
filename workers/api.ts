@@ -21,6 +21,12 @@ interface ExecutionContext {
   passThroughOnException(): void;
 }
 
+// Cloudflare Workers ScheduledEvent type (for cron triggers)
+interface ScheduledEvent {
+  scheduledTime: number; // Unix timestamp in milliseconds
+  cron: string; // Cron expression that triggered this event
+}
+
 // Simple CORS headers
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -190,6 +196,24 @@ export default {
           "Content-Type": "application/json"
         }
       });
+    }
+  },
+
+  // MVP 9: Cron handler for scheduled leaderboard resets
+  // Runs every Monday at 00:00 UTC (configured in wrangler.toml)
+  async scheduled(event: ScheduledEvent, env: EnvWithBindings, ctx: ExecutionContext): Promise<void> {
+    console.log(`⏰ Cron triggered: ${new Date(event.scheduledTime).toISOString()}`);
+
+    try {
+      // Get the leaderboard Durable Object instance
+      const leaderboard = getObjectInstance(env, "leaderboard", "global-leaderboard") as unknown as Leaderboard;
+
+      // Call the scheduledReset method
+      await leaderboard.scheduledReset();
+
+      console.log(`✅ Scheduled leaderboard reset completed`);
+    } catch (error) {
+      console.error(`❌ Scheduled reset failed:`, error);
     }
   }
 };

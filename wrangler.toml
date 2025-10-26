@@ -18,6 +18,16 @@ enabled = true
 ENVIRONMENT = "development"
 CYCLE_DURATION_SECONDS = "86400"  # 24 hours in seconds
 
+# MVP 9: Leaderboard reset configuration
+LEADERBOARD_RESET_ENABLED = "true"  # Enable weekly auto-reset
+LEADERBOARD_RESET_DAY = "1"  # Monday (0=Sunday, 1=Monday, etc.)
+LEADERBOARD_ARCHIVE_LIMIT = "12"  # Keep last 12 weeks of archives
+
+# KV Namespaces for leaderboard archives
+[[kv_namespaces]]
+binding = "LEADERBOARD_ARCHIVES"
+id = "leaderboard_archives_dev"  # Will be different for production
+
 # MVP 7.1: Rate Limiting for bot protection
 [[unsafe.bindings]]
 name = "RATE_LIMITER"
@@ -68,10 +78,15 @@ tag = "v3"
 # MVP 6: Player Identity - Session token → username mapping
 new_sqlite_classes = ["PlayerIdentity"]
 
+# MVP 9: Cron trigger for weekly leaderboard reset
+# Runs every Monday at 00:00 UTC (industry standard)
+[triggers]
+crons = ["0 0 * * 1"]  # Monday at midnight UTC
+
 # Note: No environment-specific config needed
 # Separate workers (hidden-walnuts-api and hidden-walnuts-api-preview)
 # both use the base configuration above
 # Differences handled via:
 # - Separate worker names in deployment
-# - Separate secrets (TURNSTILE_SECRET) per worker
+# - Separate secrets (TURNSTILE_SECRET, ADMIN_SECRET) per worker
 # - Custom domain (api.hiddenwalnuts.com) only on production worker
