@@ -51,8 +51,8 @@ export class ProjectileManager {
   private readonly MAX_BOUNCES = 2;
   private readonly BOUNCE_DAMPING = 0.25;
   private readonly BOUNCE_THRESHOLD = 0.3; // m/s - minimum Y velocity to bounce
-  private readonly FRICTION_COEFFICIENT = 0.85; // Exponential decay per second (time-based)
-  private readonly ROLLING_FRICTION = 0.15; // Resistance to downhill rolling
+  private readonly FRICTION_COEFFICIENT = 0.70; // Exponential decay per second (INCREASED from 0.85 - more friction)
+  private readonly ROLLING_FRICTION = 0.30; // Resistance to downhill rolling (INCREASED from 0.15 - stops sooner on slopes)
   private readonly MIN_SLOPE_ANGLE = 0.05; // radians (~3 degrees) - minimum slope to roll
   private readonly REST_VELOCITY_THRESHOLD = 0.1; // m/s - speed below which object can rest
   private readonly REST_TIME_REQUIRED = 0.3; // seconds - how long to be slow before settling
@@ -360,9 +360,19 @@ export class ProjectileManager {
             projectile.velocity.set(0, 0, 0);
             projectile.hasHit = true;
 
-            // DEBUG: Log final settled position
+            // DEBUG: Enhanced logging for tree-dropped walnuts
             if (projectile.ownerId === 'game') {
-              console.log(`✅ Walnut SETTLED at (${projectile.position.x.toFixed(2)}, ${projectile.position.y.toFixed(2)}, ${projectile.position.z.toFixed(2)}), terrainH=${newTerrainHeight.toFixed(3)}, restTime=${projectile.restTimer.toFixed(2)}s`);
+              const expectedY = newTerrainHeight + this.WALNUT_RADIUS;
+              const actualY = projectile.position.y;
+              const yError = Math.abs(actualY - expectedY);
+
+              console.log(`✅ Walnut SETTLED at (${projectile.position.x.toFixed(2)}, ${projectile.position.y.toFixed(2)}, ${projectile.position.z.toFixed(2)})
+                Terrain height: ${newTerrainHeight.toFixed(3)}
+                Expected Y: ${expectedY.toFixed(3)} (terrain + radius)
+                Actual Y: ${actualY.toFixed(3)}
+                Y error: ${yError.toFixed(4)} units ${yError > 0.01 ? '⚠️ FLOATING' : '✓'}
+                Rest time: ${projectile.restTimer.toFixed(2)}s
+                Bounces: ${projectile.bounces}`);
             }
 
             this.onProjectileMiss(projectile);
