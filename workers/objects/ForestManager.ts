@@ -540,23 +540,25 @@ export default class ForestManager extends DurableObject {
       };
 
       // MVP 5.8: Mark as disconnected instead of removing on close
-      socket.onclose = async () => {
+      socket.onclose = () => {
         console.log(`🔌 WebSocket closed for ${squirrelId}, marking as disconnected`);
         existingPlayer.isDisconnected = true;
         existingPlayer.disconnectedAt = Date.now();
 
-        // MVP 9: Mark disconnect in SquirrelSession for reconnection window
-        try {
-          const squirrelSessionId = this.env.SQUIRREL.idFromName(squirrelId);
-          const squirrelSession = this.env.SQUIRREL.get(squirrelSessionId);
-          await squirrelSession.fetch(new Request('http://session/disconnect', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ squirrelId })
-          }));
-        } catch (error) {
-          console.warn(`⚠️ Failed to mark disconnect for ${squirrelId}:`, error);
-        }
+        // MVP 9: Mark disconnect in SquirrelSession for reconnection window (non-blocking)
+        (async () => {
+          try {
+            const squirrelSessionId = this.env.SQUIRREL.idFromName(squirrelId);
+            const squirrelSession = this.env.SQUIRREL.get(squirrelSessionId);
+            await squirrelSession.fetch(new Request('http://session/disconnect', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ squirrelId })
+            }));
+          } catch (error) {
+            console.warn(`⚠️ Failed to mark disconnect for ${squirrelId}:`, error);
+          }
+        })(); // Fire and forget
 
         this.broadcastToOthers(squirrelId, {
           type: 'player_disconnected',
@@ -721,23 +723,25 @@ export default class ForestManager extends DurableObject {
       };
 
       // MVP 5.8: Mark as disconnected instead of removing on close
-      socket.onclose = async () => {
+      socket.onclose = () => {
         console.log(`🔌 WebSocket closed for ${squirrelId}, marking as disconnected`);
         playerConnection.isDisconnected = true;
         playerConnection.disconnectedAt = Date.now();
 
-        // MVP 9: Mark disconnect in SquirrelSession for reconnection window
-        try {
-          const squirrelSessionId = this.env.SQUIRREL.idFromName(squirrelId);
-          const squirrelSession = this.env.SQUIRREL.get(squirrelSessionId);
-          await squirrelSession.fetch(new Request('http://session/disconnect', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ squirrelId })
-          }));
-        } catch (error) {
-          console.warn(`⚠️ Failed to mark disconnect for ${squirrelId}:`, error);
-        }
+        // MVP 9: Mark disconnect in SquirrelSession for reconnection window (non-blocking)
+        (async () => {
+          try {
+            const squirrelSessionId = this.env.SQUIRREL.idFromName(squirrelId);
+            const squirrelSession = this.env.SQUIRREL.get(squirrelSessionId);
+            await squirrelSession.fetch(new Request('http://session/disconnect', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ squirrelId })
+            }));
+          } catch (error) {
+            console.warn(`⚠️ Failed to mark disconnect for ${squirrelId}:`, error);
+          }
+        })(); // Fire and forget
 
         this.broadcastToOthers(squirrelId, {
           type: 'player_disconnected',
