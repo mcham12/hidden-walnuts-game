@@ -1804,23 +1804,71 @@ export class Game {
         break;
 
       case 'walnut_dropped':
-        // MVP 8: A projectile hit/missed and created a pickupable walnut on ground
-        // Skip if we already have this walnut (prevents duplicate from our own throw)
-        if (!this.walnuts.has(data.walnutId)) {
+        // PROVEN: Position-based duplicate detection (handles server-client ID mismatches)
+        // Industry standard: Check both ID and position to prevent duplicates (Minecraft/Fortnite pattern)
+
+        // First check: Do we already have this exact ID?
+        if (this.walnuts.has(data.walnutId)) {
+          // Yes - this is an echo of our own walnut, skip entirely
+          break;
+        }
+
+        // Second check: Is there already a walnut at this position?
+        // Handles cases where server generates different ID than we sent (server-client desync)
+        const POSITION_TOLERANCE = 0.5; // units - positions within this are considered "same location"
+        let existingWalnutId: string | null = null;
+
+        for (const [walnutId, walnutMesh] of this.walnuts.entries()) {
+          const dx = walnutMesh.position.x - data.position.x;
+          const dy = walnutMesh.position.y - data.position.y;
+          const dz = walnutMesh.position.z - data.position.z;
+          const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+          if (distance < POSITION_TOLERANCE) {
+            existingWalnutId = walnutId;
+            console.log(`🔄 Walnut ID sync: local="${walnutId}" server="${data.walnutId}" dist=${distance.toFixed(3)}`);
+            break;
+          }
+        }
+
+        if (existingWalnutId !== null) {
+          // ROBUST: Update existing walnut instead of creating duplicate
+          const existingMesh = this.walnuts.get(existingWalnutId)!;
+
+          // Sync ID if server provided different one (server is authoritative for multiplayer)
+          if (existingWalnutId !== data.walnutId) {
+            this.walnuts.delete(existingWalnutId);
+            this.walnuts.set(data.walnutId, existingMesh);
+            existingMesh.userData.id = data.walnutId;
+
+            // Update label mapping
+            if (this.walnutLabels.has(existingWalnutId)) {
+              const label = this.walnutLabels.get(existingWalnutId);
+              this.walnutLabels.delete(existingWalnutId);
+              if (label) this.walnutLabels.set(data.walnutId, label);
+            }
+            console.log(`✅ Synced walnut ID: "${existingWalnutId}" → "${data.walnutId}"`);
+          }
+
+          // Refresh metadata (ensure consistent state)
+          existingMesh.userData.settlingUntil = Date.now() + 500;
+          if (data.immunePlayerId) {
+            existingMesh.userData.immunePlayerId = data.immunePlayerId;
+            existingMesh.userData.immuneUntil = data.immuneUntil;
+          }
+        } else {
+          // No existing walnut - create new (remote player's walnut)
           this.createRemoteWalnut({
             walnutId: data.walnutId,
-            ownerId: 'game', // No specific owner
-            walnutType: 'ground', // New type for dropped walnuts
+            ownerId: 'game',
+            walnutType: 'ground',
             position: data.position,
-            points: 1 // Same as bush walnut
+            points: 1
           });
 
-          // MVP 8 FIX: Add settling delay to remote dropped walnuts
           const droppedWalnut = this.walnuts.get(data.walnutId);
           if (droppedWalnut) {
-            droppedWalnut.userData.settlingUntil = Date.now() + 500; // Match local settling time
-
-            // Legacy immunity (now using settling delay instead)
+            droppedWalnut.userData.settlingUntil = Date.now() + 500;
             if (data.immunePlayerId) {
               droppedWalnut.userData.immunePlayerId = data.immunePlayerId;
               droppedWalnut.userData.immuneUntil = data.immuneUntil;
