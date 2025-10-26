@@ -21,6 +21,7 @@ interface SessionState {
   token: string;
   joinedAt: number;
   lastActivity: number;
+  lastDisconnectAt?: number; // MVP 9: Track disconnect time for reconnection window
   position: { x: number; y: number; z: number };
   rotationY: number;
 }
@@ -57,6 +58,16 @@ export default class SquirrelSession {
       // Handle session info requests
       if (pathname === "/session-info") {
         return await this.handleSessionInfo(request);
+      }
+
+      // MVP 9: Handle score update (for persistence across reconnects)
+      if (pathname === "/update-score" && request.method === "POST") {
+        return await this.handleScoreUpdate(request);
+      }
+
+      // MVP 9: Handle disconnect (for reconnection window)
+      if (pathname === "/disconnect" && request.method === "POST") {
+        return await this.handleDisconnect(request);
       }
 
       return new Response("Not Found", { status: 404 });
@@ -220,5 +231,81 @@ export default class SquirrelSession {
   // Generate simple token
   private generateToken(): string {
     return `token-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+  }
+
+  // MVP 9: Handle score update (called when player's score changes)
+  private async handleScoreUpdate(request: Request): Promise<Response> {
+    try {
+      const data = await request.json() as { squirrelId: string; score: number };
+
+      if (!data.squirrelId || typeof data.score !== 'number') {
+        return new Response(JSON.stringify({ error: "Invalid request" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      // Load existing session
+      await this.loadSession(data.squirrelId);
+
+      if (!this.sessionState || !this.playerStats) {
+        return new Response(JSON.stringify({ error: "Session not found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      // Update score
+      this.playerStats.score = data.score;
+      this.sessionState.lastActivity = Date.now();
+      await this.saveSession();
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { "Content-Type": "application/json" }
+      });
+    } catch (error) {
+      console.error("Error updating score:", error);
+      return new Response(JSON.stringify({ error: "Failed to update score" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+  }
+
+  // MVP 9: Handle disconnect (called when player leaves)
+  private async handleDisconnect(request: Request): Promise<Response> {
+    try {
+      const data = await request.json() as { squirrelId: string };
+
+      if (!data.squirrelId) {
+        return new Response(JSON.stringify({ error: "Invalid request" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      await this.loadSession(data.squirrelId);
+
+      if (!this.sessionState) {
+        return new Response(JSON.stringify({ error: "Session not found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      // Mark disconnect time for reconnection window
+      this.sessionState.lastDisconnectAt = Date.now();
+      await this.saveSession();
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { "Content-Type": "application/json" }
+      });
+    } catch (error) {
+      console.error("Error handling disconnect:", error);
+      return new Response(JSON.stringify({ error: "Failed to handle disconnect" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
   }
 }

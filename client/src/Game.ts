@@ -6093,18 +6093,22 @@ export class Game {
         });
       }
 
-      // Click outside to dismiss leaderboard (user-requested feature)
-      document.addEventListener('click', (event) => {
+      // Click/tap outside to dismiss leaderboard (user-requested feature)
+      const dismissLeaderboard = (event: Event) => {
         const target = event.target as HTMLElement;
 
-        // Check if click is outside leaderboard AND outside toggle button
+        // Check if click/tap is outside leaderboard AND outside toggle button
         if (this.leaderboardVisible &&
             !leaderboardDiv.contains(target) &&
             !toggleButton.contains(target)) {
           this.leaderboardVisible = false;
           leaderboardDiv.classList.add('hidden');
         }
-      });
+      };
+
+      // Listen for both click (desktop) and touchend (mobile/tablet)
+      document.addEventListener('click', dismissLeaderboard);
+      document.addEventListener('touchend', dismissLeaderboard);
 
       // Start periodic leaderboard updates (every 5 seconds)
       this.leaderboardUpdateInterval = window.setInterval(() => {

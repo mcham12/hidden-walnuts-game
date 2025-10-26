@@ -540,10 +540,24 @@ export default class ForestManager extends DurableObject {
       };
 
       // MVP 5.8: Mark as disconnected instead of removing on close
-      socket.onclose = () => {
+      socket.onclose = async () => {
         console.log(`🔌 WebSocket closed for ${squirrelId}, marking as disconnected`);
         existingPlayer.isDisconnected = true;
         existingPlayer.disconnectedAt = Date.now();
+
+        // MVP 9: Mark disconnect in SquirrelSession for reconnection window
+        try {
+          const squirrelSessionId = this.env.SQUIRREL.idFromName(squirrelId);
+          const squirrelSession = this.env.SQUIRREL.get(squirrelSessionId);
+          await squirrelSession.fetch(new Request('http://session/disconnect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ squirrelId })
+          }));
+        } catch (error) {
+          console.warn(`⚠️ Failed to mark disconnect for ${squirrelId}:`, error);
+        }
+
         this.broadcastToOthers(squirrelId, {
           type: 'player_disconnected',
           squirrelId: squirrelId,
@@ -648,7 +662,7 @@ export default class ForestManager extends DurableObject {
         lastThrowTime: 0,
         health: 100, // Start at full health
         maxHealth: 100,
-        score: 0, // Start with 0 score
+        score: 0, // Will be restored from session if reconnecting
         lastAttackerId: null,
         combatStats: {
           hits: 0,
@@ -658,12 +672,40 @@ export default class ForestManager extends DurableObject {
         invulnerableUntil: Date.now() + 3000 // 3 seconds spawn protection
       };
 
-      console.log(`✅ New player ${squirrelId} (${username}) connected`);
+      // MVP 9: Check for recent disconnect and restore score (.io game pattern)
+      // Industry standard: 5-minute reconnection window
+      const RECONNECT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+      const squirrelSessionId = this.env.SQUIRREL.idFromName(squirrelId);
+      const squirrelSession = this.env.SQUIRREL.get(squirrelSessionId);
+
+      try {
+        const sessionInfoResponse = await squirrelSession.fetch(new Request('http://session/session-info'));
+        if (sessionInfoResponse.ok) {
+          const sessionInfo = await sessionInfoResponse.json() as any;
+          const timeSinceDisconnect = sessionInfo.lastDisconnectAt
+            ? Date.now() - sessionInfo.lastDisconnectAt
+            : Infinity;
+
+          if (timeSinceDisconnect < RECONNECT_WINDOW_MS && sessionInfo.stats?.score) {
+            playerConnection.score = sessionInfo.stats.score;
+            console.log(`🔄 Restored score for ${username}: ${playerConnection.score} (disconnected ${Math.round(timeSinceDisconnect / 1000)}s ago)`);
+          } else if (timeSinceDisconnect < Infinity) {
+            console.log(`⏱️ Reconnection window expired for ${username} (${Math.round(timeSinceDisconnect / 1000)}s > ${RECONNECT_WINDOW_MS / 1000}s)`);
+          }
+        }
+      } catch (error) {
+        console.warn(`⚠️ Could not restore session for ${username}:`, error);
+      }
+
+      console.log(`✅ Player ${squirrelId} (${username}) connected with score: ${playerConnection.score}`);
 
       this.activePlayers.set(squirrelId, playerConnection);
 
-      // MVP 8: Report initial score to leaderboard (bootstrap with 0 score)
-      await this.reportScoreToLeaderboard(playerConnection);
+      // MVP 9: Only report to leaderboard if score > 0 (don't report initial joins)
+      // This prevents overwriting existing scores with 0 on rejoin
+      if (playerConnection.score > 0) {
+        await this.reportScoreToLeaderboard(playerConnection);
+      }
 
       // MVP 5.8: Ensure alarm is scheduled for disconnect checking
       await this.ensureAlarmScheduled();
@@ -679,10 +721,24 @@ export default class ForestManager extends DurableObject {
       };
 
       // MVP 5.8: Mark as disconnected instead of removing on close
-      socket.onclose = () => {
+      socket.onclose = async () => {
         console.log(`🔌 WebSocket closed for ${squirrelId}, marking as disconnected`);
         playerConnection.isDisconnected = true;
         playerConnection.disconnectedAt = Date.now();
+
+        // MVP 9: Mark disconnect in SquirrelSession for reconnection window
+        try {
+          const squirrelSessionId = this.env.SQUIRREL.idFromName(squirrelId);
+          const squirrelSession = this.env.SQUIRREL.get(squirrelSessionId);
+          await squirrelSession.fetch(new Request('http://session/disconnect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ squirrelId })
+          }));
+        } catch (error) {
+          console.warn(`⚠️ Failed to mark disconnect for ${squirrelId}:`, error);
+        }
+
         this.broadcastToOthers(squirrelId, {
           type: 'player_disconnected',
           squirrelId: squirrelId,
@@ -1414,8 +1470,26 @@ export default class ForestManager extends DurableObject {
   }
 
   // MVP 8: Report player score to leaderboard
+  // MVP 9: Also update SquirrelSession for score persistence
   private async reportScoreToLeaderboard(playerConnection: any): Promise<void> {
     try {
+      // MVP 9: Update SquirrelSession for score persistence across reconnects
+      const squirrelSessionId = this.env.SQUIRREL.idFromName(playerConnection.squirrelId);
+      const squirrelSession = this.env.SQUIRREL.get(squirrelSessionId);
+
+      try {
+        await squirrelSession.fetch(new Request('http://session/update-score', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            squirrelId: playerConnection.squirrelId,
+            score: playerConnection.score
+          })
+        }));
+      } catch (error) {
+        console.warn(`⚠️ Failed to update session score for ${playerConnection.username}:`, error);
+      }
+
       // Get leaderboard Durable Object
       const leaderboardId = this.env.LEADERBOARD.idFromName("global");
       const leaderboard = this.env.LEADERBOARD.get(leaderboardId);

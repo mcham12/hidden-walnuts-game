@@ -68,8 +68,8 @@
 
 **7. Fix Floating Rock Issue**
 - One specific rock model floats above the terrain, other rock models do not
-- Debug, maybe with a temporary label on the rocks, so we can find the culprit model
-- Fix the floating rock
+- Debug, maybe with a temporary filename label on the rocks, so we can find the culprit model
+- Fix the floating rock issue
 - Remove temporary labels from rocks
 
 **8. Updated Hide Walnut Mechanism: Grow Trees!**
@@ -82,8 +82,16 @@
 **9. make sure NPCs face their target before throwing walnuts at the target**
 -  It appears that NPCs can face away from their target but still throw at a target. doesn't seem realistic and hurts game consistency and feel
 
-**10. Remove Debug Logging**
-- Remove any debug logging added for this MVP, both client and worker
+**10. Improve settings UI**
+-  Make the Settings UI more compact, more like the Leaderboard.
+-  improve desktop, and iphone portrait/landscape and ipad portrait/landscape
+-  Make the Settings display be able to be dismissed by clicking/tapping outside of the window in ipad, iphone, and desktop browsers
+
+**11. Death = drop walnuts before respawn**
+-  re-introduce the lost functionality where a player (human or NPC) dies, upon dying, all of their inventory of walnuts is dropped before being respawinging with 0 walnuts
+
+**12. Remove Debug Logging**
+- Remove any debug logging added for this MVP, both client console and worker logs
 
 ### Success Criteria
 
@@ -92,6 +100,7 @@
 - ✅ NPCs die and respawn properly
 - ✅ Walnuts replenish naturally from trees
 - ✅ Leaderboard is manageable and cheat-resistant
+- ✅ Selected bugs fixed and visual polish improved
 
 ---
 
