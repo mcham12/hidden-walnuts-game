@@ -3180,13 +3180,16 @@ export class Game {
       this.treeWalnutProjectiles.delete(data.projectileId);
     }
 
-    // Trust ProjectileManager's final position (already calculated with multi-point sampling)
-    // Mesh position was already set correctly before calling this method
-    // Just verify position matches mesh (should already be in sync)
-    if (data.mesh.position.distanceTo(data.position) > 0.01) {
-      console.warn('⚠️ Position/mesh desync detected, using mesh position');
-      data.position.copy(data.mesh.position);
-    }
+    // CRITICAL FIX: Explicitly set mesh position (same approach as onProjectileHit)
+    // This ensures correct positioning for glow/pickup detection
+    // Previously relied on ProjectileManager's position, but didn't verify/correct it
+    const terrainHeight = getTerrainHeight(data.position.x, data.position.z);
+    const finalPosition = new THREE.Vector3(
+      data.position.x,
+      terrainHeight + (this.WALNUT_SIZE / 2), // Radius offset so bottom touches ground
+      data.position.z
+    );
+    data.mesh.position.copy(finalPosition);
 
     // Stop spinning animation (projectile was spinning in flight)
     data.mesh.rotation.set(0, 0, 0);
