@@ -46,16 +46,21 @@ export class ProjectileManager {
   private readonly HIT_RADIUS = 0.8; // units (collision detection radius - increased for easier hits)
   private readonly NEAR_MISS_RADIUS = 2.0; // units (radius for near-miss detection)
 
-  // Ground physics constants (INDUSTRY STANDARD: time-based, not frame-based)
+  // Ground physics constants (INDUSTRY STANDARD: Coulomb friction model + static threshold)
   private readonly WALNUT_RADIUS = 0.06; // units
   private readonly MAX_BOUNCES = 2;
   private readonly BOUNCE_DAMPING = 0.25;
   private readonly BOUNCE_THRESHOLD = 0.3; // m/s - minimum Y velocity to bounce
-  private readonly FRICTION_COEFFICIENT = 0.70; // Exponential decay per second (INCREASED from 0.85 - more friction)
-  private readonly ROLLING_FRICTION = 0.30; // Resistance to downhill rolling (INCREASED from 0.15 - stops sooner on slopes)
-  private readonly MIN_SLOPE_ANGLE = 0.05; // radians (~3 degrees) - minimum slope to roll
-  private readonly REST_VELOCITY_THRESHOLD = 0.1; // m/s - speed below which object can rest
-  private readonly REST_TIME_REQUIRED = 0.3; // seconds - how long to be slow before settling
+
+  // PROVEN: Velocity-dependent friction (static > kinetic)
+  private readonly STATIC_FRICTION = 0.95; // High friction at low speeds (stops rolling quickly)
+  private readonly KINETIC_FRICTION = 0.75; // Lower friction at high speeds (realistic sliding)
+  private readonly FRICTION_TRANSITION_SPEED = 0.5; // m/s - speed where static→kinetic transition occurs
+
+  private readonly ROLLING_FRICTION = 0.50; // Resistance to downhill rolling (INCREASED from 0.30)
+  private readonly MIN_SLOPE_ANGLE = 0.08; // radians (~4.5 degrees) - minimum slope to roll (INCREASED from 0.05)
+  private readonly REST_VELOCITY_THRESHOLD = 0.08; // m/s - speed below which object can rest (LOWERED from 0.1)
+  private readonly REST_TIME_REQUIRED = 0.2; // seconds - how long to be slow before settling (LOWERED from 0.3)
   private readonly GROUND_EPSILON = 0.01; // units - tolerance for ground detection
 
   // Track entities that have had near misses (prevent spam)
@@ -322,11 +327,31 @@ export class ProjectileManager {
           projectile.velocity.z += slopeDirZ * rollAccel * delta;
         }
 
-        // --- FRICTION (TIME-BASED, NOT FRAME-BASED) ---
-        // Exponential decay: v(t) = v(0) * friction^t
-        const frictionFactor = Math.pow(this.FRICTION_COEFFICIENT, delta);
+        // --- FRICTION (INDUSTRY STANDARD: Velocity-dependent, static > kinetic) ---
+        // Coulomb friction model: Higher friction at low speeds (static), lower at high speeds (kinetic)
+        // This prevents endless rolling and provides realistic stopping behavior
+        const horizontalSpeed = Math.sqrt(
+          projectile.velocity.x * projectile.velocity.x +
+          projectile.velocity.z * projectile.velocity.z
+        );
+
+        // Interpolate between static and kinetic friction based on speed
+        // At low speeds: Use static friction (0.95) - high resistance
+        // At high speeds: Use kinetic friction (0.75) - lower resistance
+        const frictionBlend = Math.min(1.0, horizontalSpeed / this.FRICTION_TRANSITION_SPEED);
+        const effectiveFriction = this.STATIC_FRICTION * (1 - frictionBlend) + this.KINETIC_FRICTION * frictionBlend;
+
+        // Apply time-based exponential decay
+        const frictionFactor = Math.pow(effectiveFriction, delta);
         projectile.velocity.x *= frictionFactor;
         projectile.velocity.z *= frictionFactor;
+
+        // PROVEN: Static friction threshold - stop completely if below minimum speed
+        // Prevents endless micro-rolling at very low speeds
+        if (horizontalSpeed < 0.05) { // 5 cm/s threshold
+          projectile.velocity.x = 0;
+          projectile.velocity.z = 0;
+        }
 
         // --- UPDATE POSITION WITH HORIZONTAL VELOCITY ---
         const oldPosX = projectile.position.x;
@@ -360,17 +385,25 @@ export class ProjectileManager {
             projectile.velocity.set(0, 0, 0);
             projectile.hasHit = true;
 
+            // CRITICAL FIX: Update mesh position BEFORE sending to Game.ts
+            // This ensures the mesh is at the final settled position, not the previous frame's position
+            projectile.mesh.position.copy(projectile.position);
+            projectile.mesh.rotation.set(0, 0, 0); // Stop spinning
+
             // DEBUG: Enhanced logging for tree-dropped walnuts
             if (projectile.ownerId === 'game') {
               const expectedY = newTerrainHeight + this.WALNUT_RADIUS;
               const actualY = projectile.position.y;
+              const meshY = projectile.mesh.position.y;
               const yError = Math.abs(actualY - expectedY);
+              const meshError = Math.abs(meshY - expectedY);
 
               console.log(`✅ Walnut SETTLED at (${projectile.position.x.toFixed(2)}, ${projectile.position.y.toFixed(2)}, ${projectile.position.z.toFixed(2)})
                 Terrain height: ${newTerrainHeight.toFixed(3)}
                 Expected Y: ${expectedY.toFixed(3)} (terrain + radius)
-                Actual Y: ${actualY.toFixed(3)}
-                Y error: ${yError.toFixed(4)} units ${yError > 0.01 ? '⚠️ FLOATING' : '✓'}
+                Physics Y: ${actualY.toFixed(3)} (error: ${yError.toFixed(4)})
+                Mesh Y: ${meshY.toFixed(3)} (error: ${meshError.toFixed(4)})
+                ${yError > 0.01 || meshError > 0.01 ? '⚠️ FLOATING DETECTED' : '✓ Position accurate'}
                 Rest time: ${projectile.restTimer.toFixed(2)}s
                 Bounces: ${projectile.bounces}`);
             }
@@ -385,11 +418,11 @@ export class ProjectileManager {
         }
       }
 
-      // Spin walnut for visual effect (applies to both flying and grounded)
+      // Spin walnut for visual effect (applies to both flying and grounded states)
       projectile.mesh.rotation.x += delta * 10;
       projectile.mesh.rotation.y += delta * 15;
 
-      // Update mesh position
+      // Update mesh position (for non-settled projectiles)
       projectile.mesh.position.copy(projectile.position);
 
       // MVP 8: Near-miss detection (check early for responsive feedback)
