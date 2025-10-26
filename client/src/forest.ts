@@ -129,11 +129,6 @@ export async function createForestFromServer(
           rock.scale.set(obj.scale, obj.scale, obj.scale);
           scene.add(rock);
 
-          // MVP 9: DEBUG - Add temporary label to identify rock model
-          const rockName = `Rock_0${rockIndex + 1}.glb`;
-          rock.userData.debugLabel = rockName;
-          rock.userData.rockIndex = rockIndex;
-
           // MVP 5.5: Use Octree mesh collision for accurate irregular rock shapes
           if (collisionSystem) {
             collisionSystem.addTreeMeshCollider(
