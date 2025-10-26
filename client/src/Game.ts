@@ -1832,8 +1832,11 @@ export class Game {
       case 'tree_walnut_drop':
         // MVP 9: Tree dropped walnut - spawn at random canopy position, falls straight down with bounce/roll
         if (data.treePosition && data.walnutId && this.projectileManager) {
-          // Random radial position around tree canopy (not trunk center)
-          const canopyOffset = 1.0; // 1 unit from trunk (reduced from 2.0 - closer to tree)
+          // IMPROVED: Randomize both angle AND distance for natural walnut drop pattern
+          // Avoids regular circle pattern, simulates realistic tree physics
+          const minCanopyOffset = 0.7; // Minimum distance from trunk (avoid walnut obscured by trunk)
+          const maxCanopyOffset = 1.5; // Maximum canopy radius (natural variation)
+          const canopyOffset = minCanopyOffset + Math.random() * (maxCanopyOffset - minCanopyOffset);
           const randomAngle = Math.random() * Math.PI * 2;
           const spawnPos = new THREE.Vector3(
             data.treePosition.x + Math.cos(randomAngle) * canopyOffset,
@@ -3141,6 +3144,7 @@ export class Game {
     // Notify server to sync with other clients
     this.sendMessage({
       type: 'spawn_dropped_walnut',
+      walnutId: walnutId, // CRITICAL FIX: Send OUR ID so server echoes it back (was missing, caused pickup bug)
       position: {
         x: data.mesh.position.x,
         y: data.mesh.position.y,

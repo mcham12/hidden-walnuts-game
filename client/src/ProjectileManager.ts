@@ -52,15 +52,22 @@ export class ProjectileManager {
   private readonly BOUNCE_DAMPING = 0.25;
   private readonly BOUNCE_THRESHOLD = 0.3; // m/s - minimum Y velocity to bounce
 
+  // PROVEN: Ground impact damping (reduces rolling on first contact)
+  // Research: "In real collisions, horizontal velocity is damped by surface friction on impact"
+  // Tree walnuts (ownerId='game'): Low damping - allow natural rolling
+  // Thrown walnuts (player): High damping - reduce excessive rolling
+  private readonly GROUND_IMPACT_DAMPING_TREE = 0.90; // Tree walnuts: minimal damping (roll more)
+  private readonly GROUND_IMPACT_DAMPING_THROWN = 0.60; // Thrown walnuts: significant damping (roll less)
+
   // PROVEN: Velocity-dependent friction (static > kinetic)
   private readonly STATIC_FRICTION = 0.95; // High friction at low speeds (stops rolling quickly)
   private readonly KINETIC_FRICTION = 0.75; // Lower friction at high speeds (realistic sliding)
   private readonly FRICTION_TRANSITION_SPEED = 0.5; // m/s - speed where static→kinetic transition occurs
 
-  private readonly ROLLING_FRICTION = 0.50; // Resistance to downhill rolling (INCREASED from 0.30)
-  private readonly MIN_SLOPE_ANGLE = 0.08; // radians (~4.5 degrees) - minimum slope to roll (INCREASED from 0.05)
-  private readonly REST_VELOCITY_THRESHOLD = 0.08; // m/s - speed below which object can rest (LOWERED from 0.1)
-  private readonly REST_TIME_REQUIRED = 0.2; // seconds - how long to be slow before settling (LOWERED from 0.3)
+  private readonly ROLLING_FRICTION = 0.50; // Resistance to downhill rolling
+  private readonly MIN_SLOPE_ANGLE = 0.08; // radians (~4.5 degrees) - minimum slope to roll
+  private readonly REST_VELOCITY_THRESHOLD = 0.08; // m/s - speed below which object can rest
+  private readonly REST_TIME_REQUIRED = 0.2; // seconds - how long to be slow before settling
   private readonly GROUND_EPSILON = 0.01; // units - tolerance for ground detection
 
   // Track entities that have had near misses (prevent spam)
@@ -294,6 +301,19 @@ export class ProjectileManager {
           projectile.velocity.y = -projectile.velocity.y * this.BOUNCE_DAMPING;
           projectile.bounces++;
           projectile.restTimer = 0; // Reset rest timer on bounce
+
+          // PROVEN: Ground impact damping on FIRST contact only
+          // Industry standard: Horizontal velocity is damped by surface friction on impact
+          // Tree walnuts: Low damping (allow natural rolling downhill)
+          // Thrown walnuts: High damping (reduce excessive rolling from throw velocity)
+          if (projectile.bounces === 1) { // First ground contact
+            const impactDamping = projectile.ownerId === 'game'
+              ? this.GROUND_IMPACT_DAMPING_TREE    // Tree: 0.90 (minimal damping)
+              : this.GROUND_IMPACT_DAMPING_THROWN; // Thrown: 0.60 (significant damping)
+
+            projectile.velocity.x *= impactDamping;
+            projectile.velocity.z *= impactDamping;
+          }
         } else {
           // Stop vertical bouncing
           projectile.velocity.y = 0;
