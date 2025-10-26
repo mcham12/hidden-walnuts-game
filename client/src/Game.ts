@@ -1704,6 +1704,9 @@ export class Game {
           // MVP 5.5: Pass collision system to add tree collisions
           await createForestFromServer(this.scene, data.forestObjects, this.collisionSystem || undefined);
           this.forestCreated = true;
+
+          // MVP 9: DEBUG - Add temporary labels to rocks
+          this.addRockDebugLabels();
         }
 
         // Load existing walnuts from server
@@ -6619,5 +6622,47 @@ export class Game {
         }
       }
     });
+  }
+
+  /**
+   * MVP 9: DEBUG - Add temporary labels to rocks showing model filename
+   */
+  private addRockDebugLabels(): void {
+    console.log('🪨 Adding debug labels to rocks...');
+    let rockCount = 0;
+
+    this.scene.traverse((object) => {
+      if (object.userData.debugLabel) {
+        // Create a sprite with text label
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d')!;
+        canvas.width = 256;
+        canvas.height = 64;
+
+        context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+
+        context.font = 'Bold 20px Arial';
+        context.fillStyle = 'yellow';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(object.userData.debugLabel, 128, 32);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+        const sprite = new THREE.Sprite(spriteMaterial);
+
+        sprite.scale.set(4, 1, 1);
+        sprite.position.copy(object.position);
+        sprite.position.y += 3; // Float above rock
+
+        this.scene.add(sprite);
+        rockCount++;
+
+        console.log(`  Added label for ${object.userData.debugLabel} at (${object.position.x.toFixed(1)}, ${object.position.y.toFixed(1)}, ${object.position.z.toFixed(1)})`);
+      }
+    });
+
+    console.log(`✅ Added ${rockCount} rock debug labels`);
   }
 }
