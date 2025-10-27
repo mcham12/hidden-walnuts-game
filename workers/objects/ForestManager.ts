@@ -1966,6 +1966,62 @@ export default class ForestManager extends DurableObject {
   }
 
   /**
+   * MVP 9: Drop multiple walnuts from a specific tree in rapid succession
+   * Used when a tree grows from a hidden walnut
+   */
+  private async dropWalnutsFromTree(tree: ForestObject, count: number): Promise<void> {
+    const DROP_INTERVAL_MS = 200; // 200ms between each drop for "rapid succession"
+    const treeCanopyHeight = 8 + (tree.scale * 2); // Approximate canopy height based on tree scale
+
+    for (let i = 0; i < count; i++) {
+      // Wait between drops for rapid succession effect (except first drop)
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, DROP_INTERVAL_MS));
+      }
+
+      // Create walnut at ground level under tree
+      const walnutPosition = {
+        x: tree.x,
+        y: 0.3, // Ground level (same as other walnuts)
+        z: tree.z
+      };
+
+      const walnutId = `grown-tree-drop-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      // Add walnut to mapState so server can track pickup
+      const treeWalnut: Walnut = {
+        id: walnutId,
+        ownerId: 'game',
+        origin: 'game',
+        hiddenIn: 'ground',
+        location: walnutPosition,
+        found: false,
+        timestamp: Date.now(),
+        isGolden: false
+      };
+      this.mapState.push(treeWalnut);
+
+      // Broadcast drop event so clients can animate (same as regular tree drops)
+      this.broadcastToAll({
+        type: 'tree_walnut_drop',
+        treePosition: {
+          x: tree.x,
+          y: treeCanopyHeight,
+          z: tree.z
+        },
+        groundPosition: walnutPosition,
+        walnutId: walnutId,
+        ownerId: 'game'
+      });
+
+      console.log(`🌰 Grown tree ${tree.id} dropped walnut ${i + 1}/${count} (${walnutId})`);
+    }
+
+    // Save mapState with all new walnuts
+    await this.storage.put('mapState', this.mapState);
+  }
+
+  /**
    * MVP 9: Check for walnuts ready to grow into trees
    * Called every 20 seconds from alarm()
    */
@@ -2079,6 +2135,9 @@ export default class ForestManager extends DurableObject {
     });
 
     console.log(`🌳 Walnut ${walnut.id} grew into tree ${treeId} at (${treePosition.x.toFixed(1)}, ${treePosition.z.toFixed(1)})`);
+
+    // MVP 9: Drop 5 walnuts in rapid succession from newly grown tree
+    await this.dropWalnutsFromTree(newTree, 5);
   }
 
   /**
