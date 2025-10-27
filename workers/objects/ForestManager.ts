@@ -907,6 +907,14 @@ export default class ForestManager extends DurableObject {
         };
         this.mapState.push(newWalnut);
 
+        // MVP 9: Add walnut to registry for tree growth tracking
+        const walnutRegistryId = this.env.WALNUTS.idFromName('global');
+        const walnutRegistry = this.env.WALNUTS.get(walnutRegistryId);
+        await walnutRegistry.fetch(new Request('http://registry/add', {
+          method: 'POST',
+          body: JSON.stringify(newWalnut)
+        }));
+
         // MVP 8: Decrement player inventory
         playerConnection.walnutInventory--;
 
@@ -941,6 +949,17 @@ export default class ForestManager extends DurableObject {
         const walnutIndex = this.mapState.findIndex(w => w.id === data.walnutId);
         if (walnutIndex !== -1) {
           this.mapState[walnutIndex].found = true;
+
+          // MVP 9: Mark walnut as found in registry (prevents tree growth)
+          const walnutRegistryId = this.env.WALNUTS.idFromName('global');
+          const walnutRegistry = this.env.WALNUTS.get(walnutRegistryId);
+          await walnutRegistry.fetch(new Request('http://registry/find', {
+            method: 'POST',
+            body: JSON.stringify({
+              walnutId: data.walnutId,
+              playerId: playerConnection.squirrelId
+            })
+          }));
 
           // MVP 8: Add walnut to player inventory (max 10)
           const MAX_INVENTORY = 10;
