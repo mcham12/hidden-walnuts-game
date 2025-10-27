@@ -243,6 +243,8 @@ export class Game {
   private readonly COOLDOWN_INCREMENT = 1000; // Add 1 second per consecutive throw
   private readonly COOLDOWN_RESET_TIME = 5000; // Reset counter after 5s of no throwing
   private consecutiveThrows: number = 0; // Track consecutive throws for progressive cooldown
+  private lastInventoryFullMessageTime: number = 0; // Throttle "inventory full" messages
+  private readonly INVENTORY_FULL_MESSAGE_COOLDOWN = 2000; // 2 seconds between messages
 
   // MVP 9: Track tree-dropped walnut IDs (projectileId -> serverWalnutId)
   private treeWalnutProjectiles: Map<string, string> = new Map();
@@ -5794,13 +5796,17 @@ export class Game {
   private findWalnut(walnutId: string, walnutGroup: THREE.Group): void {
     if (!this.character) return;
 
+    const now = Date.now();
+
     // Check if inventory is full
     if (this.walnutInventory >= this.MAX_INVENTORY) {
-      this.toastManager.warning("You can't carry any more walnuts!");
+      // Throttle message to prevent spam (industry standard: message cooldown)
+      if (now - this.lastInventoryFullMessageTime > this.INVENTORY_FULL_MESSAGE_COOLDOWN) {
+        this.toastManager.warning("You can't carry any more walnuts!");
+        this.lastInventoryFullMessageTime = now;
+      }
       return;
     }
-
-    const now = Date.now();
 
     // MVP 8 FIX: Check settling delay FIRST (walnut just landed from projectile)
     if (walnutGroup.userData.settlingUntil && now < walnutGroup.userData.settlingUntil) {
