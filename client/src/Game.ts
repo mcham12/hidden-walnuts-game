@@ -1859,6 +1859,13 @@ export class Game {
         }
         break;
 
+      case 'tree_grown':
+        // MVP 9: Walnut grew into tree - animate growth and add to scene
+        if (data.tree && data.walnutId) {
+          await this.handleTreeGrowth(data);
+        }
+        break;
+
       case 'existing_players':
         if (Array.isArray(data.players)) {
           for (const player of data.players) {
@@ -4657,6 +4664,19 @@ export class Game {
     group.add(hoverRing);
     group.userData.hoverRing = hoverRing;
 
+    // MVP 9: Add green throbbing glow for player-hidden walnuts
+    const glowGeometry = new THREE.SphereGeometry(this.WALNUT_SIZE * 2, 16, 12);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00FF00, // Green
+      transparent: true,
+      opacity: 0.2,
+      blending: THREE.AdditiveBlending
+    });
+    const throbGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+    throbGlow.position.y = 0.05;
+    group.add(throbGlow);
+    group.userData.throbGlow = throbGlow;
+
     // Position the entire group
     group.position.copy(position);
     group.userData.type = 'buried';
@@ -4720,6 +4740,19 @@ export class Game {
     hoverGlow.position.y = 0.4;
     group.add(hoverGlow);
     group.userData.hoverGlow = hoverGlow;
+
+    // MVP 9: Add green throbbing glow for player-hidden walnuts
+    const throbGlowGeometry = new THREE.SphereGeometry(this.WALNUT_SIZE * 2, 16, 12);
+    const throbGlowMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00FF00, // Green
+      transparent: true,
+      opacity: 0.2,
+      blending: THREE.AdditiveBlending
+    });
+    const throbGlow = new THREE.Mesh(throbGlowGeometry, throbGlowMaterial);
+    throbGlow.position.y = 0.4;
+    group.add(throbGlow);
+    group.userData.throbGlow = throbGlow;
 
     // Store glint for animation
     group.userData.glint = glint;
@@ -4882,6 +4915,28 @@ export class Game {
           // Subtle scale pulse for shimmer effect
           const scale = 1 + Math.sin(walnutGroup.userData.glintPhase * 1.5) * 0.1;
           glint.scale.set(scale, scale, scale);
+        }
+
+        // MVP 9: Animate green glow for player-hidden bush walnuts
+        const throbGlow = walnutGroup.userData.throbGlow as THREE.Mesh;
+        if (throbGlow) {
+          if (walnutGroup.userData.throbPhase === undefined) {
+            walnutGroup.userData.throbPhase = Math.random() * Math.PI * 2;
+          }
+          walnutGroup.userData.throbPhase += delta * 1.5;
+          const opacity = 0.2 + Math.sin(walnutGroup.userData.throbPhase) * 0.15;
+          (throbGlow.material as THREE.MeshBasicMaterial).opacity = Math.max(0.05, opacity);
+        }
+      } else if (type === 'buried') {
+        // MVP 9: Animate green glow for player-hidden buried walnuts
+        const throbGlow = walnutGroup.userData.throbGlow as THREE.Mesh;
+        if (throbGlow) {
+          if (walnutGroup.userData.throbPhase === undefined) {
+            walnutGroup.userData.throbPhase = Math.random() * Math.PI * 2;
+          }
+          walnutGroup.userData.throbPhase += delta * 1.5;
+          const opacity = 0.2 + Math.sin(walnutGroup.userData.throbPhase) * 0.15;
+          (throbGlow.material as THREE.MeshBasicMaterial).opacity = Math.max(0.05, opacity);
         }
       } else if (type === 'game') {
         // MVP 8 FIX: Simple golden walnut animation (just gentle throb on glow, no rotation)
@@ -6619,6 +6674,102 @@ export class Game {
         }
       }
     });
+  }
+
+  /**
+   * MVP 9: Handle tree growth - remove walnut, animate tree growing from 0 to full scale
+   */
+  private async handleTreeGrowth(data: any): Promise<void> {
+    // Remove the walnut visual
+    const walnut = this.walnuts.get(data.walnutId);
+    if (walnut) {
+      this.scene.remove(walnut);
+      this.walnuts.delete(data.walnutId);
+
+      // Remove label
+      const label = this.walnutLabels.get(data.walnutId);
+      if (label) {
+        label.remove();
+        this.walnutLabels.delete(data.walnutId);
+      }
+    }
+
+    // Load tree model (reuse existing loader)
+    const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+    const loader = new GLTFLoader();
+
+    try {
+      const gltf = await loader.loadAsync('/assets/models/environment/Tree_01.glb');
+      const tree = gltf.scene.clone();
+
+      // Set up shadows
+      tree.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      // Position tree
+      tree.position.set(data.tree.x, data.tree.y, data.tree.z);
+      tree.scale.set(0, 0, 0); // Start at zero scale
+
+      this.scene.add(tree);
+
+      // Add collision if collision system exists
+      if (this.collisionSystem) {
+        const collisionRadius = 0.3 * data.tree.scale;
+        const collisionHeight = 5 * data.tree.scale;
+        this.collisionSystem.addTreeCollider(
+          data.tree.id,
+          new THREE.Vector3(data.tree.x, data.tree.y, data.tree.z),
+          collisionRadius,
+          collisionHeight
+        );
+      }
+
+      // Animate growth: 0 → full scale over 3 seconds with easing
+      const targetScale = data.tree.scale;
+      const duration = 3000; // 3 seconds
+      const startTime = performance.now();
+
+      const animateGrowth = () => {
+        const elapsed = performance.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Cubic easing out (natural growth feel)
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const currentScale = eased * targetScale;
+
+        tree.scale.set(currentScale, currentScale, currentScale);
+
+        if (progress < 1) {
+          requestAnimationFrame(animateGrowth);
+        } else {
+          console.log(`🌳 Tree ${data.tree.id} finished growing`);
+        }
+      };
+
+      animateGrowth();
+
+      // Spawn sparkle particles during growth
+      if (this.vfxManager) {
+        this.vfxManager.spawnParticles('sparkle', tree.position, 50);
+      }
+
+      // MVP 9: Show console message only to the owner
+      if (data.ownerId === this.playerId) {
+        console.log(`🎉 Your walnut grew into a tree! +10 points`);
+
+        // Show toast notification
+        if (this.toastManager) {
+          this.toastManager.success('+10 Tree Grown!');
+        }
+      }
+
+    } catch (error) {
+      console.error('Failed to load tree model for growth:', error);
+    }
   }
 
 }

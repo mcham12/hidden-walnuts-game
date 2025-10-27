@@ -26,6 +26,7 @@ interface Walnut {
   location: { x: number, y: number, z: number };
   found: boolean;
   timestamp: number;
+  grownIntoTree?: boolean; // MVP 9: Track if walnut has grown into tree
 }
 
 export default class WalnutRegistry {
@@ -101,7 +102,7 @@ export default class WalnutRegistry {
     if (path.endsWith("/find") && request.method === "POST") {
       try {
         const { walnutId, playerId } = await request.json() as { walnutId: string; playerId: string };
-        
+
         if (!walnutId || !playerId) {
           return new Response(JSON.stringify({
             error: "Missing walnutId or playerId"
@@ -139,6 +140,84 @@ export default class WalnutRegistry {
       } catch (error) {
         return new Response(JSON.stringify({
           error: "Failed to find walnut"
+        }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+    }
+
+    // MVP 9: Check for walnuts ready to grow into trees
+    if (path.endsWith("/check-growth") && request.method === "POST") {
+      try {
+        const GROWTH_TIME_MS = 2 * 60 * 1000; // 2 minutes
+        const now = Date.now();
+        const readyToGrow: Walnut[] = [];
+
+        // Find player-hidden walnuts that are 2+ minutes old, not found, not grown
+        for (const walnut of this.walnuts.values()) {
+          if (
+            walnut.origin === 'player' &&
+            !walnut.found &&
+            !walnut.grownIntoTree &&
+            (now - walnut.timestamp >= GROWTH_TIME_MS)
+          ) {
+            readyToGrow.push(walnut);
+          }
+        }
+
+        return new Response(JSON.stringify({
+          walnuts: readyToGrow
+        }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({
+          error: "Failed to check growth"
+        }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+    }
+
+    // MVP 9: Mark walnut as grown into tree
+    if (path.endsWith("/mark-grown") && request.method === "POST") {
+      try {
+        const { walnutId } = await request.json() as { walnutId: string };
+
+        if (!walnutId) {
+          return new Response(JSON.stringify({
+            error: "Missing walnutId"
+          }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+
+        const walnut = this.walnuts.get(walnutId);
+        if (!walnut) {
+          return new Response(JSON.stringify({
+            error: "Walnut not found"
+          }), {
+            status: 404,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+
+        // Mark as grown
+        walnut.grownIntoTree = true;
+        this.walnuts.set(walnutId, walnut);
+        await this.storage.put(walnutId, walnut);
+
+        return new Response(JSON.stringify({
+          success: true
+        }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({
+          error: "Failed to mark grown"
         }), {
           status: 500,
           headers: { "Content-Type": "application/json" }

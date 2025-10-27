@@ -119,6 +119,9 @@ export default class ForestManager extends DurableObject {
   private lastTreeWalnutDrop: number = 0;
   private nextTreeDropInterval: number = 30000 + Math.random() * 90000; // 30-120 seconds (0.5-2 minutes)
 
+  // MVP 9: Tree growth system
+  private lastTreeGrowthCheck: number = 0;
+
   // MVP 7.1: Rate limiting state
   private connectionAttempts: Map<string, number[]> = new Map(); // IP -> timestamps
   private messageRateLimits: Map<string, {
@@ -293,6 +296,13 @@ export default class ForestManager extends DurableObject {
       this.lastTreeWalnutDrop = now;
       // Randomize next drop interval: 30-120 seconds (0.5-2 minutes)
       this.nextTreeDropInterval = 30000 + Math.random() * 90000;
+    }
+
+    // MVP 9: Check for walnuts ready to grow into trees every 20 seconds
+    const TREE_GROWTH_CHECK_INTERVAL = 20000; // 20 seconds
+    if (hasPlayers && now - this.lastTreeGrowthCheck >= TREE_GROWTH_CHECK_INTERVAL) {
+      this.lastTreeGrowthCheck = now;
+      await this.checkTreeGrowth();
     }
 
     // MVP 5.8: Check player disconnects every 10 seconds
@@ -1934,6 +1944,202 @@ export default class ForestManager extends DurableObject {
 
     // Save mapState with new tree walnut
     await this.storage.put('mapState', this.mapState);
+  }
+
+  /**
+   * MVP 9: Check for walnuts ready to grow into trees
+   * Called every 20 seconds from alarm()
+   */
+  private async checkTreeGrowth(): Promise<void> {
+    try {
+      // Query WalnutRegistry for walnuts ready to grow
+      const walnutRegistryId = this.env.WALNUTS.idFromName('global');
+      const walnutRegistry = this.env.WALNUTS.get(walnutRegistryId);
+
+      const response = await walnutRegistry.fetch(new Request('http://registry/check-growth', {
+        method: 'POST'
+      }));
+
+      if (!response.ok) {
+        console.error('Failed to check walnut growth:', await response.text());
+        return;
+      }
+
+      const data = await response.json() as { walnuts: any[] };
+
+      if (data.walnuts.length === 0) {
+        return; // No walnuts ready to grow
+      }
+
+      console.log(`🌱 Found ${data.walnuts.length} walnuts ready to grow into trees`);
+
+      // Process each walnut
+      for (const walnut of data.walnuts) {
+        await this.growWalnutIntoTree(walnut);
+      }
+    } catch (error) {
+      console.error('Error checking tree growth:', error);
+    }
+  }
+
+  /**
+   * MVP 9: Grow a single walnut into a tree
+   * Includes collision detection and placement logic
+   */
+  private async growWalnutIntoTree(walnut: any): Promise<void> {
+    // Find suitable placement position (spiral search if original spot blocked)
+    const treePosition = this.findTreePlacement(walnut.location);
+
+    if (!treePosition) {
+      console.warn(`Cannot grow walnut ${walnut.id} - no valid placement found`);
+      return;
+    }
+
+    // Create new tree object
+    const treeId = `grown-tree-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const newTree: ForestObject = {
+      id: treeId,
+      type: 'tree',
+      x: treePosition.x,
+      y: treePosition.y,
+      z: treePosition.z,
+      scale: 0.8 + Math.random() * 0.4, // 0.8-1.2 scale (varied sizes)
+      modelVariant: 1 // Tree_01.glb
+    };
+
+    // Add to forest objects (now part of tree pool for walnut drops)
+    this.forestObjects.push(newTree);
+    await this.storage.put('forestObjects', this.forestObjects);
+
+    // Remove walnut from mapState
+    const walnutIndex = this.mapState.findIndex(w => w.id === walnut.id);
+    if (walnutIndex !== -1) {
+      this.mapState.splice(walnutIndex, 1);
+      await this.storage.put('mapState', this.mapState);
+    }
+
+    // Mark walnut as grown in registry
+    const walnutRegistryId = this.env.WALNUTS.idFromName('global');
+    const walnutRegistry = this.env.WALNUTS.get(walnutRegistryId);
+    await walnutRegistry.fetch(new Request('http://registry/mark-grown', {
+      method: 'POST',
+      body: JSON.stringify({ walnutId: walnut.id })
+    }));
+
+    // Award points to owner (only if player is online)
+    const ownerPlayer = this.activePlayers.get(walnut.ownerId);
+    if (ownerPlayer) {
+      ownerPlayer.score += 10;
+      console.log(`🎉 Awarded 10 points to ${walnut.ownerId} for tree growth (new score: ${ownerPlayer.score})`);
+
+      // Report to leaderboard
+      await this.reportScoreToLeaderboard(ownerPlayer);
+
+      // Send score update to owner
+      if (ownerPlayer.socket.readyState === WebSocket.OPEN) {
+        try {
+          ownerPlayer.socket.send(JSON.stringify({
+            type: 'score_update',
+            score: ownerPlayer.score,
+            reason: 'tree_grown'
+          }));
+        } catch (error) {
+          console.error(`Failed to send score update to ${walnut.ownerId}:`, error);
+        }
+      }
+    }
+
+    // Broadcast tree growth to all players
+    this.broadcastToAll({
+      type: 'tree_grown',
+      tree: newTree,
+      walnutId: walnut.id,
+      ownerId: walnut.ownerId,
+      originalPosition: walnut.location,
+      newPosition: treePosition
+    });
+
+    console.log(`🌳 Walnut ${walnut.id} grew into tree ${treeId} at (${treePosition.x.toFixed(1)}, ${treePosition.z.toFixed(1)})`);
+  }
+
+  /**
+   * MVP 9: Find valid placement for new tree using spiral search
+   * Returns null if no valid spot found within search radius
+   */
+  private findTreePlacement(preferredPosition: { x: number; y: number; z: number }): { x: number; y: number; z: number } | null {
+    const TREE_MIN_DISTANCE = 3; // Minimum distance from other trees
+    const ROCK_MIN_DISTANCE = 2; // Minimum distance from rocks
+    const PLAYER_MIN_DISTANCE = 5; // Minimum distance from active players
+
+    // Try preferred position first
+    if (this.isPositionValidForTree(preferredPosition, TREE_MIN_DISTANCE, ROCK_MIN_DISTANCE, PLAYER_MIN_DISTANCE)) {
+      return preferredPosition;
+    }
+
+    // Spiral search: Check distances 1, 2, 3, 4, 5 units in 8 compass directions
+    const directions = [
+      { x: 0, z: 1 },   // N
+      { x: 1, z: 1 },   // NE
+      { x: 1, z: 0 },   // E
+      { x: 1, z: -1 },  // SE
+      { x: 0, z: -1 },  // S
+      { x: -1, z: -1 }, // SW
+      { x: -1, z: 0 },  // W
+      { x: -1, z: 1 }   // NW
+    ];
+
+    for (let radius = 1; radius <= 5; radius++) {
+      for (const dir of directions) {
+        const testPosition = {
+          x: preferredPosition.x + (dir.x * radius),
+          y: preferredPosition.y,
+          z: preferredPosition.z + (dir.z * radius)
+        };
+
+        if (this.isPositionValidForTree(testPosition, TREE_MIN_DISTANCE, ROCK_MIN_DISTANCE, PLAYER_MIN_DISTANCE)) {
+          return testPosition;
+        }
+      }
+    }
+
+    return null; // No valid position found
+  }
+
+  /**
+   * MVP 9: Check if position is valid for tree placement
+   */
+  private isPositionValidForTree(
+    position: { x: number; y: number; z: number },
+    treeMinDist: number,
+    rockMinDist: number,
+    playerMinDist: number
+  ): boolean {
+    // Check distance from all forest objects
+    for (const obj of this.forestObjects) {
+      const distance = Math.sqrt(
+        Math.pow(obj.x - position.x, 2) + Math.pow(obj.z - position.z, 2)
+      );
+
+      if (obj.type === 'tree' && distance < treeMinDist) {
+        return false;
+      }
+      if ((obj.type === 'rock' || obj.type === 'stump') && distance < rockMinDist) {
+        return false;
+      }
+    }
+
+    // Check distance from active players
+    for (const player of this.activePlayers.values()) {
+      const distance = Math.sqrt(
+        Math.pow(player.position.x - position.x, 2) + Math.pow(player.position.z - position.z, 2)
+      );
+
+      if (distance < playerMinDist) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   // Validate and constrain position within world bounds
