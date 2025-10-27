@@ -778,6 +778,11 @@ export class NPCManager {
       return;
     }
 
+    // MVP 9: Face target before throwing (improves realism and game feel)
+    const dx = target.position.x - npc.position.x;
+    const dz = target.position.z - npc.position.z;
+    npc.rotationY = Math.atan2(dx, dz);
+
     // Decrement inventory
     npc.walnutInventory--;
     npc.lastThrowTime = Date.now();
