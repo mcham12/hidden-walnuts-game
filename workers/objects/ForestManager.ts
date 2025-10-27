@@ -2269,4 +2269,29 @@ export default class ForestManager extends DurableObject {
     
     return true;
   }
+
+  /**
+   * MVP 11: Add NPC-dropped walnuts to mapState and broadcast to all players
+   * Called when NPC dies and drops inventory
+   */
+  async addNPCDroppedWalnuts(walnuts: any[]): Promise<void> {
+    // Add to mapState
+    for (const walnut of walnuts) {
+      this.mapState.push(walnut);
+    }
+
+    // Persist to storage
+    await this.storage.put('mapState', this.mapState);
+
+    // Broadcast to all players
+    for (const walnut of walnuts) {
+      this.activePlayers.forEach((player) => {
+        this.sendMessage(player.socket, {
+          type: 'walnut_dropped',
+          walnutId: walnut.id,
+          position: walnut.location
+        });
+      });
+    }
+  }
 }

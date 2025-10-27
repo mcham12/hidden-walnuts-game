@@ -140,7 +140,7 @@
 
 ---
 
-## ⚔️ MVP 11: Predators & Threats (6-8 hours)
+## ⚔️ MVP 11: World Polish and Predators & Threats (6-8 hours)
 
 **Goal**: Add AI predators that create PvE danger and excitement
 
@@ -164,7 +164,9 @@
 - Visual/audio warnings before attack
 - Respawn at random intervals
 
-**4. remove any debug logging added for this MVP, both client and worker
+**4. Add some fun sky elements. (like a sun, not sure what else, open to ideas)
+
+**5. remove any debug logging added for this MVP, both client and worker
 
 ### Success Criteria
 - ✅ Hawks and wolves add meaningful danger

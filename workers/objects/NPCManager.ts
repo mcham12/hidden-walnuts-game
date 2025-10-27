@@ -930,26 +930,38 @@ export class NPCManager {
 
     console.log(`💀 NPC ${npcId} (${npc.username}) died!`);
 
-    // Drop all walnuts at death position
-    // MVP 9 FIX: Wrap in try-catch to ensure broadcast happens even if walnut drop fails
-    if (npc.walnutInventory > 0) {
-      const dropCount = npc.walnutInventory;
+    // MVP 11: Drop all walnuts at death position (matches player death pattern)
+    const dropCount = npc.walnutInventory;
+    if (dropCount > 0) {
       npc.walnutInventory = 0;
 
       try {
         // Drop walnuts in a circle around death position
+        const droppedWalnuts: any[] = [];
         for (let i = 0; i < dropCount; i++) {
           const angle = (i / dropCount) * Math.PI * 2;
           const radius = 1.5;
-          const dropPosition = {
-            x: npc.position.x + Math.cos(angle) * radius,
-            y: 0.3,
-            z: npc.position.z + Math.sin(angle) * radius
+          const walnutId = `npc-death-drop-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`;
+
+          const walnut = {
+            id: walnutId,
+            ownerId: 'game',
+            origin: 'game',
+            hiddenIn: 'ground',
+            location: {
+              x: npc.position.x + Math.cos(angle) * radius,
+              y: 0.3,
+              z: npc.position.z + Math.sin(angle) * radius
+            },
+            found: false,
+            timestamp: Date.now()
           };
 
-          await this.forestManager.addWalnut(dropPosition, 'game');
+          droppedWalnuts.push(walnut);
         }
 
+        // Add to forest manager's mapState and broadcast
+        await this.forestManager.addNPCDroppedWalnuts(droppedWalnuts);
         console.log(`🌰 NPC ${npcId} dropped ${dropCount} walnuts`);
       } catch (error) {
         console.error(`❌ Failed to drop walnuts for ${npcId}:`, error);
