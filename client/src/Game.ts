@@ -237,8 +237,12 @@ export class Game {
   // MVP 8: Projectile system (flying walnuts)
   private projectileManager: ProjectileManager | null = null;
   private walnutInventory: number = 0; // Player's walnut count (0-10) - unified for throw/eat/hide
+  private readonly MAX_INVENTORY = 10; // Maximum walnuts player can carry (server-side limit)
   private lastThrowTime: number = 0; // For throw cooldown tracking
-  private readonly THROW_COOLDOWN = 1500; // 1.5 seconds in milliseconds
+  private readonly BASE_THROW_COOLDOWN = 1500; // Base cooldown: 1.5 seconds
+  private readonly COOLDOWN_INCREMENT = 1000; // Add 1 second per consecutive throw
+  private readonly COOLDOWN_RESET_TIME = 5000; // Reset counter after 5s of no throwing
+  private consecutiveThrows: number = 0; // Track consecutive throws for progressive cooldown
 
   // MVP 9: Track tree-dropped walnut IDs (projectileId -> serverWalnutId)
   private treeWalnutProjectiles: Map<string, string> = new Map();
@@ -259,7 +263,6 @@ export class Game {
   private invulnerabilityEndTime: number = 0;
   private readonly SPAWN_PROTECTION_DURATION = 3000; // 3 seconds
   private invulnerabilityMesh: THREE.Mesh | null = null; // Visual effect for invulnerability
-  // Note: MAX_INVENTORY enforced server-side (10 walnuts)
 
   // MVP 8 FIX: Shared walnut model for visual consistency
   private walnutModel: THREE.Group | null = null;
@@ -5352,10 +5355,19 @@ export class Game {
   private throwWalnut(): void {
     if (!this.character || !this.websocket || this.websocket.readyState !== WebSocket.OPEN) return;
 
-    // Check cooldown
     const now = performance.now();
-    if (now - this.lastThrowTime < this.THROW_COOLDOWN) {
-      const remaining = Math.ceil((this.THROW_COOLDOWN - (now - this.lastThrowTime)) / 1000);
+
+    // Reset consecutive throws if enough time has passed since last throw
+    if (now - this.lastThrowTime > this.COOLDOWN_RESET_TIME) {
+      this.consecutiveThrows = 0;
+    }
+
+    // Calculate progressive cooldown: base + (increment * consecutive throws)
+    const currentCooldown = this.BASE_THROW_COOLDOWN + (this.COOLDOWN_INCREMENT * this.consecutiveThrows);
+
+    // Check cooldown
+    if (now - this.lastThrowTime < currentCooldown) {
+      const remaining = Math.ceil((currentCooldown - (now - this.lastThrowTime)) / 1000);
       this.toastManager.warning(`Throw cooldown: ${remaining}s`);
       return;
     }
@@ -5444,6 +5456,7 @@ export class Game {
 
     // Update throw cooldown (optimistic - assume server will accept)
     this.lastThrowTime = now;
+    this.consecutiveThrows++; // Increment for progressive cooldown
 
     // MIGRATION PHASE 2.2: Use state machine for throw animation
     if (this.actions['attack']) {
@@ -5780,6 +5793,12 @@ export class Game {
    */
   private findWalnut(walnutId: string, walnutGroup: THREE.Group): void {
     if (!this.character) return;
+
+    // Check if inventory is full
+    if (this.walnutInventory >= this.MAX_INVENTORY) {
+      this.toastManager.warning("You can't carry any more walnuts!");
+      return;
+    }
 
     const now = Date.now();
 
@@ -6729,18 +6748,38 @@ export class Game {
 
       animateGrowth();
 
-      // Spawn sparkle particles during growth
-      if (this.vfxManager) {
-        this.vfxManager.spawnParticles('sparkle', tree.position, 50);
-      }
-
-      // MVP 9: Show console message only to the owner
+      // MVP 9: Show celebration effects only to the owner
       if (data.ownerId === this.playerId) {
         console.log(`🎉 Your walnut grew into a tree! +10 points`);
 
-        // Show toast notification
+        // Big celebration with multiple VFX effects
+        if (this.vfxManager) {
+          // Massive sparkle burst at tree base
+          this.vfxManager.spawnParticles('sparkle', tree.position, 80);
+
+          // Confetti explosion for celebration
+          const confettiPos = tree.position.clone();
+          confettiPos.y += 2; // Higher up for better visibility
+          this.vfxManager.spawnParticles('confetti', confettiPos, 100);
+
+          // Screen shake for impact
+          this.vfxManager.screenShake(0.2, 0.6);
+
+          // Show big score popup
+          this.vfxManager.showScorePopup(10, confettiPos);
+        }
+
+        // Play celebratory sound (bonus bling sound)
+        this.audioManager.playSound('ui', 'score_pop');
+
+        // Show enthusiastic toast notification
         if (this.toastManager) {
-          this.toastManager.success('+10 Tree Grown!');
+          this.toastManager.success('🌳 YOUR TREE GREW! +10 points! 🌳', 4000);
+        }
+      } else {
+        // Other players see subtle sparkles only
+        if (this.vfxManager) {
+          this.vfxManager.spawnParticles('sparkle', tree.position, 30);
         }
       }
 
