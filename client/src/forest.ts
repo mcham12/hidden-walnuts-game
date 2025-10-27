@@ -32,7 +32,7 @@ export async function createForestFromServer(
 ) {
   try {
     // Load models once
-    console.log('Loading forest models from server data...');
+    // MVP 12: Removed non-critical forest loading log
     treeModel = await loadModel('/assets/models/environment/Tree_01.glb');
     bushModel = await loadModel('/assets/models/environment/Bush_01.glb');
 
@@ -54,7 +54,7 @@ export async function createForestFromServer(
           rockHeightOffsets[i] = -center.y + (size.y / 2);
           // Store horizontal centering offset (negated because we add it to position)
           rockCenterOffsets[i] = new THREE.Vector3(-center.x, 0, -center.z);
-          console.log(`Rock_0${i + 1}: height=${size.y.toFixed(2)}, center=(${center.x.toFixed(2)}, ${center.y.toFixed(2)}, ${center.z.toFixed(2)}), offsets=(${rockCenterOffsets[i].x.toFixed(2)}, ${rockHeightOffsets[i].toFixed(2)}, ${rockCenterOffsets[i].z.toFixed(2)}) [OFF-CENTER FIX]`);
+          // MVP 12: Removed rock offset calculation debug log
         } else {
           // Standard Three.js approach: offset = -minY
           // This positions the bottom of the bounding box at terrain level
@@ -62,7 +62,7 @@ export async function createForestFromServer(
           // If minY is positive (bottom above pivot), offset is negative (push down)
           rockHeightOffsets[i] = -minY;
           rockCenterOffsets[i] = new THREE.Vector3(0, 0, 0); // No horizontal offset needed
-          console.log(`Rock_0${i + 1}: height=${size.y.toFixed(2)}, minY=${minY.toFixed(2)}, offset=${rockHeightOffsets[i].toFixed(2)}`);
+          // MVP 12: Removed rock offset calculation debug log
         }
       }
     }
@@ -70,7 +70,7 @@ export async function createForestFromServer(
     // MVP 5.5: Load stump model
     stumpModel = await loadModel('/assets/models/environment/Stump_01.glb');
 
-    console.log('Forest models loaded successfully (trees, bushes, rocks, stumps)');
+    // MVP 12: Removed forest models loaded success log
 
     // Clear bush positions (in case of reload)
     bushPositions.length = 0;
@@ -161,11 +161,7 @@ export async function createForestFromServer(
       }
     }
 
-    const rockCount = forestObjects.filter(o => o.type === 'rock').length;
-    const stumpCount = forestObjects.filter(o => o.type === 'stump').length;
-    console.log(`🔒 Added collision for ${treeCount} forest trees, ${rockCount} rocks, ${stumpCount} stumps`);
-
-    console.log(`✅ Forest created from server: ${treeCount} trees, ${bushPositions.length} bushes, ${rockCount} rocks, ${stumpCount} stumps`);
+    // MVP 12: Removed non-critical collision and forest creation success logs
   } catch (error) {
     console.error('Failed to create forest from server:', error);
     // Create simple fallback forest
@@ -178,10 +174,9 @@ export async function createForest(scene: THREE.Scene) {
   console.warn('⚠️ createForest() is deprecated - use createForestFromServer() with server data instead');
   try {
     // Load models once
-    console.log('Loading forest models...');
+    // MVP 12: Removed deprecated function logs
     treeModel = await loadModel('/assets/models/environment/Tree_01.glb');
     bushModel = await loadModel('/assets/models/environment/Bush_01.glb');
-    console.log('Forest models loaded successfully');
 
     // Create trees using cloned model
     for (let i = 0; i < TREE_COUNT; i++) {
@@ -208,7 +203,7 @@ export async function createForest(scene: THREE.Scene) {
       bushPositions.push(new THREE.Vector3(x, y, z));
     }
 
-    console.log('Forest created with heights applied');
+    // MVP 12: Removed forest created log
   } catch (error) {
     console.error('Failed to create forest:', error);
     // Create simple fallback forest
@@ -218,8 +213,8 @@ export async function createForest(scene: THREE.Scene) {
 
 // Simple fallback forest with basic shapes
 function createFallbackForest(scene: THREE.Scene) {
-  console.log('Creating fallback forest...');
-  
+  // MVP 12: Removed fallback forest creation log
+
   // Create simple tree shapes
   for (let i = 0; i < TREE_COUNT; i++) {
     const x = (Math.random() - 0.5) * 180;
@@ -264,18 +259,18 @@ function createFallbackForest(scene: THREE.Scene) {
     // Store bush position for walnut hiding
     bushPositions.push(new THREE.Vector3(x, y, z));
   }
-  
-  console.log('Fallback forest created');
+
+  // MVP 12: Removed fallback forest completion log
 }
 
 async function loadModel(path: string): Promise<THREE.Group> {
   try {
-    console.log(`Loading model: ${path}`);
-    
+    // MVP 12: Removed model loading debug logs
+
     // Try to load the model with proper error handling
     const gltf = await loader.loadAsync(path);
     const model = gltf.scene.clone();
-    
+
     // Set up shadows for all meshes
     model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -283,8 +278,7 @@ async function loadModel(path: string): Promise<THREE.Group> {
         child.receiveShadow = true;
       }
     });
-    
-    console.log(`Successfully loaded model: ${path}`);
+
     return model;
   } catch (error) {
     console.error(`Failed to load model ${path}:`, error);

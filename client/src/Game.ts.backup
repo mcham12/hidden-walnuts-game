@@ -480,8 +480,10 @@ export class Game {
 
       const results = await Promise.all(animationPromises);
 
-      // MVP 12: Check for failed animations
+      // MVP 8: Log loaded animations for debugging
+      const loadedAnims = results.filter(r => r.success).map(r => r.name);
       const failedAnims = results.filter(r => !r.success).map(r => r.name);
+      // MVP 12: Removed non-critical animation loading success log
       if (failedAnims.length > 0) {
         console.warn(`⚠️ Failed to load animations: ${failedAnims.join(', ')}`);
       }
@@ -1374,10 +1376,10 @@ export class Game {
     const playerPos = this.character.position;
 
     // Check collision with remote players
-    for (const remotePlayer of this.remotePlayers.values()) {
+    for (const [remoteId, remotePlayer] of this.remotePlayers) {
       const distance = playerPos.distanceTo(remotePlayer.position);
       if (distance < COLLISION_RADIUS) {
-        // MVP 12: Removed bump collision debug log
+        console.log(`💥 Bumped into player ${remoteId}!`);
         this.triggerBumpEffect();
         this.lastEntityCollisionTime = now;
         return; // Only one collision per update
@@ -1385,10 +1387,10 @@ export class Game {
     }
 
     // Check collision with NPCs
-    for (const npc of this.npcs.values()) {
+    for (const [npcId, npc] of this.npcs) {
       const distance = playerPos.distanceTo(npc.position);
       if (distance < COLLISION_RADIUS) {
-        // MVP 12: Removed NPC collision debug log
+        console.log(`💥 Bumped into NPC ${npcId}!`);
         this.triggerBumpEffect();
         this.lastEntityCollisionTime = now;
         return; // Only one collision per update
@@ -1852,6 +1854,7 @@ export class Game {
 
           if (projectileId) {
             this.treeWalnutProjectiles.set(projectileId, data.walnutId);
+            console.log(`🌳 Tree walnut falling from (${spawnPos.x.toFixed(1)},${spawnPos.y.toFixed(1)},${spawnPos.z.toFixed(1)})`);
           }
         }
         break;
@@ -1948,7 +1951,9 @@ export class Game {
 
       case 'npc_spawned':
         // MVP 7: NPC spawned on server, create NPC entity on client
+        console.log('📨 Received npc_spawned message:', data.npc);
         if (data.npc && data.npc.id) {
+          console.log(`🤖 Creating NPC client-side: ${data.npc.id} (${data.npc.username})`);
           this.createNPC(data.npc.id, data.npc.position, data.npc.rotationY, data.npc.characterId, data.npc.username, data.npc.animation);
         } else {
           console.error('❌ Invalid npc_spawned data:', data);
@@ -2025,6 +2030,7 @@ export class Game {
               remotePlayer.userData.health = data.newHealth;
               // Mark timestamp to prevent stale player_update from overwriting
               this.lastPlayerHealthUpdateTime.set(data.playerId, Date.now());
+              console.log(`💚 Remote player ${data.playerId} healed to: ${data.newHealth}`);
             }
 
             const npc = this.npcs.get(data.playerId);
@@ -2032,6 +2038,7 @@ export class Game {
               npc.userData.health = data.newHealth;
               // Mark timestamp to prevent stale npc_updates_batch from overwriting
               this.lastNPCHealthUpdateTime.set(data.playerId, Date.now());
+              console.log(`💚 NPC ${data.playerId} healed to: ${data.newHealth}`);
             }
           }
         }
@@ -2056,6 +2063,7 @@ export class Game {
               remotePlayer.userData.health = data.newHealth;
               // MVP 9 FIX: Mark timestamp to prevent stale player_update from overwriting
               this.lastPlayerHealthUpdateTime.set(data.targetId, Date.now());
+              console.log(`🩸 Remote player ${data.targetId} health: ${data.newHealth}`);
 
               // Show blood particles at remote player position
               if (this.vfxManager) {
@@ -2115,6 +2123,7 @@ export class Game {
             remotePlayer.userData.health = data.health;
             // Mark timestamp so player_update doesn't overwrite immediately
             this.lastPlayerHealthUpdateTime.set(data.playerId, Date.now());
+            console.log(`🔄 Remote player ${data.playerId} respawned with health: ${data.health}`);
           }
         }
         break;
@@ -2650,6 +2659,7 @@ export class Game {
     // MVP 8: Check if NPC is currently being created (prevent race condition ghost NPCs)
     const loadingKey = `loading_${npcId}`;
     if ((this as any)[loadingKey]) {
+      console.log(`⏳ NPC ${npcId} is already being created, ignoring duplicate spawn`);
       return;
     }
 
@@ -2786,6 +2796,7 @@ export class Game {
       // Add label to DOM
       if (this.labelsContainer) {
         this.labelsContainer.appendChild(npcNameLabel);
+        console.log(`🏷️ Added NPC label to DOM: ${username}`);
       } else {
         console.error('❌ No labels container found for NPC label');
       }
@@ -2797,6 +2808,7 @@ export class Game {
       npcCharacter.userData.health = 100; // Default to full health
       npcCharacter.userData.maxHealth = 100;
 
+      console.log(`🤖 Created NPC: ${username} (${characterId}) at (${position.x.toFixed(1)}, ${position.z.toFixed(1)})`);
 
       // Process any pending updates that arrived while NPC was loading
       const pendingQueue = this.npcPendingUpdates.get(npcId);
@@ -2959,6 +2971,7 @@ export class Game {
         this.npcHealthBars.delete(npcId);
       }
 
+      console.log(`🤖 Removed NPC: ${npcId}`);
     }
   }
 
@@ -2993,6 +3006,7 @@ export class Game {
       const from = new THREE.Vector3(fromPosition.x, fromPosition.y, fromPosition.z);
       const to = new THREE.Vector3(toPosition.x, toPosition.y, toPosition.z);
       this.projectileManager.spawnProjectile(from, to, throwerId, targetId);
+      console.log(`🌰 Projectile spawned: ${throwerId} → ${targetId || 'ground'}`);
     }
 
     // MVP 8: Play attack animation for the thrower (no 'throw' animation, use 'attack')
@@ -3027,6 +3041,7 @@ export class Game {
    * This is called when ProjectileManager detects a hit
    */
   private onProjectileHit(data: { projectileId: string; ownerId: string; targetId: string; position: THREE.Vector3; mesh: THREE.Group }): void {
+    console.log(`🌰 Projectile hit! Owner: ${data.ownerId}, Target: ${data.targetId}`);
 
     // MVP 8: Send hit to server for validation and scoring (only if we're the attacker)
     if (data.ownerId === this.playerId && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
@@ -3224,6 +3239,7 @@ export class Game {
       });
     }
 
+    console.log(`${isTreeWalnut ? '🌳' : '🌰'} Projectile landed -> walnut ${walnutId} ${isTreeWalnut ? '(tree drop)' : '(player throw)'}`);
   }
 
   /**
@@ -3272,6 +3288,7 @@ export class Game {
   private takeDamage(amount: number, attackerId: string): void {
     if (this.isDead) return; // Can't damage dead players
     if (this.isInvulnerable) {
+      console.log(`🛡️ Damage blocked by spawn protection!`);
       return; // Invulnerable - no damage taken
     }
 
@@ -3312,6 +3329,7 @@ export class Game {
         this.velocity.z += knockbackDir.z * knockbackStrength;
         this.velocity.y += 1.5; // Small upward boost for visual effect
 
+        console.log(`💥 Knockback applied: direction (${knockbackDir.x.toFixed(2)}, ${knockbackDir.z.toFixed(2)})`);
       }
     }
 
@@ -3386,6 +3404,7 @@ export class Game {
       // DEBUG: Log cooldown status
       const remainingCooldown = this.COLLISION_DAMAGE_COOLDOWN - (now - this.lastCollisionDamageTime);
       if (remainingCooldown > 1000) { // Only log if more than 1s remaining
+        console.log(`⏳ Collision damage on cooldown: ${(remainingCooldown / 1000).toFixed(1)}s remaining`);
       }
       return; // Still on cooldown
     }
@@ -3416,6 +3435,7 @@ export class Game {
         this.takeDamage(this.COLLISION_DAMAGE, playerId);
         this.lastCollisionDamageTime = now;
 
+        console.log(`💥💥 COLLISION DAMAGE from player ${playerId}! Distance: ${distance.toFixed(2)}, Damage: -${this.COLLISION_DAMAGE} HP`);
 
         // Visual feedback
         this.triggerHitEffects();
@@ -3436,6 +3456,7 @@ export class Game {
         this.takeDamage(this.COLLISION_DAMAGE, npcId);
         this.lastCollisionDamageTime = now;
 
+        console.log(`💥💥 COLLISION DAMAGE from NPC ${npcId}! Distance: ${distance.toFixed(2)}, Damage: -${this.COLLISION_DAMAGE} HP`);
 
         // Visual feedback
         this.triggerHitEffects();
@@ -3575,6 +3596,7 @@ export class Game {
     this.isInvulnerable = true;
     this.invulnerabilityEndTime = Date.now() + this.SPAWN_PROTECTION_DURATION;
     this.createInvulnerabilityEffect();
+    console.log('🛡️ Spawn protection active for 3 seconds');
 
     // Update UI
     this.updateHealthUI();
@@ -4173,6 +4195,7 @@ export class Game {
         const scale = this.WALNUT_SIZE / maxDim;
         this.walnutModel.scale.setScalar(scale);
 
+        console.log('✅ Loaded shared walnut model');
       } else {
         console.warn('⚠️ Failed to load walnut model, using fallback');
         this.createFallbackWalnutModel();
@@ -6177,6 +6200,7 @@ export class Game {
         leaderboardData = this.getMockLeaderboardData();
       } else {
         const data = await response.json();
+        console.log('✅ Leaderboard API response:', data);
         console.log(`📊 Leaderboard stats: ${data.count} entries shown, ${data.totalPlayers} total players in DB`);
 
         if (data.leaderboard.length === 0) {
@@ -6737,6 +6761,7 @@ export class Game {
         if (progress < 1) {
           requestAnimationFrame(animateGrowth);
         } else {
+          console.log(`🌳 Tree ${data.tree.id} finished growing`);
         }
       };
 

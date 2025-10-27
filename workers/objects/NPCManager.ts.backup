@@ -102,19 +102,23 @@ export class NPCManager {
   spawnNPCs(): void {
     const playerCount = this.forestManager.activePlayers.size;
 
+    console.log(`🤖 NPC Spawn Check: ${this.npcs.size} NPCs exist, ${playerCount} players, MAX=${this.MAX_NPCS}`);
 
     // Don't spawn if too many players
     if (playerCount >= this.DESPAWN_PLAYER_THRESHOLD) {
+      console.log(`⚠️ Too many players (${playerCount} >= ${this.DESPAWN_PLAYER_THRESHOLD}), skipping NPC spawn`);
       return;
     }
 
     // Spawn NPCs up to MAX_NPCS
     const npcsToSpawn = this.MAX_NPCS - this.npcs.size;
+    console.log(`🤖 Spawning ${npcsToSpawn} NPCs...`);
 
     for (let i = 0; i < npcsToSpawn; i++) {
       const npc = this.createNPC();
       this.npcs.set(npc.id, npc);
 
+      console.log(`✅ Created NPC: ${npc.id} (${npc.username})`);
 
       // Broadcast NPC spawn to all players
       this.broadcastNPCSpawn(npc);
@@ -410,6 +414,7 @@ export class NPCManager {
     if (npc.targetEntityId && npc.targetStartTime) {
       const targetDuration = now - npc.targetStartTime;
       if (targetDuration > TARGET_TIMEOUT) {
+        console.log(`⏱️ NPC ${npc.id} giving up on target ${npc.targetEntityId} after ${(targetDuration / 1000).toFixed(1)}s`);
         npc.targetEntityId = undefined;
         npc.targetStartTime = undefined;
         return NPCBehavior.WANDER; // Break free and wander
@@ -923,6 +928,7 @@ export class NPCManager {
       return;
     }
 
+    console.log(`💀 NPC ${npcId} (${npc.username}) died!`);
 
     // MVP 11: Drop all walnuts at death position (matches player death pattern)
     const dropCount = npc.walnutInventory;
@@ -956,6 +962,7 @@ export class NPCManager {
 
         // Add to forest manager's mapState and broadcast
         await this.forestManager.addNPCDroppedWalnuts(droppedWalnuts);
+        console.log(`🌰 NPC ${npcId} dropped ${dropCount} walnuts`);
       } catch (error) {
         console.error(`❌ Failed to drop walnuts for ${npcId}:`, error);
       }
@@ -967,6 +974,7 @@ export class NPCManager {
 
     // MVP 9 FIX: Delay respawn slightly to let clients process death
     // Immediate respawn caused race conditions with health updates
+    console.log(`⏱️ Scheduling NPC respawn in 1 second...`);
     setTimeout(() => {
       this.spawnNPCs();
     }, 1000);

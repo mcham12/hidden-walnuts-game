@@ -147,12 +147,14 @@ export default class ForestManager extends DurableObject {
   private async validateTurnstileToken(token: string): Promise<boolean> {
     // Skip validation in development mode or if no secret configured
     if (!this.env.TURNSTILE_SECRET || this.env.TURNSTILE_SECRET === '') {
+      console.log('⚠️ Turnstile validation skipped (no secret configured)');
       return true;
     }
 
     // MVP 7.1: Accept testing tokens (from Cloudflare's testing site key)
     // Testing tokens start with 'XXXX.' and are used in preview/dev environments
     if (token.startsWith('XXXX.')) {
+      console.log('⚠️ Turnstile testing token detected - skipping validation (preview/dev mode)');
       return true;
     }
 
@@ -171,6 +173,7 @@ export default class ForestManager extends DurableObject {
       const data = await response.json() as any;
 
       if (data.success) {
+        console.log('✅ Turnstile validation successful');
         return true;
       } else {
         console.warn('❌ Turnstile validation failed:', data['error-codes']);
@@ -208,6 +211,7 @@ export default class ForestManager extends DurableObject {
         return false;
       }
 
+      console.log(`✅ Connection rate limit OK for IP ${clientIP} (${result.remaining}/${result.limit} remaining)`);
       return true;
     } catch (error) {
       console.error('❌ Rate limit check error:', error);
@@ -276,6 +280,7 @@ export default class ForestManager extends DurableObject {
     const hasNPCs = this.npcManager.getNPCCount() > 0;
 
     if (!hasPlayers && !hasNPCs) {
+      console.log('⏸️ Stopping alarm: No players or NPCs (object will go inactive and save costs)');
       return; // DON'T reschedule - let object hibernate
     }
 
@@ -314,6 +319,7 @@ export default class ForestManager extends DurableObject {
 
         // Remove player completely if inactive for 5+ minutes
         if (timeSinceActivity > REMOVAL_TIMEOUT) {
+          console.log(`⏰ Removing player ${playerId} (inactive for ${Math.round(timeSinceActivity / 1000)}s)`);
           this.activePlayers.delete(playerId);
           this.broadcastToOthers(playerId, {
             type: 'player_leave',
@@ -324,11 +330,13 @@ export default class ForestManager extends DurableObject {
 
           // MVP 7.2 CRITICAL: If that was the last player, despawn all NPCs immediately
           if (this.activePlayers.size === 0) {
+            console.log('👋 Last player removed - despawning all NPCs to stop idle processing');
             this.npcManager.despawnAllNPCs();
           }
         }
         // Mark as disconnected if inactive for 60+ seconds (but not already disconnected)
         else if (timeSinceActivity > DISCONNECT_TIMEOUT && !player.isDisconnected) {
+          console.log(`⚠️ Marking player ${playerId} as disconnected (inactive for ${Math.round(timeSinceActivity / 1000)}s)`);
           player.isDisconnected = true;
           player.disconnectedAt = now;
           this.broadcastToOthers(playerId, {
@@ -346,6 +354,7 @@ export default class ForestManager extends DurableObject {
     if (this.activePlayers.size > 0 || this.npcManager.getNPCCount() > 0) {
       await this.storage.setAlarm(Date.now() + this.NPC_UPDATE_INTERVAL);
     } else {
+      console.log('⏸️ Not rescheduling alarm - no players or NPCs (object will go inactive and save costs)');
     }
   }
 
@@ -469,6 +478,7 @@ export default class ForestManager extends DurableObject {
       await this.storage.delete('mapState');
       this.mapState = []; // Also clear in-memory state
       this.isInitialized = false; // Force re-initialization on next connection
+      console.log('🔄 Admin: mapState cleared (storage and memory), will reinitialize with golden walnuts');
       return new Response(JSON.stringify({
         message: "mapState reset - golden walnuts will respawn on next connection"
       }), {
@@ -482,6 +492,7 @@ export default class ForestManager extends DurableObject {
       await this.storage.delete('forestObjects');
       this.forestObjects = []; // Clear in-memory state
       this.isInitialized = false; // Force re-initialization on next connection
+      console.log('🔄 Admin: forestObjects cleared, will regenerate with landmark exclusions');
       return new Response(JSON.stringify({
         message: "Forest reset - will regenerate with landmark exclusions on next connection"
       }), {
@@ -496,6 +507,7 @@ export default class ForestManager extends DurableObject {
       for (const key of playerKeys.keys()) {
         await this.storage.delete(key);
       }
+      console.log('🔄 Admin: All player positions cleared');
       return new Response(JSON.stringify({
         message: "Player positions reset - players will spawn at default position on next connection"
       }), {
@@ -515,6 +527,7 @@ export default class ForestManager extends DurableObject {
 
     if (isReconnecting) {
       // Player is reconnecting - reattach socket and mark as reconnected
+      console.log(`🔄 Player ${squirrelId} (${username}) reconnecting after ${Math.round((Date.now() - existingPlayer.disconnectedAt!) / 1000)}s`);
       existingPlayer.socket = socket;
       existingPlayer.isDisconnected = false;
       existingPlayer.disconnectedAt = null;
@@ -538,6 +551,7 @@ export default class ForestManager extends DurableObject {
 
       // MVP 5.8: Mark as disconnected instead of removing on close
       socket.onclose = () => {
+        console.log(`🔌 WebSocket closed for ${squirrelId}, marking as disconnected`);
         existingPlayer.isDisconnected = true;
         existingPlayer.disconnectedAt = Date.now();
 
@@ -568,6 +582,7 @@ export default class ForestManager extends DurableObject {
           .filter(p => !p.isDisconnected).length;
 
         if (connectedPlayers === 0) {
+          console.log('👋 Last player disconnected - despawning all NPCs immediately to stop idle processing');
           this.npcManager.despawnAllNPCs();
         }
       };
@@ -594,6 +609,7 @@ export default class ForestManager extends DurableObject {
 
       // MVP 8 FIX: Spawn NPCs if none exist (they may have been despawned when last player left)
       if (this.npcManager.getNPCCount() === 0) {
+        console.log('🔄 No NPCs exist, spawning fresh batch...');
         this.npcManager.spawnNPCs();
       }
 
@@ -613,6 +629,7 @@ export default class ForestManager extends DurableObject {
       // If so, disconnect the old one (force logout previous session)
       for (const [existingId, existingPlayerConn] of this.activePlayers.entries()) {
         if (existingPlayerConn.username === username) {
+          console.log(`⚠️ Username "${username}" already connected with squirrelId ${existingId}, disconnecting old session`);
           // Close the old socket
           try {
             existingPlayerConn.socket.close();
@@ -683,13 +700,16 @@ export default class ForestManager extends DurableObject {
 
           if (timeSinceDisconnect < RECONNECT_WINDOW_MS && sessionInfo.stats?.score) {
             playerConnection.score = sessionInfo.stats.score;
+            console.log(`🔄 Restored score for ${username}: ${playerConnection.score} (disconnected ${Math.round(timeSinceDisconnect / 1000)}s ago)`);
           } else if (timeSinceDisconnect < Infinity) {
+            console.log(`⏱️ Reconnection window expired for ${username} (${Math.round(timeSinceDisconnect / 1000)}s > ${RECONNECT_WINDOW_MS / 1000}s)`);
           }
         }
       } catch (error) {
         console.warn(`⚠️ Could not restore session for ${username}:`, error);
       }
 
+      console.log(`✅ Player ${squirrelId} (${username}) connected with score: ${playerConnection.score}`);
 
       this.activePlayers.set(squirrelId, playerConnection);
 
@@ -714,6 +734,7 @@ export default class ForestManager extends DurableObject {
 
       // MVP 5.8: Mark as disconnected instead of removing on close
       socket.onclose = () => {
+        console.log(`🔌 WebSocket closed for ${squirrelId}, marking as disconnected`);
         playerConnection.isDisconnected = true;
         playerConnection.disconnectedAt = Date.now();
 
@@ -744,6 +765,7 @@ export default class ForestManager extends DurableObject {
           .filter(p => !p.isDisconnected).length;
 
         if (connectedPlayers === 0) {
+          console.log('👋 Last player disconnected - despawning all NPCs immediately to stop idle processing');
           this.npcManager.despawnAllNPCs();
         }
       };
@@ -770,6 +792,7 @@ export default class ForestManager extends DurableObject {
 
       // MVP 8 FIX: Spawn NPCs if none exist (they may have been despawned when last player left)
       if (this.npcManager.getNPCCount() === 0) {
+        console.log('🔄 No NPCs exist, spawning fresh batch...');
         this.npcManager.spawnNPCs();
       }
 
@@ -794,6 +817,7 @@ export default class ForestManager extends DurableObject {
 
     // MVP 5.8: If player was disconnected and sends a message, mark as reconnected
     if (playerConnection.isDisconnected) {
+      console.log(`🔄 Player ${playerConnection.squirrelId} reconnected (was disconnected, now sending messages)`);
       playerConnection.isDisconnected = false;
       playerConnection.disconnectedAt = null;
       this.broadcastToOthers(playerConnection.squirrelId, {
@@ -1262,6 +1286,7 @@ export default class ForestManager extends DurableObject {
    * MVP 8: Handle player death and respawn
    */
   private async handlePlayerDeath(victim: PlayerConnection, killer: PlayerConnection): Promise<void> {
+    console.log(`💀 ${victim.username} was knocked out by ${killer.username}`);
 
     // Award knockout points to killer (+5)
     killer.score += 5;
@@ -1441,6 +1466,7 @@ export default class ForestManager extends DurableObject {
       }
       console.log(`📤 Sent ${existingNPCs.length} existing NPCs to new player`);
     } else {
+      console.log(`⚠️ No NPCs to send to new player`);
     }
   }
 
@@ -1544,6 +1570,7 @@ export default class ForestManager extends DurableObject {
   private async initializeWorld(): Promise<void> {
     // Only initialize once per DO instance
     if (this.isInitialized) {
+      console.log('⏭️ SERVER: World already initialized, skipping');
       return;
     }
 
@@ -1707,9 +1734,11 @@ export default class ForestManager extends DurableObject {
 
     // Add all regular game walnuts
     for (const regularWalnut of regularGameWalnuts) {
+      console.log(`🌰 SERVER: Adding regular game walnut: ${regularWalnut.id} (${regularWalnut.hiddenIn})`);
       this.mapState.push(regularWalnut);
     }
 
+    console.log(`✅ SERVER: Total walnuts after adding game walnuts: ${this.mapState.length} (3 golden + ${regularGameWalnuts.length} regular + ${this.mapState.length - 3 - regularGameWalnuts.length} player)`);
 
     await this.storage.put('mapState', this.mapState);
 
@@ -1720,10 +1749,13 @@ export default class ForestManager extends DurableObject {
     console.log(`🤖 Spawned ${npcCount} NPCs`);
 
     if (npcCount > 0) {
+      console.log(`✅ NPCs spawned successfully, alarm should handle updates`);
     } else {
+      console.log(`⚠️ WARNING: No NPCs spawned!`);
     }
 
     this.isInitialized = true;
+    console.log('✅ SERVER: World initialization complete');
   }
 
   // Simple forest object generation
@@ -1846,6 +1878,7 @@ export default class ForestManager extends DurableObject {
     const shrubCount = objects.filter(o => o.type === 'shrub').length;
     const rockCount = objects.filter(o => o.type === 'rock').length;
     const stumpCount = objects.filter(o => o.type === 'stump').length;
+    console.log(`✅ Generated ${treeCount} trees, ${shrubCount} shrubs, ${rockCount} rocks, ${stumpCount} stumps`);
     console.log(`   Excluded 25-unit radius around 5 landmark positions`);
     console.log(`   Landmark trees use DIFFERENT models: Big_pine, bottle_tree, Dead_straight_tree, etc.`);
 
@@ -1981,6 +2014,7 @@ export default class ForestManager extends DurableObject {
         ownerId: 'game'
       });
 
+      console.log(`🌰 Grown tree ${tree.id} dropped walnut ${i + 1}/${count} (${walnutId})`);
     }
 
     // Save mapState with all new walnuts
