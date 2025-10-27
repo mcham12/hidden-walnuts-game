@@ -3072,7 +3072,7 @@ export class Game {
       }
 
       // MVP 8: Show damage floater on remote player
-      console.log(`🎯 onProjectileHit: Remote player hit, showing damage floater (vfxManager=${!!this.vfxManager})`);
+      // MVP 12: Removed projectile hit debug log
       if (this.vfxManager) {
         const damagePosition = remotePlayer.position.clone();
         damagePosition.y += 2; // Show above player head
@@ -3093,7 +3093,7 @@ export class Game {
       }
 
       // MVP 8: Show damage floater on NPC
-      console.log(`🎯 onProjectileHit: NPC hit, showing damage floater (vfxManager=${!!this.vfxManager})`);
+      // MVP 12: Removed projectile hit debug log
       if (this.vfxManager) {
         const damagePosition = npc.position.clone();
         damagePosition.y += 2; // Show above NPC head
@@ -3160,16 +3160,13 @@ export class Game {
    * BEST PRACTICE: Transform projectile mesh into pickup walnut (no destroy/recreate)
    */
   private onProjectileMiss(data: { projectileId: string; ownerId: string; position: THREE.Vector3; mesh: THREE.Group }): void {
-    console.log(`🎯 DEBUG: onProjectileMiss called - projectileId=${data.projectileId}, ownerId=${data.ownerId}, pos=(${data.position.x.toFixed(1)},${data.position.y.toFixed(1)},${data.position.z.toFixed(1)})`);
-    console.log(`🎯 DEBUG: mesh type=${data.mesh.type}, children=${data.mesh.children.length}, visible=${data.mesh.visible}`);
+    // MVP 12: Removed verbose projectile miss debug logs
 
     // MVP 9: Check if this is a tree walnut (has server-provided ID)
     const isTreeWalnut = this.treeWalnutProjectiles.has(data.projectileId);
     const walnutId = isTreeWalnut
       ? this.treeWalnutProjectiles.get(data.projectileId)!
       : `dropped-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-    console.log(`🎯 DEBUG: isTreeWalnut=${isTreeWalnut}, walnutId=${walnutId}`);
 
     // Cleanup tree walnut tracking
     if (isTreeWalnut) {
@@ -3231,7 +3228,7 @@ export class Game {
    * This is called when ProjectileManager detects a near miss
    */
   private onProjectileNearMiss(data: { projectileId: string; ownerId: string; entityId: string; position: THREE.Vector3 }): void {
-    console.log(`😨 Projectile near-miss! Entity: ${data.entityId}`);
+    // MVP 12: Removed near-miss debug log
 
     // MIGRATION PHASE 2.3: Use state machine for fear animation (STUN priority, doesn't block movement)
     if (data.entityId === this.playerId) {
@@ -3396,20 +3393,13 @@ export class Game {
     const COLLISION_RADIUS = 1.5; // Distance for collision damage
     const playerPos = this.character.position.clone();
 
-    // DEBUG: Log check every few seconds
-    const totalEntities = this.remotePlayers.size + this.npcs.size;
-    if (totalEntities > 0 && Math.random() < 0.01) { // 1% of frames
-      console.log(`🔍 Checking collision damage against ${this.remotePlayers.size} players + ${this.npcs.size} NPCs...`);
-    }
+    // MVP 12: Removed collision check debug log
 
     // Check collisions with remote players
     this.remotePlayers.forEach((remotePlayer, playerId) => {
       const distance = playerPos.distanceTo(remotePlayer.position);
 
-      // DEBUG: Log all distances when close
-      if (distance < 3.0) {
-        console.log(`📏 Distance to player ${playerId}: ${distance.toFixed(2)} units (damage threshold: ${COLLISION_RADIUS})`);
-      }
+      // MVP 12: Removed distance debug logging
 
       if (distance < COLLISION_RADIUS) {
         // Collision detected! Apply damage
@@ -3426,10 +3416,7 @@ export class Game {
     this.npcs.forEach((npc, npcId) => {
       const distance = playerPos.distanceTo(npc.position);
 
-      // DEBUG: Log all distances when close
-      if (distance < 3.0) {
-        console.log(`📏 Distance to NPC ${npcId}: ${distance.toFixed(2)} units (damage threshold: ${COLLISION_RADIUS})`);
-      }
+      // MVP 12: Removed distance debug logging
 
       if (distance < COLLISION_RADIUS) {
         // Collision detected! Apply damage
