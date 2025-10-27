@@ -6674,6 +6674,21 @@ export class Game {
         }
       }
     });
+
+    // MVP 9: Click/tap outside settings to dismiss (matches Leaderboard pattern)
+    const dismissSettings = (event: Event) => {
+      const target = event.target as HTMLElement;
+      if (settingsOverlay &&
+          !settingsOverlay.classList.contains('hidden') &&
+          !settingsOverlay.contains(target) &&
+          settingsToggle &&
+          !settingsToggle.contains(target)) {
+        hideSettings();
+      }
+    };
+
+    document.addEventListener('click', dismissSettings);
+    document.addEventListener('touchend', dismissSettings); // Mobile support
   }
 
   /**

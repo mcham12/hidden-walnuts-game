@@ -455,102 +455,115 @@
         to { opacity: 0; }
       }
       /* MVP 5: Settings Menu Styles */
+      /* MVP 9: Compact Settings Panel (matches Leaderboard style) */
       #settings-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.8);
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        width: 280px;
+        max-height: calc(100vh - 430px); /* Leave space for other UI elements */
+        background: rgba(44, 95, 45, 0.95);
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        font-family: 'Arial', sans-serif;
+        font-size: 13px;
         z-index: 2500;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        overflow-y: auto;
       }
       #settings-overlay.hidden {
         display: none;
       }
+      #settings-overlay::-webkit-scrollbar {
+        width: 6px;
+      }
+      #settings-overlay::-webkit-scrollbar-track {
+        background: rgba(0,0,0,0.2);
+        border-radius: 3px;
+      }
+      #settings-overlay::-webkit-scrollbar-thumb {
+        background: rgba(255,215,0,0.5);
+        border-radius: 3px;
+      }
+      #settings-overlay::-webkit-scrollbar-thumb:hover {
+        background: rgba(255,215,0,0.7);
+      }
       #settings-menu {
-        background: linear-gradient(135deg, #2c5f2d 0%, #4a8f4d 100%);
-        border-radius: 12px;
-        padding: 30px;
-        max-width: 600px;
-        width: 90%;
-        box-shadow: 0 12px 32px rgba(0,0,0,0.5);
-        font-family: 'Arial', sans-serif;
-        color: white;
+        /* Container is now just the overlay itself, no separate menu div needed */
       }
       #settings-menu h2 {
-        margin: 0 0 20px 0;
-        font-size: 28px;
+        margin: 0 0 10px 0;
+        font-size: 18px;
         text-align: center;
         color: #FFD700;
+        border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+        padding-bottom: 8px;
       }
       .settings-tabs {
         display: flex;
-        gap: 10px;
-        margin-bottom: 20px;
-        border-bottom: 2px solid rgba(255,255,255,0.3);
+        gap: 5px;
+        margin-bottom: 10px;
       }
       .settings-tab {
-        padding: 10px 20px;
-        background: rgba(0,0,0,0.2);
-        border: none;
-        border-radius: 8px 8px 0 0;
-        color: rgba(255,255,255,0.7);
-        font-size: 16px;
-        font-weight: bold;
+        flex: 1;
+        background: rgba(0, 0, 0, 0.3);
+        color: #ccc;
+        border: 1px solid rgba(255, 215, 0, 0.2);
+        border-radius: 4px;
+        padding: 6px 8px;
+        font-size: 12px;
+        font-family: 'Arial', sans-serif;
         cursor: pointer;
         transition: all 0.2s;
+        touch-action: manipulation;
+        font-weight: normal;
       }
       .settings-tab:hover {
-        background: rgba(0,0,0,0.3);
-        color: white;
+        background: rgba(0, 0, 0, 0.4);
+        border-color: rgba(255, 215, 0, 0.4);
       }
       .settings-tab.active {
-        background: rgba(255,255,255,0.2);
-        color: white;
-        border-bottom: 3px solid #FFD700;
+        background: rgba(255, 215, 0, 0.3);
+        color: #FFD700;
+        border-color: rgba(255, 215, 0, 0.6);
+        font-weight: bold;
       }
       .settings-content {
         display: none;
-        padding: 20px;
-        background: rgba(0,0,0,0.2);
-        border-radius: 8px;
-        min-height: 300px;
       }
       .settings-content.active {
         display: block;
       }
       .setting-group {
-        margin-bottom: 25px;
+        margin-bottom: 15px;
       }
       .setting-group label {
         display: block;
-        font-size: 16px;
+        font-size: 13px;
         font-weight: bold;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
         color: #FFE4B5;
       }
       .setting-group input[type="range"] {
         width: 100%;
-        height: 8px;
+        height: 6px;
         background: rgba(0,0,0,0.3);
-        border-radius: 4px;
+        border-radius: 3px;
         outline: none;
         cursor: pointer;
       }
       .setting-group input[type="range"]::-webkit-slider-thumb {
         appearance: none;
-        width: 20px;
-        height: 20px;
+        width: 16px;
+        height: 16px;
         background: #FFD700;
         border-radius: 50%;
         cursor: pointer;
       }
       .setting-group input[type="range"]::-moz-range-thumb {
-        width: 20px;
-        height: 20px;
+        width: 16px;
+        height: 16px;
         background: #FFD700;
         border-radius: 50%;
         cursor: pointer;
@@ -558,48 +571,55 @@
       }
       .slider-value {
         display: inline-block;
-        min-width: 40px;
+        min-width: 35px;
         text-align: right;
         font-weight: bold;
         color: white;
-        margin-left: 10px;
+        margin-left: 8px;
+        font-size: 12px;
       }
       .controls-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 15px;
-        margin-top: 15px;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin-top: 10px;
       }
       .control-item {
         background: rgba(0,0,0,0.3);
-        padding: 12px;
-        border-radius: 6px;
+        padding: 6px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
       }
       .control-key {
         display: inline-block;
         background: rgba(255,215,0,0.3);
-        padding: 4px 12px;
-        border-radius: 4px;
+        padding: 2px 6px;
+        border-radius: 3px;
         font-weight: bold;
         color: #FFD700;
         margin-right: 8px;
-        min-width: 50px;
+        min-width: 45px;
         text-align: center;
+        font-size: 11px;
+        flex-shrink: 0;
       }
       .settings-buttons {
         display: flex;
-        gap: 10px;
-        margin-top: 20px;
-        justify-content: center;
+        gap: 8px;
+        margin-top: 15px;
       }
       .settings-button {
-        padding: 12px 30px;
+        flex: 1;
+        padding: 8px 12px;
         border: none;
-        border-radius: 6px;
-        font-size: 16px;
+        border-radius: 4px;
+        font-size: 13px;
         font-weight: bold;
         cursor: pointer;
         transition: all 0.2s;
+        touch-action: manipulation;
       }
       .settings-button.primary {
         background: rgba(255,215,0,0.9);
@@ -607,7 +627,6 @@
       }
       .settings-button.primary:hover {
         background: rgba(255,215,0,1);
-        transform: translateY(-2px);
       }
       .settings-button.secondary {
         background: rgba(0,0,0,0.3);
@@ -616,6 +635,96 @@
       .settings-button.secondary:hover {
         background: rgba(0,0,0,0.4);
       }
+
+      /* MVP 9: Settings Panel Responsive Styles */
+      /* iPad Landscape - Move to left side to avoid minimap/leaderboard overlap */
+      @media (max-width: 1024px) and (orientation: landscape) {
+        #settings-overlay {
+          top: 10px;
+          left: 10px;
+          right: auto;
+          width: 260px;
+          max-height: calc(100vh - 40px);
+        }
+      }
+
+      /* iPad Portrait - Increase size slightly */
+      @media (max-width: 768px) and (orientation: portrait) {
+        #settings-overlay {
+          top: 10px;
+          right: 10px;
+          width: 300px;
+          max-height: calc(100vh - 40px);
+        }
+      }
+
+      /* iPhone Portrait - Full width at bottom */
+      @media (max-width: 430px) and (orientation: portrait) {
+        #settings-overlay {
+          top: auto;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          width: 100%;
+          max-height: 70vh;
+          border-radius: 12px 12px 0 0;
+          padding: 20px 15px;
+        }
+        .controls-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* iPhone Landscape - Compact left sidebar */
+      @media (max-height: 500px) and (orientation: landscape) {
+        #settings-overlay {
+          top: 10px;
+          left: 10px;
+          right: auto;
+          bottom: auto;
+          width: 240px;
+          max-height: calc(100vh - 20px);
+          padding: 10px;
+          font-size: 11px;
+        }
+        #settings-menu h2 {
+          font-size: 16px;
+          margin-bottom: 8px;
+          padding-bottom: 6px;
+        }
+        .settings-tab {
+          padding: 4px 6px;
+          font-size: 11px;
+        }
+        .setting-group {
+          margin-bottom: 10px;
+        }
+        .setting-group label {
+          font-size: 11px;
+          margin-bottom: 4px;
+        }
+        .slider-value {
+          font-size: 10px;
+        }
+        .control-item {
+          padding: 4px 6px;
+          font-size: 10px;
+        }
+        .control-key {
+          font-size: 9px;
+          padding: 2px 4px;
+          min-width: 35px;
+        }
+        .settings-button {
+          padding: 6px 10px;
+          font-size: 11px;
+        }
+        .settings-buttons {
+          margin-top: 10px;
+          gap: 6px;
+        }
+      }
+
       #settings-toggle {
         position: fixed; /* Must be fixed like canvas for proper iPad stacking */
         top: 220px;
@@ -2052,87 +2161,83 @@
     </div>
     <!-- MVP 5: Settings Menu -->
     <button id="settings-toggle" class="hidden">⚙️ Settings</button>
+    <!-- MVP 9: Compact Settings Panel (Leaderboard-style) -->
     <div id="settings-overlay" class="hidden">
-      <div id="settings-menu">
-        <h2>⚙️ Settings</h2>
-        <div class="settings-tabs">
-          <button class="settings-tab active" data-tab="audio">🔊 Audio</button>
-          <button class="settings-tab" data-tab="controls">🎮 Controls</button>
+      <h2>⚙️ Settings</h2>
+      <div class="settings-tabs">
+        <button class="settings-tab active" data-tab="audio">🔊 Audio</button>
+        <button class="settings-tab" data-tab="controls">🎮 Controls</button>
+      </div>
+      <div id="audio-tab" class="settings-content active">
+        <div class="setting-group">
+          <label>
+            Master
+            <span class="slider-value" id="master-volume-value">100%</span>
+          </label>
+          <input type="range" id="master-volume" min="0" max="100" value="100">
         </div>
-        <div id="audio-tab" class="settings-content active">
-          <div class="setting-group">
-            <label>
-              Master Volume
-              <span class="slider-value" id="master-volume-value">100%</span>
-            </label>
-            <input type="range" id="master-volume" min="0" max="100" value="100">
-          </div>
-          <div class="setting-group">
-            <label>
-              SFX Volume
-              <span class="slider-value" id="sfx-volume-value">70%</span>
-            </label>
-            <input type="range" id="sfx-volume" min="0" max="100" value="70">
-          </div>
-          <div class="setting-group">
-            <label>
-              Ambient Volume
-              <span class="slider-value" id="ambient-volume-value">50%</span>
-            </label>
-            <input type="range" id="ambient-volume" min="0" max="100" value="50">
-          </div>
-          <div class="setting-group">
-            <label style="display: flex; align-items: center; gap: 10px;">
-              <input type="checkbox" id="mute-toggle" style="width: 20px; height: 20px; cursor: pointer;">
-              Mute All Audio
-            </label>
-            <p style="margin: 8px 0 0 0; font-size: 13px; color: #FFE4B5; opacity: 0.8;">
-              Shortcut: Press <strong>M</strong> key to toggle mute
-            </p>
-          </div>
+        <div class="setting-group">
+          <label>
+            SFX
+            <span class="slider-value" id="sfx-volume-value">70%</span>
+          </label>
+          <input type="range" id="sfx-volume" min="0" max="100" value="70">
         </div>
-        <div id="controls-tab" class="settings-content">
-          <div class="setting-group">
-            <label>
-              Mouse Sensitivity
-              <span class="slider-value" id="sensitivity-value">100%</span>
-            </label>
-            <input type="range" id="mouse-sensitivity" min="25" max="200" value="100">
-          </div>
-          <div class="setting-group">
-            <label>Controls Reference</label>
-            <div class="controls-grid">
-              <div class="control-item">
-                <span class="control-key">WASD / ↑←↓→</span> Move
-              </div>
-              <div class="control-item">
-                <span class="control-key">SPACE</span> Jump
-              </div>
-              <div class="control-item">
-                <span class="control-key">H</span> Hide Walnut
-              </div>
-              <div class="control-item">
-                <span class="control-key">CLICK</span> Find Walnut
-              </div>
-              <div class="control-item">
-                <span class="control-key">M</span> Toggle Mute
-              </div>
-              <div class="control-item">
-                <span class="control-key">F</span> Debug Info
-              </div>
-              <div class="control-item">
-                <span class="control-key">L</span> Leaderboard
-              </div>
-              <div class="control-item">
-                <span class="control-key">ESC</span> Settings
-              </div>
+        <div class="setting-group">
+          <label>
+            Ambient
+            <span class="slider-value" id="ambient-volume-value">50%</span>
+          </label>
+          <input type="range" id="ambient-volume" min="0" max="100" value="50">
+        </div>
+        <div class="setting-group">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 12px;">
+            <input type="checkbox" id="mute-toggle" style="width: 16px; height: 16px; cursor: pointer;">
+            Mute All (M key)
+          </label>
+        </div>
+      </div>
+      <div id="controls-tab" class="settings-content">
+        <div class="setting-group">
+          <label>
+            Mouse Sensitivity
+            <span class="slider-value" id="sensitivity-value">100%</span>
+          </label>
+          <input type="range" id="mouse-sensitivity" min="25" max="200" value="100">
+        </div>
+        <div class="setting-group">
+          <label>Controls</label>
+          <div class="controls-grid">
+            <div class="control-item">
+              <span class="control-key">WASD/↑←↓→</span> Move
+            </div>
+            <div class="control-item">
+              <span class="control-key">SPACE</span> Jump
+            </div>
+            <div class="control-item">
+              <span class="control-key">H</span> Hide
+            </div>
+            <div class="control-item">
+              <span class="control-key">T</span> Throw
+            </div>
+            <div class="control-item">
+              <span class="control-key">E</span> Eat
+            </div>
+            <div class="control-item">
+              <span class="control-key">CLICK</span> Find
+            </div>
+            <div class="control-item">
+              <span class="control-key">M</span> Mute
+            </div>
+            <div class="control-item">
+              <span class="control-key">L</span> Leader
             </div>
           </div>
         </div>
-        <div class="settings-buttons">
-          <button class="settings-button primary" id="settings-apply">Apply & Close</button>
-          <button class="settings-button secondary" id="settings-cancel">Cancel</button>
-        </div>
+      </div>
+      <div class="settings-buttons">
+        <button class="settings-button primary" id="settings-apply">Apply</button>
+        <button class="settings-button secondary" id="settings-cancel">Cancel</button>
       </div>
     </div>
     <canvas id="gameCanvas" class="hidden"></canvas>
