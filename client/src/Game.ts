@@ -2108,6 +2108,35 @@ export class Game {
         }
         break;
 
+      case 'player_death':
+        // Server broadcasts when a player dies
+        if (data.victimId && data.killerId) {
+          // If it's a remote player dying, play their death animation
+          if (data.victimId !== this.playerId) {
+            const remotePlayer = this.remotePlayers.get(data.victimId);
+            if (remotePlayer && this.remotePlayerActions.has(data.victimId)) {
+              const actions = this.remotePlayerActions.get(data.victimId);
+              if (actions && actions['death']) {
+                const deathAction = actions['death'];
+                deathAction.reset().setLoop(THREE.LoopOnce, 1).play();
+                deathAction.clampWhenFinished = true;
+              }
+            }
+
+            // Check if it's an NPC dying
+            const npc = this.npcs.get(data.victimId);
+            if (npc && this.npcActions.has(data.victimId)) {
+              const actions = this.npcActions.get(data.victimId);
+              if (actions && actions['death']) {
+                const deathAction = actions['death'];
+                deathAction.reset().setLoop(THREE.LoopOnce, 1).play();
+                deathAction.clampWhenFinished = true;
+              }
+            }
+          }
+        }
+        break;
+
       case 'player_respawn':
         // MVP 8: Player respawned after death
         if (data.playerId === this.playerId) {
