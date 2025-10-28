@@ -2008,6 +2008,14 @@ export class Game {
         }
         break;
 
+      case 'health_update':
+        // Server sends health updates on reconnect/sync
+        if (data.playerId === this.playerId && typeof data.health === 'number') {
+          this.health = data.health;
+          this.updateHealthUI();
+        }
+        break;
+
       case 'score_update':
         // MVP 8: Direct score update from server (real-time HUD sync)
         if (typeof data.score === 'number') {
