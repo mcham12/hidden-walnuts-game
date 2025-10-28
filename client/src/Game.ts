@@ -3041,6 +3041,9 @@ export class Game {
    */
   private onProjectileHit(data: { projectileId: string; ownerId: string; targetId: string; position: THREE.Vector3; mesh: THREE.Group }): void {
 
+    // MVP 11: Play hit sound
+    this.audioManager.playSound('combat', 'walnut_hit');
+
     // MVP 8: Send hit to server for validation and scoring (only if we're the attacker)
     if (data.ownerId === this.playerId && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
       this.sendMessage({
@@ -3174,6 +3177,9 @@ export class Game {
    */
   private onProjectileMiss(data: { projectileId: string; ownerId: string; position: THREE.Vector3; mesh: THREE.Group }): void {
     // MVP 12: Removed verbose projectile miss debug logs
+
+    // MVP 11: Play miss sound (reuse for tree drops too)
+    this.audioManager.playSound('combat', 'walnut_miss');
 
     // MVP 9: Check if this is a tree walnut (has server-provided ID)
     const isTreeWalnut = this.treeWalnutProjectiles.has(data.projectileId);
@@ -3353,6 +3359,9 @@ export class Game {
     const actualHeal = this.health - oldHealth;
 
     if (actualHeal > 0) {
+      // MVP 11: Play health boost sound
+      this.audioManager.playSound('player', 'health_boost');
+
       // Send heal event to server
       this.sendMessage({
         type: 'player_healed',
@@ -3450,6 +3459,9 @@ export class Game {
   private onDeath(killerId: string): void {
     console.log(`💀 Player died! Killed by ${killerId}`);
     this.isDead = true;
+
+    // MVP 11: Play death sound
+    this.audioManager.playSound('player', 'player_death');
 
     // Stop all movement
     this.velocity.set(0, 0, 0);
@@ -3672,6 +3684,9 @@ export class Game {
    * MVP 9: Show kill notification when player eliminates an NPC or remote player
    */
   private showKillNotification(targetName: string): void {
+    // MVP 11: Play elimination sound
+    this.audioManager.playSound('player', 'player_eliminated');
+
     // Create notification element
     const notification = document.createElement('div');
     notification.style.position = 'fixed';
@@ -5468,6 +5483,9 @@ export class Game {
     this.lastThrowTime = now;
     this.consecutiveThrows++; // Increment for progressive cooldown
 
+    // MVP 11: Play throw sound
+    this.audioManager.playSound('combat', 'throw_walnut');
+
     // MIGRATION PHASE 2.2: Use state machine for throw animation
     if (this.actions['attack']) {
       const attackAction = this.actions['attack'];
@@ -5518,6 +5536,9 @@ export class Game {
     // (Removed optimistic decrement to prevent double-decrement)
     // Optimistically heal for instant UX (server will confirm via entity_healed)
     this.heal(25);
+
+    // MVP 11: Play eat sound
+    this.audioManager.playSound('player', 'walnut_eat');
 
     // MIGRATION PHASE 2.2: Use state machine for eat animation
     if (this.actions['eat']) {

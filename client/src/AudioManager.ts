@@ -1,7 +1,7 @@
 import { Howl, Howler } from 'howler';
 
-export type SoundType = 'hide' | 'find' | 'footstep' | 'ui' | 'ambient';
-export type VolumeCategory = 'sfx' | 'ambient' | 'master';
+export type SoundType = 'hide' | 'find' | 'footstep' | 'ui' | 'ambient' | 'combat' | 'player' | 'music';
+export type VolumeCategory = 'sfx' | 'ambient' | 'music' | 'master';
 
 interface SoundConfig {
   src: string[];
@@ -19,10 +19,12 @@ export class AudioManager {
   private volumes: Record<VolumeCategory, number> = {
     sfx: 0.7,
     ambient: 0.5,
+    music: 0.4,
     master: 1.0,
   };
   private isMuted: boolean = false;
   private ambientSound: Howl | null = null;
+  private musicSound: Howl | null = null;
   private isUnlocked: boolean = false;
   private loadingPromises: Promise<void>[] = [];
   private isFullyLoaded: boolean = false;
@@ -184,13 +186,67 @@ export class AudioManager {
       volume: 0.5,
     });
 
-    // Ambient forest sounds (placeholder - none available yet)
-    // TODO: Uncomment when we have a real ambient sound file
-    // this.loadSound('ambient_forest', {
-    //   src: ['/sounds/forest_ambient.mp3'],
-    //   volume: 0.3,
-    //   loop: true,
-    // });
+    // MVP 11: Combat sounds
+    this.loadSound('throw_walnut', {
+      src: ['/sounds/thrown_walnut.mp3'],
+      volume: 0.6,
+    });
+
+    this.loadSound('walnut_hit', {
+      src: ['/sounds/walnut_hit_player.mp3'],
+      volume: 0.7,
+    });
+
+    this.loadSound('walnut_miss', {
+      src: ['/sounds/walnut_miss_player_and_drop_from_tree.mp3'],
+      volume: 0.5,
+    });
+
+    // MVP 11: Player sounds
+    this.loadSound('walnut_found', {
+      src: ['/sounds/Walnut_found.mp3'],
+      volume: 0.7,
+    });
+
+    this.loadSound('walnut_eat', {
+      src: ['/sounds/walnut_eat.mp3'],
+      volume: 0.6,
+    });
+
+    this.loadSound('health_boost', {
+      src: ['/sounds/healthboost-localplayer.mp3'],
+      volume: 0.7,
+    });
+
+    this.loadSound('player_death', {
+      src: ['/sounds/death_sound_localplayer.mp3'],
+      volume: 0.8,
+    });
+
+    this.loadSound('player_eliminated', {
+      src: ['/sounds/Eliminate_remoteplayer_or_NPC.mp3'],
+      volume: 0.7,
+    });
+
+    this.loadSound('walking', {
+      src: ['/sounds/walking_localplayer.mp3'],
+      volume: 0.4,
+      loop: true,
+    });
+
+    // MVP 11: Ambient forest sounds
+    this.loadSound('ambient_forest', {
+      src: ['/sounds/forest-ambience.mp3'],
+      volume: 0.3,
+      loop: true,
+    });
+
+    // MVP 11: Background music
+    this.loadSound('game_music', {
+      src: ['/sounds/game-music-loop.mp3'],
+      volume: 0.35,
+      loop: true,
+    });
   }
 
   /**
@@ -261,7 +317,7 @@ export class AudioManager {
         soundId = 'hide';
         break;
       case 'find':
-        soundId = 'find';
+        soundId = variant || 'walnut_found'; // MVP 11: Use new walnut_found sound
         break;
       case 'footstep':
         soundId = variant ? `footstep_${variant}` : 'footstep_grass';
@@ -272,6 +328,17 @@ export class AudioManager {
       case 'ambient':
         this.playAmbient();
         return;
+      case 'music':
+        this.playMusic();
+        return;
+      case 'combat':
+        // MVP 11: Combat sounds (throw, hit, miss)
+        soundId = variant || 'throw_walnut';
+        break;
+      case 'player':
+        // MVP 11: Player event sounds (eat, death, health_boost, eliminated)
+        soundId = variant || 'walnut_eat';
+        break;
       default:
         console.warn(`🎵 AudioManager: Unknown sound type "${type}"`);
         return;
@@ -325,7 +392,53 @@ export class AudioManager {
   }
 
   /**
-   * Set volume for a category (sfx, ambient, or master)
+   * MVP 11: Play background music
+   * NOTE: unlock() must be called ONCE before using this
+   * Strategy: Use ambient sounds primarily, layer music quietly for atmosphere
+   */
+  playMusic(): void {
+    if (this.isMuted) return;
+
+    const music = this.sounds.get('game_music');
+    if (music && !music.playing()) {
+      const effectiveVolume = this.calculateEffectiveVolume('music');
+      music.volume(effectiveVolume);
+      music.play();
+      this.musicSound = music;
+    }
+  }
+
+  /**
+   * Stop background music
+   */
+  stopMusic(): void {
+    if (this.musicSound) {
+      this.musicSound.stop();
+    }
+  }
+
+  /**
+   * MVP 11: Start both ambient sounds and music (layered approach)
+   * Ambient provides nature sounds, music adds emotional atmosphere
+   */
+  startBackgroundAudio(): void {
+    // Play ambient forest sounds at normal volume
+    this.playAmbient();
+
+    // Layer music quietly underneath for emotional depth
+    this.playMusic();
+  }
+
+  /**
+   * Stop all background audio
+   */
+  stopBackgroundAudio(): void {
+    this.stopAmbient();
+    this.stopMusic();
+  }
+
+  /**
+   * Set volume for a category (sfx, ambient, music, or master)
    */
   setVolume(category: VolumeCategory, level: number): void {
     // Clamp level between 0 and 1
@@ -348,7 +461,7 @@ export class AudioManager {
   /**
    * Calculate effective volume considering category and master volume
    */
-  private calculateEffectiveVolume(category: 'sfx' | 'ambient'): number {
+  private calculateEffectiveVolume(category: 'sfx' | 'ambient' | 'music'): number {
     return this.volumes[category] * this.volumes.master;
   }
 
@@ -360,6 +473,12 @@ export class AudioManager {
     if (this.ambientSound && this.ambientSound.playing()) {
       const effectiveVolume = this.calculateEffectiveVolume('ambient');
       this.ambientSound.volume(effectiveVolume);
+    }
+
+    // Update music if playing
+    if (this.musicSound && this.musicSound.playing()) {
+      const effectiveVolume = this.calculateEffectiveVolume('music');
+      this.musicSound.volume(effectiveVolume);
     }
 
     // Note: Individual SFX volumes are updated when played

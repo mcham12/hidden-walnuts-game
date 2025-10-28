@@ -563,6 +563,9 @@ async function main() {
       walnutHud.classList.remove('hidden');
     }
 
+    // MVP 11: Start background audio (ambient forest sounds + music)
+    audioManager.startBackgroundAudio();
+
     // MVP 5: Show persistent control guide (desktop only)
     const controlGuide = document.getElementById('control-guide');
     const controlGuideClose = document.getElementById('control-guide-close');
