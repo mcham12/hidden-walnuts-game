@@ -1,6 +1,6 @@
 # 🎮 Hidden Walnuts - MVP Development Plan
 
-**Current Status**: MVP 11 (Sound Effects) - 🎯 **NEXT**
+**Current Status**: MVP 12 (World Polish and Predators) - 🎯 **NEXT**
 
 ---
 
@@ -22,6 +22,7 @@
 - **MVP 7.1**: Cloudflare Cost Mitigation & Bot Protection - Turnstile, rate limiting, cost optimizations
 - **MVP 8**: Combat, Health & Resource Management - Projectile throwing, damage/health system, eating walnuts, death/respawn, inventory limits
 - **MVP 9**: Combat Completeness & World Resources - Health bars, NPC AI improvements, tree growth system, collision fixes, comprehensive logging cleanup
+- **MVP 11**: Sound Effects & Audio Enhancement - Comprehensive sound system with combat, player, and ambient sounds; iOS Safari audio support
 
 ---
 
@@ -105,46 +106,45 @@
 
 ---
 
-## 🔊 MVP 11: Sound Effects & Audio Enhancement (3-4 hours)
+## ✅ MVP 11: Sound Effects & Audio Enhancement (COMPLETE)
 
 **Goal**: Complete audio experience with comprehensive sound effects
 
-### Sound Effects to Implement
+### Implemented Features
 
-**Gameplay Actions:**
-- `thrown_walnut.mp3` - Walnut is thrown
-- `walnut_hit_player.mp3` - Thrown walnut hits NPC or remote player
-- `walnut_miss_player_and_drop_from_tree.mp3` - Thrown walnut misses target OR walnut drops from tree (reuse)
-- `Walnut_found.mp3` - Walnut found/picked up
-- `walnut_eat.mp3` - Local player eats a walnut
+**Gameplay Sounds:**
+- ✅ `thrown_walnut.mp3` - Walnut throw action
+- ✅ `walnut_hit_player.mp3` - Successful hit on NPC/player
+- ✅ `walnut_miss_player_and_drop_from_tree.mp3` - Miss or tree drop
+- ✅ `Walnut_found.mp3` - Walnut pickup
+- ✅ `walnut_eat.mp3` - Eating walnut
+- ✅ `player_collision.mp3` - Bumping into NPCs/players (volume: 0.25)
+- ✅ `tree_growth.mp3` - Hidden walnut grows into tree
 
-**Player Events:**
-- `walking_localplayer.mp3` - Local player walking (footsteps)
-- `healthboost-localplayer.mp3` - Local player gets health boost via eating
-- `death_sound_localplayer.mp3` - Local player dies
-- `Eliminate_remoteplayer_or_NPC.mp3` - Remote player or NPC is eliminated
+**Player Event Sounds:**
+- ✅ `healthboost-localplayer.mp3` - Health boost (only when eating, not passive regen)
+- ✅ `death_sound_localplayer.mp3` - Local player death
+- ✅ `Eliminate_remoteplayer_or_NPC.mp3` - Remote player/NPC elimination
+- ⏸️ `walking_localplayer.mp3` - Loaded but not implemented (deferred)
 
-**Ambient/Background:**
-- `game-music-loop.mp3` - Background game music (looping)
-- `forest-ambience.mp3` - Forest ambient sounds
+**Background Audio:**
+- ✅ `game-music-loop.mp3` - Background music (volume: 0.35)
+- ✅ `forest-ambience.mp3` - Forest ambient sounds (volume: 0.3)
+- ✅ Layered approach: Both ambient and music play together for rich atmosphere
 
-**Note**: Evaluate whether to use both game music AND forest ambience simultaneously. Standard practice: Choose one or layer them carefully (music for intensity, ambience for immersion). Recommend: Use ambient sounds primarily, add subtle music during combat/high-action moments.
-
-### Implementation Tasks
-1. Add all sound files to `/client/public/assets/sounds/`
-2. Extend AudioManager with new sound types and variants
-3. Hook up sounds to appropriate game events
-4. Balance volumes (ambience should be subtle, effects prominent)
-5. Add user controls for music/SFX volume separately
-6. Test audio on mobile (iOS Safari audio requirements)
+**Audio System Improvements:**
+- ✅ iOS Safari audio unlock with HTML5 Audio mode for mobile
+- ✅ Separate volume controls for sfx, ambient, music, and master
+- ✅ Sound cooldowns to prevent spam (collision: 2s)
+- ✅ Smart healthboost: Only plays when eating walnuts, not passive regen
 
 ### Success Criteria
 - ✅ All gameplay actions have appropriate sound feedback
-- ✅ Walking has footstep sounds (distance-based volume)
-- ✅ Combat feels impactful with hit/miss sounds
-- ✅ Ambient audio creates forest atmosphere
-- ✅ Volume controls work properly
-- ✅ Audio works on iOS Safari
+- ✅ Combat feels impactful with hit/miss/collision sounds
+- ✅ Ambient audio creates immersive forest atmosphere
+- ✅ Volume controls work properly (4 categories)
+- ✅ Audio works on iOS Safari with proper unlock flow
+- ✅ No annoying repetitive sounds (collision reduced to 0.25, healthboost only on eating)
 
 ---
 
@@ -154,13 +154,13 @@
 
 ### Features
 
-**1. Hawks (Aerial Threat)** (3-4 hours)
+**1. Cardinal, Toucan (Aerial Threat)s** (3-4 hours)
 - Fly overhead, dive-bomb players
 - Steal 1-2 walnuts on successful grab
 - ~30s cooldown between attacks
 - Avoidable with movement/awareness
 
-**2. Wolves (Ground Threat)** (3-4 hours)
+**2. Wildebeest (Ground Threat)** (3-4 hours)
 - Patrol forest, chase players
 - Deal 30 damage on bite
 - Faster than players (must evade strategically)
@@ -172,9 +172,12 @@
 - Visual/audio warnings before attack
 - Respawn at random intervals
 
-**4. Add some fun sky elements. (like a sun, not sure what else, open to ideas)
+**4.UX Polish**
+- Add some fun sky elements. (like a sun, not sure what else, open to ideas)
+- better tutorial experience.  research similar games and how to do this, likely different tutorial for desktop (because of key usage) vs ipad/iphone
 
-**5. remove any debug logging added for this MVP, both client and worker
+
+**5. remove any debug logging added for this MVP, both client and worker**
 
 ### Success Criteria
 - ✅ Hawks and wolves add meaningful danger
@@ -182,7 +185,7 @@
 - ✅ Predators are challenging but fair
 - ✅ Creates "close call" exciting moments
 
-## MVP 11.5: voiceover##
+## MVP 11.5: voiceover
 **3. Voiceover Work** (1-2 hours)
 - Character selection voice lines (one per character)
 - Combat reactions ("Ouch!", "Gotcha!", "Oh no!")
@@ -281,12 +284,11 @@ These features add polish but aren't essential for core gameplay:
 
 | MVP | Focus | Status |
 |-----|-------|--------|
-| 1.5-9 | Core Game Complete | ✅ Complete |
-| **11** | **Sound Effects & Audio** | 🎯 **NEXT** |
-| 12 | Predators & Threats | Pending |
+| 1.5-11 | Core Game Complete | ✅ Complete |
+| **12** | **World Polish and Predators** | 🎯 **NEXT** |
 | 13 | Full Authentication | Pending |
 | 14 | Code Cleanup | Pending |
 
 ---
 
-**Next Step**: Begin MVP 11 (Sound Effects & Audio Enhancement) 🔊
+**Next Step**: Begin MVP 12 (World Polish and Predators & Threats) ⚔️
