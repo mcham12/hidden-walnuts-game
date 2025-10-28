@@ -180,7 +180,7 @@
 **5. remove any debug logging added for this MVP, both client and worker**
 
 ### Success Criteria
-- ✅ Hawks and wolves add meaningful danger
+- ✅ predators add meaningful danger
 - ✅ Players must stay alert (not just PvP)
 - ✅ Predators are challenging but fair
 - ✅ Creates "close call" exciting moments
