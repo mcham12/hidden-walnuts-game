@@ -236,7 +236,7 @@ export class AudioManager {
 
     this.loadSound('player_collision', {
       src: ['/sounds/player_collision.mp3'],
-      volume: 0.5,
+      volume: 0.25,
     });
 
     this.loadSound('tree_growth', {

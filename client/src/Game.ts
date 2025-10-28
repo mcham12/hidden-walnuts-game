@@ -3380,8 +3380,10 @@ export class Game {
 
   /**
    * MVP 8 Phase 3: Heal local player
+   * @param amount - Amount of health to restore
+   * @param fromEating - True if healing is from eating a walnut (plays healthboost sound), false for passive regen
    */
-  private heal(amount: number): void {
+  private heal(amount: number, fromEating: boolean = false): void {
     if (this.isDead) return;
 
     const oldHealth = this.health;
@@ -3389,8 +3391,10 @@ export class Game {
     const actualHeal = this.health - oldHealth;
 
     if (actualHeal > 0) {
-      // MVP 11: Play health boost sound
-      this.audioManager.playSound('player', 'health_boost');
+      // MVP 11: Only play health boost sound when eating walnuts, not passive regen
+      if (fromEating) {
+        this.audioManager.playSound('player', 'health_boost');
+      }
 
       // Send heal event to server
       this.sendMessage({
@@ -5569,7 +5573,7 @@ export class Game {
     // MVP 8: Server will decrement inventory and send inventory_update
     // (Removed optimistic decrement to prevent double-decrement)
     // Optimistically heal for instant UX (server will confirm via entity_healed)
-    this.heal(25);
+    this.heal(25, true); // fromEating = true
 
     // MVP 11: Play eat sound
     this.audioManager.playSound('player', 'walnut_eat');
