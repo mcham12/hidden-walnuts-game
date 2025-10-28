@@ -271,11 +271,8 @@ export class ProjectileManager {
         const isNearGround = projectile.position.y <= groundY + 1.0; // Within 1 unit of ground
 
         if (isNearGround) {
-          console.log(`⏱️ Projectile ${id} timed out near ground - treating as miss`);
           projectile.hasHit = true;
           this.onProjectileMiss(projectile);
-        } else {
-          console.log(`⏱️ Projectile ${id} timed out mid-flight - removing (no pickup)`);
         }
         toRemove.push(id);
         return;
@@ -428,23 +425,6 @@ export class ProjectileManager {
             projectile.mesh.position.copy(projectile.position);
             projectile.mesh.rotation.set(0, 0, 0); // Stop spinning
 
-            // DEBUG: Enhanced logging for tree-dropped walnuts
-            if (projectile.ownerId === 'game') {
-              const expectedY = newTerrainHeight + this.WALNUT_RADIUS;
-              const actualY = projectile.position.y;
-              const meshY = projectile.mesh.position.y;
-              const yError = Math.abs(actualY - expectedY);
-              const meshError = Math.abs(meshY - expectedY);
-
-              console.log(`✅ Walnut SETTLED at (${projectile.position.x.toFixed(2)}, ${projectile.position.y.toFixed(2)}, ${projectile.position.z.toFixed(2)})
-                Terrain height: ${newTerrainHeight.toFixed(3)}
-                Expected Y: ${expectedY.toFixed(3)} (terrain + radius)
-                Physics Y: ${actualY.toFixed(3)} (error: ${yError.toFixed(4)})
-                Mesh Y: ${meshY.toFixed(3)} (error: ${meshError.toFixed(4)})
-                ${yError > 0.01 || meshError > 0.01 ? '⚠️ FLOATING DETECTED' : '✓ Position accurate'}
-                Rest time: ${projectile.restTimer.toFixed(2)}s
-                Bounces: ${projectile.bounces}`);
-            }
 
             this.onProjectileMiss(projectile);
             toRemove.push(id);

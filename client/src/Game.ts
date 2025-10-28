@@ -2843,7 +2843,6 @@ export class Game {
       // Process any pending updates that arrived while NPC was loading
       const pendingQueue = this.npcPendingUpdates.get(npcId);
       if (pendingQueue && pendingQueue.length > 0) {
-        console.log(`📦 Processing ${pendingQueue.length} queued updates for ${npcId}`);
         for (const update of pendingQueue) {
           this.updateNPC(npcId, update.position, update.rotationY, update.animation, update.velocity, update.behavior, undefined);
         }
@@ -6814,8 +6813,6 @@ export class Game {
 
       // MVP 9: Show celebration effects only to the owner
       if (data.ownerId === this.playerId) {
-        console.log(`🎉 Your walnut grew into a tree! +10 points`);
-
         // Big celebration with multiple VFX effects
         if (this.vfxManager) {
           // Massive sparkle burst at tree base
