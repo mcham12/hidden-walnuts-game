@@ -1382,7 +1382,8 @@ export class Game {
     for (const remotePlayer of this.remotePlayers.values()) {
       const distance = playerPos.distanceTo(remotePlayer.position);
       if (distance < COLLISION_RADIUS) {
-        // MVP 12: Removed bump collision debug log
+        // MVP 11: Play collision sound
+        this.audioManager.playSound('player', 'player_collision');
         this.triggerBumpEffect();
         this.lastEntityCollisionTime = now;
         return; // Only one collision per update
@@ -1393,7 +1394,8 @@ export class Game {
     for (const npc of this.npcs.values()) {
       const distance = playerPos.distanceTo(npc.position);
       if (distance < COLLISION_RADIUS) {
-        // MVP 12: Removed NPC collision debug log
+        // MVP 11: Play collision sound
+        this.audioManager.playSound('player', 'player_collision');
         this.triggerBumpEffect();
         this.lastEntityCollisionTime = now;
         return; // Only one collision per update
@@ -3453,6 +3455,8 @@ export class Game {
 
       if (distance < COLLISION_RADIUS) {
         // Collision detected! Apply damage
+        // MVP 11: Play collision sound
+        this.audioManager.playSound('player', 'player_collision');
         this.takeDamage(this.COLLISION_DAMAGE, playerId);
         this.lastCollisionDamageTime = now;
 
@@ -3470,6 +3474,8 @@ export class Game {
 
       if (distance < COLLISION_RADIUS) {
         // Collision detected! Apply damage
+        // MVP 11: Play collision sound
+        this.audioManager.playSound('player', 'player_collision');
         this.takeDamage(this.COLLISION_DAMAGE, npcId);
         this.lastCollisionDamageTime = now;
 
@@ -6830,8 +6836,8 @@ export class Game {
           this.vfxManager.showScorePopup(10, confettiPos);
         }
 
-        // Play celebratory sound (bonus bling sound)
-        this.audioManager.playSound('ui', 'score_pop');
+        // MVP 11: Play tree growth sound
+        this.audioManager.playSound('player', 'tree_growth');
 
         // Show enthusiastic toast notification
         if (this.toastManager) {

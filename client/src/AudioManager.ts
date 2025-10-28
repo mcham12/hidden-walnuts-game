@@ -234,6 +234,16 @@ export class AudioManager {
       loop: true,
     });
 
+    this.loadSound('player_collision', {
+      src: ['/sounds/player_collision.mp3'],
+      volume: 0.5,
+    });
+
+    this.loadSound('tree_growth', {
+      src: ['/sounds/tree_growth.mp3'],
+      volume: 0.7,
+    });
+
     // MVP 11: Ambient forest sounds
     this.loadSound('ambient_forest', {
       src: ['/sounds/forest-ambience.mp3'],
