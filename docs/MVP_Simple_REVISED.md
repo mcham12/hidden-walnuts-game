@@ -193,7 +193,234 @@
 - Optional: Narrator intro ("Welcome to the forest...")
 - remove any debug logging added for this MVP, both client and worker
 
-## 🔐 MVP 12: Full Authentication (8-12 hours)
+---
+
+## 🎮 MVP 13: Game Admin System & Dashboard (8-10 hours)
+
+**Goal**: Comprehensive admin tools for game maintenance, monitoring, and moderation
+
+### Research Findings
+
+Based on industry standards for casual multiplayer games (PlayFab, Unity Moderation, indie game best practices):
+
+**Essential Admin Features:**
+1. **Player Management** - View, ban, kick, reset players
+2. **Real-Time Monitoring** - Active players, server health, game state
+3. **Game Control** - Reset systems, spawn resources, adjust parameters
+4. **Leaderboard Moderation** - Remove cheaters, manual corrections
+5. **Analytics Dashboard** - Player metrics, economy health, error tracking
+6. **Audit Logging** - Track all admin actions for accountability
+7. **Security** - Role-based access, authentication, rate limiting
+
+### Part 1: Secure Existing Admin Endpoints (1-2 hours)
+
+**Problem**: Current forest admin endpoints lack authentication
+- `/admin/reset-mapstate` - ❌ Unprotected
+- `/admin/reset-forest` - ❌ Unprotected
+- `/admin/reset-positions` - ❌ Unprotected
+
+**Solution**: Add `ADMIN_SECRET` authentication (same pattern as leaderboard)
+```typescript
+// Add to all /admin/* endpoints:
+const adminSecret = request.headers.get("X-Admin-Secret");
+if (!adminSecret || adminSecret !== env.ADMIN_SECRET) {
+  return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+}
+```
+
+**Tasks:**
+- ✅ Add auth check to `/admin/reset-mapstate`
+- ✅ Add auth check to `/admin/reset-forest`
+- ✅ Add auth check to `/admin/reset-positions`
+- ✅ Test all endpoints with valid/invalid secrets
+
+### Part 2: New Admin API Endpoints (3-4 hours)
+
+**Player Management APIs:**
+
+1. **Get Active Players** - `GET /admin/players/active`
+   - Returns online players with username, position, score, inventory
+   - Response: `{ players: [...], count: 5, timestamp: ... }`
+
+2. **Get Player Details** - `GET /admin/players/:playerId`
+   - Full player stats: score, walnuts, position, session info
+   - Response: `{ player: {...}, stats: {...}, history: [...] }`
+
+3. **Ban Player** - `POST /admin/players/:playerId/ban`
+   - Body: `{ reason: "Cheating detected", duration: 86400 }`
+   - Kicks player, prevents reconnect
+   - Stores ban in KV with expiry
+
+4. **Unban Player** - `POST /admin/players/:playerId/unban`
+   - Removes ban, allows reconnect
+
+5. **Kick Player** - `POST /admin/players/:playerId/kick`
+   - Force disconnect (no ban)
+
+6. **Reset Player** - `POST /admin/players/:playerId/reset`
+   - Reset score, inventory, position (keep username)
+
+**Game State APIs:**
+
+7. **Get Game Metrics** - `GET /admin/metrics`
+   - Active players, NPC count, walnut distribution, server uptime
+   - Response: `{ activeUsers: 12, npcs: 3, walnuts: {...}, uptime: ... }`
+
+8. **Spawn Walnut** - `POST /admin/spawn/walnut`
+   - Body: `{ position: {x, y, z}, type: "golden" }`
+   - Manually spawn walnut for events/testing
+
+9. **Adjust NPC Count** - `POST /admin/npcs/adjust`
+   - Body: `{ count: 5 }`
+   - Add or remove NPCs dynamically
+
+**Audit Logging:**
+
+10. **Get Admin Actions** - `GET /admin/audit`
+    - Query: `?limit=50&since=<timestamp>`
+    - Returns: `{ actions: [{admin, action, timestamp, details}], count }`
+
+11. **Log Admin Action** (internal)
+    - Every admin action writes to KV: `audit:{timestamp}:{action}`
+    - Includes: admin identifier, action type, target, details
+    - 90-day retention
+
+**Implementation Details:**
+- All endpoints require `X-Admin-Secret` header
+- Ban system uses KV: `ban:{playerId}` → `{ reason, bannedAt, expiresAt, bannedBy }`
+- Audit logs use KV: `audit:{timestamp}` → `{ action, admin, details }`
+- Rate limiting: 100 admin requests/minute (prevent abuse)
+
+### Part 3: Admin Web Dashboard (4-5 hours)
+
+**Location**: `/client/admin/index.html` (separate from game)
+
+**Authentication Flow:**
+1. Admin enters `ADMIN_SECRET` on login page
+2. Secret stored in sessionStorage (client-side only)
+3. All API calls include `X-Admin-Secret` header
+4. Invalid secret = 401, redirect to login
+
+**Dashboard Sections:**
+
+**1. Overview (Home)**
+```
+┌─────────────────────────────────────────┐
+│ Hidden Walnuts - Game Admin Dashboard  │
+├─────────────────────────────────────────┤
+│ 🎮 Active Players: 12                   │
+│ 🤖 NPCs: 3                              │
+│ 🌰 Walnuts: 45 hidden, 23 found        │
+│ ⏱️  Uptime: 12h 34m                     │
+│ 📊 Top Score: Alice123 (523 pts)       │
+└─────────────────────────────────────────┘
+```
+
+**2. Player Management**
+- Table: Username | Score | Walnuts | Position | Status | Actions
+- Actions: View Details | Kick | Ban | Reset
+- Search/filter by username
+- Ban modal with reason input
+
+**3. Game Control**
+- Buttons: Reset Forest | Reset Map State | Reset Positions
+- Confirmation dialogs for destructive actions
+- Spawn walnut tool (click map to place)
+- Adjust NPC count (slider: 0-10)
+
+**4. Leaderboard**
+- Current top 10 (weekly + all-time)
+- Actions: Remove Player | Manual Reset | Cleanup
+- View archives (last 12 resets)
+
+**5. Metrics & Analytics**
+- Player count chart (last 24h)
+- Score distribution histogram
+- Walnut economy graph (hidden vs found over time)
+- Error rate monitor
+
+**6. Audit Log**
+- Table: Timestamp | Action | Target | Details
+- Filter by action type
+- Export to CSV
+
+**Tech Stack:**
+- Pure HTML/CSS/JavaScript (no framework needed)
+- Chart.js for graphs (lightweight)
+- Fetch API for all requests
+- Responsive design (works on mobile)
+
+**UI Design Principles:**
+- Clean, minimal interface (similar to Leaderboard style)
+- Confirm all destructive actions
+- Real-time updates (refresh every 10s)
+- Error handling with user-friendly messages
+
+**File Structure:**
+```
+client/admin/
+├── index.html          # Main dashboard page
+├── login.html          # Admin login
+├── styles.css          # Dashboard styles
+├── admin.js            # Main logic, API calls
+├── charts.js           # Metrics visualization
+└── README.md           # Setup instructions
+```
+
+### Part 4: Security & Polish (1 hour)
+
+**Security Hardening:**
+1. ✅ Rate limiting on all admin endpoints (100 req/min)
+2. ✅ CORS restricted to admin domain only (not wildcard)
+3. ✅ Audit log for all actions (who, what, when)
+4. ✅ Admin secret rotation instructions in docs
+5. ✅ Input validation on all endpoints
+
+**Polish:**
+- Success/error toast notifications
+- Loading states for all actions
+- Keyboard shortcuts (r = refresh, ? = help)
+- Dark mode toggle
+
+### Implementation Plan
+
+**Day 1 (4 hours):**
+1. Secure existing admin endpoints (1h)
+2. Implement player management APIs (2h)
+3. Implement game state APIs (1h)
+
+**Day 2 (4 hours):**
+4. Build admin dashboard HTML/CSS (2h)
+5. Implement API integration in JS (1.5h)
+6. Add charts and metrics (0.5h)
+
+**Day 3 (2 hours):**
+7. Security hardening (1h)
+8. Testing and polish (1h)
+
+### Success Criteria
+
+- ✅ All admin endpoints require authentication
+- ✅ Can view all active players in real-time
+- ✅ Can ban/unban/kick players with reasons
+- ✅ Can reset game state (forest, map, positions)
+- ✅ Dashboard shows live metrics (updates every 10s)
+- ✅ All admin actions logged to audit trail
+- ✅ Dashboard works on desktop and mobile
+- ✅ No security vulnerabilities in admin system
+- ✅ Comprehensive documentation for admin setup
+
+### Documentation
+
+Create: `docs/ADMIN_SETUP.md`
+- How to access admin dashboard
+- Admin secret setup
+- Common admin tasks guide
+- Troubleshooting
+
+---
+
+## 🔐 MVP 14: Full Authentication (8-12 hours)
 
 **Goal**: Secure player accounts with passwords, email, cross-device sync
 
@@ -239,7 +466,7 @@
 
 ---
 
-## 🧹 MVP 13: Code Cleanup & Optimization
+## 🧹 MVP 15: Code Cleanup & Optimization
 
 **Goal**: Remove technical debt, optimize performance
 
@@ -286,8 +513,9 @@ These features add polish but aren't essential for core gameplay:
 |-----|-------|--------|
 | 1.5-11 | Core Game Complete | ✅ Complete |
 | **12** | **World Polish and Predators** | 🎯 **NEXT** |
-| 13 | Full Authentication | Pending |
-| 14 | Code Cleanup | Pending |
+| 13 | Game Admin System & Dashboard | Pending |
+| 14 | Full Authentication | Pending |
+| 15 | Code Cleanup | Pending |
 
 ---
 
