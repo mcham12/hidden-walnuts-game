@@ -43,6 +43,7 @@ interface NPC {
   aggressionLevel: number;
   health: number; // MVP 9: NPC health (0-100)
   maxHealth: number; // MVP 9: Maximum health
+  lastCollisionDamageTime: number; // Cooldown for collision damage
 }
 
 interface PlayerConnection {
@@ -205,7 +206,8 @@ export class NPCManager {
       lastThrowTime: 0,
       aggressionLevel,
       health: 100, // MVP 9: NPCs start with full health
-      maxHealth: 100
+      maxHealth: 100,
+      lastCollisionDamageTime: 0 // No collision damage cooldown initially
     };
   }
 
@@ -970,5 +972,36 @@ export class NPCManager {
     setTimeout(() => {
       this.spawnNPCs();
     }, 1000);
+  }
+
+  /**
+   * Get all NPCs (for collision detection)
+   */
+  getAllNPCs(): NPC[] {
+    return Array.from(this.npcs.values());
+  }
+
+  /**
+   * Apply damage to NPC from collision
+   */
+  damageNPC(npcId: string, damage: number, attackerId: string): void {
+    const npc = this.npcs.get(npcId);
+    if (!npc) return;
+
+    npc.health = Math.max(0, npc.health - damage);
+
+    // Broadcast damage event to all players
+    this.forestManager.broadcastToAll({
+      type: 'entity_damaged',
+      targetId: npcId,
+      attackerId: attackerId,
+      damage: damage,
+      newHealth: npc.health
+    });
+
+    // Check if NPC died
+    if (npc.health <= 0) {
+      this.handleNPCDeath(npcId);
+    }
   }
 }

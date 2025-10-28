@@ -41,6 +41,7 @@ interface PlayerConnection {
     deaths: number; // Times player died
   };
   invulnerableUntil: number | null; // MVP 8: Timestamp when respawn invulnerability expires
+  lastCollisionDamageTime: number; // Cooldown for collision damage
 }
 
 interface Walnut {
@@ -664,7 +665,8 @@ export default class ForestManager extends DurableObject {
           knockouts: 0,
           deaths: 0
         },
-        invulnerableUntil: Date.now() + 3000 // 3 seconds spawn protection
+        invulnerableUntil: Date.now() + 3000, // 3 seconds spawn protection
+        lastCollisionDamageTime: 0 // No collision damage cooldown initially
       };
 
       // MVP 9: Check for recent disconnect and restore score (.io game pattern)
@@ -814,6 +816,9 @@ export default class ForestManager extends DurableObject {
           // Validate position is within world bounds
           const validatedPosition = this.validatePosition(data.position);
           playerConnection.position = validatedPosition;
+
+          // Check for collisions with other players/NPCs
+          this.checkCollisions(playerConnection);
         }
         if (typeof data.rotationY === 'number') {
           playerConnection.rotationY = data.rotationY;
@@ -2258,6 +2263,221 @@ export default class ForestManager extends DurableObject {
           position: walnut.location
         });
       });
+    }
+  }
+
+  /**
+   * Server-side collision detection for player vs player/NPC collisions
+   * Applies damage to BOTH parties when they collide
+   */
+  private checkCollisions(movingPlayer: PlayerConnection): void {
+    const now = Date.now();
+    const COLLISION_RADIUS = 1.5; // Match client-side collision radius
+    const COLLISION_DAMAGE = 10; // Match client-side damage
+    const COLLISION_DAMAGE_COOLDOWN = 2000; // 2 seconds between collision damage
+
+    // Check cooldown for moving player
+    if (now - movingPlayer.lastCollisionDamageTime < COLLISION_DAMAGE_COOLDOWN) {
+      return; // Still on cooldown
+    }
+
+    // Check invulnerability for moving player
+    if (movingPlayer.invulnerableUntil && now < movingPlayer.invulnerableUntil) {
+      return; // Moving player is invulnerable
+    }
+
+    const movingPos = movingPlayer.position;
+
+    // Check collisions with other players
+    for (const [otherId, otherPlayer] of this.activePlayers) {
+      if (otherId === movingPlayer.squirrelId) continue; // Skip self
+
+      // Check cooldown for other player
+      if (now - otherPlayer.lastCollisionDamageTime < COLLISION_DAMAGE_COOLDOWN) {
+        continue; // Other player on cooldown
+      }
+
+      // Check invulnerability for other player
+      if (otherPlayer.invulnerableUntil && now < otherPlayer.invulnerableUntil) {
+        continue; // Other player is invulnerable
+      }
+
+      const otherPos = otherPlayer.position;
+      const dx = movingPos.x - otherPos.x;
+      const dz = movingPos.z - otherPos.z;
+      const distance = Math.sqrt(dx * dx + dz * dz);
+
+      if (distance < COLLISION_RADIUS) {
+        // Collision detected! Apply damage to BOTH players
+        this.applyCollisionDamage(movingPlayer, otherPlayer);
+        movingPlayer.lastCollisionDamageTime = now;
+        otherPlayer.lastCollisionDamageTime = now;
+        return; // Only one collision per update
+      }
+    }
+
+    // Check collisions with NPCs
+    if (this.npcManager) {
+      const npcs = this.npcManager.getAllNPCs();
+      for (const npc of npcs) {
+        // Check NPC cooldown
+        if (now - npc.lastCollisionDamageTime < COLLISION_DAMAGE_COOLDOWN) {
+          continue;
+        }
+
+        const npcPos = npc.position;
+        const dx = movingPos.x - npcPos.x;
+        const dz = movingPos.z - npcPos.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+
+        if (distance < COLLISION_RADIUS) {
+          // Collision detected! Apply damage to BOTH player and NPC
+          this.applyCollisionDamageToNPC(movingPlayer, npc);
+          movingPlayer.lastCollisionDamageTime = now;
+          npc.lastCollisionDamageTime = now;
+          return; // Only one collision per update
+        }
+      }
+    }
+  }
+
+  /**
+   * Apply collision damage to both players
+   */
+  private applyCollisionDamage(player1: PlayerConnection, player2: PlayerConnection): void {
+    const COLLISION_DAMAGE = 10;
+
+    // Damage player 1
+    player1.health = Math.max(0, player1.health - COLLISION_DAMAGE);
+    player1.lastAttackerId = player2.squirrelId;
+
+    // Damage player 2
+    player2.health = Math.max(0, player2.health - COLLISION_DAMAGE);
+    player2.lastAttackerId = player1.squirrelId;
+
+    // Broadcast damage to both players
+    this.broadcastToAll({
+      type: 'entity_damaged',
+      targetId: player1.squirrelId,
+      attackerId: player2.squirrelId,
+      damage: COLLISION_DAMAGE,
+      newHealth: player1.health
+    });
+
+    this.broadcastToAll({
+      type: 'entity_damaged',
+      targetId: player2.squirrelId,
+      attackerId: player1.squirrelId,
+      damage: COLLISION_DAMAGE,
+      newHealth: player2.health
+    });
+
+    // Check for deaths
+    if (player1.health <= 0) {
+      this.handlePlayerDeath(player1, player2);
+    }
+    if (player2.health <= 0) {
+      this.handlePlayerDeath(player2, player1);
+    }
+  }
+
+  /**
+   * Apply collision damage between player and NPC
+   */
+  private async applyCollisionDamageToNPC(player: PlayerConnection, npc: any): Promise<void> {
+    const COLLISION_DAMAGE = 10;
+
+    // Damage player
+    player.health = Math.max(0, player.health - COLLISION_DAMAGE);
+    player.lastAttackerId = npc.id;
+
+    // Damage NPC (via NPCManager) - broadcasts damage automatically
+    if (this.npcManager) {
+      this.npcManager.damageNPC(npc.id, COLLISION_DAMAGE, player.squirrelId);
+    }
+
+    // Broadcast damage to player
+    this.broadcastToAll({
+      type: 'entity_damaged',
+      targetId: player.squirrelId,
+      attackerId: npc.id,
+      damage: COLLISION_DAMAGE,
+      newHealth: player.health
+    });
+
+    // Check for player death (killed by NPC)
+    if (player.health <= 0) {
+      // Can't use handlePlayerDeath since killer is NPC, not PlayerConnection
+      // Handle death manually
+      player.score = Math.max(0, player.score - 2);
+      player.combatStats.deaths += 1;
+      await this.reportScoreToLeaderboard(player);
+
+      // Drop walnuts
+      const droppedWalnuts = player.walnutInventory;
+      if (droppedWalnuts > 0) {
+        try {
+          for (let i = 0; i < droppedWalnuts; i++) {
+            const walnutId = `death-drop-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const walnut: Walnut = {
+              id: walnutId,
+              ownerId: 'game',
+              origin: 'game',
+              hiddenIn: 'ground',
+              location: {
+                x: player.position.x + (Math.random() - 0.5) * 2,
+                y: player.position.y,
+                z: player.position.z + (Math.random() - 0.5) * 2
+              },
+              found: false,
+              timestamp: Date.now()
+            };
+
+            this.mapState.push(walnut);
+            this.activePlayers.forEach((p) => {
+              this.sendMessage(p.socket, {
+                type: 'walnut_dropped',
+                walnutId: walnut.id,
+                position: walnut.location
+              });
+            });
+          }
+          await this.storage.put('mapState', this.mapState);
+          player.walnutInventory = 0;
+        } catch (error) {
+          console.error(`❌ Failed to drop walnuts for ${player.username}:`, error);
+        }
+      }
+
+      // Broadcast death
+      this.broadcastToAll({
+        type: 'player_death',
+        victimId: player.squirrelId,
+        killerId: npc.id,
+        deathPosition: player.position
+      });
+
+      // Respawn after 3 seconds
+      setTimeout(async () => {
+        const spawnPoints = [
+          { x: 0, z: 10 }, { x: 10, z: 0 }, { x: -10, z: 0 }, { x: 0, z: -10 },
+          { x: 15, z: 15 }, { x: -15, z: 15 }, { x: 15, z: -15 }, { x: -15, z: -15 }
+        ];
+        const randomSpawn = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
+
+        player.position = { x: randomSpawn.x, y: 2, z: randomSpawn.z };
+        player.health = player.maxHealth;
+        player.lastAttackerId = null;
+        player.invulnerableUntil = Date.now() + 3000;
+
+        this.broadcastToAll({
+          type: 'player_respawn',
+          playerId: player.squirrelId,
+          position: player.position,
+          health: player.health,
+          walnutInventory: player.walnutInventory
+        });
+      }, 3000);
     }
   }
 }
