@@ -1,6 +1,6 @@
 # 🎮 Hidden Walnuts - MVP Development Plan
 
-**Current Status**: MVP 9 (Combat Completeness & World Resources) - 🎯 **NEXT**
+**Current Status**: MVP 11 (Sound Effects) - 🎯 **NEXT**
 
 ---
 
@@ -21,10 +21,11 @@
 - **MVP 7**: NPC Characters & World Life - Server-side AI with behaviors, walnut gathering, animation/collision fixes
 - **MVP 7.1**: Cloudflare Cost Mitigation & Bot Protection - Turnstile, rate limiting, cost optimizations
 - **MVP 8**: Combat, Health & Resource Management - Projectile throwing, damage/health system, eating walnuts, death/respawn, inventory limits
+- **MVP 9**: Combat Completeness & World Resources - Health bars, NPC AI improvements, tree growth system, collision fixes, comprehensive logging cleanup
 
 ---
 
-## 🎯 MVP 9: Combat Completeness & World Resources (4-6 hours)
+## ✅ MVP 9: Combat Completeness & World Resources (COMPLETE)
 
 **Goal**: Finish the health/combat ecosystem and ensure sustainable resources
 
@@ -104,43 +105,50 @@
 
 ---
 
-## 🔊 MVP 10: Audio Polish (3-5 hours)
+## 🔊 MVP 11: Sound Effects & Audio Enhancement (3-4 hours)
 
-**Goal**: Professional audio experience with ambient soundscapes and character
+**Goal**: Complete audio experience with comprehensive sound effects
 
-### Features
+### Sound Effects to Implement
 
-**1. Additional Sound Effects** (1-2 hours)
-- Walnut impact sounds (hit player, hit ground, hit tree)
-- Character footsteps (vary by surface)
-- Eating/healing sounds
-- Death/respawn audio
-- UI feedback sounds (buttons, notifications)
+**Gameplay Actions:**
+- `thrown_walnut.mp3` - Walnut is thrown
+- `walnut_hit_player.mp3` - Thrown walnut hits NPC or remote player
+- `walnut_miss_player_and_drop_from_tree.mp3` - Thrown walnut misses target OR walnut drops from tree (reuse)
+- `Walnut_found.mp3` - Walnut found/picked up
+- `walnut_eat.mp3` - Local player eats a walnut
 
-**2. Ambient Soundtrack** (1-2 hours)
-- Looping background music (calm forest theme)
-- Dynamic intensity (changes based on combat proximity)
-- Fade in/out transitions
-- Volume controls in settings
+**Player Events:**
+- `walking_localplayer.mp3` - Local player walking (footsteps)
+- `healthboost-localplayer.mp3` - Local player gets health boost via eating
+- `death_sound_localplayer.mp3` - Local player dies
+- `Eliminate_remoteplayer_or_NPC.mp3` - Remote player or NPC is eliminated
 
-**3. Voiceover Work** (1-2 hours)
-- Character selection voice lines (one per character)
-- Combat reactions ("Ouch!", "Gotcha!", "Oh no!")
-- Victory/defeat voiceovers
-- Optional: Narrator intro ("Welcome to the forest...")
+**Ambient/Background:**
+- `game-music-loop.mp3` - Background game music (looping)
+- `forest-ambience.mp3` - Forest ambient sounds
 
-**4. remove any debug logging added for this MVP, both client and worker
+**Note**: Evaluate whether to use both game music AND forest ambience simultaneously. Standard practice: Choose one or layer them carefully (music for intensity, ambience for immersion). Recommend: Use ambient sounds primarily, add subtle music during combat/high-action moments.
 
+### Implementation Tasks
+1. Add all sound files to `/client/public/assets/sounds/`
+2. Extend AudioManager with new sound types and variants
+3. Hook up sounds to appropriate game events
+4. Balance volumes (ambience should be subtle, effects prominent)
+5. Add user controls for music/SFX volume separately
+6. Test audio on mobile (iOS Safari audio requirements)
 
 ### Success Criteria
-- ✅ Rich audio environment (not silent)
-- ✅ Sound effects enhance gameplay feedback
-- ✅ Music sets mood without being intrusive
-- ✅ Characters feel more alive with voices
+- ✅ All gameplay actions have appropriate sound feedback
+- ✅ Walking has footstep sounds (distance-based volume)
+- ✅ Combat feels impactful with hit/miss sounds
+- ✅ Ambient audio creates forest atmosphere
+- ✅ Volume controls work properly
+- ✅ Audio works on iOS Safari
 
 ---
 
-## ⚔️ MVP 11: World Polish and Predators & Threats (6-8 hours)
+## ⚔️ MVP 12: World Polish and Predators & Threats (6-8 hours)
 
 **Goal**: Add AI predators that create PvE danger and excitement
 
@@ -174,7 +182,13 @@
 - ✅ Predators are challenging but fair
 - ✅ Creates "close call" exciting moments
 
----
+## MVP 11.5: voiceover##
+**3. Voiceover Work** (1-2 hours)
+- Character selection voice lines (one per character)
+- Combat reactions ("Ouch!", "Gotcha!", "Oh no!")
+- Victory/defeat voiceovers
+- Optional: Narrator intro ("Welcome to the forest...")
+- remove any debug logging added for this MVP, both client and worker
 
 ## 🔐 MVP 12: Full Authentication (8-12 hours)
 
@@ -267,13 +281,12 @@ These features add polish but aren't essential for core gameplay:
 
 | MVP | Focus | Status |
 |-----|-------|--------|
-| 1.5-8 | Core Game Complete | ✅ Complete |
-| **9** | **Combat Completeness & Resources** | 🎯 **NEXT** |
-| 10 | Audio Polish | Pending |
-| 11 | Predators & Threats | Pending |
-| 12 | Full Authentication | Pending |
-| 13 | Code Cleanup | Pending |
+| 1.5-9 | Core Game Complete | ✅ Complete |
+| **11** | **Sound Effects & Audio** | 🎯 **NEXT** |
+| 12 | Predators & Threats | Pending |
+| 13 | Full Authentication | Pending |
+| 14 | Code Cleanup | Pending |
 
 ---
 
-**Next Step**: Begin MVP 9 (Combat Completeness & World Resources) 🌳
+**Next Step**: Begin MVP 11 (Sound Effects & Audio Enhancement) 🔊
