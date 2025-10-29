@@ -244,6 +244,27 @@ export class AudioManager {
       volume: 0.7,
     });
 
+    // MVP 12: Predator sounds
+    this.loadSound('flying_predator_nearby', {
+      src: ['/sounds/flying_predator_nearby.mp3'],
+      volume: 0.6,
+    });
+
+    this.loadSound('flying_predator_attack', {
+      src: ['/sounds/flying_predator_attack.mp3'],
+      volume: 0.8,
+    });
+
+    this.loadSound('ground_predator_nearby', {
+      src: ['/sounds/ground_predator_nearby.mp3'],
+      volume: 0.6,
+    });
+
+    this.loadSound('ground_predator_attack', {
+      src: ['/sounds/ground_predator_attack.mp3'],
+      volume: 0.8,
+    });
+
     // MVP 11: Ambient forest sounds
     this.loadSound('ambient_forest', {
       src: ['/sounds/forest-ambience.mp3'],

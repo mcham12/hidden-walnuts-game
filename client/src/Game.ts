@@ -122,6 +122,13 @@ export class Game {
 
   // MVP 9: Health bars for NPCs (Map npcId → { container, fill })
   private npcHealthBars: Map<string, { container: HTMLElement; fill: HTMLElement; }> = new Map();
+
+  // MVP 12: Predator System - AI predators (aerial and ground threats)
+  private predators: Map<string, THREE.Group> = new Map();
+  private predatorMixers: Map<string, THREE.AnimationMixer> = new Map();
+  private predatorActions: Map<string, { [key: string]: THREE.AnimationAction }> = new Map();
+  private predatorCurrentAnimations: Map<string, string> = new Map();
+  private predatorSoundCooldowns: Map<string, { nearby: number; attack: number }> = new Map();
   private npcInterpolationBuffers: Map<string, Array<{ position: THREE.Vector3; quaternion: THREE.Quaternion; timestamp: number }>> = new Map();
   private npcPendingUpdates: Map<string, Array<{ position: any; rotationY: number; animation?: string; velocity?: any; behavior?: string; timestamp: number }>> = new Map();
 
@@ -1036,6 +1043,11 @@ export class Game {
 
     // MVP 7: Update NPC animations
     for (const mixer of this.npcMixers.values()) {
+      mixer.update(delta);
+    }
+
+    // MVP 12: Update Predator animations
+    for (const mixer of this.predatorMixers.values()) {
       mixer.update(delta);
     }
 
@@ -1982,6 +1994,13 @@ export class Game {
         // MVP 7: NPC despawned on server, remove from client
         if (data.npcId) {
           this.removeNPC(data.npcId);
+        }
+        break;
+
+      case 'predators_update':
+        // MVP 12: Predator system - batch update for all predators
+        if (data.predators && Array.isArray(data.predators)) {
+          this.updatePredators(data.predators);
         }
         break;
 
@@ -3024,6 +3043,210 @@ export class Game {
         const to = new THREE.Vector3(toPosition.x, toPosition.y + 1.0, toPosition.z); // Aim at chest height
         this.projectileManager.spawnProjectile(from, to, npcId, targetId);
       }
+    }
+  }
+
+  /**
+   * MVP 12: Create predator model and animations
+   */
+  private async createPredator(predatorId: string, type: string, position: { x: number; y: number; z: number }, rotationY: number): Promise<void> {
+    if (this.predators.has(predatorId)) {
+      return; // Already exists
+    }
+
+    // Prevent race condition
+    const loadingKey = `loading_${predatorId}`;
+    if ((this as any)[loadingKey]) {
+      return;
+    }
+    (this as any)[loadingKey] = true;
+
+    try {
+      // Determine model and animation paths based on type
+      const modelPath = `/assets/models/characters/Merged LOD/${type.charAt(0).toUpperCase() + type.slice(1)}_LOD_All.glb`;
+      const isAerial = type === 'cardinal' || type === 'toucan';
+
+      // Animation paths
+      const animPaths = {
+        idle: `/assets/models/characters/Animations/Single/${type.charAt(0).toUpperCase() + type.slice(1)}_Idle_A.glb`,
+        fly: `/assets/models/characters/Animations/Single/${type.charAt(0).toUpperCase() + type.slice(1)}_${isAerial ? 'Fly' : 'Run'}.glb`,
+        attack: `/assets/models/characters/Animations/Single/${type.charAt(0).toUpperCase() + type.slice(1)}_Attack.glb`,
+      };
+
+      // Load model
+      const predatorModel = await this.loadCachedAsset(modelPath);
+      if (!predatorModel) {
+        console.error('❌ Failed to load predator model:', type);
+        delete (this as any)[loadingKey];
+        return;
+      }
+
+      predatorModel.scale.set(1.0, 1.0, 1.0);
+      predatorModel.castShadow = true;
+      predatorModel.receiveShadow = true;
+
+      // Load animations
+      const predatorMixer = new THREE.AnimationMixer(predatorModel);
+      const predatorActions: { [key: string]: THREE.AnimationAction } = {};
+
+      const animPromises = Object.entries(animPaths).map(async ([name, path]) => {
+        try {
+          const clip = await this.loadCachedAnimation(path);
+          if (clip) {
+            predatorActions[name] = predatorMixer.clipAction(clip);
+          }
+        } catch (error) {
+          console.error(`❌ Failed to load predator animation ${name}:`, error);
+        }
+      });
+
+      await Promise.all(animPromises);
+
+      // Position predator
+      predatorModel.position.set(position.x, position.y, position.z);
+      predatorModel.rotation.y = rotationY;
+      predatorModel.visible = true;
+
+      // Store predator data
+      this.predators.set(predatorId, predatorModel);
+      this.predatorMixers.set(predatorId, predatorMixer);
+      this.predatorActions.set(predatorId, predatorActions);
+
+      // Start with idle animation
+      if (predatorActions['idle']) {
+        predatorActions['idle'].reset().setLoop(THREE.LoopRepeat, Infinity).play();
+        this.predatorCurrentAnimations.set(predatorId, 'idle');
+      }
+
+      this.scene.add(predatorModel);
+
+      delete (this as any)[loadingKey];
+    } catch (error) {
+      console.error('❌ Failed to create predator:', predatorId, error);
+      delete (this as any)[loadingKey];
+    }
+  }
+
+  /**
+   * MVP 12: Update all predators from server broadcast
+   */
+  private updatePredators(predatorsData: any[]): void {
+    const currentIds = new Set<string>();
+    const now = Date.now();
+    const NEARBY_DISTANCE = 20.0; // Distance threshold for "nearby" sounds
+    const NEARBY_SOUND_COOLDOWN = 5000; // 5 seconds between "nearby" sounds per predator
+    const ATTACK_SOUND_COOLDOWN = 2000; // 2 seconds between attack sounds per predator
+
+    // Update or create each predator
+    predatorsData.forEach((data: any) => {
+      currentIds.add(data.id);
+
+      const predator = this.predators.get(data.id);
+      if (!predator) {
+        // Create new predator
+        this.createPredator(data.id, data.type, data.position, data.rotationY);
+      } else {
+        // Update existing predator
+        predator.position.set(data.position.x, data.position.y, data.position.z);
+        predator.rotation.y = data.rotationY;
+
+        // MVP 12: Sound effects - Calculate distance to local player
+        if (this.character) {
+          const dx = data.position.x - this.character.position.x;
+          const dz = data.position.z - this.character.position.z;
+          const distance = Math.sqrt(dx * dx + dz * dz);
+
+          const isAerial = data.type === 'cardinal' || data.type === 'toucan';
+
+          // Initialize cooldown tracking for this predator
+          if (!this.predatorSoundCooldowns.has(data.id)) {
+            this.predatorSoundCooldowns.set(data.id, { nearby: 0, attack: 0 });
+          }
+          const cooldowns = this.predatorSoundCooldowns.get(data.id)!;
+
+          // Play "nearby" sound if predator is close
+          if (distance < NEARBY_DISTANCE && now - cooldowns.nearby > NEARBY_SOUND_COOLDOWN) {
+            const soundName = isAerial ? 'flying_predator_nearby' : 'ground_predator_nearby';
+            this.audioManager.playSound('combat', soundName);
+            cooldowns.nearby = now;
+          }
+
+          // Play "attack" sound if predator is attacking the local player
+          if (data.state === 'attacking' && data.targetId === this.playerId && now - cooldowns.attack > ATTACK_SOUND_COOLDOWN) {
+            const soundName = isAerial ? 'flying_predator_attack' : 'ground_predator_attack';
+            this.audioManager.playSound('combat', soundName);
+            cooldowns.attack = now;
+          }
+        }
+
+        // Update animation based on state
+        let targetAnim = 'idle';
+
+        if (data.state === 'attacking') {
+          targetAnim = 'attack';
+        } else if (data.state === 'targeting' || data.state === 'returning') {
+          targetAnim = 'fly'; // 'fly' animation for aerial, 'run' for ground (loaded as 'fly' key)
+        } else {
+          targetAnim = 'idle';
+        }
+
+        // Only change animation if different
+        const currentAnim = this.predatorCurrentAnimations.get(data.id);
+        if (currentAnim !== targetAnim) {
+          const actions = this.predatorActions.get(data.id);
+          if (actions && actions[targetAnim]) {
+            // Stop all animations
+            Object.values(actions).forEach(action => action.stop());
+            // Play new animation
+            const action = actions[targetAnim];
+            if (targetAnim === 'attack') {
+              action.reset().setLoop(THREE.LoopOnce, 1).play();
+              action.clampWhenFinished = true;
+            } else {
+              action.reset().setLoop(THREE.LoopRepeat, Infinity).play();
+            }
+            this.predatorCurrentAnimations.set(data.id, targetAnim);
+          }
+        }
+      }
+    });
+
+    // Remove predators that are no longer in the update (despawned)
+    const toRemove: string[] = [];
+    this.predators.forEach((_, id) => {
+      if (!currentIds.has(id)) {
+        toRemove.push(id);
+      }
+    });
+    toRemove.forEach(id => this.removePredator(id));
+  }
+
+  /**
+   * MVP 12: Remove predator from scene
+   */
+  private removePredator(predatorId: string): void {
+    const predator = this.predators.get(predatorId);
+    if (predator) {
+      // Clean up geometry and materials
+      predator.traverse((child: any) => {
+        if (child.isMesh) {
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach((mat: any) => mat.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        }
+      });
+
+      this.scene.remove(predator);
+      this.predators.delete(predatorId);
+      this.predatorMixers.delete(predatorId);
+      this.predatorActions.delete(predatorId);
+      this.predatorCurrentAnimations.delete(predatorId);
+      this.predatorSoundCooldowns.delete(predatorId);
     }
   }
 
