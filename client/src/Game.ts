@@ -129,6 +129,7 @@ export class Game {
   private predatorActions: Map<string, { [key: string]: THREE.AnimationAction }> = new Map();
   private predatorCurrentAnimations: Map<string, string> = new Map();
   private predatorSoundCooldowns: Map<string, { nearby: number; attack: number }> = new Map();
+  private predatorInterpolationBuffers: Map<string, Array<{ position: THREE.Vector3; quaternion: THREE.Quaternion; timestamp: number }>> = new Map();
   private npcInterpolationBuffers: Map<string, Array<{ position: THREE.Vector3; quaternion: THREE.Quaternion; timestamp: number }>> = new Map();
   private npcPendingUpdates: Map<string, Array<{ position: any; rotationY: number; animation?: string; velocity?: any; behavior?: string; timestamp: number }>> = new Map();
 
@@ -1059,6 +1060,9 @@ export class Game {
 
     // MVP 7: Update NPC interpolation
     this.updateNPCInterpolation(delta);
+
+    // MVP 12: Update Predator interpolation
+    this.updatePredatorInterpolation(delta);
 
     // MVP 8: Update invulnerability (check expiry and update visual)
     if (this.isInvulnerable && Date.now() >= this.invulnerabilityEndTime) {
@@ -2567,6 +2571,75 @@ export class Game {
   }
 
   /**
+   * MVP 12: Buffered interpolation for Predators (Source Engine style)
+   */
+  private updatePredatorInterpolation(_deltaTime: number): void {
+    const currentTime = Date.now();
+    const renderTime = currentTime - this.INTERPOLATION_DELAY;
+
+    for (const [predatorId, buffer] of this.predatorInterpolationBuffers) {
+      const predator = this.predators.get(predatorId);
+      if (!predator || buffer.length < 1) continue;
+
+      // Single state - smoothly move toward it
+      if (buffer.length === 1) {
+        const state = buffer[0];
+        const distance = predator.position.distanceTo(state.position);
+
+        if (distance < 0.01) {
+          predator.position.copy(state.position);
+          predator.quaternion.copy(state.quaternion);
+        } else {
+          const alpha = Math.min(1, _deltaTime * 10);
+          predator.position.lerp(state.position, alpha);
+          predator.quaternion.slerp(state.quaternion, alpha);
+        }
+
+        // Update collision position
+        if (this.collisionSystem) {
+          this.collisionSystem.updateColliderPosition(predatorId, predator.position);
+        }
+        continue;
+      }
+
+      // Find two states to interpolate between
+      let fromState = buffer[0];
+      let toState = buffer[1];
+
+      for (let i = 0; i < buffer.length - 1; i++) {
+        if (buffer[i].timestamp <= renderTime && buffer[i + 1].timestamp >= renderTime) {
+          fromState = buffer[i];
+          toState = buffer[i + 1];
+          break;
+        }
+      }
+
+      if (renderTime >= buffer[buffer.length - 1].timestamp) {
+        fromState = buffer[buffer.length - 2];
+        toState = buffer[buffer.length - 1];
+      }
+
+      // Calculate interpolation factor
+      const timeDelta = toState.timestamp - fromState.timestamp;
+      let t = 0;
+
+      if (timeDelta > 0) {
+        t = (renderTime - fromState.timestamp) / timeDelta;
+        t = Math.max(0, Math.min(1, t));
+      }
+
+      // Interpolate position and rotation
+      predator.position.lerpVectors(fromState.position, toState.position, t);
+      predator.quaternion.slerpQuaternions(fromState.quaternion, toState.quaternion, t);
+
+      // Update collision position
+      if (this.collisionSystem) {
+        this.collisionSystem.updateColliderPosition(predatorId, predator.position);
+      }
+    }
+  }
+
+  /**
    * MVP 7: Update NPC name labels (position above NPC heads)
    */
   private updateNPCNameLabels(): void {
@@ -3169,9 +3242,35 @@ export class Game {
         // Create new predator
         this.createPredator(data.id, data.type, data.position, data.rotationY);
       } else {
-        // Update existing predator
-        predator.position.set(data.position.x, data.position.y, data.position.z);
-        predator.rotation.y = data.rotationY;
+        // Update existing predator with interpolation buffer (Source Engine style)
+        const newQuaternion = new THREE.Quaternion();
+        newQuaternion.setFromEuler(new THREE.Euler(0, data.rotationY, 0));
+        const newState = {
+          position: new THREE.Vector3(data.position.x, data.position.y, data.position.z),
+          quaternion: newQuaternion.clone(),
+          timestamp: now
+        };
+
+        // Get or create buffer
+        let buffer = this.predatorInterpolationBuffers.get(data.id);
+        if (!buffer) {
+          buffer = [];
+          this.predatorInterpolationBuffers.set(data.id, buffer);
+        }
+
+        // Add new state
+        buffer.push(newState);
+
+        // Remove old states
+        const cutoffTime = newState.timestamp - (this.INTERPOLATION_DELAY + 200);
+        while (buffer.length > 2 && buffer[0].timestamp < cutoffTime) {
+          buffer.shift();
+        }
+
+        // Safety: limit buffer size
+        while (buffer.length > this.MAX_BUFFER_SIZE) {
+          buffer.shift();
+        }
 
         // MVP 12: Sound effects - Calculate distance to local player
         if (this.character) {

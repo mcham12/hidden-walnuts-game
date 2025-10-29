@@ -21,6 +21,8 @@ interface Predator {
   targetHeight: number; // Target height for smooth transitions (industry standard)
   currentHeight: number; // Current height for lerping (smooth transitions)
   bobbingOffset: number; // Sine wave bobbing phase offset (Zelda-style)
+  lastDecisionTime: number; // Halo-style: Random decision timing
+  nextDecisionDelay: number; // Halo-style: Randomized delay between decisions
 }
 
 interface PlayerData {
@@ -154,6 +156,8 @@ export class PredatorManager {
       targetHeight: y, // Initialize at spawn height
       currentHeight: y, // Initialize at spawn height
       bobbingOffset: Math.random() * Math.PI * 2, // Random phase offset for natural variation
+      lastDecisionTime: Date.now(),
+      nextDecisionDelay: 2000 + Math.random() * 3000, // Halo-style: 2-5 second random delay
     };
 
     this.predators.set(id, predator);
@@ -252,14 +256,20 @@ export class PredatorManager {
       return;
     }
 
-    // Random patrol movement
+    // Halo-style random patrol: Timed decisions instead of per-frame randomness
     const speed = isAerial ? this.AERIAL_SPEED : this.GROUND_SPEED;
-    const wanderChance = 0.02; // 2% chance per frame to change direction
+    const now = Date.now();
 
-    if (Math.random() < wanderChance) {
+    // Check if it's time for a new decision
+    if (now - predator.lastDecisionTime >= predator.nextDecisionDelay) {
+      // Make new movement decision
       const angle = Math.random() * Math.PI * 2;
       predator.velocity.x = Math.cos(angle) * speed;
       predator.velocity.z = Math.sin(angle) * speed;
+
+      // Set next random delay (2-5 seconds like Halo AI)
+      predator.lastDecisionTime = now;
+      predator.nextDecisionDelay = 2000 + Math.random() * 3000;
     }
 
     // Bounce off world boundaries
