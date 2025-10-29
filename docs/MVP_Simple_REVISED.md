@@ -166,16 +166,17 @@
 - Faster than players (must evade strategically)
 - Can be distracted by throwing walnuts
 
-**3. AI Behaviors**
-- Predators target players with most walnuts
-- Predators avoid NPCs (or treat them equally)
+**3. AI Behaviors and new Player Ranking System**
+- Refactor original NPC behavior and the new Predator behaviors to be aware of (human) player ranking.  Note the current NPC behavior settings for later use.  To do this, we'll also define new player ranks and system first.  Player ranks are based on score range: Rookie (0 to 20), Apprentice (21 to 100), Dabbler (101 to 200), Slick (201 to 300), Maestro (301 to 500), Ninja (501 to 1000), Legend (1001+).  When the player first joins, they should get a special screen overlay (not the normal messaging system)), saying, "Welcome, Rookie!".  As their score progresses, if they achieve a new rank, do the special screen overlay again, and say something like, "You've achieved {player rank} Status!".  NPCs now are not agressive nor throw at Rookies.  Apprentices: original NPC behaviors.  very gradually increase NPC aggression as we increase...we don't want NPCs to be overly aggressive because well also have predators.  
+
+- Predators treat NPCs equally (but based on time since NPC original spawing or respawning, not player Rankings).  Predators don't start attacking players until they are of Dabbler rank, and target higher player ranks progressively more.  When the predators aren't attacking, they fly around or walk around or idle.
+
 - Visual/audio warnings before attack
 - Respawn at random intervals
 
 **4.UX Polish**
 - Add some fun sky elements. (like a sun, not sure what else, open to ideas)
 - better tutorial experience.  research similar games and how to do this, likely different tutorial for desktop (because of key usage) vs ipad/iphone
-
 
 **5. remove any debug logging added for this MVP, both client and worker**
 

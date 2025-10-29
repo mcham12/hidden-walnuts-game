@@ -34,9 +34,9 @@ export class PredatorManager {
 
   // Configuration constants
   private readonly MAX_PREDATORS = 3; // 3 active predators max
-  private readonly SPAWN_CHECK_INTERVAL = 30000; // Check every 30s
+  private readonly SPAWN_CHECK_INTERVAL = 10000; // Check every 10s (faster for testing)
   private readonly MIN_SPAWN_INTERVAL = 60000; // At least 60s between spawns
-  private readonly PREDATOR_SPAWN_CHANCE = 0.3; // 30% chance per check
+  private readonly PREDATOR_SPAWN_CHANCE = 1.0; // 100% chance per check (testing)
 
   // Aerial predators (Cardinal, Toucan)
   private readonly AERIAL_SPEED = 8.0; // Fast movement

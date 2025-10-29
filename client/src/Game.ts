@@ -2000,6 +2000,7 @@ export class Game {
       case 'predators_update':
         // MVP 12: Predator system - batch update for all predators
         if (data.predators && Array.isArray(data.predators)) {
+          console.log('🦅 Received predators update:', data.predators.length, 'predators');
           this.updatePredators(data.predators);
         }
         break;
@@ -3119,6 +3120,7 @@ export class Game {
       }
 
       this.scene.add(predatorModel);
+      console.log('✅ Created predator:', type, 'at', position, 'with', Object.keys(predatorActions).length, 'animations');
 
       delete (this as any)[loadingKey];
     } catch (error) {
@@ -5424,6 +5426,23 @@ export class Game {
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1;
         ctx.stroke();
+      }
+    }
+
+    // MVP 12: Draw Predators on minimap (red squares for danger)
+    for (const [_predatorId, predator] of this.predators) {
+      const pos = worldToMinimap(predator.position.x, predator.position.z);
+
+      // Only draw if within minimap bounds
+      if (pos.x >= 0 && pos.x <= size && pos.y >= 0 && pos.y <= size) {
+        // Draw red square for predators (danger indicator)
+        ctx.fillStyle = '#FF0000'; // Bright red
+        ctx.fillRect(pos.x - 5, pos.y - 5, 10, 10);
+
+        // White border
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(pos.x - 5, pos.y - 5, 10, 10);
       }
     }
 
