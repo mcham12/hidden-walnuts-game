@@ -3274,7 +3274,7 @@ export class Game {
     const now = Date.now();
     const NEARBY_DISTANCE = 20.0; // Distance threshold for "nearby" sounds
     const NEARBY_SOUND_COOLDOWN = 5000; // 5 seconds between "nearby" sounds per predator
-    const ATTACK_SOUND_COOLDOWN = 2000; // 2 seconds between attack sounds per predator
+    const ATTACK_COOLDOWN = 5000; // 5 seconds cooldown (generous - player can escape)
 
     // Update or create each predator
     predatorsData.forEach((data: any) => {
@@ -3333,14 +3333,50 @@ export class Game {
           if (distance < NEARBY_DISTANCE && now - cooldowns.nearby > NEARBY_SOUND_COOLDOWN) {
             const soundName = isAerial ? 'flying_predator_nearby' : 'ground_predator_nearby';
             this.audioManager.playSound('combat', soundName);
+
+            // MMO-style threat warning (for players with sound off)
+            const predatorName = data.type.charAt(0).toUpperCase() + data.type.slice(1);
+            this.toastManager.warning(`⚠️ ${predatorName} nearby!`, 2000);
+
             cooldowns.nearby = now;
           }
 
-          // Play "attack" sound if predator is attacking the local player
-          if (data.state === 'attacking' && data.targetId === this.playerId && now - cooldowns.attack > ATTACK_SOUND_COOLDOWN) {
+          // Predator attack (generous cooldown so player can escape)
+          if (data.state === 'attacking' && data.targetId === this.playerId && now - cooldowns.attack > ATTACK_COOLDOWN) {
             const soundName = isAerial ? 'flying_predator_attack' : 'ground_predator_attack';
             this.audioManager.playSound('combat', soundName);
             cooldowns.attack = now;
+
+            // Reuse bump effect (spin + shake + particles) like player collisions
+            this.triggerBumpEffect();
+
+            // Additional screen shake for impactful hit
+            if (isAerial) {
+              // Aerial predators: Steal walnut + 10 HP damage
+              if (this.vfxManager) {
+                this.vfxManager.screenShake(0.2, 0.4);
+              }
+              this.toastManager.error('🦅 Aerial Attack! -1 walnut, -10 HP!', 2000);
+
+              // Apply damage
+              this.takeDamage(10, data.id);
+
+              // Steal walnut (if player has any)
+              if (this.walnutInventory > 0) {
+                this.walnutInventory = Math.max(0, this.walnutInventory - 1);
+                this.updateWalnutHUD();
+                this.updateMobileButtons();
+              }
+            } else {
+              // Ground predators: 30 HP damage (heavier hit)
+              if (this.vfxManager) {
+                this.vfxManager.screenShake(0.3, 0.6);
+              }
+              this.toastManager.error('🐃 Wildebeest Attack! -30 HP!', 2000);
+
+              // Apply damage
+              this.takeDamage(30, data.id);
+            }
           }
         }
 
