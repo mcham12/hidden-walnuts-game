@@ -3103,6 +3103,17 @@ export class Game {
 
       await Promise.all(animPromises);
 
+      // Calculate bounding box for collision
+      predatorModel.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(predatorModel);
+      const size = box.getSize(new THREE.Vector3());
+      const collisionRadius = Math.max(size.x, size.z) * 0.5;
+
+      // Store metadata
+      predatorModel.userData.type = type;
+      predatorModel.userData.collisionRadius = collisionRadius;
+      predatorModel.userData.isPredator = true;
+
       // Position predator
       predatorModel.position.set(position.x, position.y, position.z);
       predatorModel.rotation.y = rotationY;
@@ -3120,6 +3131,16 @@ export class Game {
       }
 
       this.scene.add(predatorModel);
+
+      // MVP 12: Add predator collision
+      if (this.collisionSystem) {
+        this.collisionSystem.addPlayerCollider(
+          predatorId,
+          predatorModel.position,
+          collisionRadius
+        );
+      }
+
       console.log('✅ Created predator:', type, 'at', position, 'with', Object.keys(predatorActions).length, 'animations');
 
       delete (this as any)[loadingKey];
@@ -3249,6 +3270,11 @@ export class Game {
       this.predatorActions.delete(predatorId);
       this.predatorCurrentAnimations.delete(predatorId);
       this.predatorSoundCooldowns.delete(predatorId);
+
+      // MVP 12: Remove collision
+      if (this.collisionSystem) {
+        this.collisionSystem.removeCollider(predatorId);
+      }
     }
   }
 

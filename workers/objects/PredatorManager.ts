@@ -18,6 +18,9 @@ interface Predator {
   lastAttackTime: number;
   spawnTime: number;
   health: number; // Predators can be killed by players
+  targetHeight: number; // Target height for smooth transitions (industry standard)
+  currentHeight: number; // Current height for lerping (smooth transitions)
+  bobbingOffset: number; // Sine wave bobbing phase offset (Zelda-style)
 }
 
 interface PlayerData {
@@ -38,12 +41,15 @@ export class PredatorManager {
   private readonly MIN_SPAWN_INTERVAL = 60000; // At least 60s between spawns
   private readonly PREDATOR_SPAWN_CHANCE = 1.0; // 100% chance per check (testing)
 
-  // Aerial predators (Cardinal, Toucan)
+  // Aerial predators (Cardinal, Toucan) - Zelda/Monster Hunter style
   private readonly AERIAL_SPEED = 8.0; // Fast movement
   private readonly AERIAL_ATTACK_COOLDOWN = 30000; // 30s between attacks
   private readonly AERIAL_STEAL_AMOUNT = 2; // Steal 1-2 walnuts
-  private readonly AERIAL_FLIGHT_HEIGHT = 15.0; // Fly at this height
-  private readonly AERIAL_DIVE_SPEED = 12.0; // Faster when diving
+  private readonly AERIAL_CRUISE_HEIGHT = 6.0; // Base cruise height (lowered for visibility)
+  private readonly AERIAL_DIVE_HEIGHT = 2.5; // Attack dive height
+  private readonly AERIAL_BOBBING_AMPLITUDE = 1.5; // Sine wave bobbing range (Zelda-style)
+  private readonly AERIAL_BOBBING_SPEED = 2.0; // How fast they bob
+  private readonly AERIAL_HEIGHT_LERP_SPEED = 2.0; // Smooth height transitions (industry standard)
 
   // Ground predators (Wildebeest)
   private readonly GROUND_SPEED = 6.0; // Faster than players (5.0)
@@ -131,7 +137,7 @@ export class PredatorManager {
     // Aerial predators start high, ground predators on terrain
     const isAerial = type === 'cardinal' || type === 'toucan';
     const y = isAerial
-      ? this.AERIAL_FLIGHT_HEIGHT
+      ? this.AERIAL_CRUISE_HEIGHT
       : getTerrainHeight(x, z) + 1.0;
 
     const predator: Predator = {
@@ -145,6 +151,9 @@ export class PredatorManager {
       lastAttackTime: 0,
       spawnTime: Date.now(),
       health: this.PREDATOR_HEALTH,
+      targetHeight: y, // Initialize at spawn height
+      currentHeight: y, // Initialize at spawn height
+      bobbingOffset: Math.random() * Math.PI * 2, // Random phase offset for natural variation
     };
 
     this.predators.set(id, predator);
@@ -190,17 +199,34 @@ export class PredatorManager {
 
     // Update position based on velocity
     predator.position.x += predator.velocity.x * delta;
-    predator.position.y += predator.velocity.y * delta;
     predator.position.z += predator.velocity.z * delta;
 
-    // Keep aerial predators at flight height, ground predators on terrain
+    // Industry-standard aerial/ground movement patterns
     if (isAerial) {
-      predator.position.y = this.AERIAL_FLIGHT_HEIGHT;
+      // Zelda-style: Set target height based on behavior state
+      if (predator.state === 'targeting' || predator.state === 'attacking') {
+        predator.targetHeight = this.AERIAL_DIVE_HEIGHT; // Dive for attack
+      } else {
+        predator.targetHeight = this.AERIAL_CRUISE_HEIGHT; // Cruise height
+      }
+
+      // Smooth height lerp (Monster Hunter style - no instant teleports)
+      const heightDiff = predator.targetHeight - predator.currentHeight;
+      predator.currentHeight += heightDiff * this.AERIAL_HEIGHT_LERP_SPEED * delta;
+
+      // Add sine wave bobbing (Zelda Keese style - makes them visible and dynamic)
+      predator.bobbingOffset += this.AERIAL_BOBBING_SPEED * delta;
+      const bobbing = Math.sin(predator.bobbingOffset) * this.AERIAL_BOBBING_AMPLITUDE;
+
+      // Final height = lerped height + bobbing
+      predator.position.y = predator.currentHeight + bobbing;
     } else {
-      predator.position.y = getTerrainHeight(predator.position.x, predator.position.z) + 1.0;
+      // Ground predators follow terrain height (standard 3D game practice)
+      const terrainY = getTerrainHeight(predator.position.x, predator.position.z);
+      predator.position.y = terrainY + 1.0; // 1 unit above terrain
     }
 
-    // Update rotation to face movement direction
+    // Update rotation to face movement direction (standard for all games)
     if (predator.velocity.x !== 0 || predator.velocity.z !== 0) {
       predator.rotationY = Math.atan2(predator.velocity.x, predator.velocity.z);
     }
@@ -289,7 +315,7 @@ export class PredatorManager {
     }
 
     // Chase target
-    const speed = isAerial ? this.AERIAL_DIVE_SPEED : this.GROUND_SPEED;
+    const speed = isAerial ? this.AERIAL_SPEED : this.GROUND_SPEED;
     const dirX = dx / distance;
     const dirZ = dz / distance;
 
