@@ -2,9 +2,11 @@
 // Updated for MVP 3.5 - Multiple character support
 // MVP 7: NPC System integration
 // MVP 7.1: Turnstile bot protection and rate limiting
+// MVP 12: Predator System integration
 
 import { DurableObject } from 'cloudflare:workers';
 import { NPCManager } from './NPCManager';
+import { PredatorManager } from './PredatorManager';
 import { Env } from '../types';
 
 // Use Cloudflare's built-in types - no need to redefine interfaces
@@ -114,6 +116,11 @@ export default class ForestManager extends DurableObject {
   // MVP 7.1: Reduced from 150ms to 200ms (7Hz → 5Hz) for 25% cost reduction while maintaining smooth movement
   private readonly NPC_UPDATE_INTERVAL = 200; // 200ms = 5 updates/sec (cost-optimized)
 
+  // MVP 12: Predator System
+  predatorManager: PredatorManager;
+  private lastPredatorUpdate: number = 0;
+  private readonly PREDATOR_UPDATE_INTERVAL = 100; // 100ms = 10 updates/sec (predators need responsive AI)
+
   // MVP 9: Tree walnut drop system
   // Purpose: Replenish walnut pool when players/NPCs consume walnuts for health
   // Frequency: 30s-2min random intervals, ONE random tree per drop
@@ -139,6 +146,9 @@ export default class ForestManager extends DurableObject {
 
     // MVP 7: Initialize NPC Manager
     this.npcManager = new NPCManager(this);
+
+    // MVP 12: Initialize Predator Manager
+    this.predatorManager = new PredatorManager();
   }
 
   /**
@@ -275,8 +285,9 @@ export default class ForestManager extends DurableObject {
     // MVP 7.2 CRITICAL: Check if we should even be running (cost optimization)
     const hasPlayers = this.activePlayers.size > 0;
     const hasNPCs = this.npcManager.getNPCCount() > 0;
+    const hasPredators = this.predatorManager.getCount() > 0;
 
-    if (!hasPlayers && !hasNPCs) {
+    if (!hasPlayers && !hasNPCs && !hasPredators) {
       return; // DON'T reschedule - let object hibernate
     }
 
@@ -284,6 +295,12 @@ export default class ForestManager extends DurableObject {
     if (hasNPCs && now - this.lastNPCUpdate >= this.NPC_UPDATE_INTERVAL) {
       this.npcManager.update();
       this.lastNPCUpdate = now;
+    }
+
+    // MVP 12: Update Predators every 100ms (only if players exist - predators target players)
+    if (hasPlayers && now - this.lastPredatorUpdate >= this.PREDATOR_UPDATE_INTERVAL) {
+      this.updatePredators();
+      this.lastPredatorUpdate = now;
     }
 
     // MVP 9: Tree walnut drops (only if players exist - no need to drop for NPCs only)
@@ -1877,6 +1894,60 @@ export default class ForestManager extends DurableObject {
       });
     } catch (error) {
       console.error(`❌ Failed to save position for session ${sessionToken.substring(0, 8)}...:`, error);
+    }
+  }
+
+  /**
+   * MVP 12: Update predator AI
+   * Called every 100ms when players are active
+   */
+  private updatePredators(): void {
+    // Build player data for predator AI
+    const players = new Map<string, any>();
+    this.activePlayers.forEach((player, id) => {
+      players.set(id, {
+        id,
+        username: player.username,
+        position: player.position,
+        inventory: player.walnutInventory,
+      });
+    });
+
+    // Build NPC data for predator AI
+    const npcs = new Map<string, any>();
+    this.npcManager.getAllNPCs().forEach(npc => {
+      npcs.set(npc.id, {
+        id: npc.id,
+        username: `NPC_${npc.id.slice(0, 4)}`,
+        position: npc.position,
+        inventory: npc.walnutInventory || 0,
+      });
+    });
+
+    // Simple terrain height function (flat ground at y=0 for server-side AI)
+    // Client will render predators at correct height
+    const getTerrainHeight = (_x: number, _z: number) => 0;
+
+    // Update all predators
+    this.predatorManager.update(0.1, players, npcs, getTerrainHeight); // 0.1s = 100ms
+
+    // Broadcast predator state to all clients
+    const predators = this.predatorManager.getPredators();
+    if (predators.length > 0) {
+      const message = {
+        type: 'predators_update',
+        predators: predators.map(p => ({
+          id: p.id,
+          type: p.type,
+          position: p.position,
+          rotationY: p.rotationY,
+          state: p.state,
+          targetId: p.targetId,
+        })),
+      };
+
+      // Broadcast to all players
+      this.broadcastToOthers('', message); // Empty string = don't exclude anyone
     }
   }
 
