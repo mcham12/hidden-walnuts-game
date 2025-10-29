@@ -2595,6 +2595,20 @@ export class Game {
           predator.quaternion.slerp(state.quaternion, alpha);
         }
 
+        // Apply terrain clamping (industry standard)
+        const isAerial = predator.userData.isAerial;
+        if (isAerial) {
+          // Aerial: Clamp above terrain (Warcraft 3/StarCraft 2 style)
+          const terrainY = this.getTerrainHeightAtPosition(predator.position.x, predator.position.z);
+          const minHeight = terrainY + 1.0;
+          if (predator.position.y < minHeight) {
+            predator.position.y = minHeight;
+          }
+        } else {
+          // Ground: Position on terrain (raycasting like NPCs)
+          predator.position.y = this.positionRemotePlayerOnGround(predator, predator.position.x, predator.position.z);
+        }
+
         // Update collision position
         if (this.collisionSystem) {
           this.collisionSystem.updateColliderPosition(predatorId, predator.position);
@@ -2631,6 +2645,20 @@ export class Game {
       // Interpolate position and rotation
       predator.position.lerpVectors(fromState.position, toState.position, t);
       predator.quaternion.slerpQuaternions(fromState.quaternion, toState.quaternion, t);
+
+      // Apply terrain clamping (industry standard for aerial/ground units)
+      const isAerial = predator.userData.isAerial;
+      if (isAerial) {
+        // Aerial: Clamp above terrain to prevent clipping (Warcraft 3/StarCraft 2 style)
+        const terrainY = this.getTerrainHeightAtPosition(predator.position.x, predator.position.z);
+        const minHeight = terrainY + 1.0;
+        if (predator.position.y < minHeight) {
+          predator.position.y = minHeight;
+        }
+      } else {
+        // Ground: Position on terrain like NPCs (raycasting)
+        predator.position.y = this.positionRemotePlayerOnGround(predator, predator.position.x, predator.position.z);
+      }
 
       // Update collision position
       if (this.collisionSystem) {
@@ -3176,19 +3204,34 @@ export class Game {
 
       await Promise.all(animPromises);
 
-      // Calculate bounding box for collision
+      // Calculate bounding box for collision and ground offset (industry standard)
       predatorModel.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(predatorModel);
       const size = box.getSize(new THREE.Vector3());
       const collisionRadius = Math.max(size.x, size.z) * 0.5;
+      const groundOffset = -box.min.y; // Standard: Distance from model origin to feet
 
       // Store metadata
       predatorModel.userData.type = type;
       predatorModel.userData.collisionRadius = collisionRadius;
       predatorModel.userData.isPredator = true;
+      predatorModel.userData.isAerial = isAerial;
+      predatorModel.userData.groundOffset = groundOffset;
+      predatorModel.userData.size = size;
 
-      // Position predator
-      predatorModel.position.set(position.x, position.y, position.z);
+      // Position predator using industry standard terrain handling
+      let finalY;
+      if (isAerial) {
+        // Aerial units: Use flying height but clamp above terrain (Warcraft 3/StarCraft 2 style)
+        const terrainY = this.getTerrainHeightAtPosition(position.x, position.z);
+        const minHeight = terrainY + 1.0; // 1 unit clearance above terrain
+        finalY = Math.max(position.y, minHeight);
+      } else {
+        // Ground units: Raycast to terrain like NPCs/players
+        finalY = this.positionRemotePlayerOnGround(predatorModel, position.x, position.z);
+      }
+
+      predatorModel.position.set(position.x, finalY, position.z);
       predatorModel.rotation.y = rotationY;
       predatorModel.visible = true;
 
@@ -4132,6 +4175,29 @@ export class Game {
 
     // Fallback to heightmap
     return getTerrainHeight(x, z) + this.characterGroundOffset;
+  }
+
+  /**
+   * MVP 12: Get terrain height at position (helper for aerial units)
+   */
+  private getTerrainHeightAtPosition(x: number, z: number): number {
+    if (!this.terrain) {
+      return getTerrainHeight(x, z);
+    }
+
+    // Raycast from above downward to find terrain
+    const rayOrigin = new THREE.Vector3(x, 100, z);
+    const rayDirection = new THREE.Vector3(0, -1, 0);
+    this.raycaster.set(rayOrigin, rayDirection);
+
+    const intersects = this.raycaster.intersectObject(this.terrain, false);
+
+    if (intersects.length > 0) {
+      return intersects[0].point.y;
+    }
+
+    // Fallback to heightmap
+    return getTerrainHeight(x, z);
   }
 
   /**
