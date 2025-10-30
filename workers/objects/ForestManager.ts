@@ -1567,7 +1567,7 @@ export default class ForestManager extends DurableObject {
           console.log(`🎉 Player ${playerConnection.username} ranked up to ${sessionData.newTitle.name}!`);
 
           try {
-            playerConnection.websocket.send(JSON.stringify({
+            playerConnection.socket.send(JSON.stringify({
               type: 'rank_up',
               titleId: sessionData.newTitle.id,
               titleName: sessionData.newTitle.name,
@@ -1576,6 +1576,10 @@ export default class ForestManager extends DurableObject {
           } catch (sendError) {
             console.warn(`⚠️ Failed to send rank-up notification to ${playerConnection.username}:`, sendError);
           }
+
+          // MVP 12: Update player's title on connection object
+          playerConnection.titleId = sessionData.newTitle.id;
+          playerConnection.titleName = sessionData.newTitle.name;
         }
       } catch (error) {
         console.warn(`⚠️ Failed to update session score for ${playerConnection.username}:`, error);
