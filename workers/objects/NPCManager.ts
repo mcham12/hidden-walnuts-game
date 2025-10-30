@@ -790,12 +790,14 @@ export class NPCManager {
     let collided = false;
 
     // Check landmark trees first (not in forestObjects array)
+    // IMPORTANT: These coordinates MUST match client/src/Game.ts createLandmark() calls (lines 4442-4454)
+    // Client uses CollisionSystem.addTreeMeshCollider() with Octree for precise collision
     const landmarks = [
-      { x: 0, z: 0 },    // Origin
-      { x: 0, z: -40 },  // North
-      { x: 0, z: 40 },   // South
-      { x: 40, z: 0 },   // East
-      { x: -40, z: 0 }   // West
+      { x: 0, z: 0 },     // Origin
+      { x: 0, z: -80 },   // North (was -40, WRONG - NPCs were clipping through)
+      { x: 0, z: 80 },    // South (was 40, WRONG)
+      { x: 80, z: 0 },    // East (was 40, WRONG)
+      { x: -80, z: 0 }    // West (was -40, WRONG)
     ];
     const LANDMARK_RADIUS = 0.8; // Landmark trees are larger
 

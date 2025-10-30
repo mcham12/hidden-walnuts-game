@@ -48,7 +48,7 @@ export class PredatorManager {
   private lastSpawnCheck = 0;
 
   // Configuration constants
-  private readonly MAX_PREDATORS = 3; // 3 active predators max
+  private readonly MAX_PREDATORS = 2; // 3 active predators max
   private readonly SPAWN_CHECK_INTERVAL = 10000; // Check every 10s (faster for testing)
   private readonly MIN_SPAWN_INTERVAL = 60000; // At least 60s between spawns
   private readonly PREDATOR_SPAWN_CHANCE = 1.0; // 100% chance per check (testing)
