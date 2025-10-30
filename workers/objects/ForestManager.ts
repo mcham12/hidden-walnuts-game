@@ -712,6 +712,7 @@ export default class ForestManager extends DurableObject {
         const sessionInfoResponse = await squirrelSession.fetch(new Request('http://session/session-info'));
         if (sessionInfoResponse.ok) {
           const sessionInfo = await sessionInfoResponse.json() as any;
+          console.log(`📋 Session info for ${username}:`, JSON.stringify(sessionInfo));
           const timeSinceDisconnect = sessionInfo.lastDisconnectAt
             ? Date.now() - sessionInfo.lastDisconnectAt
             : Infinity;
@@ -730,6 +731,7 @@ export default class ForestManager extends DurableObject {
           // MVP 12: Check if this is first join (for welcome message)
           if (sessionInfo.isFirstJoin === true) {
             isFirstJoin = true;
+            console.log(`✨ First join detected for ${username} - will show welcome overlay`);
           }
         }
       } catch (error) {
@@ -804,6 +806,7 @@ export default class ForestManager extends DurableObject {
 
       // Send initial data with spawn position (MVP 6: may be saved position or default)
       // MVP 12: Include title information in world_state
+      console.log(`🌍 Sending world_state to ${username} - isFirstJoin: ${isFirstJoin}, titleId: ${titleId}, titleName: ${titleName}`);
       await this.sendWorldState(socket, playerConnection.position, playerConnection.rotationY, titleId, titleName, isFirstJoin);
       await this.sendExistingPlayers(socket, squirrelId);
 

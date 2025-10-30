@@ -1790,17 +1790,22 @@ export class Game {
         }
 
         // MVP 12: Handle initial title data and show welcome message if first join
+        console.log(`🎮 CLIENT: Received world_state - isFirstJoin: ${data.isFirstJoin}, titleId: ${data.titleId}, titleName: ${data.titleName}`);
         if (data.titleId && data.titleName) {
           this.playerTitleName = data.titleName;
 
           // Show welcome overlay if this is first join
           if (data.isFirstJoin) {
+            console.log(`🎉 CLIENT: Showing welcome overlay for ${data.titleName}`);
             this.rankOverlay.showWelcome(data.titleName);
+          } else {
+            console.log(`📝 CLIENT: Not first join, skipping welcome overlay`);
           }
         } else {
           // Fallback: Calculate title from score if not provided
           const currentTitle = getPlayerTitle(this.playerScore);
           this.playerTitleName = currentTitle.name;
+          console.log(`⚠️ CLIENT: No title in world_state, using fallback: ${currentTitle.name}`);
         }
         break;
 

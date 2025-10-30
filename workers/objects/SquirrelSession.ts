@@ -117,10 +117,12 @@ export default class SquirrelSession {
           score: 0
         };
 
+        console.log(`✨ NEW SESSION CREATED for ${squirrelId} - isFirstJoin: true`);
         await this.saveSession();
       } else {
         // Update existing session
         this.sessionState.lastActivity = Date.now();
+        console.log(`♻️ EXISTING SESSION for ${squirrelId} - isFirstJoin: ${this.sessionState.isFirstJoin}`);
         await this.saveSession();
       }
 
