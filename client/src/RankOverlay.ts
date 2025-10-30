@@ -52,6 +52,7 @@ export class RankOverlay {
     this.titleElement.style.animation = 'pulse 2s infinite';
     this.titleElement.style.maxWidth = '90%'; // Prevent overflow on narrow screens
     this.titleElement.style.wordWrap = 'break-word';
+    // Flexbox alignItems: center handles horizontal centering
 
     // Create description element (subtitle)
     this.descriptionElement = document.createElement('div');
@@ -62,6 +63,7 @@ export class RankOverlay {
     this.descriptionElement.style.fontFamily = 'Arial, sans-serif';
     this.descriptionElement.style.maxWidth = '85%'; // Narrower than title
     this.descriptionElement.style.wordWrap = 'break-word';
+    // Flexbox alignItems: center handles horizontal centering
 
     // Add pulse animation CSS
     const style = document.createElement('style');

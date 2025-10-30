@@ -5665,11 +5665,7 @@ export class Game {
     const TREE_DISPLAY_DURATION = 30000; // 30 seconds
 
     // Clean up old trees
-    const oldCount = this.recentTrees.length;
     this.recentTrees = this.recentTrees.filter(tree => now - tree.timestamp < TREE_DISPLAY_DURATION);
-    if (oldCount !== this.recentTrees.length) {
-      console.log(`🌳 Minimap: Cleaned up ${oldCount - this.recentTrees.length} expired trees, ${this.recentTrees.length} remaining`);
-    }
 
     // Draw tree icons
     for (const tree of this.recentTrees) {
@@ -5934,14 +5930,6 @@ export class Game {
     // Add label for player-hidden walnut
     const label = this.createLabel(labelText, labelColor);
     this.walnutLabels.set(walnutId, label);
-
-    // MVP 12: Track tree on minimap for 30 seconds
-    this.recentTrees.push({
-      x: walnutGroup.position.x,
-      z: walnutGroup.position.z,
-      timestamp: Date.now()
-    });
-    console.log(`🌳 Tree tracked on minimap at (${walnutGroup.position.x.toFixed(1)}, ${walnutGroup.position.z.toFixed(1)}) - total: ${this.recentTrees.length}`);
 
     // MVP 8: Server will decrement inventory and send inventory_update
     // (Removed optimistic decrement to prevent desync)
@@ -7351,6 +7339,16 @@ export class Game {
           collisionRadius,
           collisionHeight
         );
+      }
+
+      // MVP 12: Track tree on minimap for 30 seconds (local player only)
+      if (data.tree.ownerId === this.playerId) {
+        this.recentTrees.push({
+          x: data.tree.x,
+          z: data.tree.z,
+          timestamp: Date.now()
+        });
+        console.log(`🌳 Tree tracked on minimap at (${data.tree.x.toFixed(1)}, ${data.tree.z.toFixed(1)}) - total: ${this.recentTrees.length}`);
       }
 
       // Animate growth: 0 → full scale over 3 seconds with easing
