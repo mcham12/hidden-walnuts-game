@@ -2044,6 +2044,13 @@ export class Game {
         }
         break;
 
+      case 'predator_annoyance_update':
+        // MVP 12: Update wildebeest annoyance bar
+        if (data.predatorId && typeof data.annoyanceLevel === 'number') {
+          this.updateWildebeestAnnoyanceBar(data.annoyanceLevel, data.fleeing || false);
+        }
+        break;
+
       case 'npc_throw':
         // MVP 7: NPC threw walnut, spawn projectile animation
         if (data.npcId && data.fromPosition && data.toPosition) {
@@ -4219,6 +4226,26 @@ export class Game {
 
     if (healthText) {
       healthText.textContent = `${Math.round(this.health)}/${this.MAX_HEALTH}`;
+    }
+  }
+
+  /**
+   * MVP 12: Update wildebeest annoyance bar
+   */
+  private updateWildebeestAnnoyanceBar(annoyanceLevel: number, fleeing: boolean): void {
+    const annoyanceBar = document.getElementById('wildebeest-annoyance-bar');
+    const annoyanceFill = document.getElementById('wildebeest-annoyance-fill');
+
+    if (!annoyanceBar || !annoyanceFill) return;
+
+    if (fleeing || annoyanceLevel >= 4) {
+      // Wildebeest is fleeing - hide bar
+      annoyanceBar.style.display = 'none';
+    } else {
+      // Show bar and update fill (0-4 = 0-100%)
+      annoyanceBar.style.display = 'block';
+      const annoyancePercent = (annoyanceLevel / 4) * 100;
+      annoyanceFill.style.width = `${annoyancePercent}%`;
     }
   }
 

@@ -176,7 +176,7 @@
 
 **4.UX Polish**
 - Add some fun sky elements: sun.png and cloud.png.  implement industry-standard approaches for sun and clouds for a game like mine.  probably 1 max 2 clouds at any given time.  sun always or usually visible, nothing fancy.
-- better "how to play" instructional experience.  research similar games and how to do this, likely different tutorial for desktop (because of key usage) vs ipad/iphone.  Or a tab between desktop/mobile browser tutorials on the same experience if people are curious.  my personal opinion: when a new player is detected (not returning), provide a tempting (glowing/throbbing) UI control for "how to play" or something similar.  then try to show key game mechanics on one screen vs "nexting" through a bunch of screens.  for desktop, use Key icons for showing how to do the actions.  for mobile, somehow illustrate screen touch/drag to move, then show the actual onscreen buttons for throw/eat/hide etc.  Key things to cover: move, get walnut, throw walnut (to hit other players and wildebeest, and to distract aerial predators, hide walnut (which might grow into a tree)  Get rid of the existing tutorial click-through for desktop, and get rid of the key legend UI feature on desktop.  add a way to re-invoke the "how to play" dialog on desktop that pauses gameplay while you read it.  on mobile browsers, repurpose the existing "mobile controls" feature to convey the same info as in the desktop experience.  the "mobile controls" feature will need to be bigger than current state.  also need a way to re-invoke the "how to play" UI on mobile, and also pause gameplay.  Record our final design in a document in the docs/ before proceeding with implementation.
+- better "how to play" instructional experience.  research similar games and how to do this, likely different tutorial for desktop (because of key usage) vs ipad/iphone.  Or a tab between desktop/mobile browser tutorials on the same experience if people are curious.  my personal opinion: when a new player is detected (not returning), provide a tempting (glowing/throbbing) UI control for "how to play" or something similar.  then try to show key game mechanics on one screen vs "nexting" through a bunch of screens.  for desktop, maybe use Key icons for showing how to do the actions.  for mobile, somehow illustrate screen touch/drag to move, then show the actual onscreen buttons for throw/eat/hide etc.  Key things to cover: move, get walnut, throw walnut (to hit other players and wildebeest, and to distract aerial predators, hide walnut (which might grow into a tree)  Get rid of the existing tutorial click-through for desktop, and get rid of the key legend UI feature on desktop.  add a way to re-invoke the "how to play" dialog on desktop that pauses gameplay while you read it.  on mobile browsers, repurpose the existing "mobile controls" feature to convey the same info as in the desktop experience.  the "mobile controls" feature will need to be bigger than current state.  also need a way to re-invoke the "how to play" UI on mobile, and also pause gameplay.  Record our final design in a document in the docs/ before proceeding with implementation.
 
 **5. revert temporary changes made to facilitate testing
 - change tree growth time back to 2 minutes
@@ -199,12 +199,18 @@
 - remove any debug logging added for this MVP, both client and worker
 
 
-**2. Walnut hiding bonus
+**2. Walnut hiding bonus**
 - add a special point bonus for hiding 50 walnuts, e.g. 50 points
 - adjust tree growing mechanism because we will be encouraging walnut hiding now: instead of current state: every walnut hidden by a given player will grow to a tree based on a timer, move to future state: only the 10th, 20th, 30th, etc hidden walnut hidden by the player will grow to be a tree (subject to the same time delay as before)
 - the bonus is only awarded if there are 50 walnuts currently hidden by that player (so if other players pick up walnuts hidden by the player, they are removed from the count for this awared.  also if a walnut grows into a tree it is removed from the count for this award).  
 - adjust tutorial to highlight this new walnut hiding bonus
 - Make a special screen overlay UI ( not the standard "toast" message) announcing the bonus.  be creative.
+
+**3. Tune NPC and Predator behavior**
+- reduce agression of NPCs against human players...still slightly increase as the localplayer rank increases, but lessen the NPC agression at every level
+
+**4. Remove any debug logging added during this MVP, both worker and client**
+
 ---
 
 ## 🎮 MVP 14: Game Admin System & Dashboard (8-10 hours)
