@@ -192,9 +192,7 @@
       #walnut-hud hr {
         display: none !important;
       }
-      #walnut-hud div:nth-child(4) {
-        display: none !important; /* Instructions text */
-      }
+      /* MVP 12: Removed nth-child(4) hide rule - health bar is now 4th child after adding title */
       .walnut-icon {
         display: inline-block;
         width: 20px;
@@ -1289,10 +1287,7 @@
         #walnut-hud hr {
           display: none !important; /* Hide separator on mobile */
         }
-        /* Hide instructions text on mobile (4th div contains instructions) */
-        #walnut-hud div:nth-child(4) {
-          display: none !important;
-        }
+        /* MVP 12: Removed nth-child(4) hide rule - health bar is now 4th child after adding title */
 
         /* MVP 8 Phase 3: Health bar responsive for tablets/phones */
         #health-container {

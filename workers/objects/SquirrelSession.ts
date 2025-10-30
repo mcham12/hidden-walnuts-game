@@ -193,13 +193,20 @@ export default class SquirrelSession {
       });
     }
 
+    // MVP 12: Calculate current title from score
+    const currentTitle = getPlayerTitle(this.playerStats?.score || 0);
+
     return new Response(JSON.stringify({
       squirrelId: this.sessionState.squirrelId,
       position: this.sessionState.position,
       rotationY: this.sessionState.rotationY,
       stats: this.playerStats,
       joinedAt: this.sessionState.joinedAt,
-      lastActivity: this.sessionState.lastActivity
+      lastActivity: this.sessionState.lastActivity,
+      lastDisconnectAt: this.sessionState.lastDisconnectAt,
+      titleId: currentTitle.id,
+      titleName: currentTitle.name,
+      isFirstJoin: this.sessionState.isFirstJoin
     }), {
       headers: { "Content-Type": "application/json" }
     });
