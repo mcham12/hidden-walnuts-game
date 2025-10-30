@@ -272,6 +272,9 @@ export class Game {
   private lastCollisionDamageTime: number = 0;
   private lastRegenTime: number = 0;
   private isDead: boolean = false;
+  // MVP 12: Cooldown for "can't eat when dead" message (prevent spam)
+  private lastDeadEatMessageTime: number = 0;
+  private readonly DEAD_EAT_MESSAGE_COOLDOWN = 3000; // 3 seconds
   // MVP 8: Spawn protection after respawn
   private isInvulnerable: boolean = false;
   private invulnerabilityEndTime: number = 0;
@@ -6209,7 +6212,12 @@ export class Game {
   private eatWalnut(): void {
     // Check if player can eat
     if (this.isDead) {
-      this.toastManager.warning('Cannot eat while dead!');
+      // MVP 12: Add cooldown to prevent spam
+      const now = Date.now();
+      if (now - this.lastDeadEatMessageTime >= this.DEAD_EAT_MESSAGE_COOLDOWN) {
+        this.toastManager.warning('Cannot eat while dead!');
+        this.lastDeadEatMessageTime = now;
+      }
       return;
     }
 
