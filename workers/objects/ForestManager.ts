@@ -1091,6 +1091,27 @@ export default class ForestManager extends DurableObject {
         playerConnection.lastThrowTime = throwTime;
         playerConnection.walnutInventory--;
 
+        // MVP 12: Distract visible aerial predators with thrown walnut
+        if (data.visiblePredators && Array.isArray(data.visiblePredators) && data.visiblePredators.length > 0) {
+          const distractedIds: string[] = [];
+
+          for (const predatorId of data.visiblePredators) {
+            const success = this.predatorManager.distractPredator(predatorId, `walnut-${throwTime}`);
+            if (success) {
+              distractedIds.push(predatorId);
+            }
+          }
+
+          // Broadcast distraction to all clients for visual feedback
+          if (distractedIds.length > 0) {
+            this.broadcastToAll({
+              type: 'predators_distracted',
+              predatorIds: distractedIds,
+              throwerId: playerConnection.squirrelId
+            });
+          }
+        }
+
         // Broadcast throw event to ALL clients (including thrower for visual feedback)
         const throwEvent = {
           type: 'throw_event',
