@@ -7323,8 +7323,9 @@ export class Game {
         }
       });
 
-      // Position tree
-      tree.position.set(data.tree.x, data.tree.y, data.tree.z);
+      // Position tree (resample terrain height for accurate placement on slopes)
+      const treeY = getTerrainHeight(data.tree.x, data.tree.z);
+      tree.position.set(data.tree.x, treeY, data.tree.z);
       tree.scale.set(0, 0, 0); // Start at zero scale
 
       this.scene.add(tree);
@@ -7335,7 +7336,7 @@ export class Game {
         const collisionHeight = 5 * data.tree.scale;
         this.collisionSystem.addTreeCollider(
           data.tree.id,
-          new THREE.Vector3(data.tree.x, data.tree.y, data.tree.z),
+          new THREE.Vector3(data.tree.x, treeY, data.tree.z),
           collisionRadius,
           collisionHeight
         );

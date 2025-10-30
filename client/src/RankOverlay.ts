@@ -52,7 +52,7 @@ export class RankOverlay {
     this.titleElement.style.animation = 'pulse 2s infinite';
     this.titleElement.style.wordWrap = 'break-word';
     this.titleElement.style.width = '90%'; // Use width instead of maxWidth for consistent centering
-    this.titleElement.style.margin = '0'; // Remove any default margins
+    this.titleElement.style.margin = '0 auto'; // Center horizontally, preserve vertical spacing
 
     // Create description element (subtitle)
     this.descriptionElement = document.createElement('div');
@@ -63,7 +63,7 @@ export class RankOverlay {
     this.descriptionElement.style.fontFamily = 'Arial, sans-serif';
     this.descriptionElement.style.wordWrap = 'break-word';
     this.descriptionElement.style.width = '85%'; // Use width instead of maxWidth for consistent centering
-    this.descriptionElement.style.margin = '0'; // Remove any default margins
+    this.descriptionElement.style.margin = '0 auto'; // Center horizontally, preserve vertical spacing
 
     // Add pulse animation CSS
     const style = document.createElement('style');

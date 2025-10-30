@@ -2188,7 +2188,7 @@ export default class ForestManager extends DurableObject {
       id: treeId,
       type: 'tree',
       x: treePosition.x,
-      y: treePosition.y,
+      y: 0, // Always 0 - client will resample terrain height via raycasting
       z: treePosition.z,
       scale: 0.8 + Math.random() * 0.4, // 0.8-1.2 scale (varied sizes)
       modelVariant: 1 // Tree_01.glb
