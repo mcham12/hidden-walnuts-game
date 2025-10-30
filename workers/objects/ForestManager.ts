@@ -44,6 +44,10 @@ interface PlayerConnection {
   };
   invulnerableUntil: number | null; // MVP 8: Timestamp when respawn invulnerability expires
   lastCollisionDamageTime: number; // Cooldown for collision damage
+
+  // MVP 12: Player Ranking System
+  titleId: string; // Player's current title ID ('rookie', 'apprentice', etc.)
+  titleName: string; // Player's current title name ('Rookie', 'Apprentice', etc.)
 }
 
 interface Walnut {
@@ -595,7 +599,10 @@ export default class ForestManager extends DurableObject {
       };
 
       // Send current world state with saved position
-      await this.sendWorldState(socket, existingPlayer.position, existingPlayer.rotationY);
+      // MVP 12: For reconnections, fetch title from playerConnection (already stored)
+      const titleId = (existingPlayer as any).titleId || 'rookie';
+      const titleName = (existingPlayer as any).titleName || 'Rookie';
+      await this.sendWorldState(socket, existingPlayer.position, existingPlayer.rotationY, titleId, titleName, false);
       await this.sendExistingPlayers(socket, squirrelId);
 
       // MVP 8 FIX: Send initial inventory and health state to sync UI (prevents grayed-out buttons on reconnect)
@@ -683,14 +690,23 @@ export default class ForestManager extends DurableObject {
           deaths: 0
         },
         invulnerableUntil: Date.now() + 3000, // 3 seconds spawn protection
-        lastCollisionDamageTime: 0 // No collision damage cooldown initially
+        lastCollisionDamageTime: 0, // No collision damage cooldown initially
+        // MVP 12: Player Ranking System (will be updated from session below)
+        titleId: 'rookie',
+        titleName: 'Rookie'
       };
 
       // MVP 9: Check for recent disconnect and restore score (.io game pattern)
+      // MVP 12: Also fetch title information from SquirrelSession
       // Industry standard: 5-minute reconnection window
       const RECONNECT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
       const squirrelSessionId = this.env.SQUIRREL.idFromName(squirrelId);
       const squirrelSession = this.env.SQUIRREL.get(squirrelSessionId);
+
+      // MVP 12: Store title data for sending in world_state
+      let titleId = 'rookie';
+      let titleName = 'Rookie';
+      let isFirstJoin = false;
 
       try {
         const sessionInfoResponse = await squirrelSession.fetch(new Request('http://session/session-info'));
@@ -704,10 +720,25 @@ export default class ForestManager extends DurableObject {
             playerConnection.score = sessionInfo.stats.score;
           } else if (timeSinceDisconnect < Infinity) {
           }
+
+          // MVP 12: Extract title information from session (SquirrelSession calculates title from score)
+          if (sessionInfo.titleId && sessionInfo.titleName) {
+            titleId = sessionInfo.titleId;
+            titleName = sessionInfo.titleName;
+          }
+
+          // MVP 12: Check if this is first join (for welcome message)
+          if (sessionInfo.isFirstJoin === true) {
+            isFirstJoin = true;
+          }
         }
       } catch (error) {
         console.warn(`⚠️ Could not restore session for ${username}:`, error);
       }
+
+      // MVP 12: Store title info on playerConnection for future use
+      playerConnection.titleId = titleId;
+      playerConnection.titleName = titleName;
 
 
       this.activePlayers.set(squirrelId, playerConnection);
@@ -772,7 +803,8 @@ export default class ForestManager extends DurableObject {
       };
 
       // Send initial data with spawn position (MVP 6: may be saved position or default)
-      await this.sendWorldState(socket, playerConnection.position, playerConnection.rotationY);
+      // MVP 12: Include title information in world_state
+      await this.sendWorldState(socket, playerConnection.position, playerConnection.rotationY, titleId, titleName, isFirstJoin);
       await this.sendExistingPlayers(socket, squirrelId);
 
       // MVP 8 FIX: Send initial inventory and health state to sync UI (prevents grayed-out buttons)
@@ -1395,7 +1427,10 @@ export default class ForestManager extends DurableObject {
   private async sendWorldState(
     socket: WebSocket,
     spawnPosition: { x: number; y: number; z: number },
-    spawnRotationY: number
+    spawnRotationY: number,
+    titleId?: string,
+    titleName?: string,
+    isFirstJoin?: boolean
   ): Promise<void> {
     await this.initializeWorld();
 
@@ -1414,7 +1449,11 @@ export default class ForestManager extends DurableObject {
       forestObjects: this.forestObjects,
       // MVP 6: Send spawn position so returning players spawn at last location
       spawnPosition,
-      spawnRotationY
+      spawnRotationY,
+      // MVP 12: Send player title information
+      titleId,
+      titleName,
+      isFirstJoin
     });
   }
 
@@ -1507,7 +1546,8 @@ export default class ForestManager extends DurableObject {
       const squirrelSession = this.env.SQUIRREL.get(squirrelSessionId);
 
       try {
-        await squirrelSession.fetch(new Request('http://session/update-score', {
+        // MVP 12: Check for rank-ups when updating score
+        const sessionResponse = await squirrelSession.fetch(new Request('http://session/update-score', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1515,6 +1555,24 @@ export default class ForestManager extends DurableObject {
             score: playerConnection.score
           })
         }));
+
+        // MVP 12: Parse response to check for rank-up
+        const sessionData = await sessionResponse.json() as any;
+        if (sessionData.rankedUp && sessionData.newTitle) {
+          // Player ranked up! Send rank-up notification via WebSocket
+          console.log(`🎉 Player ${playerConnection.username} ranked up to ${sessionData.newTitle.name}!`);
+
+          try {
+            playerConnection.websocket.send(JSON.stringify({
+              type: 'rank_up',
+              titleId: sessionData.newTitle.id,
+              titleName: sessionData.newTitle.name,
+              description: sessionData.newTitle.description
+            }));
+          } catch (sendError) {
+            console.warn(`⚠️ Failed to send rank-up notification to ${playerConnection.username}:`, sendError);
+          }
+        }
       } catch (error) {
         console.warn(`⚠️ Failed to update session score for ${playerConnection.username}:`, error);
       }
@@ -1902,7 +1960,7 @@ export default class ForestManager extends DurableObject {
    * Called every 100ms when players are active
    */
   private updatePredators(): void {
-    // Build player data for predator AI
+    // MVP 12: Build player data for predator AI (include score for rank-based targeting)
     const players = new Map<string, any>();
     this.activePlayers.forEach((player, id) => {
       players.set(id, {
@@ -1910,10 +1968,12 @@ export default class ForestManager extends DurableObject {
         username: player.username,
         position: player.position,
         inventory: player.walnutInventory,
+        score: player.score, // MVP 12: For rank-based targeting
+        isPlayer: true // MVP 12: Distinguish players from NPCs
       });
     });
 
-    // Build NPC data for predator AI
+    // MVP 12: Build NPC data for predator AI (include spawn time for time-based targeting)
     const npcs = new Map<string, any>();
     this.npcManager.getAllNPCs().forEach(npc => {
       npcs.set(npc.id, {
@@ -1921,6 +1981,8 @@ export default class ForestManager extends DurableObject {
         username: `NPC_${npc.id.slice(0, 4)}`,
         position: npc.position,
         inventory: npc.walnutInventory || 0,
+        spawnTime: (npc as any).spawnTime || 0, // MVP 12: For time-based targeting
+        isPlayer: false // MVP 12: Distinguish NPCs from players
       });
     });
 

@@ -1,5 +1,12 @@
 // MVP 12: Predator Manager - AI predators that create PvE danger
 // Industry-standard patterns: behavior trees, target selection, state machines
+//
+// MVP 12: Rank-Based Targeting System
+// - Players: Ignore Rookie/Apprentice, start targeting Dabbler+ with weighted preference
+// - NPCs: Target based on spawn time (older NPCs = higher priority)
+// - Predators prefer higher-ranked players for increased challenge
+
+import { getPlayerTitle } from '../../shared/PlayerRanks';
 
 interface Vector3 {
   x: number;
@@ -30,6 +37,9 @@ interface PlayerData {
   inventory: number; // Walnut count
   id: string;
   username: string;
+  score?: number; // MVP 12: Player score (for rank-based targeting)
+  spawnTime?: number; // MVP 12: NPC spawn time (for time-based targeting)
+  isPlayer?: boolean; // MVP 12: Distinguish players from NPCs
 }
 
 export class PredatorManager {
@@ -415,12 +425,22 @@ export class PredatorManager {
   /**
    * Find best target: Prefer players with most walnuts
    */
+  /**
+   * MVP 12: Find best target with rank-based weighting
+   *
+   * Targeting Rules:
+   * - Players: Ignore Rookie/Apprentice (0-100 score), start at Dabbler (101+)
+   * - Players: Weight by rank (Dabbler=0.5x, Slick=1.0x, Maestro+=1.3-2.0x)
+   * - NPCs: Weight by time alive (older NPCs = higher priority)
+   * - Base score: walnuts * distance * rank_weight
+   */
   private findBestTarget(
     predator: Predator,
     targets: Map<string, PlayerData>
   ): PlayerData | null {
     let bestTarget: PlayerData | null = null;
     let bestScore = 0;
+    const now = Date.now();
 
     targets.forEach(target => {
       // Calculate distance
@@ -431,11 +451,34 @@ export class PredatorManager {
       // Too far? Skip
       if (distance > this.TARGET_RANGE) return;
 
-      // Score = walnuts * (1 - distance/maxRange)
-      // Prefer targets with more walnuts that are closer
-      const walnutScore = target.inventory;
+      // MVP 12: Calculate rank-based targeting weight
+      let rankWeight = 1.0;
+
+      if (target.isPlayer && target.score !== undefined) {
+        // PLAYERS: Use rank-based weighting
+        const playerTitle = getPlayerTitle(target.score);
+        rankWeight = playerTitle.predatorTargetingWeight;
+
+        // Skip Rookie/Apprentice players (weight = 0.0)
+        if (rankWeight === 0.0) return;
+
+        // Dabbler+ get progressively higher targeting weight
+        // Dabbler (0.5) < Slick (1.0) < Maestro (1.3) < Ninja (1.6) < Legend (2.0)
+      } else if (!target.isPlayer && target.spawnTime !== undefined) {
+        // NPCs: Time-based weighting (older NPCs = higher priority)
+        // This creates interesting gameplay: NPCs become more vulnerable over time
+        const ageInMinutes = (now - target.spawnTime) / 60000;
+
+        // Targeting weight increases with age: 0.5x (new) → 1.5x (5+ min old)
+        // New NPCs are protected, old NPCs are vulnerable
+        rankWeight = 0.5 + Math.min(1.0, ageInMinutes / 5.0);
+      }
+
+      // Base scoring: walnuts * distance * rank weight
+      // Prefer targets with more walnuts that are closer and higher-ranked
+      const walnutScore = Math.max(1, target.inventory); // Minimum 1 to always have some value
       const distanceScore = 1 - (distance / this.TARGET_RANGE);
-      const score = walnutScore * distanceScore;
+      const score = walnutScore * distanceScore * rankWeight;
 
       if (score > bestScore) {
         bestScore = score;

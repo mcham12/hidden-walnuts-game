@@ -10,6 +10,8 @@ import { ToastManager } from './ToastManager.js';
 import { SettingsManager } from './SettingsManager.js';
 import { CollisionSystem } from './CollisionSystem.js';
 import { TouchControls } from './TouchControls.js';
+import { RankOverlay } from './RankOverlay.js';
+import { getPlayerTitle } from '@shared/PlayerRanks';
 
 interface Character {
   id: string;
@@ -280,6 +282,10 @@ export class Game {
 
   // MVP 5: Toast notification system
   private toastManager: ToastManager = new ToastManager();
+
+  // MVP 12: Rank overlay system (full-screen announcements)
+  private rankOverlay: RankOverlay = new RankOverlay();
+  private playerTitleName: string = 'Rookie'; // Current player title name
 
   // MVP 5.5: Collision detection system
   private collisionSystem: CollisionSystem | null = null;
@@ -1782,6 +1788,20 @@ export class Game {
           // No spawn position provided - enable movement anyway (fallback)
           this.spawnPositionReceived = true;
         }
+
+        // MVP 12: Handle initial title data and show welcome message if first join
+        if (data.titleId && data.titleName) {
+          this.playerTitleName = data.titleName;
+
+          // Show welcome overlay if this is first join
+          if (data.isFirstJoin) {
+            this.rankOverlay.showWelcome(data.titleName);
+          }
+        } else {
+          // Fallback: Calculate title from score if not provided
+          const currentTitle = getPlayerTitle(this.playerScore);
+          this.playerTitleName = currentTitle.name;
+        }
         break;
 
       case 'walnut_hidden':
@@ -2047,6 +2067,15 @@ export class Game {
         if (typeof data.score === 'number') {
           this.playerScore = data.score;
           // Note: HUD will update in next animation frame via updateWalnutHUD()
+        }
+        break;
+
+      case 'rank_up':
+        // MVP 12: Player ranked up!
+        if (data.titleName && data.description) {
+          this.playerTitleName = data.titleName;
+          this.rankOverlay.showRankUp(data.titleName, data.description);
+          console.log(`🎉 Ranked up to ${data.titleName}!`);
         }
         break;
 
@@ -4781,6 +4810,7 @@ export class Game {
   private updateWalnutHUD(): void {
     const walnutCountSpan = document.getElementById('walnut-count');
     const playerScoreSpan = document.getElementById('player-score');
+    const playerTitleSpan = document.getElementById('player-title');
 
     if (walnutCountSpan) {
       // MVP 8: Display unified walnut inventory
@@ -4790,6 +4820,12 @@ export class Game {
     if (playerScoreSpan) {
       // MVP 5: Display animated score with tweening
       playerScoreSpan.textContent = `${Math.floor(this.displayedScore)}`;
+    }
+
+    if (playerTitleSpan) {
+      // MVP 12: Display player title + character (e.g., "Ninja Squirrel")
+      const characterName = this.getCharacterName(this.selectedCharacterId);
+      playerTitleSpan.textContent = `${this.playerTitleName} ${characterName}`;
     }
 
     // MVP 5.7: Update mobile buttons

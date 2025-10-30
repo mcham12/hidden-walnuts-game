@@ -8,7 +8,16 @@
  * - Perception system (vision radius)
  * - Personality traits (aggression levels)
  * - Walnut gathering and throwing
+ *
+ * MVP 12: Rank-Based Aggression
+ * - NPCs scale aggression based on player title (Rookie→Legend)
+ * - No aggression for Rookie/Apprentice/Dabbler (0-200 score)
+ * - Baseline aggression at Slick (201-300 score)
+ * - Gradually increases through Maestro/Ninja/Legend
  */
+
+// MVP 12: Import rank system for aggression scaling
+import { getPlayerTitle } from '../../shared/PlayerRanks';
 
 // Import types from ForestManager (these will be available at runtime)
 // We'll use 'any' types here since we can't easily import from ForestManager
@@ -44,6 +53,7 @@ interface NPC {
   health: number; // MVP 9: NPC health (0-100)
   maxHealth: number; // MVP 9: Maximum health
   lastCollisionDamageTime: number; // Cooldown for collision damage
+  spawnTime: number; // MVP 12: Timestamp when NPC spawned (for predator targeting)
 }
 
 interface PlayerConnection {
@@ -51,6 +61,8 @@ interface PlayerConnection {
   position: Vector3;
   username: string;
   characterId: string;
+  titleId?: string; // MVP 12: Player's rank title for aggression scaling
+  score?: number; // MVP 12: Player score (fallback if titleId not available)
 }
 
 interface Walnut {
@@ -207,7 +219,8 @@ export class NPCManager {
       aggressionLevel,
       health: 100, // MVP 9: NPCs start with full health
       maxHealth: 100,
-      lastCollisionDamageTime: 0 // No collision damage cooldown initially
+      lastCollisionDamageTime: 0, // No collision damage cooldown initially
+      spawnTime: Date.now() // MVP 12: Track spawn time for predator targeting
     };
   }
 
@@ -443,12 +456,40 @@ export class NPCManager {
       }
     }
 
-    // MVP 8: PRIORITY - Approach players if has walnuts (reduced aggression)
-    // Players are high-value targets for combat
+    // MVP 12: PRIORITY - Approach players if has walnuts (rank-based aggression)
+    // Players are high-value targets for combat, but respect rank system
     const nearbyEntities = [...nearbyPlayers, ...nearbyNPCs];
     if (nearbyPlayers.length > 0 && npc.walnutInventory > 0 && npc.aggressionLevel > 0.3) {
-      // MVP 8 FIX: Reduced from 2.0 to 1.2 (less aggressive, more natural)
-      if (Math.random() < Math.min(0.7, npc.aggressionLevel * 1.2)) {
+      // MVP 12: Calculate average aggression multiplier for nearby players
+      // This determines how aggressive NPCs should be toward this group
+      let totalAggressionMultiplier = 0;
+      let validPlayerCount = 0;
+
+      for (const player of nearbyPlayers) {
+        // Get player's title and use its aggression multiplier
+        // Use score as fallback if titleId not available
+        const playerTitle = player.score !== undefined ? getPlayerTitle(player.score) : null;
+
+        if (playerTitle) {
+          // Use npcAggressionMultiplier: 0.0 for Rookie/Apprentice/Dabbler, 1.0+ for Slick+
+          totalAggressionMultiplier += playerTitle.npcAggressionMultiplier;
+          validPlayerCount++;
+        }
+      }
+
+      // Average aggression multiplier across all nearby players
+      const avgAggressionMultiplier = validPlayerCount > 0
+        ? totalAggressionMultiplier / validPlayerCount
+        : 0;
+
+      // MVP 12: Scale approach probability by rank aggression multiplier
+      // - Rookie/Apprentice/Dabbler (0.0 multiplier) = 0% chance to approach
+      // - Slick (1.0 multiplier) = baseline behavior (70% chance)
+      // - Maestro+ (>1.0 multiplier) = increased aggression
+      const baseApproachChance = Math.min(0.7, npc.aggressionLevel * 1.2);
+      const scaledApproachChance = baseApproachChance * avgAggressionMultiplier;
+
+      if (Math.random() < scaledApproachChance) {
         return NPCBehavior.APPROACH;
       }
     }
@@ -543,9 +584,17 @@ export class NPCManager {
 
   /**
    * Execute APPROACH behavior
+   * MVP 12: Filter out low-rank players (Rookie/Apprentice/Dabbler)
    */
   private executeBehaviorApproach(npc: NPC, nearbyPlayers: PlayerConnection[], nearbyNPCs: NPC[]): void {
-    const allEntities = [...nearbyPlayers, ...nearbyNPCs];
+    // MVP 12: Filter players by rank - only approach players with aggression multiplier > 0
+    const targetablePlayers = nearbyPlayers.filter(player => {
+      if (player.score === undefined) return true; // Default to targetable if no score data
+      const playerTitle = getPlayerTitle(player.score);
+      return playerTitle.npcAggressionMultiplier > 0; // Only target Slick+ (0.0 = protected)
+    });
+
+    const allEntities = [...targetablePlayers, ...nearbyNPCs];
 
     if (allEntities.length === 0) {
       // No entities nearby, switch to wander
@@ -639,6 +688,7 @@ export class NPCManager {
 
   /**
    * Execute THROW behavior
+   * MVP 12: Respect rank-based targeting (don't throw at protected players)
    */
   private executeBehaviorThrow(npc: NPC, nearbyPlayers: PlayerConnection[], nearbyNPCs: NPC[]): void {
     if (npc.walnutInventory === 0) {
@@ -646,8 +696,15 @@ export class NPCManager {
       return;
     }
 
+    // MVP 12: Filter players by rank - only throw at players with aggression multiplier > 0
+    const targetablePlayers = nearbyPlayers.filter(player => {
+      if (player.score === undefined) return true; // Default to targetable if no score data
+      const playerTitle = getPlayerTitle(player.score);
+      return playerTitle.npcAggressionMultiplier > 0; // Only target Slick+ (0.0 = protected)
+    });
+
     // Find target entity
-    const allEntities = [...nearbyPlayers, ...nearbyNPCs];
+    const allEntities = [...targetablePlayers, ...nearbyNPCs];
     let targetEntity: any = null;
 
     for (const entity of allEntities) {

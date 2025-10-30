@@ -167,7 +167,7 @@
 - Can be distracted by throwing walnuts
 
 **3. AI Behaviors and new Player Ranking System**
-- Refactor original NPC behavior and the new Predator behaviors to be aware of (human) player ranking.  Note the current NPC behavior settings for later use.  To do this, we'll define new player ranks and system first.  Player ranks are based on score range: Rookie (0 to 20), Apprentice (21 to 100), Dabbler (101 to 200), Slick (201 to 300), Maestro (301 to 500), Ninja (501 to 1000), Legend (1001+).  When the player first joins, they should get a special screen overlay (not the normal messaging system)), saying, "Welcome, your rank is Rookie!" or something like that.  not sure if Rank is the best player-facing term? do research here.  As their score progresses, if they achieve a new rank, do the special screen overlay again, and say something like, "You've achieved {player rank} Status!".  Make NPCs not agressive nor throw at Rookies.  Apprentices: original NPC behaviors.  Then very gradually increase NPC aggression as we increase...we don't want NPCs to be overly aggressive because well also have predators.  
+- Refactor original NPC behavior and the new Predator behaviors to be aware of (human) player ranking.  Note the current NPC behavior settings for later use.  To do this, we'll define new player ranks and system first.  Player ranks are based on score range: Rookie (0 to 20), Apprentice (21 to 100), Dabbler (101 to 200), Slick (201 to 300), Maestro (301 to 500), Ninja (501 to 1000), Legend (1001+).  When the player first joins, they should get a special screen overlay (not the normal messaging system)), saying, "Welcome, your rank is Rookie!" or something like that.  not sure if Rank is the best player-facing term? do research here.  As their score progresses, if they achieve a new rank, do the special screen overlay again, and say something like, "You've achieved {player rank} Status!".  Make NPCs not agressive nor throw at player ranks until "Slick", at which point make the NPC agression behaviors the same as current settings (that you remembered from earlier).  Then very gradually increase NPC aggression as we increase...we don't want NPCs to be overly aggressive because well also have predators.  
 
 - Predators treat NPCs equally (but based on time since NPC original spawing or respawning, not player Rankings).  Predators don't start attacking players until they are of Dabbler rank, and target higher player ranks progressively more.  When the predators aren't attacking, they fly around or walk around or idle.
 
@@ -175,8 +175,8 @@
 - Respawn at random intervals
 
 **4.UX Polish**
-- Add some fun sky elements. (like a sun, not sure what else, open to ideas)
-- better tutorial experience.  research similar games and how to do this, likely different tutorial for desktop (because of key usage) vs ipad/iphone
+- Add some fun sky elements: sun.png and cloud.png.  implement industry-standard approaches for sun and clouds for a game like mine.  probably 1 max 2 clouds at any given time.  sun always or usually visible, nothing fancy.
+- better tutorial experience.  research similar games and how to do this, likely different tutorial for desktop (because of key usage) vs ipad/iphone.  Or a tab between desktop/mobile browser tutorials on the same experience if people are curious.  my personal opinion: when a new player is detected (not returning), provide a tempting (glowing/throbbing) UI control for "how to play" or something similar.  then try to show key game mechanics on one screen vs "nexting" through a bunch of screens.  for desktop, use Key icons for showing how to do the actions.  for mobile, somehow illustrate screen touch/drag to move, then show the actual onscreen buttons for throw/eat/hide etc.  Key things to cover: move, get walnut, throw walnut, hide walnut.
 
 **5. remove any debug logging added for this MVP, both client and worker**
 
@@ -186,17 +186,24 @@
 - ✅ Predators are challenging but fair
 - ✅ Creates "close call" exciting moments
 
-## MVP 11.5: voiceover
-**3. Voiceover Work** (1-2 hours)
+## MVP 13: voiceover and more gameplay polish
+**1. Voiceover Work** (1-2 hours)
 - Character selection voice lines (one per character)
 - Combat reactions ("Ouch!", "Gotcha!", "Oh no!")
 - Victory/defeat voiceovers
 - Optional: Narrator intro ("Welcome to the forest...")
 - remove any debug logging added for this MVP, both client and worker
 
+
+**2. Walnut hiding bonus
+- add a special point bonus for hiding 50 walnuts, e.g. 50 points
+- adjust tree growing mechanism because we will be encouraging walnut hiding now: instead of current state: every walnut hidden by a given player will grow to a tree based on a timer, move to future state: only the 10th, 20th, 30th, etc hidden walnut hidden by the player will grow to be a tree (subject to the same time delay as before)
+- the bonus is only awarded if there are 50 walnuts currently hidden by that player (so if other players pick up walnuts hidden by the player, they are removed from the count for this awared.  also if a walnut grows into a tree it is removed from the count for this award).  
+- adjust tutorial to highlight this new walnut hiding bonus
+- Make a special screen overlay UI ( not the standard "toast" message) announcing the bonus.  be creative.
 ---
 
-## 🎮 MVP 13: Game Admin System & Dashboard (8-10 hours)
+## 🎮 MVP 14: Game Admin System & Dashboard (8-10 hours)
 
 **Goal**: Comprehensive admin tools for game maintenance, monitoring, and moderation
 
@@ -421,7 +428,7 @@ Create: `docs/ADMIN_SETUP.md`
 
 ---
 
-## 🔐 MVP 14: Full Authentication (8-12 hours)
+## 🔐 MVP 15: Full Authentication (8-12 hours)
 
 **Goal**: Secure player accounts with passwords, email, cross-device sync
 
@@ -467,7 +474,7 @@ Create: `docs/ADMIN_SETUP.md`
 
 ---
 
-## 🧹 MVP 15: Code Cleanup & Optimization
+## 🧹 MVP 16: Code Cleanup & Optimization
 
 **Goal**: Remove technical debt, optimize performance
 

@@ -1,4 +1,6 @@
 // Simplified SquirrelSession - Basic player state management
+// MVP 12: Added player title/rank tracking
+import { getPlayerTitle, checkForRankUp } from '../../shared/PlayerRanks.js';
 
 interface DurableObjectState {
   storage: DurableObjectStorage;
@@ -24,6 +26,8 @@ interface SessionState {
   lastDisconnectAt?: number; // MVP 9: Track disconnect time for reconnection window
   position: { x: number; y: number; z: number };
   rotationY: number;
+  currentTitleId?: string; // MVP 12: Current player title ID ('rookie', 'ninja', etc.)
+  isFirstJoin?: boolean; // MVP 12: Track if this is first join (show welcome message)
 }
 
 interface PlayerStats {
@@ -94,13 +98,18 @@ export default class SquirrelSession {
       
       if (!this.sessionState) {
         // Create new session
+        // MVP 12: Initialize with Rookie title and mark as first join
+        const initialTitle = getPlayerTitle(0);
+
         this.sessionState = {
           squirrelId,
           token: this.generateToken(),
           joinedAt: Date.now(),
           lastActivity: Date.now(),
           position: { x: 0, y: 2, z: 0 },
-          rotationY: 0
+          rotationY: 0,
+          currentTitleId: initialTitle.id,
+          isFirstJoin: true
         };
 
         this.playerStats = {
@@ -115,13 +124,19 @@ export default class SquirrelSession {
         await this.saveSession();
       }
 
+      // MVP 12: Include title info in join response
+      const currentTitle = getPlayerTitle(this.playerStats?.score || 0);
+
       return new Response(JSON.stringify({
         success: true,
         squirrelId: this.sessionState.squirrelId,
         token: this.sessionState.token,
         stats: this.playerStats,
         position: this.sessionState.position,
-        rotationY: this.sessionState.rotationY
+        rotationY: this.sessionState.rotationY,
+        titleId: currentTitle.id,
+        titleName: currentTitle.name,
+        isFirstJoin: this.sessionState.isFirstJoin || false
       }), {
         headers: { "Content-Type": "application/json" }
       });
@@ -234,6 +249,7 @@ export default class SquirrelSession {
   }
 
   // MVP 9: Handle score update (called when player's score changes)
+  // MVP 12: Detect rank-ups and return rank change info
   private async handleScoreUpdate(request: Request): Promise<Response> {
     try {
       const data = await request.json() as { squirrelId: string; score: number };
@@ -255,12 +271,38 @@ export default class SquirrelSession {
         });
       }
 
+      // MVP 12: Check for rank-up before updating score
+      const oldScore = this.playerStats.score;
+      const newScore = data.score;
+      const rankedUp = checkForRankUp(oldScore, newScore);
+
       // Update score
-      this.playerStats.score = data.score;
+      this.playerStats.score = newScore;
       this.sessionState.lastActivity = Date.now();
+
+      // MVP 12: Update current title if ranked up
+      if (rankedUp) {
+        this.sessionState.currentTitleId = rankedUp.id;
+        console.log(`🎉 Player ${data.squirrelId} ranked up to ${rankedUp.name}!`);
+      }
+
+      // MVP 12: Clear first join flag after showing welcome (if applicable)
+      if (this.sessionState.isFirstJoin) {
+        this.sessionState.isFirstJoin = false;
+      }
+
       await this.saveSession();
 
-      return new Response(JSON.stringify({ success: true }), {
+      // MVP 12: Return rank-up info to client
+      return new Response(JSON.stringify({
+        success: true,
+        rankedUp: rankedUp ? true : false,
+        newTitle: rankedUp ? {
+          id: rankedUp.id,
+          name: rankedUp.name,
+          description: rankedUp.description
+        } : null
+      }), {
         headers: { "Content-Type": "application/json" }
       });
     } catch (error) {
