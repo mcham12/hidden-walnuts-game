@@ -277,9 +277,10 @@ export class PredatorManager {
       predator.velocity.x = Math.cos(angle) * speed;
       predator.velocity.z = Math.sin(angle) * speed;
 
-      // Set next random delay (2-5 seconds like Halo AI)
+      // Set next random delay (1-3 seconds for more active roaming)
+      // Reduced from 2-5 seconds to make predators more dynamic
       predator.lastDecisionTime = now;
-      predator.nextDecisionDelay = 2000 + Math.random() * 3000;
+      predator.nextDecisionDelay = 1000 + Math.random() * 2000;
     }
 
     // Bounce off world boundaries
