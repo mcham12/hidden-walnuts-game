@@ -7342,13 +7342,16 @@ export class Game {
       }
 
       // MVP 12: Track tree on minimap for 30 seconds (local player only)
-      if (data.tree.ownerId === this.playerId) {
+      // Server sends ownerId at top level, not in tree object
+      if (data.ownerId === this.playerId) {
         this.recentTrees.push({
           x: data.tree.x,
           z: data.tree.z,
           timestamp: Date.now()
         });
         console.log(`🌳 Tree tracked on minimap at (${data.tree.x.toFixed(1)}, ${data.tree.z.toFixed(1)}) - total: ${this.recentTrees.length}`);
+      } else {
+        console.log(`🌳 Tree grew but not local player's - ownerId: ${data.ownerId}, playerId: ${this.playerId}`);
       }
 
       // Animate growth: 0 → full scale over 3 seconds with easing

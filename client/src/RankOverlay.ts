@@ -94,6 +94,7 @@ export class RankOverlay {
 
     this.titleElement.textContent = `You are a ${titleName}`;
     this.descriptionElement.textContent = ''; // No secondary text needed
+    this.descriptionElement.style.display = 'none'; // Hide empty description
 
     this.show(3000); // 3 seconds display
   }
@@ -107,6 +108,7 @@ export class RankOverlay {
 
     this.titleElement.textContent = `You've achieved ${titleName} Status!`;
     this.descriptionElement.textContent = description;
+    this.descriptionElement.style.display = 'block'; // Show description for rank-up
 
     this.show(3500); // 3.5 seconds display
   }
