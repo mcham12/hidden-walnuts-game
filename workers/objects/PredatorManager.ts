@@ -266,29 +266,53 @@ export class PredatorManager {
       return;
     }
 
-    // Halo-style random patrol: Timed decisions instead of per-frame randomness
     const speed = isAerial ? this.AERIAL_SPEED : this.GROUND_SPEED;
     const now = Date.now();
 
-    // Check if it's time for a new decision
-    if (now - predator.lastDecisionTime >= predator.nextDecisionDelay) {
-      // Make new movement decision
-      const angle = Math.random() * Math.PI * 2;
-      predator.velocity.x = Math.cos(angle) * speed;
-      predator.velocity.z = Math.sin(angle) * speed;
+    if (isAerial) {
+      // AERIAL: Smooth wandering behavior (Craig Reynolds steering)
+      // Birds fly in smooth arcs, not sharp turns
+      if (now - predator.lastDecisionTime >= predator.nextDecisionDelay) {
+        // Calculate current direction
+        const currentAngle = Math.atan2(predator.velocity.z, predator.velocity.x);
 
-      // Set next random delay (1-3 seconds for more active roaming)
-      // Reduced from 2-5 seconds to make predators more dynamic
-      predator.lastDecisionTime = now;
-      predator.nextDecisionDelay = 1000 + Math.random() * 2000;
+        // Add small random steering offset (-30° to +30°)
+        const steeringAngle = (Math.random() - 0.5) * Math.PI / 3;
+        const newAngle = currentAngle + steeringAngle;
+
+        // Apply new velocity (smooth wandering)
+        predator.velocity.x = Math.cos(newAngle) * speed;
+        predator.velocity.z = Math.sin(newAngle) * speed;
+
+        // Longer delays for smooth flight paths (3-5 seconds)
+        predator.lastDecisionTime = now;
+        predator.nextDecisionDelay = 3000 + Math.random() * 2000;
+      }
+    } else {
+      // GROUND: More erratic movement (squirrels dart around)
+      if (now - predator.lastDecisionTime >= predator.nextDecisionDelay) {
+        const angle = Math.random() * Math.PI * 2;
+        predator.velocity.x = Math.cos(angle) * speed;
+        predator.velocity.z = Math.sin(angle) * speed;
+
+        predator.lastDecisionTime = now;
+        predator.nextDecisionDelay = 1000 + Math.random() * 2000;
+      }
     }
 
-    // Bounce off world boundaries
+    // Boundary handling
     const maxDist = this.PATROL_RADIUS;
     if (Math.abs(predator.position.x) > maxDist || Math.abs(predator.position.z) > maxDist) {
-      // Turn around
-      predator.velocity.x *= -1;
-      predator.velocity.z *= -1;
+      if (isAerial) {
+        // AERIAL: Smooth turn back toward center (natural bird behavior)
+        const angleToCenter = Math.atan2(-predator.position.z, -predator.position.x);
+        predator.velocity.x = Math.cos(angleToCenter) * speed;
+        predator.velocity.z = Math.sin(angleToCenter) * speed;
+      } else {
+        // GROUND: Instant reversal (squirrels can change direction quickly)
+        predator.velocity.x *= -1;
+        predator.velocity.z *= -1;
+      }
     }
   }
 
