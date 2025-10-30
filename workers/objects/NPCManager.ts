@@ -778,11 +778,42 @@ export class NPCManager {
 
   /**
    * Update NPC movement based on velocity
+   * MVP 12: Added tree collision detection
    */
   private updateMovement(npc: NPC, delta: number): void {
-    // Apply velocity to position
-    npc.position.x += npc.velocity.x * delta;
-    npc.position.z += npc.velocity.z * delta;
+    // Calculate proposed new position
+    const newX = npc.position.x + npc.velocity.x * delta;
+    const newZ = npc.position.z + npc.velocity.z * delta;
+
+    // Check for collisions with solid obstacles (trees, rocks, stumps - not shrubs)
+    const NPC_RADIUS = 0.3; // NPCs are small squirrels
+    let collided = false;
+
+    for (const obj of this.forestManager.forestObjects) {
+      // Skip shrubs (they're passable)
+      if (obj.type === 'shrub') continue;
+
+      // Different collision radii for different obstacle types
+      let obstacleRadius = 0.5; // Default for trees
+      if (obj.type === 'rock') obstacleRadius = 0.6; // Rocks slightly larger
+      if (obj.type === 'stump') obstacleRadius = 0.4; // Stumps slightly smaller
+
+      const COLLISION_DISTANCE = obstacleRadius + NPC_RADIUS;
+      const dx = newX - obj.x;
+      const dz = newZ - obj.z;
+      const distSq = dx * dx + dz * dz;
+
+      if (distSq < COLLISION_DISTANCE * COLLISION_DISTANCE) {
+        collided = true;
+        break;
+      }
+    }
+
+    // Only apply movement if no collision
+    if (!collided) {
+      npc.position.x = newX;
+      npc.position.z = newZ;
+    }
 
     // Clamp to world bounds
     npc.position = this.clampToWorldBounds(npc.position);

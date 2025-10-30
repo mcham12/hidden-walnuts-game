@@ -2216,8 +2216,8 @@ export default class ForestManager extends DurableObject {
     // Award points to owner (only if player is online)
     const ownerPlayer = this.activePlayers.get(walnut.ownerId);
     if (ownerPlayer) {
-      ownerPlayer.score += 10;
-      console.log(`🎉 Awarded 10 points to ${walnut.ownerId} for tree growth (new score: ${ownerPlayer.score})`);
+      ownerPlayer.score += 50; // TESTING: 50 points (normally 10) to facilitate rank testing
+      console.log(`🎉 Awarded 50 points to ${walnut.ownerId} for tree growth (new score: ${ownerPlayer.score})`);
 
       // Report to leaderboard
       await this.reportScoreToLeaderboard(ownerPlayer);

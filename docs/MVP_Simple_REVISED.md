@@ -178,7 +178,11 @@
 - Add some fun sky elements: sun.png and cloud.png.  implement industry-standard approaches for sun and clouds for a game like mine.  probably 1 max 2 clouds at any given time.  sun always or usually visible, nothing fancy.
 - better tutorial experience.  research similar games and how to do this, likely different tutorial for desktop (because of key usage) vs ipad/iphone.  Or a tab between desktop/mobile browser tutorials on the same experience if people are curious.  my personal opinion: when a new player is detected (not returning), provide a tempting (glowing/throbbing) UI control for "how to play" or something similar.  then try to show key game mechanics on one screen vs "nexting" through a bunch of screens.  for desktop, use Key icons for showing how to do the actions.  for mobile, somehow illustrate screen touch/drag to move, then show the actual onscreen buttons for throw/eat/hide etc.  Key things to cover: move, get walnut, throw walnut, hide walnut.
 
-**5. remove any debug logging added for this MVP, both client and worker**
+**5. revert temporary changes made to facilitate testing
+- change tree growth time back to 2 minutes
+- change tree growth bonus to 20 points
+
+**6. remove any debug logging added for this MVP, both client and worker**
 
 ### Success Criteria
 - ✅ predators add meaningful danger

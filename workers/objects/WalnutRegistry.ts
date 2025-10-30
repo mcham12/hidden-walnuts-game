@@ -150,11 +150,11 @@ export default class WalnutRegistry {
     // MVP 9: Check for walnuts ready to grow into trees
     if (path.endsWith("/check-growth") && request.method === "POST") {
       try {
-        const GROWTH_TIME_MS = 2 * 60 * 1000; // 2 minutes
+        const GROWTH_TIME_MS = 15 * 1000; // 15 seconds (TESTING ONLY - normally 2 minutes)
         const now = Date.now();
         const readyToGrow: Walnut[] = [];
 
-        // Find player-hidden walnuts that are 2+ minutes old, not found, not grown
+        // Find player-hidden walnuts that are old enough, not found, not grown
         for (const walnut of this.walnuts.values()) {
           if (
             walnut.origin === 'player' &&
