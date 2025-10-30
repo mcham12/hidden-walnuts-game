@@ -1330,6 +1330,45 @@ export default class ForestManager extends DurableObject {
         });
         break;
 
+      case "predator_hit":
+        // MVP 12: Handle walnut hit on wildebeest predator
+        const predatorId = data.predatorId;
+
+        if (!predatorId) {
+          console.warn(`🚫 Predator hit rejected: No predatorId provided`);
+          return;
+        }
+
+        // Validate attacker distance (prevent cheating)
+        // Note: We can't easily validate exact predator position without complex state sync
+        // Trust client hit detection for now (they already validated locally)
+
+        // Apply hit to predator (increments annoyance)
+        const hitResult = this.predatorManager.handleWalnutHit(predatorId);
+
+        if (hitResult.hit) {
+          console.log(`🎯 Wildebeest ${predatorId} hit! Annoyance: ${hitResult.annoyanceLevel}/4`);
+
+          // Broadcast annoyance update to all clients for UI
+          this.broadcastToAll({
+            type: 'predator_annoyance_update',
+            predatorId: predatorId,
+            annoyanceLevel: hitResult.annoyanceLevel,
+            fleeing: hitResult.fleeing
+          });
+
+          // Award points if wildebeest was driven away
+          if (hitResult.fleeing) {
+            playerConnection.score += 10; // Reward for driving away predator
+            await this.reportScoreToLeaderboard(playerConnection);
+            this.sendMessage(playerConnection.socket, {
+              type: 'score_update',
+              score: playerConnection.score
+            });
+          }
+        }
+        break;
+
       default:
         // Broadcast other messages
         this.broadcastToOthers(playerConnection.squirrelId, data);

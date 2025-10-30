@@ -1107,6 +1107,14 @@ export class Game {
         entities.set(id, { position: npc.position.clone() });
       });
 
+      // MVP 12: Add wildebeest predators (aerial predators are distracted, not hit)
+      this.predators.forEach((predatorMesh, id) => {
+        const predatorType = predatorMesh.userData?.type;
+        if (predatorType === 'wildebeest') {
+          entities.set(id, { position: predatorMesh.position.clone() });
+        }
+      });
+
       this.projectileManager.update(delta, entities);
     }
 
@@ -3608,6 +3616,37 @@ export class Game {
       if (this.vfxManager) {
         const damagePosition = npc.position.clone();
         damagePosition.y += 2; // Show above NPC head
+        this.vfxManager.showDamageFloater(this.PROJECTILE_DAMAGE, damagePosition);
+      }
+    }
+
+    // MVP 12: Check if target is a wildebeest predator
+    const predator = this.predators.get(data.targetId);
+    if (predator && predator.userData?.type === 'wildebeest') {
+      // Send hit to server (only if we're the attacker)
+      if (data.ownerId === this.playerId && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+        this.sendMessage({
+          type: 'predator_hit',
+          predatorId: data.targetId,
+          damage: this.PROJECTILE_DAMAGE
+        });
+      }
+
+      // Play hit animation if available
+      if (this.predatorActions.has(data.targetId)) {
+        const actions = this.predatorActions.get(data.targetId);
+        if (actions && actions['hit']) {
+          const hitAction = actions['hit'];
+          hitAction.timeScale = 0.65;
+          hitAction.reset().setLoop(THREE.LoopOnce, 1).play();
+          hitAction.clampWhenFinished = true;
+        }
+      }
+
+      // Show damage floater
+      if (this.vfxManager) {
+        const damagePosition = predator.position.clone();
+        damagePosition.y += 3; // Show above wildebeest
         this.vfxManager.showDamageFloater(this.PROJECTILE_DAMAGE, damagePosition);
       }
     }
