@@ -20,11 +20,14 @@ interface Predator {
   position: Vector3;
   velocity: Vector3;
   rotationY: number;
-  state: 'idle' | 'patrol' | 'targeting' | 'attacking' | 'returning';
+  state: 'idle' | 'patrol' | 'targeting' | 'attacking' | 'returning' | 'distracted' | 'fleeing';
   targetId: string | null; // Player or NPC being targeted
   lastAttackTime: number;
   spawnTime: number;
-  health: number; // Predators can be killed by players
+  // MVP 12 Defense: No health - predators are driven away, not killed
+  annoyanceLevel: number; // 0-4 for wildebeest (4 hits = flees), unused for aerial
+  distractedUntil?: number; // Timestamp when distraction ends (aerial only)
+  distractedByWalnut?: string; // Walnut ID that distracted this predator (aerial only)
   targetHeight: number; // Target height for smooth transitions (industry standard)
   currentHeight: number; // Current height for lerping (smooth transitions)
   bobbingOffset: number; // Sine wave bobbing phase offset (Zelda-style)
@@ -73,7 +76,7 @@ export class PredatorManager {
   private readonly TARGET_RANGE = 40.0; // Detection range
   private readonly ATTACK_RANGE_AERIAL = 2.0; // Dive/grab range
   private readonly PATROL_RADIUS = 50.0; // Patrol area size
-  private readonly PREDATOR_HEALTH = 100; // Can be killed
+  // MVP 12: No health - predators are driven away, not killed (annoyance system)
 
   constructor() {
     console.log('🦅 PredatorManager initialized');
@@ -99,11 +102,21 @@ export class PredatorManager {
     // Update each predator
     const toRemove: string[] = [];
     this.predators.forEach((predator, id) => {
-      // Check if predator should despawn (too old or dead)
+      // Check if predator should despawn (too old or fled far enough)
       const lifetime = now - predator.spawnTime;
-      if (predator.health <= 0 || lifetime > 300000) { // 5 min max lifetime or dead
+      if (lifetime > 300000) { // 5 min max lifetime
         toRemove.push(id);
         return;
+      }
+
+      // Check if fleeing predator has reached edge
+      if (predator.state === 'fleeing') {
+        const distanceFromCenter = Math.sqrt(predator.position.x ** 2 + predator.position.z ** 2);
+        if (distanceFromCenter > 100) { // Far enough from center
+          toRemove.push(id);
+          console.log(`🏃 ${predator.type} fled successfully`);
+          return;
+        }
       }
 
       // Update predator AI
@@ -162,7 +175,7 @@ export class PredatorManager {
       targetId: null,
       lastAttackTime: 0,
       spawnTime: Date.now(),
-      health: this.PREDATOR_HEALTH,
+      annoyanceLevel: 0, // MVP 12: 0-4 for wildebeest, unused for aerial
       targetHeight: y, // Initialize at spawn height
       currentHeight: y, // Initialize at spawn height
       bobbingOffset: Math.random() * Math.PI * 2, // Random phase offset for natural variation
@@ -208,6 +221,14 @@ export class PredatorManager {
 
       case 'returning':
         this.updateReturning(predator, delta, getTerrainHeight, isAerial);
+        break;
+
+      case 'distracted':
+        this.updateDistracted(predator, delta, now, isAerial);
+        break;
+
+      case 'fleeing':
+        this.updateFleeing(predator, delta, isAerial);
         break;
     }
 
@@ -448,6 +469,63 @@ export class PredatorManager {
   }
 
   /**
+   * MVP 12: Distracted behavior (aerial only)
+   * Bird chases thrown walnut, returns to patrol after distraction ends
+   */
+  private updateDistracted(
+    predator: Predator,
+    delta: number,
+    now: number,
+    isAerial: boolean
+  ): void {
+    if (!isAerial) {
+      // Should never happen, but safety check
+      predator.state = 'patrol';
+      return;
+    }
+
+    // Check if distraction has ended
+    if (predator.distractedUntil && now >= predator.distractedUntil) {
+      console.log(`🐦 ${predator.type} distraction ended, returning to patrol`);
+      predator.state = 'patrol';
+      predator.distractedByWalnut = undefined;
+      predator.distractedUntil = undefined;
+      return;
+    }
+
+    // While distracted: Fly in random direction (chasing the walnut)
+    // Simplified: Just fly away from original position
+    const speed = this.AERIAL_SPEED * 1.2; // Fly faster when chasing
+    predator.velocity.x = Math.cos(predator.rotationY) * speed;
+    predator.velocity.z = Math.sin(predator.rotationY) * speed;
+  }
+
+  /**
+   * MVP 12: Fleeing behavior (wildebeest only)
+   * Runs away from players toward map edge, despawns when far enough
+   */
+  private updateFleeing(
+    predator: Predator,
+    delta: number,
+    isAerial: boolean
+  ): void {
+    if (isAerial) {
+      // Should never happen, but safety check
+      predator.state = 'patrol';
+      return;
+    }
+
+    // Run away from center (toward map edge)
+    const angle = Math.atan2(predator.position.z, predator.position.x);
+    const fleeSpeed = this.GROUND_SPEED * 1.5; // Run faster when fleeing
+
+    predator.velocity.x = Math.cos(angle) * fleeSpeed;
+    predator.velocity.z = Math.sin(angle) * fleeSpeed;
+
+    // Note: Despawn logic is in the main update() loop (checks distance > 100)
+  }
+
+  /**
    * Find best target: Prefer players with most walnuts
    */
   /**
@@ -515,22 +593,53 @@ export class PredatorManager {
   }
 
   /**
-   * Damage a predator (players can fight back)
+   * MVP 12: Handle walnut hit on wildebeest (annoyance system)
+   * Aerial predators are NOT hit directly - they're distracted instead
    */
-  damagePredator(predatorId: string, damage: number): boolean {
+  handleWalnutHit(predatorId: string): { hit: boolean; annoyanceLevel: number; fleeing: boolean } {
     const predator = this.predators.get(predatorId);
-    if (!predator) return false;
 
-    predator.health -= damage;
-    console.log(`🎯 ${predator.type} took ${damage} damage (${predator.health} HP remaining)`);
-
-    if (predator.health <= 0) {
-      console.log(`💀 ${predator.type} was killed!`);
-      this.predators.delete(predatorId);
-      return true; // Predator killed
+    // Invalid predator or aerial (aerial use distraction, not hits)
+    if (!predator || predator.type !== 'wildebeest') {
+      return { hit: false, annoyanceLevel: 0, fleeing: false };
     }
 
-    return false;
+    // Increment annoyance
+    predator.annoyanceLevel++;
+    console.log(`🎯 Wildebeest hit! Annoyance: ${predator.annoyanceLevel}/4`);
+
+    // Check if wildebeest should flee (at 4 hits)
+    if (predator.annoyanceLevel >= 4) {
+      console.log(`😤 Wildebeest is fed up and fleeing!`);
+      predator.state = 'fleeing';
+      predator.targetId = null; // Stop targeting
+      return { hit: true, annoyanceLevel: 4, fleeing: true };
+    }
+
+    return { hit: true, annoyanceLevel: predator.annoyanceLevel, fleeing: false };
+  }
+
+  /**
+   * MVP 12: Distract aerial predator with thrown walnut
+   * Bird must be visible to player when throw is made
+   */
+  distractPredator(predatorId: string, walnutId: string): boolean {
+    const predator = this.predators.get(predatorId);
+
+    // Only aerial predators can be distracted
+    if (!predator || predator.type === 'wildebeest') {
+      return false;
+    }
+
+    console.log(`🐦 ${predator.type} distracted by walnut ${walnutId}!`);
+
+    // Enter distracted state
+    predator.state = 'distracted';
+    predator.distractedByWalnut = walnutId;
+    predator.distractedUntil = Date.now() + 2000; // 2 seconds
+    predator.targetId = null; // Stop targeting player
+
+    return true;
   }
 
   /**
