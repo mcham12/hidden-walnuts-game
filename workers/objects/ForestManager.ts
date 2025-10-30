@@ -697,7 +697,7 @@ export default class ForestManager extends DurableObject {
       };
 
       // MVP 9: Check for recent disconnect and restore score (.io game pattern)
-      // MVP 12: Also fetch title information from SquirrelSession
+      // MVP 12: Call /join first to create/load session (this sets isFirstJoin flag correctly)
       // Industry standard: 5-minute reconnection window
       const RECONNECT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
       const squirrelSessionId = this.env.SQUIRREL.idFromName(squirrelId);
@@ -709,33 +709,34 @@ export default class ForestManager extends DurableObject {
       let isFirstJoin = false;
 
       try {
-        const sessionInfoResponse = await squirrelSession.fetch(new Request('http://session/session-info'));
-        if (sessionInfoResponse.ok) {
-          const sessionInfo = await sessionInfoResponse.json() as any;
-          console.log(`📋 Session info for ${username}:`, JSON.stringify(sessionInfo));
-          const timeSinceDisconnect = sessionInfo.lastDisconnectAt
-            ? Date.now() - sessionInfo.lastDisconnectAt
-            : Infinity;
+        // CRITICAL FIX: Call /join first (creates new session if doesn't exist, sets isFirstJoin)
+        const joinResponse = await squirrelSession.fetch(new Request(`http://session/join?squirrelId=${squirrelId}`, {
+          method: 'POST'
+        }));
 
-          if (timeSinceDisconnect < RECONNECT_WINDOW_MS && sessionInfo.stats?.score) {
-            playerConnection.score = sessionInfo.stats.score;
-          } else if (timeSinceDisconnect < Infinity) {
+        if (joinResponse.ok) {
+          const joinData = await joinResponse.json() as any;
+          console.log(`✅ Join response for ${username}:`, JSON.stringify(joinData));
+
+          // Extract title and isFirstJoin from join response
+          if (joinData.titleId && joinData.titleName) {
+            titleId = joinData.titleId;
+            titleName = joinData.titleName;
           }
 
-          // MVP 12: Extract title information from session (SquirrelSession calculates title from score)
-          if (sessionInfo.titleId && sessionInfo.titleName) {
-            titleId = sessionInfo.titleId;
-            titleName = sessionInfo.titleName;
-          }
-
-          // MVP 12: Check if this is first join (for welcome message)
-          if (sessionInfo.isFirstJoin === true) {
+          if (joinData.isFirstJoin === true) {
             isFirstJoin = true;
             console.log(`✨ First join detected for ${username} - will show welcome overlay`);
           }
+
+          // Restore score from session if available
+          if (joinData.stats?.score) {
+            playerConnection.score = joinData.stats.score;
+            console.log(`♻️ Restored score for ${username}: ${joinData.stats.score}`);
+          }
         }
       } catch (error) {
-        console.warn(`⚠️ Could not restore session for ${username}:`, error);
+        console.warn(`⚠️ Could not join/restore session for ${username}:`, error);
       }
 
       // MVP 12: Store title info on playerConnection for future use
