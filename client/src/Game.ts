@@ -192,6 +192,8 @@ export class Game {
   private minimapContext: CanvasRenderingContext2D | null = null;
   private MINIMAP_WORLD_SIZE = 200; // Show 200x200 world units (covers all landmarks at ±80)
   private MINIMAP_SIZE = 200; // Canvas size in pixels
+  // MVP 12: Track recently planted trees for minimap display (30 second duration)
+  private recentTrees: Array<{ x: number; z: number; timestamp: number }> = [];
 
   // MVP 3: Tutorial system
   private tutorialMessages: string[] = [
@@ -5658,6 +5660,37 @@ export class Game {
       ctx.fillText(label, pos.x, pos.y);
     }
 
+    // MVP 12: Draw recently planted trees (last 30 seconds)
+    const now = Date.now();
+    const TREE_DISPLAY_DURATION = 30000; // 30 seconds
+
+    // Clean up old trees
+    this.recentTrees = this.recentTrees.filter(tree => now - tree.timestamp < TREE_DISPLAY_DURATION);
+
+    // Draw tree icons
+    for (const tree of this.recentTrees) {
+      const pos = worldToMinimap(tree.x, tree.z);
+
+      // Only draw if within bounds
+      if (pos.x < 0 || pos.x > size || pos.y < 0 || pos.y > size) continue;
+
+      // Draw tree icon (small green circle with triangle on top)
+      // Tree trunk (small brown circle)
+      ctx.fillStyle = '#8B4513'; // Brown
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y + 2, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Tree foliage (green triangle)
+      ctx.fillStyle = '#228B22'; // Forest green
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y - 4); // Top point
+      ctx.lineTo(pos.x - 4, pos.y + 2); // Bottom left
+      ctx.lineTo(pos.x + 4, pos.y + 2); // Bottom right
+      ctx.closePath();
+      ctx.fill();
+    }
+
     // Draw remote players
     for (const [_playerId, remotePlayer] of this.remotePlayers) {
       const pos = worldToMinimap(remotePlayer.position.x, remotePlayer.position.z);
@@ -5897,6 +5930,13 @@ export class Game {
     // Add label for player-hidden walnut
     const label = this.createLabel(labelText, labelColor);
     this.walnutLabels.set(walnutId, label);
+
+    // MVP 12: Track tree on minimap for 30 seconds
+    this.recentTrees.push({
+      x: walnutGroup.position.x,
+      z: walnutGroup.position.z,
+      timestamp: Date.now()
+    });
 
     // MVP 8: Server will decrement inventory and send inventory_update
     // (Removed optimistic decrement to prevent desync)
