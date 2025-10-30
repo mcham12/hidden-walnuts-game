@@ -5958,6 +5958,46 @@ export class Game {
   /**
    * MVP 8: Throw walnut at target
    */
+  /**
+   * MVP 12: Get aerial predators visible in camera frustum
+   * Used for bird distraction mechanic - birds must be visible to be distracted
+   */
+  private getVisibleAerialPredators(): string[] {
+    const frustum = new THREE.Frustum();
+    frustum.setFromProjectionMatrix(
+      new THREE.Matrix4().multiplyMatrices(
+        this.camera.projectionMatrix,
+        this.camera.matrixWorldInverse
+      )
+    );
+
+    const visibleIds: string[] = [];
+
+    // Check each predator
+    for (const [id, predatorMesh] of this.predators) {
+      // Get predator type from userData (set during predator creation)
+      const predatorType = predatorMesh.userData?.type;
+
+      // Only check aerial predators (not wildebeest)
+      if (predatorType !== 'cardinal' && predatorType !== 'toucan') {
+        continue;
+      }
+
+      // Check if predator position is in camera frustum
+      const position = new THREE.Vector3(
+        predatorMesh.position.x,
+        predatorMesh.position.y,
+        predatorMesh.position.z
+      );
+
+      if (frustum.containsPoint(position)) {
+        visibleIds.push(id);
+      }
+    }
+
+    return visibleIds;
+  }
+
   private throwWalnut(): void {
     if (!this.character || !this.websocket || this.websocket.readyState !== WebSocket.OPEN) return;
 
@@ -6076,6 +6116,9 @@ export class Game {
       this.requestAnimation('attack', this.ANIM_PRIORITY_ACTION, normalDuration * 1.67, false);
     }
 
+    // MVP 12: Get visible aerial predators for distraction mechanic
+    const visiblePredators = this.getVisibleAerialPredators();
+
     // Send throw command to server
     this.sendMessage({
       type: 'player_throw',
@@ -6089,7 +6132,8 @@ export class Game {
         y: toPosition.y,
         z: toPosition.z
       },
-      targetId: targetId
+      targetId: targetId,
+      visiblePredators: visiblePredators // MVP 12: For bird distraction
     });
   }
 
