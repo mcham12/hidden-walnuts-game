@@ -4,6 +4,14 @@
  * Shared utility for calculating player titles/ranks based on score.
  * Used by both client and server for consistent rank calculation.
  *
+ * ⚠️ IMPORTANT: MANUAL SYNC REQUIRED ⚠️
+ * This file exists in TWO locations:
+ * - workers/shared/PlayerRanks.ts (MASTER - source of truth)
+ * - client/src/shared/PlayerRanks.ts (COPY - must manually sync)
+ *
+ * When you modify this file, you MUST copy changes to the other location.
+ * Both files must stay identical for client/server rank consistency.
+ *
  * Design Philosophy:
  * - Friendly "Title" terminology (not "Rank" - less competitive)
  * - Score-based progression (earned through gameplay)

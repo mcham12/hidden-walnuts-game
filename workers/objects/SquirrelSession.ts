@@ -1,6 +1,6 @@
 // Simplified SquirrelSession - Basic player state management
 // MVP 12: Added player title/rank tracking
-import { getPlayerTitle, checkForRankUp } from '../../shared/PlayerRanks.js';
+import { getPlayerTitle, checkForRankUp } from '../shared/PlayerRanks.js';
 
 interface DurableObjectState {
   storage: DurableObjectStorage;

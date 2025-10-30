@@ -6,7 +6,7 @@
 // - NPCs: Target based on spawn time (older NPCs = higher priority)
 // - Predators prefer higher-ranked players for increased challenge
 
-import { getPlayerTitle } from '../../shared/PlayerRanks';
+import { getPlayerTitle } from '../shared/PlayerRanks';
 
 interface Vector3 {
   x: number;

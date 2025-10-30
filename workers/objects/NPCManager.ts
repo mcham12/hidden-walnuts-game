@@ -17,7 +17,7 @@
  */
 
 // MVP 12: Import rank system for aggression scaling
-import { getPlayerTitle } from '../../shared/PlayerRanks';
+import { getPlayerTitle } from '../shared/PlayerRanks';
 
 // Import types from ForestManager (these will be available at runtime)
 // We'll use 'any' types here since we can't easily import from ForestManager
