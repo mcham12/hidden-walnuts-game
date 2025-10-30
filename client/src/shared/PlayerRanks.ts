@@ -20,7 +20,7 @@
  * - Gradual difficulty scaling at higher titles
  *
  * Player-Facing Messaging:
- * - First join: "Welcome to the forest! Your level is Rookie."
+ * - First join: "You are a Rookie"
  * - Rank up: "You've achieved Maestro Status!"
  * - HUD/Profile: "Ninja Squirrel" (title + character name)
  */

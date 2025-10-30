@@ -2,7 +2,7 @@
  * MVP 12: Rank Announcement Overlay
  *
  * Full-screen overlay (NOT toast) for rank announcements:
- * - First join: "Welcome to the forest! Your level is Rookie."
+ * - First join: "You are a Rookie"
  * - Rank up: "You've achieved Maestro Status!"
  *
  * Design: Similar to game achievement overlays (Dark Souls, Zelda)
@@ -85,15 +85,15 @@ export class RankOverlay {
 
   /**
    * Show welcome message on first join
-   * "Welcome to the forest! Your level is Rookie."
+   * "You are a Rookie"
    */
   showWelcome(titleName: string): void {
     if (this.isShowing) return;
 
-    this.titleElement.textContent = 'Welcome to the forest!';
-    this.descriptionElement.textContent = `Your level is ${titleName}.`;
+    this.titleElement.textContent = `You are a ${titleName}`;
+    this.descriptionElement.textContent = ''; // No secondary text needed
 
-    this.show(4000); // 4 seconds display
+    this.show(3000); // 3 seconds display
   }
 
   /**

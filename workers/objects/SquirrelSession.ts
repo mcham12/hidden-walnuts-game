@@ -295,9 +295,14 @@ export default class SquirrelSession {
         console.log(`🎉 Player ${data.squirrelId} ranked up to ${rankedUp.name}!`);
       }
 
-      // MVP 12: Clear first join flag after showing welcome (if applicable)
+      // MVP 12: Clear first join flag after player has been in game for at least 10 seconds
+      // This ensures they've definitely received and seen the welcome overlay
       if (this.sessionState.isFirstJoin) {
-        this.sessionState.isFirstJoin = false;
+        const timeSinceJoin = Date.now() - this.sessionState.joinedAt;
+        if (timeSinceJoin > 10000) { // 10 seconds
+          this.sessionState.isFirstJoin = false;
+          console.log(`✅ Cleared isFirstJoin flag for ${data.squirrelId} (${timeSinceJoin}ms since join)`);
+        }
       }
 
       await this.saveSession();
