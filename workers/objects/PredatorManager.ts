@@ -57,9 +57,9 @@ export class PredatorManager {
   private readonly AERIAL_SPEED = 8.0; // Fast movement
   private readonly AERIAL_ATTACK_COOLDOWN = 30000; // 30s between attacks
   private readonly AERIAL_STEAL_AMOUNT = 2; // Steal 1-2 walnuts
-  private readonly AERIAL_CRUISE_HEIGHT = 3.5; // Base cruise height (balanced for player defense - Zelda-style)
-  private readonly AERIAL_DIVE_HEIGHT = 2.0; // Attack dive height (vulnerable during dives)
-  private readonly AERIAL_BOBBING_AMPLITUDE = 0.8; // Sine wave bobbing range (reduced for easier targeting)
+  private readonly AERIAL_CRUISE_HEIGHT = 2.5; // Base cruise height (low enough to hit - player priority)
+  private readonly AERIAL_DIVE_HEIGHT = 1.8; // Attack dive height (very vulnerable during dives)
+  private readonly AERIAL_BOBBING_AMPLITUDE = 0.4; // Sine wave bobbing range (minimal for easy targeting)
   private readonly AERIAL_BOBBING_SPEED = 2.0; // How fast they bob
   private readonly AERIAL_HEIGHT_LERP_SPEED = 2.0; // Smooth height transitions (industry standard)
 

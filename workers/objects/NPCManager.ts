@@ -789,23 +789,48 @@ export class NPCManager {
     const NPC_RADIUS = 0.3; // NPCs are small squirrels
     let collided = false;
 
-    for (const obj of this.forestManager.forestObjects) {
-      // Skip shrubs (they're passable)
-      if (obj.type === 'shrub') continue;
+    // Check landmark trees first (not in forestObjects array)
+    const landmarks = [
+      { x: 0, z: 0 },    // Origin
+      { x: 0, z: -40 },  // North
+      { x: 0, z: 40 },   // South
+      { x: 40, z: 0 },   // East
+      { x: -40, z: 0 }   // West
+    ];
+    const LANDMARK_RADIUS = 0.8; // Landmark trees are larger
 
-      // Different collision radii for different obstacle types
-      let obstacleRadius = 0.5; // Default for trees
-      if (obj.type === 'rock') obstacleRadius = 0.6; // Rocks slightly larger
-      if (obj.type === 'stump') obstacleRadius = 0.4; // Stumps slightly smaller
-
-      const COLLISION_DISTANCE = obstacleRadius + NPC_RADIUS;
-      const dx = newX - obj.x;
-      const dz = newZ - obj.z;
+    for (const landmark of landmarks) {
+      const COLLISION_DISTANCE = LANDMARK_RADIUS + NPC_RADIUS;
+      const dx = newX - landmark.x;
+      const dz = newZ - landmark.z;
       const distSq = dx * dx + dz * dz;
 
       if (distSq < COLLISION_DISTANCE * COLLISION_DISTANCE) {
         collided = true;
         break;
+      }
+    }
+
+    // Check regular forest objects
+    if (!collided) {
+      for (const obj of this.forestManager.forestObjects) {
+        // Skip shrubs (they're passable)
+        if (obj.type === 'shrub') continue;
+
+        // Different collision radii for different obstacle types
+        let obstacleRadius = 0.5; // Default for trees
+        if (obj.type === 'rock') obstacleRadius = 0.6; // Rocks slightly larger
+        if (obj.type === 'stump') obstacleRadius = 0.4; // Stumps slightly smaller
+
+        const COLLISION_DISTANCE = obstacleRadius + NPC_RADIUS;
+        const dx = newX - obj.x;
+        const dz = newZ - obj.z;
+        const distSq = dx * dx + dz * dz;
+
+        if (distSq < COLLISION_DISTANCE * COLLISION_DISTANCE) {
+          collided = true;
+          break;
+        }
       }
     }
 
