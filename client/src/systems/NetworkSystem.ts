@@ -191,8 +191,8 @@ export class NetworkSystem extends System {
     try {
       Logger.debug(LogCategory.NETWORK, `🔄 Attempting connection (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
       
-      // MULTIPLAYER FIX: Use sessionStorage for unique squirrelId per browser session
-      // This ensures each browser gets its own unique player ID
+      // MVP 12 FIX: Use localStorage for persistent squirrelId (score/rank persistence)
+      // This ensures player keeps same ID across browser sessions
       let squirrelId = this.getPersistentSquirrelId();
       if (!squirrelId) {
         // Generate new ID for this browser session
@@ -1054,14 +1054,14 @@ export class NetworkSystem extends System {
     return this.connectionMetrics.quality;
   }
 
-  // MULTIPLAYER FIX: Use sessionStorage for unique squirrelId per browser session
+  // MVP 12 FIX: Use localStorage for persistent squirrelId across browser sessions
   private getPersistentSquirrelId(): string | null {
     try {
-      // Use sessionStorage for unique ID per browser session (prevents multiplayer conflicts)
-      const sessionId = sessionStorage.getItem('squirrelId');
-      if (sessionId) {
-        Logger.debug(LogCategory.NETWORK, `📦 Retrieved squirrelId from sessionStorage: ${sessionId}`);
-        return sessionId;
+      // Use localStorage for persistent ID (score/rank persistence requires this)
+      const persistentId = localStorage.getItem('squirrelId');
+      if (persistentId) {
+        Logger.debug(LogCategory.NETWORK, `📦 Retrieved squirrelId from localStorage: ${persistentId}`);
+        return persistentId;
       }
       
       return null;
@@ -1073,11 +1073,11 @@ export class NetworkSystem extends System {
 
   private setPersistentSquirrelId(squirrelId: string): void {
     try {
-      // Store in sessionStorage for unique ID per browser session
-      sessionStorage.setItem('squirrelId', squirrelId);
-      Logger.debug(LogCategory.NETWORK, `💾 Stored squirrelId in sessionStorage: ${squirrelId}`);
+      // Store in localStorage for persistent ID (score/rank persistence)
+      localStorage.setItem('squirrelId', squirrelId);
+      Logger.debug(LogCategory.NETWORK, `💾 Stored squirrelId in localStorage: ${squirrelId}`);
     } catch (error) {
-      Logger.error(LogCategory.NETWORK, '❌ Failed to store squirrelId in sessionStorage:', error);
+      Logger.error(LogCategory.NETWORK, '❌ Failed to store squirrelId in localStorage:', error);
     }
   }
 

@@ -5665,7 +5665,11 @@ export class Game {
     const TREE_DISPLAY_DURATION = 30000; // 30 seconds
 
     // Clean up old trees
+    const oldCount = this.recentTrees.length;
     this.recentTrees = this.recentTrees.filter(tree => now - tree.timestamp < TREE_DISPLAY_DURATION);
+    if (oldCount !== this.recentTrees.length) {
+      console.log(`🌳 Minimap: Cleaned up ${oldCount - this.recentTrees.length} expired trees, ${this.recentTrees.length} remaining`);
+    }
 
     // Draw tree icons
     for (const tree of this.recentTrees) {
@@ -5937,6 +5941,7 @@ export class Game {
       z: walnutGroup.position.z,
       timestamp: Date.now()
     });
+    console.log(`🌳 Tree tracked on minimap at (${walnutGroup.position.x.toFixed(1)}, ${walnutGroup.position.z.toFixed(1)}) - total: ${this.recentTrees.length}`);
 
     // MVP 8: Server will decrement inventory and send inventory_update
     // (Removed optimistic decrement to prevent desync)
