@@ -179,7 +179,7 @@
 - better "how to play" instructional experience.  research similar games and how to do this, likely different tutorial for desktop (because of key usage) vs ipad/iphone.  Or a tab between desktop/mobile browser tutorials on the same experience if people are curious.  my personal opinion: when a new player is detected (not returning), provide a tempting (glowing/throbbing) UI control for "how to play" or something similar.  then try to show key game mechanics on one screen vs "nexting" through a bunch of screens.  for desktop, maybe use appropriate Key icons for showing how to do the actions.  for mobile, somehow illustrate screen touch/drag to move, then show the actual onscreen buttons for throw/eat/hide etc.  Key things to cover: move, get walnut, throw walnut (to hit other players and wildebeest, and to distract aerial predators), hide walnut (let them know this might grow into a tree)  Get rid of the existing tutorial click-through for desktop, and get rid of the key legend UI feature on desktop.  add a way to re-invoke the "how to play" dialog on desktop that pauses gameplay while you read it.  on mobile browsers, repurpose the existing "mobile controls" feature to convey the same info as in the desktop experience.  the "mobile controls" feature will need to be bigger than current state.  also need a way to re-invoke the "how to play" UI on mobile, and also pause gameplay.  Record our final design in a document in the docs/ before proceeding with implementation.
 
 **5. revert temporary changes made to facilitate testing
-- change tree growth time back to 2 minutes
+- change tree growth time to 1 minute
 - change tree growth bonus to 20 points
 
 **6. remove any debug logging added for this MVP, both client and worker**
@@ -190,32 +190,10 @@
 - ✅ Predators are challenging but fair
 - ✅ Creates "close call" exciting moments
 
-## MVP 13: voiceover and more gameplay polish
-**1. Voiceover Work** (1-2 hours)
-- Character selection voice lines (one per character)
-- Combat reactions ("Ouch!", "Gotcha!", "Oh no!")
-- Victory/defeat voiceovers
-- Optional: Narrator intro ("Welcome to the forest...")
-- remove any debug logging added for this MVP, both client and worker
 
+## 🎮 MVP 13: Game Admin APIs
 
-**2. Walnut hiding bonus**
-- add a special point bonus for hiding 50 walnuts, e.g. 50 points
-- adjust tree growing mechanism because we will be encouraging walnut hiding now: instead of current state: every walnut hidden by a given player will grow to a tree based on a timer, move to future state: only the 10th, 20th, 30th, etc hidden walnut hidden by the player will grow to be a tree (subject to the same time delay as before)
-- the bonus is only awarded if there are 50 walnuts currently hidden by that player (so if other players pick up walnuts hidden by the player, they are removed from the count for this awared.  also if a walnut grows into a tree it is removed from the count for this award).  
-- adjust tutorial to highlight this new walnut hiding bonus
-- Make a special screen overlay UI ( not the standard "toast" message) announcing the bonus.  be creative.
-
-**3. Tune NPC and Predator behavior**
-- reduce agression of NPCs against human players...still slightly increase as the localplayer rank increases, but lessen the NPC agression at every level
-
-**4. Remove any debug logging added during this MVP, both worker and client**
-
----
-
-## 🎮 MVP 14: Game Admin System & Dashboard (8-10 hours)
-
-**Goal**: Comprehensive admin tools for game maintenance, monitoring, and moderation
+**Goal**:  admin tools for game maintenance, monitoring, and moderation
 
 ### Research Findings
 
@@ -226,9 +204,16 @@ Based on industry standards for casual multiplayer games (PlayFab, Unity Moderat
 2. **Real-Time Monitoring** - Active players, server health, game state
 3. **Game Control** - Reset systems, spawn resources, adjust parameters
 4. **Leaderboard Moderation** - Remove cheaters, manual corrections
-5. **Analytics Dashboard** - Player metrics, economy health, error tracking
-6. **Audit Logging** - Track all admin actions for accountability
-7. **Security** - Role-based access, authentication, rate limiting
+
+### Part 0 Analysis.
+- develop a definitive list of existing apis (including leaderboard-related) vs new apis to be developed via this MVP.  Document in docs/ folder
+- determine which APIs are secured by a secret now and can we reuse that secret or do we need to generate a new one
+- develop a plan for harmonized admin secret(s) if possible,  based on the above
+- Cursor performs the steps to acquire new secret(s) as needed (if possible)
+- Desk-check existing APIs (reset-mapstate, reset-forest, reset-positions) to (1) understand functionality as implemented for documentation delivered via this MVP (2) confirm that they still will work given the extensive game development that has occured since the original APIs were developed (e.g. now have predators, technical implementation may have changed etc etc).  If changes are needed, document and do as "Part 0.5" in this MVP.
+
+### Part 0.5
+-remediate any existing APIs, functionality-wise, as needed, per part 0 analysis
 
 ### Part 1: Secure Existing Admin Endpoints (1-2 hours)
 
@@ -292,151 +277,45 @@ if (!adminSecret || adminSecret !== env.ADMIN_SECRET) {
    - Body: `{ count: 5 }`
    - Add or remove NPCs dynamically
 
-**Audit Logging:**
-
-10. **Get Admin Actions** - `GET /admin/audit`
-    - Query: `?limit=50&since=<timestamp>`
-    - Returns: `{ actions: [{admin, action, timestamp, details}], count }`
-
-11. **Log Admin Action** (internal)
-    - Every admin action writes to KV: `audit:{timestamp}:{action}`
-    - Includes: admin identifier, action type, target, details
-    - 90-day retention
 
 **Implementation Details:**
 - All endpoints require `X-Admin-Secret` header
 - Ban system uses KV: `ban:{playerId}` → `{ reason, bannedAt, expiresAt, bannedBy }`
-- Audit logs use KV: `audit:{timestamp}` → `{ action, admin, details }`
 - Rate limiting: 100 admin requests/minute (prevent abuse)
 
-### Part 3: Admin Web Dashboard (4-5 hours)
-
-**Location**: `/client/admin/index.html` (separate from game)
-
-**Authentication Flow:**
-1. Admin enters `ADMIN_SECRET` on login page
-2. Secret stored in sessionStorage (client-side only)
-3. All API calls include `X-Admin-Secret` header
-4. Invalid secret = 401, redirect to login
-
-**Dashboard Sections:**
-
-**1. Overview (Home)**
-```
-┌─────────────────────────────────────────┐
-│ Hidden Walnuts - Game Admin Dashboard  │
-├─────────────────────────────────────────┤
-│ 🎮 Active Players: 12                   │
-│ 🤖 NPCs: 3                              │
-│ 🌰 Walnuts: 45 hidden, 23 found        │
-│ ⏱️  Uptime: 12h 34m                     │
-│ 📊 Top Score: Alice123 (523 pts)       │
-└─────────────────────────────────────────┘
-```
-
-**2. Player Management**
-- Table: Username | Score | Walnuts | Position | Status | Actions
-- Actions: View Details | Kick | Ban | Reset
-- Search/filter by username
-- Ban modal with reason input
-
-**3. Game Control**
-- Buttons: Reset Forest | Reset Map State | Reset Positions
-- Confirmation dialogs for destructive actions
-- Spawn walnut tool (click map to place)
-- Adjust NPC count (slider: 0-10)
-
-**4. Leaderboard**
-- Current top 10 (weekly + all-time)
-- Actions: Remove Player | Manual Reset | Cleanup
-- View archives (last 12 resets)
-
-**5. Metrics & Analytics**
-- Player count chart (last 24h)
-- Score distribution histogram
-- Walnut economy graph (hidden vs found over time)
-- Error rate monitor
-
-**6. Audit Log**
-- Table: Timestamp | Action | Target | Details
-- Filter by action type
-- Export to CSV
-
-**Tech Stack:**
-- Pure HTML/CSS/JavaScript (no framework needed)
-- Chart.js for graphs (lightweight)
-- Fetch API for all requests
-- Responsive design (works on mobile)
-
-**UI Design Principles:**
-- Clean, minimal interface (similar to Leaderboard style)
-- Confirm all destructive actions
-- Real-time updates (refresh every 10s)
-- Error handling with user-friendly messages
-
-**File Structure:**
-```
-client/admin/
-├── index.html          # Main dashboard page
-├── login.html          # Admin login
-├── styles.css          # Dashboard styles
-├── admin.js            # Main logic, API calls
-├── charts.js           # Metrics visualization
-└── README.md           # Setup instructions
-```
-
-### Part 4: Security & Polish (1 hour)
-
-**Security Hardening:**
-1. ✅ Rate limiting on all admin endpoints (100 req/min)
-2. ✅ CORS restricted to admin domain only (not wildcard)
-3. ✅ Audit log for all actions (who, what, when)
-4. ✅ Admin secret rotation instructions in docs
-5. ✅ Input validation on all endpoints
-
-**Polish:**
-- Success/error toast notifications
-- Loading states for all actions
-- Keyboard shortcuts (r = refresh, ? = help)
-- Dark mode toggle
-
-### Implementation Plan
-
-**Day 1 (4 hours):**
-1. Secure existing admin endpoints (1h)
-2. Implement player management APIs (2h)
-3. Implement game state APIs (1h)
-
-**Day 2 (4 hours):**
-4. Build admin dashboard HTML/CSS (2h)
-5. Implement API integration in JS (1.5h)
-6. Add charts and metrics (0.5h)
-
-**Day 3 (2 hours):**
-7. Security hardening (1h)
-8. Testing and polish (1h)
-
-### Success Criteria
-
-- ✅ All admin endpoints require authentication
-- ✅ Can view all active players in real-time
-- ✅ Can ban/unban/kick players with reasons
-- ✅ Can reset game state (forest, map, positions)
-- ✅ Dashboard shows live metrics (updates every 10s)
-- ✅ All admin actions logged to audit trail
-- ✅ Dashboard works on desktop and mobile
-- ✅ No security vulnerabilities in admin system
-- ✅ Comprehensive documentation for admin setup
 
 ### Documentation
 
 Create: `docs/ADMIN_SETUP.md`
-- How to access admin dashboard
-- Admin secret setup
+- How to run the apis
 - Common admin tasks guide
 - Troubleshooting
 
+## MVP 14: voiceover and more gameplay polish
+**1. Voiceover Work** (1-2 hours)
+- Character selection voice lines (one per character)
+- Combat reactions ("Ouch!", "Gotcha!", "Oh no!")
+- Victory/defeat voiceovers
+- Optional: Narrator intro ("Welcome to the forest...")
+- remove any debug logging added for this MVP, both client and worker
+
+
+**2. Walnut hiding bonus**
+- add a special point bonus for hiding 50 walnuts, e.g. 50 points
+- adjust tree growing mechanism because we will be encouraging walnut hiding now: instead of current state: every walnut hidden by a given player will grow to a tree based on a timer, move to future state: only the 10th, 20th, 30th, etc hidden walnut hidden by the player will grow to be a tree (subject to the same time delay as before)
+- the bonus is only awarded if there are 50 walnuts currently hidden by that player (so if other players pick up walnuts hidden by the player, they are removed from the count for this awared.  also if a walnut grows into a tree it is removed from the count for this award).  
+- adjust tutorial to highlight this new walnut hiding bonus
+- Make a special screen overlay UI ( not the standard "toast" message) announcing the bonus.  be creative.
+
+**3. Tune NPC and Predator behavior**
+- reduce agression of NPCs against human players...still slightly increase as the localplayer rank increases, but lessen the NPC agression at every level
+
+**4. Remove any debug logging added during this MVP, both worker and client**
+
 ---
+
+
+
 
 ## 🔐 MVP 15: Full Authentication (8-12 hours)
 
@@ -523,18 +402,111 @@ These features add polish but aren't essential for core gameplay:
 - Holiday themes, special walnuts, limited-time modes
 - **Why defer**: Only valuable with established player base
 
+
+DEFERRED UNTIL LATER
+5. **Analytics Dashboard** - Player metrics, economy health, error tracking
+6. **Audit Logging** - Track all admin actions for accountability
+7. **Security** - Role-based access, authentication, rate limiting
+DEFERRED UNTIL LATER: ### Part 4: Security & Polish (1 hour)
+
+**Security Hardening:**
+1. ✅ Rate limiting on all admin endpoints (100 req/min)
+2. ✅ CORS restricted to admin domain only (not wildcard)
+3. ✅ Audit log for all actions (who, what, when)
+4. ✅ Admin secret rotation instructions in docs
+5. ✅ Input validation on all endpoints
+
+**Polish:**
+- Success/error toast notifications
+- Loading states for all actions
+- Keyboard shortcuts (r = refresh, ? = help)
+- Dark mode toggle
+DEFERRED UNTIL LATER ### Part 3: Admin Web Dashboard (4-5 hours)
+
+**Location**: `/client/admin/index.html` (separate from game)
+
+**Authentication Flow:**
+1. Admin enters `ADMIN_SECRET` on login page
+2. Secret stored in sessionStorage (client-side only)
+3. All API calls include `X-Admin-Secret` header
+4. Invalid secret = 401, redirect to login
+
+**Dashboard Sections:**
+
+**1. Overview (Home)**
+```
+┌─────────────────────────────────────────┐
+│ Hidden Walnuts - Game Admin Dashboard  │
+├─────────────────────────────────────────┤
+│ 🎮 Active Players: 12                   │
+│ 🤖 NPCs: 3                              │
+│ 🌰 Walnuts: 45 hidden, 23 found        │
+│ ⏱️  Uptime: 12h 34m                     │
+│ 📊 Top Score: Alice123 (523 pts)       │
+└─────────────────────────────────────────┘
+```
+
+**2. Player Management**
+- Table: Username | Score | Walnuts | Position | Status | Actions
+- Actions: View Details | Kick | Ban | Reset
+- Search/filter by username
+- Ban modal with reason input
+
+**3. Game Control**
+- Buttons: Reset Forest | Reset Map State | Reset Positions
+- Confirmation dialogs for destructive actions
+- Spawn walnut tool (click map to place)
+- Adjust NPC count (slider: 0-10)
+
+**4. Leaderboard**
+- Current top 10 (weekly + all-time)
+- Actions: Remove Player | Manual Reset | Cleanup
+- View archives (last 12 resets)
+
+**5. Metrics & Analytics**
+- Player count chart (last 24h)
+- Score distribution histogram
+- Walnut economy graph (hidden vs found over time)
+- Error rate monitor
+
+**6. Audit Log**
+- Table: Timestamp | Action | Target | Details
+- Filter by action type
+- Export to CSV
+
+**Tech Stack:**
+- Pure HTML/CSS/JavaScript (no framework needed)
+- Chart.js for graphs (lightweight)
+- Fetch API for all requests
+- Responsive design (works on mobile)
+
+**UI Design Principles:**
+- Clean, minimal interface (similar to Leaderboard style)
+- Confirm all destructive actions
+- Real-time updates (refresh every 10s)
+- Error handling with user-friendly messages
+
+**File Structure:**
+```
+client/admin/
+├── index.html          # Main dashboard page
+├── login.html          # Admin login
+├── styles.css          # Dashboard styles
+├── admin.js            # Main logic, API calls
+├── charts.js           # Metrics visualization
+└── README.md           # Setup instructions
+```
+DEFERRED UNTIL LATER: **Audit Logging:**
+
+10. **Get Admin Actions** - `GET /admin/audit`
+    - Query: `?limit=50&since=<timestamp>`
+    - Returns: `{ actions: [{admin, action, timestamp, details}], count }`
+
+11. **Log Admin Action** (internal)
+    - Every admin action writes to KV: `audit:{timestamp}:{action}`
+    - Includes: admin identifier, action type, target, details
+    - 90-day retention
 ---
-
-## 📅 Timeline
-
-| MVP | Focus | Status |
-|-----|-------|--------|
-| 1.5-11 | Core Game Complete | ✅ Complete |
-| **12** | **World Polish and Predators** | 🎯 **NEXT** |
-| 13 | Game Admin System & Dashboard | Pending |
-| 14 | Full Authentication | Pending |
-| 15 | Code Cleanup | Pending |
-
 ---
 
 **Next Step**: Begin MVP 12 (World Polish and Predators & Threats) ⚔️

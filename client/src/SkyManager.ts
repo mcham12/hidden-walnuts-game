@@ -73,25 +73,26 @@ export class SkyManager {
             map: texture,
             transparent: true,
             opacity: 0.9,
-            depthTest: false, // Always render behind scene objects
+            depthTest: false, // Don't test depth - always behind objects
+            depthWrite: false, // Don't write to depth buffer - industry standard for sky elements
           });
 
           // Create sprite
           this.sun = new THREE.Sprite(material);
 
-          // Position sun in upper-right background (lowered for visibility)
-          this.sun.position.set(50, 30, -50);
+          // Position sun in upper-right background (lowered for visibility, far Z for proper layering)
+          this.sun.position.set(50, 30, -200);
 
-          // Scale to 20 units diameter
-          this.sun.scale.set(20, 20, 1);
+          // Scale to 10 units diameter (50% of previous size)
+          this.sun.scale.set(10, 10, 1);
 
-          // Render order: behind everything else
-          this.sun.renderOrder = -1000;
+          // Render order: behind everything else (negative = render first)
+          this.sun.renderOrder = -2000;
 
           // Add to scene
           this.scene.add(this.sun);
 
-          console.log('☀️ Sun created at position (50, 30, -50)');
+          console.log('☀️ Sun created at position (50, 30, -200), scale 10 units');
           resolve();
         },
         undefined,
@@ -123,11 +124,12 @@ export class SkyManager {
         map: cloudTexture.clone(),
         transparent: true,
         opacity: 0.7,
-        depthTest: false,
+        depthTest: false, // Don't test depth - always behind objects
+        depthWrite: false, // Don't write to depth buffer - industry standard
       });
 
       const sprite = new THREE.Sprite(material);
-      sprite.renderOrder = -900; // Behind sun but still background
+      sprite.renderOrder = -1500; // Behind sun (-2000) but still background
 
       // Start with random respawn timer (stagger initial spawns)
       const initialDelay = Math.random() * 30000; // 0-30s

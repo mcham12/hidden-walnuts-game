@@ -288,7 +288,6 @@ export class Game {
 
   // Tutorial system ("How to Play" overlay)
   private tutorialOverlay: TutorialOverlay | null = null;
-  private isPaused: boolean = false; // Game pause state for tutorial
 
   // MVP 5.5: Collision detection system
   private collisionSystem: CollisionSystem | null = null;
@@ -1036,21 +1035,6 @@ export class Game {
 
     // INDUSTRY STANDARD: Cap delta to prevent spiral of death on lag spikes
     delta = Math.min(delta, this.MAX_DELTA_TIME);
-
-    // UX Polish: Skip game updates if paused (tutorial open)
-    // Still render the scene, just don't update game logic
-    if (this.isPaused) {
-      if (this.vfxManager) {
-        const shakeOffset = this.vfxManager.updateScreenShake();
-        const originalCameraPos = this.camera.position.clone();
-        this.camera.position.add(shakeOffset);
-        this.renderer.render(this.scene, this.camera);
-        this.camera.position.copy(originalCameraPos);
-      } else {
-        this.renderer.render(this.scene, this.camera);
-      }
-      return;
-    }
 
     // MVP 5: Calculate FPS for debug overlay (update every second)
     this.frameCount++;
@@ -6891,29 +6875,9 @@ export class Game {
    */
   private initTutorial(): void {
     // Initialize new tutorial overlay system
+    // Industry standard: Don't pause multiplayer games - overlay is enough visual feedback
     this.tutorialOverlay = new TutorialOverlay();
-
-    // Set pause/resume callbacks
-    this.tutorialOverlay.setPauseCallback(() => this.pauseGame());
-    this.tutorialOverlay.setResumeCallback(() => this.resumeGame());
-
     console.log('✅ Tutorial overlay initialized');
-  }
-
-  /**
-   * Pause game (when tutorial overlay opens)
-   */
-  private pauseGame(): void {
-    this.isPaused = true;
-    console.log('⏸️ Game paused');
-  }
-
-  /**
-   * Resume game (when tutorial overlay closes)
-   */
-  private resumeGame(): void {
-    this.isPaused = false;
-    console.log('▶️ Game resumed');
   }
 
   // MVP 4: Leaderboard system methods

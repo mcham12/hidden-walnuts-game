@@ -21,8 +21,6 @@ export class TutorialOverlay {
   private buttonDiv: HTMLDivElement;
   private isDesktop: boolean;
   private isVisible: boolean = false;
-  private onPause: (() => void) | null = null;
-  private onResume: (() => void) | null = null;
   private styleElement!: HTMLStyleElement;
 
   private readonly STORAGE_KEY = 'hw_hasSeenTutorial';
@@ -54,13 +52,12 @@ export class TutorialOverlay {
    * Detect if desktop or mobile platform
    */
   private detectPlatform(): boolean {
-    // Check if touch device
+    // Check if touch device (iPad, iPhone, Android tablets/phones all have touch)
     const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    // Also check screen size (tablets with keyboards exist)
-    const isLargeScreen = window.innerWidth > 768;
 
-    // Desktop if no touch OR large screen with keyboard-friendly input
-    return !hasTouch || isLargeScreen;
+    // Mobile includes tablets/iPads - they use touch controls
+    // Desktop is keyboard/mouse only (no touch support)
+    return !hasTouch;
   }
 
   /**
@@ -203,8 +200,8 @@ export class TutorialOverlay {
       /* Tutorial button (glowing) */
       .hw-tutorial-button {
         position: fixed;
-        top: 20px;
-        right: 20px;
+        top: 10px;
+        right: 220px; /* Left of minimap (minimap at right: 10px, width: 200px) */
         z-index: 10000;
         background: rgba(255, 215, 0, 0.9);
         border: 2px solid #FFD700;
@@ -268,11 +265,19 @@ export class TutorialOverlay {
         }
       }
 
-      /* iPhone Portrait - Center tutorial button at top */
+      /* iPad - Left of minimap like desktop */
+      @media (max-width: 1024px) and (min-width: 768px) {
+        .hw-tutorial-button {
+          top: 10px;
+          right: 135px; /* Left of smaller minimap on tablet */
+        }
+      }
+
+      /* iPhone Portrait - Slightly right of center to avoid HUD */
       @media (max-width: 430px) {
         .hw-tutorial-button {
           top: 10px;
-          left: 50%;
+          left: 55%; /* Shifted right from center to avoid HUD overlap */
           right: auto;
           transform: translateX(-50%);
         }
@@ -282,11 +287,11 @@ export class TutorialOverlay {
         }
       }
 
-      /* iPhone Landscape - Center tutorial button at top */
+      /* iPhone Landscape - Shifted right to avoid leaderboard button */
       @media (max-height: 500px) and (orientation: landscape) {
         .hw-tutorial-button {
           top: max(5px, env(safe-area-inset-top));
-          left: 50%;
+          left: 58%; /* Shifted right from center to avoid leaderboard overlap */
           right: auto;
           transform: translateX(-50%);
           width: 40px;
@@ -350,7 +355,7 @@ export class TutorialOverlay {
       </div>
 
       <div class="hw-tutorial-item">
-        <div class="hw-tutorial-icon">🥜</div>
+        <div class="hw-tutorial-icon">🟤</div>
         <div class="hw-tutorial-text">
           <p class="hw-tutorial-label">GET WALNUT</p>
           <p class="hw-tutorial-desc">Walk near walnut to collect</p>
@@ -380,7 +385,7 @@ export class TutorialOverlay {
       </div>
 
       <div class="hw-tutorial-item">
-        <div class="hw-tutorial-icon">❤️</div>
+        <div class="hw-tutorial-icon">🍴</div>
         <div class="hw-tutorial-text">
           <p class="hw-tutorial-label">EAT WALNUT</p>
           <p class="hw-tutorial-desc">
@@ -470,7 +475,7 @@ export class TutorialOverlay {
   private createButton(): HTMLDivElement {
     const button = document.createElement('div');
     button.className = 'hw-tutorial-button';
-    button.textContent = this.isDesktop ? '💡' : '?';
+    button.textContent = '?'; // Consistent across all platforms
     button.setAttribute('aria-label', 'How to Play');
     button.setAttribute('role', 'button');
     button.setAttribute('tabindex', '0');
@@ -558,16 +563,14 @@ export class TutorialOverlay {
     this.isVisible = true;
     this.overlay.classList.add('visible');
 
-    // Pause game
-    if (this.onPause) {
-      this.onPause();
-    }
+    // Industry standard: Don't pause multiplayer games
+    // Overlay provides enough visual feedback, game continues running
 
     console.log('📖 Tutorial overlay shown');
   }
 
   /**
-   * Hide tutorial (resume game)
+   * Hide tutorial
    */
   hide(): void {
     if (!this.isVisible) return;
@@ -577,11 +580,6 @@ export class TutorialOverlay {
 
     // Mark as seen
     this.markAsSeen();
-
-    // Resume game
-    if (this.onResume) {
-      this.onResume();
-    }
 
     console.log('📖 Tutorial overlay hidden');
   }
@@ -595,20 +593,6 @@ export class TutorialOverlay {
     } else {
       this.show();
     }
-  }
-
-  /**
-   * Set pause callback (called when tutorial opens)
-   */
-  setPauseCallback(callback: () => void): void {
-    this.onPause = callback;
-  }
-
-  /**
-   * Set resume callback (called when tutorial closes)
-   */
-  setResumeCallback(callback: () => void): void {
-    this.onResume = callback;
   }
 
   /**
