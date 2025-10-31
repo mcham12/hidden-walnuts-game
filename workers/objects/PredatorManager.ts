@@ -140,9 +140,25 @@ export class PredatorManager {
     // Random chance to spawn
     if (Math.random() > this.PREDATOR_SPAWN_CHANCE) return;
 
-    // Randomly choose predator type
-    const types: Predator['type'][] = ['cardinal', 'toucan', 'wildebeest'];
-    const type = types[Math.floor(Math.random() * types.length)];
+    // Check if wildebeest already exists
+    const hasWildebeest = Array.from(this.predators.values()).some(p => p.type === 'wildebeest');
+
+    let type: Predator['type'];
+
+    if (!hasWildebeest) {
+      // No wildebeest exists - always spawn one first (for testing annoyance bar)
+      type = 'wildebeest';
+    } else {
+      // Wildebeest exists - weighted random (favor wildebeest: 50%, cardinal: 25%, toucan: 25%)
+      const rand = Math.random();
+      if (rand < 0.5) {
+        type = 'wildebeest';
+      } else if (rand < 0.75) {
+        type = 'cardinal';
+      } else {
+        type = 'toucan';
+      }
+    }
 
     this.spawnPredator(type, getTerrainHeight);
   }

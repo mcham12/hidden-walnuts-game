@@ -6155,8 +6155,8 @@ export class Game {
     cameraDirection.y = 0; // Ignore vertical component (horizontal plane only)
     cameraDirection.normalize();
 
-    const AWARENESS_DISTANCE = 50; // 50 units - generous detection range
-    const AWARENESS_DOT_THRESHOLD = -0.5; // ~240 degree cone (even birds slightly behind)
+    const AWARENESS_DISTANCE = 80; // 80 units - very generous detection range for easy distractions
+    const AWARENESS_DOT_THRESHOLD = -0.8; // ~290 degree cone (almost full circle, birds anywhere nearby)
 
     // Check each predator
     for (const [id, predatorMesh] of this.predators) {
