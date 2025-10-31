@@ -5208,9 +5208,18 @@ export class Game {
         if (distance < PROXIMITY_DISTANCE && !fleeing) {
           annoyanceBar.container.style.display = 'block';
 
-          // Position bar above wildebeest (higher than NPC health bars since wildebeest is larger)
+          // MVP 12: Dynamic height adjustment based on distance to camera (like NPC health bars)
+          const distanceToCamera = this.camera.position.distanceTo(wildebeest.position);
+          let barYOffset = 3.5; // Default: higher than NPCs since wildebeest is larger
+
+          // When close to wildebeest (< 10 units), lower the bar for better visibility
+          if (distanceToCamera < 10) {
+            barYOffset = 1.2; // Much lower when close (slightly higher than NPCs due to size)
+          }
+
+          // Position bar above wildebeest with dynamic offset
           const barPos = wildebeest.position.clone();
-          barPos.y += 3.5; // Higher offset for larger wildebeest model
+          barPos.y += barYOffset;
           this.updateLabelPosition(annoyanceBar.container, barPos);
 
           // Update annoyance bar fill based on userData (0-4 hits = 0-100%)

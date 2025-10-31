@@ -778,7 +778,7 @@ export class NPCManager {
 
   /**
    * Update NPC movement based on velocity
-   * MVP 12: Added tree collision detection
+   * MVP 12: Collision avoidance with sliding (smooth navigation around obstacles)
    */
   private updateMovement(npc: NPC, delta: number): void {
     // Calculate proposed new position
@@ -787,57 +787,89 @@ export class NPCManager {
 
     // Check for collisions with solid obstacles (trees, rocks, stumps - not shrubs)
     const NPC_RADIUS = 0.3; // NPCs are small squirrels
-    let collided = false;
+    let closestObstacle: { x: number; z: number } | null = null;
+    let closestDistSq = Infinity;
 
     // Check landmark trees first (not in forestObjects array)
-    // IMPORTANT: These coordinates MUST match client/src/Game.ts createLandmark() calls (lines 4442-4454)
+    // IMPORTANT: These coordinates MUST match client/src/Game.ts createLandmark() calls
     // Client uses CollisionSystem.addTreeMeshCollider() with Octree for precise collision
     const landmarks = [
       { x: 0, z: 0 },     // Origin
-      { x: 0, z: -80 },   // North (was -40, WRONG - NPCs were clipping through)
-      { x: 0, z: 80 },    // South (was 40, WRONG)
-      { x: 80, z: 0 },    // East (was 40, WRONG)
-      { x: -80, z: 0 }    // West (was -40, WRONG)
+      { x: 0, z: -80 },   // North
+      { x: 0, z: 80 },    // South
+      { x: 80, z: 0 },    // East
+      { x: -80, z: 0 }    // West
     ];
     const LANDMARK_RADIUS = 0.8; // Landmark trees are larger
+    const LANDMARK_COLLISION_DISTANCE = LANDMARK_RADIUS + NPC_RADIUS;
 
     for (const landmark of landmarks) {
-      const COLLISION_DISTANCE = LANDMARK_RADIUS + NPC_RADIUS;
       const dx = newX - landmark.x;
       const dz = newZ - landmark.z;
       const distSq = dx * dx + dz * dz;
 
-      if (distSq < COLLISION_DISTANCE * COLLISION_DISTANCE) {
-        collided = true;
-        break;
+      if (distSq < LANDMARK_COLLISION_DISTANCE * LANDMARK_COLLISION_DISTANCE && distSq < closestDistSq) {
+        closestDistSq = distSq;
+        closestObstacle = landmark;
       }
     }
 
     // Check regular forest objects
-    if (!collided) {
-      for (const obj of this.forestManager.forestObjects) {
-        // Skip shrubs (they're passable)
-        if (obj.type === 'shrub') continue;
+    for (const obj of this.forestManager.forestObjects) {
+      // Skip shrubs (they're passable)
+      if (obj.type === 'shrub') continue;
 
-        // Different collision radii for different obstacle types
-        let obstacleRadius = 0.5; // Default for trees
-        if (obj.type === 'rock') obstacleRadius = 0.6; // Rocks slightly larger
-        if (obj.type === 'stump') obstacleRadius = 0.4; // Stumps slightly smaller
+      // Different collision radii for different obstacle types
+      let obstacleRadius = 0.5; // Default for trees
+      if (obj.type === 'rock') obstacleRadius = 0.6; // Rocks slightly larger
+      if (obj.type === 'stump') obstacleRadius = 0.4; // Stumps slightly smaller
 
-        const COLLISION_DISTANCE = obstacleRadius + NPC_RADIUS;
-        const dx = newX - obj.x;
-        const dz = newZ - obj.z;
-        const distSq = dx * dx + dz * dz;
+      const COLLISION_DISTANCE = obstacleRadius + NPC_RADIUS;
+      const dx = newX - obj.x;
+      const dz = newZ - obj.z;
+      const distSq = dx * dx + dz * dz;
 
-        if (distSq < COLLISION_DISTANCE * COLLISION_DISTANCE) {
-          collided = true;
-          break;
-        }
+      if (distSq < COLLISION_DISTANCE * COLLISION_DISTANCE && distSq < closestDistSq) {
+        closestDistSq = distSq;
+        closestObstacle = { x: obj.x, z: obj.z };
       }
     }
 
-    // Only apply movement if no collision
-    if (!collided) {
+    // Apply collision avoidance
+    if (closestObstacle) {
+      // Calculate vector from obstacle to NPC (push away)
+      const pushX = newX - closestObstacle.x;
+      const pushZ = newZ - closestObstacle.z;
+      const pushDist = Math.sqrt(pushX * pushX + pushZ * pushZ);
+
+      if (pushDist > 0.01) {
+        // Normalize push vector
+        const pushDirX = pushX / pushDist;
+        const pushDirZ = pushZ / pushDist;
+
+        // Calculate sliding direction (perpendicular to push direction)
+        // This allows NPCs to slide around obstacles smoothly
+        const slideX = -pushDirZ; // Perpendicular vector
+        const slideZ = pushDirX;
+
+        // Project original velocity onto slide direction
+        const velocityDot = npc.velocity.x * slideX + npc.velocity.z * slideZ;
+
+        // Try sliding along obstacle
+        const slideAmount = Math.abs(velocityDot) * delta;
+        const slideDirX = Math.sign(velocityDot) * slideX;
+        const slideDirZ = Math.sign(velocityDot) * slideZ;
+
+        // Apply slide movement (50% of original speed when sliding)
+        npc.position.x += slideDirX * slideAmount * 0.5;
+        npc.position.z += slideDirZ * slideAmount * 0.5;
+
+        // Also push slightly away from obstacle to prevent getting stuck
+        npc.position.x += pushDirX * 0.1;
+        npc.position.z += pushDirZ * 0.1;
+      }
+    } else {
+      // No collision - apply movement normally
       npc.position.x = newX;
       npc.position.z = newZ;
     }

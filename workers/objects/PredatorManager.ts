@@ -293,8 +293,8 @@ export class PredatorManager {
     getTerrainHeight: (x: number, z: number) => number,
     isAerial: boolean
   ): void {
-    // Look for targets with walnuts
-    const target = this.findBestTarget(predator, targets);
+    // Look for targets with walnuts (excluding targets already being attacked)
+    const target = this.findBestTarget(predator, targets, this.predators);
 
     if (target) {
       predator.targetId = target.id;
@@ -326,14 +326,29 @@ export class PredatorManager {
         predator.nextDecisionDelay = 3000 + Math.random() * 2000;
       }
     } else {
-      // GROUND: More erratic movement (squirrels dart around)
+      // GROUND: Natural idle/roam behavior (like animals in nature)
       if (now - predator.lastDecisionTime >= predator.nextDecisionDelay) {
-        const angle = Math.random() * Math.PI * 2;
-        predator.velocity.x = Math.cos(angle) * speed;
-        predator.velocity.z = Math.sin(angle) * speed;
+        // Decide whether to idle or move (60% move, 40% idle)
+        const shouldMove = Math.random() < 0.6;
+
+        if (shouldMove) {
+          // Pick a random direction and move smoothly
+          const angle = Math.random() * Math.PI * 2;
+          predator.velocity.x = Math.cos(angle) * speed;
+          predator.velocity.z = Math.sin(angle) * speed;
+
+          // Move for 3-6 seconds
+          predator.nextDecisionDelay = 3000 + Math.random() * 3000;
+        } else {
+          // Idle (stop moving)
+          predator.velocity.x = 0;
+          predator.velocity.z = 0;
+
+          // Idle for 2-4 seconds
+          predator.nextDecisionDelay = 2000 + Math.random() * 2000;
+        }
 
         predator.lastDecisionTime = now;
-        predator.nextDecisionDelay = 1000 + Math.random() * 2000;
       }
     }
 
@@ -545,23 +560,41 @@ export class PredatorManager {
    * Find best target: Prefer players with most walnuts
    */
   /**
-   * MVP 12: Find best target with rank-based weighting
+   * MVP 12: Find best target with rank-based weighting and multi-targeting prevention
    *
    * Targeting Rules:
    * - Players: Ignore Rookie/Apprentice (0-100 score), start at Dabbler (101+)
    * - Players: Weight by rank (Dabbler=0.5x, Slick=1.0x, Maestro+=1.3-2.0x)
-   * - NPCs: Weight by time alive (older NPCs = higher priority)
+   * - NPCs: Constant 0.3 weight (less attractive than Dabbler players)
+   * - Exclusion: Skip targets already being attacked by other predators
    * - Base score: walnuts * distance * rank_weight
    */
   private findBestTarget(
     predator: Predator,
-    targets: Map<string, PlayerData>
+    targets: Map<string, PlayerData>,
+    allPredators: Map<string, Predator>
   ): PlayerData | null {
     let bestTarget: PlayerData | null = null;
     let bestScore = 0;
     const now = Date.now();
 
+    // Build set of target IDs that are already being attacked by other predators
+    const targetedIds = new Set<string>();
+    allPredators.forEach((otherPredator, otherId) => {
+      // Skip self
+      if (otherId === predator.id) return;
+
+      // If another predator is targeting/attacking someone, mark them as taken
+      if ((otherPredator.state === 'targeting' || otherPredator.state === 'attacking')
+          && otherPredator.targetId) {
+        targetedIds.add(otherPredator.targetId);
+      }
+    });
+
     targets.forEach(target => {
+      // Skip targets already being attacked by another predator
+      if (targetedIds.has(target.id)) return;
+
       // Calculate distance
       const dx = target.position.x - predator.position.x;
       const dz = target.position.z - predator.position.z;
