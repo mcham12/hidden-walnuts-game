@@ -11,6 +11,7 @@ import { SettingsManager } from './SettingsManager.js';
 import { CollisionSystem } from './CollisionSystem.js';
 import { TouchControls } from './TouchControls.js';
 import { RankOverlay } from './RankOverlay.js';
+import { SkyManager } from './SkyManager.js';
 import { getPlayerTitle } from '@shared/PlayerRanks';
 
 interface Character {
@@ -295,6 +296,9 @@ export class Game {
   private rankOverlay: RankOverlay = new RankOverlay();
   private playerTitleName: string = 'Rookie'; // Current player title name
 
+  // Sky elements system (sun + clouds)
+  private skyManager: SkyManager | null = null;
+
   // MVP 5.5: Collision detection system
   private collisionSystem: CollisionSystem | null = null;
 
@@ -409,6 +413,10 @@ export class Game {
 
       // MVP 5: Initialize VFX Manager
       this.vfxManager = new VFXManager(this.scene, this.camera);
+
+      // Initialize Sky Manager (sun + clouds)
+      this.skyManager = new SkyManager(this.scene, this.textureLoader);
+      await this.skyManager.init();
 
       // MVP 8: Initialize Projectile Manager (with collision system for tree/rock detection)
       this.projectileManager = new ProjectileManager(this.scene, this.vfxManager, this.audioManager, this.collisionSystem);
@@ -1010,6 +1018,9 @@ export class Game {
     if (this.vfxManager) {
       this.vfxManager.dispose();
     }
+    if (this.skyManager) {
+      this.skyManager.dispose();
+    }
 
     // Reset connection state
     this.isConnected = false;
@@ -1176,6 +1187,11 @@ export class Game {
 
     // MVP 3: Update minimap
     this.updateMinimap();
+
+    // Update sky elements (sun + clouds)
+    if (this.skyManager) {
+      this.skyManager.update(delta);
+    }
 
     // MVP 5: Update VFX and apply screen shake
     if (this.vfxManager) {
