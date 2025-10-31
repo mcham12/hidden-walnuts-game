@@ -682,7 +682,8 @@ export class PredatorManager {
     // Enter distracted state
     predator.state = 'distracted';
     predator.distractedByWalnut = walnutId;
-    predator.distractedUntil = Date.now() + 2000; // 2 seconds
+    // Generous distraction duration (5-8 seconds) - makes defense mechanic very rewarding
+    predator.distractedUntil = Date.now() + 5000 + Math.random() * 3000;
     predator.targetId = null; // Stop targeting player
 
     return true;
