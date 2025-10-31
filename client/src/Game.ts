@@ -135,6 +135,9 @@ export class Game {
   private npcInterpolationBuffers: Map<string, Array<{ position: THREE.Vector3; quaternion: THREE.Quaternion; timestamp: number }>> = new Map();
   private npcPendingUpdates: Map<string, Array<{ position: any; rotationY: number; animation?: string; velocity?: any; behavior?: string; timestamp: number }>> = new Map();
 
+  // MVP 12: Annoyance bars for wildebeest predators (Map predatorId → { container, fill })
+  private wildebeestAnnoyanceBars: Map<string, { container: HTMLElement; fill: HTMLElement; }> = new Map();
+
   // MVP 9 FIX: Track last combat event timestamp to prevent stale health data from overwriting fresh combat data
   private lastPlayerHealthUpdateTime: Map<string, number> = new Map(); // playerId → timestamp
   private lastNPCHealthUpdateTime: Map<string, number> = new Map(); // npcId → timestamp
@@ -1164,6 +1167,9 @@ export class Game {
 
     // MVP 9: Update NPC health bars
     this.updateNPCHealthBars();
+
+    // MVP 12: Update wildebeest annoyance bars (proximity-based)
+    this.updateWildebeestAnnoyanceBars();
 
     // MVP 3: Update proximity indicators
     this.updateProximityIndicators();
@@ -3319,6 +3325,15 @@ export class Game {
         );
       }
 
+      // MVP 12: Create annoyance bar for wildebeest (floating above like NPC health bars)
+      if (type === 'wildebeest') {
+        const annoyanceBar = this.createAnnoyanceBar();
+        this.wildebeestAnnoyanceBars.set(predatorId, annoyanceBar);
+        // Store initial annoyance level in userData (will be updated by server messages)
+        predatorModel.userData.annoyanceLevel = 0; // 0-4 hits to flee
+        predatorModel.userData.fleeing = false;
+      }
+
       console.log('✅ Created predator:', type, 'at', position, 'with', Object.keys(predatorActions).length, 'animations');
 
       delete (this as any)[loadingKey];
@@ -3514,6 +3529,13 @@ export class Game {
       // MVP 12: Remove collision
       if (this.collisionSystem) {
         this.collisionSystem.removeCollider(predatorId);
+      }
+
+      // MVP 12: Remove wildebeest annoyance bar if it exists
+      const annoyanceBar = this.wildebeestAnnoyanceBars.get(predatorId);
+      if (annoyanceBar && this.labelsContainer) {
+        this.labelsContainer.removeChild(annoyanceBar.container);
+        this.wildebeestAnnoyanceBars.delete(predatorId);
       }
     }
   }
@@ -4244,22 +4266,19 @@ export class Game {
   }
 
   /**
-   * MVP 12: Update wildebeest annoyance bar
+   * MVP 12: Update wildebeest annoyance data (stores in predator userData)
+   * The floating annoyance bar is updated in updateWildebeestAnnoyanceBars() during render loop
    */
   private updateWildebeestAnnoyanceBar(annoyanceLevel: number, fleeing: boolean): void {
-    const annoyanceBar = document.getElementById('wildebeest-annoyance-bar');
-    const annoyanceFill = document.getElementById('wildebeest-annoyance-fill');
-
-    if (!annoyanceBar || !annoyanceFill) return;
-
-    if (fleeing || annoyanceLevel >= 4) {
-      // Wildebeest is fleeing - hide bar
-      annoyanceBar.style.display = 'none';
-    } else {
-      // Show bar and update fill (0-4 = 0-100%)
-      annoyanceBar.style.display = 'block';
-      const annoyancePercent = (annoyanceLevel / 4) * 100;
-      annoyanceFill.style.width = `${annoyancePercent}%`;
+    // Find the wildebeest predator and update its userData
+    // Note: Server sends this message but doesn't specify which wildebeest
+    // In practice, there's typically only one wildebeest at a time
+    for (const [_, predator] of this.predators) {
+      if (predator.userData?.type === 'wildebeest') {
+        predator.userData.annoyanceLevel = annoyanceLevel;
+        predator.userData.fleeing = fleeing;
+        // The bar display is handled by updateWildebeestAnnoyanceBars() in render loop
+      }
     }
   }
 
@@ -5027,6 +5046,46 @@ export class Game {
   }
 
   /**
+   * MVP 12: Create annoyance bar for wildebeest (similar to health bar but orange)
+   * Returns { container, fill } for updating annoyance level later
+   */
+  private createAnnoyanceBar(): { container: HTMLElement; fill: HTMLElement } {
+    // Create container (background)
+    const container = document.createElement('div');
+    container.className = 'annoyance-bar-container';
+    container.style.position = 'absolute';
+    container.style.width = '60px';
+    container.style.height = '6px';
+    container.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+    container.style.border = '1px solid rgba(255, 136, 0, 0.5)'; // Orange border
+    container.style.borderRadius = '3px';
+    container.style.overflow = 'hidden';
+    container.style.pointerEvents = 'none';
+    container.style.zIndex = '999';
+    container.style.transform = 'translateX(-50%)';
+    container.style.display = 'none'; // Hidden by default (only show when in proximity)
+
+    // Create fill (foreground - annoyance percentage)
+    const fill = document.createElement('div');
+    fill.className = 'annoyance-bar-fill';
+    fill.style.position = 'absolute';
+    fill.style.top = '0';
+    fill.style.left = '0';
+    fill.style.height = '100%';
+    fill.style.width = '0%'; // Start at 0 annoyance
+    fill.style.background = 'linear-gradient(90deg, #ff8800 0%, #ffaa00 100%)'; // Orange gradient
+    fill.style.transition = 'width 0.3s ease';
+
+    container.appendChild(fill);
+
+    if (this.labelsContainer) {
+      this.labelsContainer.appendChild(container);
+    }
+
+    return { container, fill };
+  }
+
+  /**
    * MVP 9: Update health bar fill and color based on health percentage
    */
   private updateHealthBar(fill: HTMLElement, currentHealth: number, maxHealth: number): void {
@@ -5123,6 +5182,45 @@ export class Game {
         const health = npc.userData.health ?? 100;
         const maxHealth = npc.userData.maxHealth ?? 100;
         this.updateHealthBar(healthBar.fill, health, maxHealth);
+      }
+    }
+  }
+
+  /**
+   * MVP 12: Update wildebeest annoyance bars (position and fill, only show in proximity)
+   */
+  private updateWildebeestAnnoyanceBars(): void {
+    if (!this.character) return;
+
+    const playerPos = this.character.position;
+    const PROXIMITY_DISTANCE = 30; // Only show bar within 30 units
+
+    for (const [predatorId, annoyanceBar] of this.wildebeestAnnoyanceBars) {
+      const wildebeest = this.predators.get(predatorId);
+      if (wildebeest && wildebeest.userData?.type === 'wildebeest') {
+        // Calculate distance to player
+        const dx = wildebeest.position.x - playerPos.x;
+        const dz = wildebeest.position.z - playerPos.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+
+        // Only show bar if within proximity and not fleeing
+        const fleeing = wildebeest.userData.fleeing ?? false;
+        if (distance < PROXIMITY_DISTANCE && !fleeing) {
+          annoyanceBar.container.style.display = 'block';
+
+          // Position bar above wildebeest (higher than NPC health bars since wildebeest is larger)
+          const barPos = wildebeest.position.clone();
+          barPos.y += 3.5; // Higher offset for larger wildebeest model
+          this.updateLabelPosition(annoyanceBar.container, barPos);
+
+          // Update annoyance bar fill based on userData (0-4 hits = 0-100%)
+          const annoyanceLevel = wildebeest.userData.annoyanceLevel ?? 0;
+          const annoyancePercent = Math.max(0, Math.min(100, (annoyanceLevel / 4) * 100));
+          annoyanceBar.fill.style.width = `${annoyancePercent}%`;
+        } else {
+          // Hide bar if too far or fleeing
+          annoyanceBar.container.style.display = 'none';
+        }
       }
     }
   }
