@@ -23,7 +23,7 @@ export class TutorialOverlay {
   private isVisible: boolean = false;
   private onPause: (() => void) | null = null;
   private onResume: (() => void) | null = null;
-  private styleElement: HTMLStyleElement;
+  private styleElement!: HTMLStyleElement;
 
   private readonly STORAGE_KEY = 'hw_hasSeenTutorial';
 
@@ -578,6 +578,13 @@ export class TutorialOverlay {
    */
   setResumeCallback(callback: () => void): void {
     this.onResume = callback;
+  }
+
+  /**
+   * Cleanup (alias for dispose)
+   */
+  destroy(): void {
+    this.dispose();
   }
 
   /**

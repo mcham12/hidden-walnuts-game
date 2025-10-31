@@ -239,9 +239,6 @@
         height: 100%;
         border-radius: 6px;
       }
-      #tutorial-overlay.hidden {
-        display: none !important;
-      }
       #leaderboard {
         position: fixed; /* Must be fixed like canvas for proper iPad stacking */
         top: 10px;
@@ -2069,11 +2066,6 @@
           Respawning in 3...
         </div>
       </div>
-    </div>
-    <div id="tutorial-overlay" class="hidden" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.85); color: white; padding: 30px 40px; border-radius: 12px; font-family: 'Arial', sans-serif; font-size: 18px; max-width: 500px; text-align: center; z-index: 2000; box-shadow: 0 8px 16px rgba(0,0,0,0.5);">
-      <button id="tutorial-close" style="position: absolute; top: 10px; right: 10px; background: transparent; color: white; border: none; font-size: 24px; cursor: pointer; padding: 5px 10px; line-height: 1;">×</button>
-      <div id="tutorial-message" style="margin-bottom: 20px; line-height: 1.6;"></div>
-      <button id="tutorial-next" style="background: rgba(139, 69, 19, 0.9); color: white; border: none; padding: 12px 30px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.3s;">Next</button>
     </div>
     <div id="quick-chat" class="hidden">
       <button class="chat-button" data-message="Nice find!">💬 Nice find!</button>

@@ -12,6 +12,7 @@ import { CollisionSystem } from './CollisionSystem.js';
 import { TouchControls } from './TouchControls.js';
 import { RankOverlay } from './RankOverlay.js';
 import { SkyManager } from './SkyManager.js';
+import { TutorialOverlay } from './TutorialOverlay.js';
 import { getPlayerTitle } from '@shared/PlayerRanks';
 
 interface Character {
@@ -29,6 +30,7 @@ export class Game {
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
   private renderer!: THREE.WebGLRenderer;
+  private textureLoader!: THREE.TextureLoader;
   private character: THREE.Group | null = null;
   private mixer: THREE.AnimationMixer | null = null;
   private actions: { [key: string]: THREE.AnimationAction } = {};
@@ -199,21 +201,6 @@ export class Game {
   // MVP 12: Track recently planted trees for minimap display (30 second duration)
   private recentTrees: Array<{ x: number; z: number; timestamp: number }> = [];
 
-  // MVP 3: Tutorial system
-  private tutorialMessages: string[] = [
-    "Welcome to Hidden Walnuts! 🌰",
-    "Movement: Press W to move forward, A/D to rotate left/right, S to move backward.",
-    "You start with 3 walnuts to hide around the forest.",
-    "Press H to hide a walnut. Hide near a bush (1 pt) or bury in ground (3 pts).",
-    "Press SPACEBAR (or T) to throw walnuts at other players! Pick up more walnuts to restock.",
-    "Click on suspicious spots to find hidden walnuts!",
-    "Finding others' walnuts = points + walnut back. Finding your own = just walnut back.",
-    "Use the minimap (top-right) and landmarks to navigate the forest.",
-    "Good luck! Have fun hiding and finding walnuts! 🎮"
-  ];
-  private currentTutorialStep: number = 0;
-  private tutorialShown: boolean = false;
-
   // MVP 4: Leaderboard system
   private leaderboardVisible: boolean = false;
   private leaderboardUpdateInterval: number = 0;
@@ -299,6 +286,10 @@ export class Game {
   // Sky elements system (sun + clouds)
   private skyManager: SkyManager | null = null;
 
+  // Tutorial system ("How to Play" overlay)
+  private tutorialOverlay: TutorialOverlay | null = null;
+  private isPaused: boolean = false; // Game pause state for tutorial
+
   // MVP 5.5: Collision detection system
   private collisionSystem: CollisionSystem | null = null;
 
@@ -339,6 +330,9 @@ export class Game {
       this.renderer.setSize(window.innerWidth, window.innerHeight);
       this.renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2)); // Lower pixel ratio on mobile
       this.renderer.shadowMap.enabled = !isMobile; // Disable shadows on mobile for performance
+
+      // Texture Loader
+      this.textureLoader = new THREE.TextureLoader();
 
       // Lights
       const ambient = new THREE.AmbientLight(0xffffff, 0.6);
@@ -1021,6 +1015,10 @@ export class Game {
     if (this.skyManager) {
       this.skyManager.dispose();
     }
+    if (this.tutorialOverlay) {
+      this.tutorialOverlay.destroy();
+      this.tutorialOverlay = null;
+    }
 
     // Reset connection state
     this.isConnected = false;
@@ -1038,6 +1036,21 @@ export class Game {
 
     // INDUSTRY STANDARD: Cap delta to prevent spiral of death on lag spikes
     delta = Math.min(delta, this.MAX_DELTA_TIME);
+
+    // UX Polish: Skip game updates if paused (tutorial open)
+    // Still render the scene, just don't update game logic
+    if (this.isPaused) {
+      if (this.vfxManager) {
+        const shakeOffset = this.vfxManager.updateScreenShake();
+        const originalCameraPos = this.camera.position.clone();
+        this.camera.position.add(shakeOffset);
+        this.renderer.render(this.scene, this.camera);
+        this.camera.position.copy(originalCameraPos);
+      } else {
+        this.renderer.render(this.scene, this.camera);
+      }
+      return;
+    }
 
     // MVP 5: Calculate FPS for debug overlay (update every second)
     this.frameCount++;
@@ -6877,95 +6890,30 @@ export class Game {
    * Initialize the tutorial system
    */
   private initTutorial(): void {
-    // Set up the next button event listener
-    const nextButton = document.getElementById('tutorial-next');
-    if (nextButton) {
-      nextButton.addEventListener('click', () => {
-        this.nextTutorialStep();
-      });
-    }
+    // Initialize new tutorial overlay system
+    this.tutorialOverlay = new TutorialOverlay();
 
-    // Set up the close button event listener
-    const closeButton = document.getElementById('tutorial-close');
-    if (closeButton) {
-      closeButton.addEventListener('click', () => {
-        this.closeTutorial();
-      });
-    }
+    // Set pause/resume callbacks
+    this.tutorialOverlay.setPauseCallback(() => this.pauseGame());
+    this.tutorialOverlay.setResumeCallback(() => this.resumeGame());
 
-    // Show the tutorial after a short delay (allow game to fully load)
-    // MVP 5.7: Skip keyboard tutorial on mobile - touch-controls-hint serves as mobile tutorial
-    setTimeout(() => {
-      if (!this.tutorialShown && !TouchControls.isMobile()) {
-        this.showTutorial();
-      }
-    }, 1000);
+    console.log('✅ Tutorial overlay initialized');
   }
 
   /**
-   * Show the tutorial overlay
+   * Pause game (when tutorial overlay opens)
    */
-  private showTutorial(): void {
-    this.tutorialShown = true;
-    this.currentTutorialStep = 0;
-    this.displayTutorialMessage();
+  private pauseGame(): void {
+    this.isPaused = true;
+    console.log('⏸️ Game paused');
   }
 
   /**
-   * Display the current tutorial message
+   * Resume game (when tutorial overlay closes)
    */
-  private displayTutorialMessage(): void {
-    const overlay = document.getElementById('tutorial-overlay');
-    const messageEl = document.getElementById('tutorial-message');
-    const nextButton = document.getElementById('tutorial-next') as HTMLButtonElement;
-
-    if (!overlay || !messageEl || !nextButton) return;
-
-    // Show overlay
-    overlay.classList.remove('hidden');
-
-    // Update message
-    messageEl.textContent = this.tutorialMessages[this.currentTutorialStep];
-
-    // Update button text
-    if (this.currentTutorialStep === this.tutorialMessages.length - 1) {
-      nextButton.textContent = 'Start Playing!';
-    } else {
-      nextButton.textContent = 'Next';
-    }
-  }
-
-  /**
-   * Go to the next tutorial step
-   */
-  private nextTutorialStep(): void {
-    // MVP 5: Play UI sound for tutorial next
-    this.audioManager.playSound('ui', 'button_click');
-
-    this.currentTutorialStep++;
-
-    if (this.currentTutorialStep >= this.tutorialMessages.length) {
-      // Tutorial complete - hide overlay
-      this.closeTutorial();
-    } else {
-      // Show next message
-      this.displayTutorialMessage();
-    }
-  }
-
-  /**
-   * Close the tutorial (can be called anytime to skip)
-   */
-  private closeTutorial(): void {
-    // MVP 5: Play UI sound for tutorial close
-    this.audioManager.playSound('ui', 'button_click');
-
-    const overlay = document.getElementById('tutorial-overlay');
-    if (overlay) {
-      overlay.classList.add('hidden');
-    } else {
-      console.error('❌ Tutorial overlay not found!');
-    }
+  private resumeGame(): void {
+    this.isPaused = false;
+    console.log('▶️ Game resumed');
   }
 
   // MVP 4: Leaderboard system methods
