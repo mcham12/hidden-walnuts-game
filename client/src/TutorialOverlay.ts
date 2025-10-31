@@ -267,6 +267,37 @@ export class TutorialOverlay {
           font-size: 20px;
         }
       }
+
+      /* iPhone Portrait - Center tutorial button at top */
+      @media (max-width: 430px) {
+        .hw-tutorial-button {
+          top: 10px;
+          left: 50%;
+          right: auto;
+          transform: translateX(-50%);
+        }
+
+        .hw-tutorial-button:hover {
+          transform: translateX(-50%) scale(1.1);
+        }
+      }
+
+      /* iPhone Landscape - Center tutorial button at top */
+      @media (max-height: 500px) and (orientation: landscape) {
+        .hw-tutorial-button {
+          top: max(5px, env(safe-area-inset-top));
+          left: 50%;
+          right: auto;
+          transform: translateX(-50%);
+          width: 40px;
+          height: 40px;
+          font-size: 18px;
+        }
+
+        .hw-tutorial-button:hover {
+          transform: translateX(-50%) scale(1.1);
+        }
+      }
     `;
     document.head.appendChild(this.styleElement);
   }
@@ -386,7 +417,7 @@ export class TutorialOverlay {
       </div>
 
       <div class="hw-tutorial-item">
-        <div class="hw-tutorial-icon">🥜</div>
+        <div class="hw-tutorial-icon">🟤</div>
         <div class="hw-tutorial-text">
           <p class="hw-tutorial-label">GET WALNUT</p>
           <p class="hw-tutorial-desc">Walk near to collect</p>

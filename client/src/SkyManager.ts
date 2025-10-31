@@ -35,8 +35,8 @@ export class SkyManager {
   private readonly CLOUD_DESPAWN_X = 100;
   private readonly RESPAWN_DELAY_MIN = 30000; // 30 seconds
   private readonly RESPAWN_DELAY_MAX = 60000; // 60 seconds
-  private readonly CLOUD_Y_MIN = 60;
-  private readonly CLOUD_Y_MAX = 90;
+  private readonly CLOUD_Y_MIN = 25;
+  private readonly CLOUD_Y_MAX = 45;
   private readonly CLOUD_Z_MIN = -100;
   private readonly CLOUD_Z_MAX = -50;
   private readonly CLOUD_SCALE_MIN = 10;
@@ -79,8 +79,8 @@ export class SkyManager {
           // Create sprite
           this.sun = new THREE.Sprite(material);
 
-          // Position sun in upper-right background
-          this.sun.position.set(50, 80, -50);
+          // Position sun in upper-right background (lowered for visibility)
+          this.sun.position.set(50, 30, -50);
 
           // Scale to 20 units diameter
           this.sun.scale.set(20, 20, 1);
@@ -91,7 +91,7 @@ export class SkyManager {
           // Add to scene
           this.scene.add(this.sun);
 
-          console.log('☀️ Sun created at position (50, 80, -50)');
+          console.log('☀️ Sun created at position (50, 30, -50)');
           resolve();
         },
         undefined,
