@@ -1,86 +1,120 @@
 /**
  * MVP 12: Rank Announcement Overlay
  *
- * Full-screen overlay (NOT toast) for rank announcements:
+ * Full-screen overlay for rank announcements:
  * - First join: "You are a Rookie"
  * - Rank up: "You've achieved Maestro Status!"
  *
- * Design: Similar to game achievement overlays (Dark Souls, Zelda)
- * - Fade in from black
- * - Large centered text
- * - Brief display (3-4 seconds)
- * - Fade out
+ * Design: Clean, centered overlay with reliable positioning
+ * - Fade in/out transitions
+ * - Dark forest green semi-transparent background
+ * - Guaranteed centered text on all screen sizes
  */
 
 export class RankOverlay {
-  private container: HTMLDivElement;
+  private overlay: HTMLDivElement;
+  private contentWrapper: HTMLDivElement;
   private titleElement: HTMLDivElement;
   private descriptionElement: HTMLDivElement;
   private isShowing: boolean = false;
+  private styleElement: HTMLStyleElement;
 
   constructor() {
-    // Create overlay container
-    this.container = document.createElement('div');
-    this.container.style.position = 'fixed';
-    this.container.style.top = '0';
-    this.container.style.left = '0';
-    this.container.style.width = '100%';
-    this.container.style.height = '100%';
-    this.container.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
-    this.container.style.display = 'none';
-    this.container.style.flexDirection = 'column';
-    this.container.style.alignItems = 'center';
-    this.container.style.justifyContent = 'center';
-    this.container.style.zIndex = '10000';
-    this.container.style.opacity = '0';
-    this.container.style.transition = 'opacity 0.5s ease-in-out';
-    this.container.style.pointerEvents = 'none';
-    this.container.style.padding = '20px'; // Safe area for notches/home indicators
-    this.container.style.boxSizing = 'border-box';
+    // Create style element with all CSS
+    this.styleElement = document.createElement('style');
+    this.styleElement.textContent = `
+      .rank-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(20, 60, 30, 0.9); /* Semi-transparent dark forest green */
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        opacity: 0;
+        transition: opacity 0.5s ease-in-out;
+        pointer-events: none;
+      }
 
-    // Create title element (main message)
-    // Responsive sizing: clamp(min, preferred, max)
-    this.titleElement = document.createElement('div');
-    this.titleElement.style.fontSize = 'clamp(28px, 8vw, 48px)'; // Mobile: 28-48px, scales with viewport
-    this.titleElement.style.fontWeight = 'bold';
-    this.titleElement.style.color = '#FFD700';
-    this.titleElement.style.textAlign = 'center';
-    this.titleElement.style.marginBottom = 'clamp(10px, 3vh, 20px)';
-    this.titleElement.style.textShadow = '0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.5)';
-    this.titleElement.style.fontFamily = 'Arial, sans-serif';
-    this.titleElement.style.letterSpacing = 'clamp(1px, 0.5vw, 2px)';
-    this.titleElement.style.animation = 'pulse 2s infinite';
-    this.titleElement.style.wordWrap = 'break-word';
-    this.titleElement.style.width = '100%'; // Full width for reliable centering
+      .rank-overlay.visible {
+        display: flex;
+        opacity: 1;
+      }
 
-    // Create description element (subtitle)
-    this.descriptionElement = document.createElement('div');
-    this.descriptionElement.style.fontSize = 'clamp(16px, 4vw, 24px)'; // Mobile: 16-24px
-    this.descriptionElement.style.color = '#FFFFFF';
-    this.descriptionElement.style.textAlign = 'center';
-    this.descriptionElement.style.opacity = '0.9';
-    this.descriptionElement.style.fontFamily = 'Arial, sans-serif';
-    this.descriptionElement.style.wordWrap = 'break-word';
-    this.descriptionElement.style.width = '100%'; // Full width for reliable centering
+      .rank-overlay-content {
+        max-width: 90%;
+        text-align: center;
+        padding: 20px;
+      }
 
-    // Add pulse animation CSS
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes pulse {
-        0%, 100% {
-          transform: scale(1);
+      .rank-overlay-title {
+        font-size: 36px;
+        font-weight: bold;
+        color: #FFD700;
+        text-align: center;
+        margin: 0 0 16px 0;
+        text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.5);
+        font-family: Arial, sans-serif;
+        letter-spacing: 2px;
+        line-height: 1.3;
+      }
+
+      .rank-overlay-description {
+        font-size: 20px;
+        color: #FFFFFF;
+        text-align: center;
+        margin: 0;
+        opacity: 0.9;
+        font-family: Arial, sans-serif;
+        line-height: 1.4;
+      }
+
+      /* Responsive font sizes for smaller screens */
+      @media (max-width: 768px) {
+        .rank-overlay-title {
+          font-size: 28px;
+          letter-spacing: 1px;
         }
-        50% {
-          transform: scale(1.05);
+        .rank-overlay-description {
+          font-size: 18px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .rank-overlay-title {
+          font-size: 24px;
+        }
+        .rank-overlay-description {
+          font-size: 16px;
         }
       }
     `;
-    document.head.appendChild(style);
+    document.head.appendChild(this.styleElement);
 
-    // Assemble
-    this.container.appendChild(this.titleElement);
-    this.container.appendChild(this.descriptionElement);
-    document.body.appendChild(this.container);
+    // Create overlay container
+    this.overlay = document.createElement('div');
+    this.overlay.className = 'rank-overlay';
+
+    // Create content wrapper (for max-width constraint)
+    this.contentWrapper = document.createElement('div');
+    this.contentWrapper.className = 'rank-overlay-content';
+
+    // Create title element
+    this.titleElement = document.createElement('div');
+    this.titleElement.className = 'rank-overlay-title';
+
+    // Create description element
+    this.descriptionElement = document.createElement('div');
+    this.descriptionElement.className = 'rank-overlay-description';
+
+    // Assemble DOM structure
+    this.contentWrapper.appendChild(this.titleElement);
+    this.contentWrapper.appendChild(this.descriptionElement);
+    this.overlay.appendChild(this.contentWrapper);
+    document.body.appendChild(this.overlay);
   }
 
   /**
@@ -91,10 +125,10 @@ export class RankOverlay {
     if (this.isShowing) return;
 
     this.titleElement.textContent = `You are a ${titleName}`;
-    this.descriptionElement.textContent = ''; // No secondary text needed
-    this.descriptionElement.style.display = 'none'; // Hide empty description
+    this.descriptionElement.textContent = '';
+    this.descriptionElement.style.display = 'none';
 
-    this.show(3000); // 3 seconds display
+    this.show(3000); // 3 seconds
   }
 
   /**
@@ -106,9 +140,9 @@ export class RankOverlay {
 
     this.titleElement.textContent = `You've achieved ${titleName} Status!`;
     this.descriptionElement.textContent = description;
-    this.descriptionElement.style.display = 'block'; // Show description for rank-up
+    this.descriptionElement.style.display = 'block';
 
-    this.show(3500); // 3.5 seconds display
+    this.show(3500); // 3.5 seconds
   }
 
   /**
@@ -117,21 +151,17 @@ export class RankOverlay {
   private show(duration: number): void {
     this.isShowing = true;
 
-    // Fade in
-    this.container.style.display = 'flex';
-    requestAnimationFrame(() => {
-      this.container.style.opacity = '1';
-    });
+    // Trigger fade in (CSS transition handles animation)
+    this.overlay.classList.add('visible');
 
     // Fade out after duration
     setTimeout(() => {
-      this.container.style.opacity = '0';
+      this.overlay.classList.remove('visible');
 
-      // Hide after fade out completes
+      // Mark as not showing after fade completes
       setTimeout(() => {
-        this.container.style.display = 'none';
         this.isShowing = false;
-      }, 500);
+      }, 500); // Match CSS transition duration
     }, duration);
   }
 
@@ -139,8 +169,11 @@ export class RankOverlay {
    * Cleanup
    */
   dispose(): void {
-    if (this.container.parentElement) {
-      this.container.parentElement.removeChild(this.container);
+    if (this.overlay.parentElement) {
+      this.overlay.parentElement.removeChild(this.overlay);
+    }
+    if (this.styleElement.parentElement) {
+      this.styleElement.parentElement.removeChild(this.styleElement);
     }
   }
 }

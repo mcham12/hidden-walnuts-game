@@ -2054,6 +2054,14 @@ export class Game {
         }
         break;
 
+      case 'predators_distracted':
+        // MVP 12: Birds distracted by walnut throw
+        if (data.predatorIds && Array.isArray(data.predatorIds) && data.predatorIds.length > 0) {
+          // Play audio feedback for successful distraction
+          this.audioManager.playSound('combat', 'flying_predator_nearby');
+        }
+        break;
+
       case 'npc_throw':
         // MVP 7: NPC threw walnut, spawn projectile animation
         if (data.npcId && data.fromPosition && data.toPosition) {
@@ -3652,6 +3660,9 @@ export class Game {
           hitAction.clampWhenFinished = true;
         }
       }
+
+      // MVP 12: Play hit sound
+      this.audioManager.playSound('combat', 'walnut_hit');
 
       // Show damage floater
       if (this.vfxManager) {
@@ -6028,19 +6039,26 @@ export class Game {
    * MVP 8: Throw walnut at target
    */
   /**
-   * MVP 12: Get aerial predators visible in camera frustum
-   * Used for bird distraction mechanic - birds must be visible to be distracted
+   * MVP 12: Get aerial predators in player's awareness zone
+   * Used for bird distraction mechanic
+   *
+   * Uses generous distance + direction check instead of strict frustum for better gameplay:
+   * - Birds within 50 units are detected
+   * - Birds roughly in front of player (wide 240-degree cone)
+   * - Much easier to distract birds than pixel-perfect on-screen requirement
    */
   private getVisibleAerialPredators(): string[] {
-    const frustum = new THREE.Frustum();
-    frustum.setFromProjectionMatrix(
-      new THREE.Matrix4().multiplyMatrices(
-        this.camera.projectionMatrix,
-        this.camera.matrixWorldInverse
-      )
-    );
-
     const visibleIds: string[] = [];
+
+    // Get player position and camera forward direction
+    const playerPos = this.character.position;
+    const cameraDirection = new THREE.Vector3();
+    this.camera.getWorldDirection(cameraDirection);
+    cameraDirection.y = 0; // Ignore vertical component (horizontal plane only)
+    cameraDirection.normalize();
+
+    const AWARENESS_DISTANCE = 50; // 50 units - generous detection range
+    const AWARENESS_DOT_THRESHOLD = -0.5; // ~240 degree cone (even birds slightly behind)
 
     // Check each predator
     for (const [id, predatorMesh] of this.predators) {
@@ -6052,14 +6070,26 @@ export class Game {
         continue;
       }
 
-      // Check if predator position is in camera frustum
-      const position = new THREE.Vector3(
-        predatorMesh.position.x,
-        predatorMesh.position.y,
-        predatorMesh.position.z
+      // Calculate vector from player to predator (horizontal plane only)
+      const toPredator = new THREE.Vector3(
+        predatorMesh.position.x - playerPos.x,
+        0, // Ignore vertical
+        predatorMesh.position.z - playerPos.z
       );
 
-      if (frustum.containsPoint(position)) {
+      const distance = toPredator.length();
+
+      // Too far? Skip
+      if (distance > AWARENESS_DISTANCE) {
+        continue;
+      }
+
+      // Check if roughly in front of player (dot product check)
+      toPredator.normalize();
+      const dotProduct = cameraDirection.dot(toPredator);
+
+      // If dot > threshold, bird is in awareness zone
+      if (dotProduct > AWARENESS_DOT_THRESHOLD) {
         visibleIds.push(id);
       }
     }

@@ -567,14 +567,11 @@ export class PredatorManager {
 
         // Dabbler+ get progressively higher targeting weight
         // Dabbler (0.5) < Slick (1.0) < Maestro (1.3) < Ninja (1.6) < Legend (2.0)
-      } else if (!target.isPlayer && target.spawnTime !== undefined) {
-        // NPCs: Time-based weighting (older NPCs = higher priority)
-        // This creates interesting gameplay: NPCs become more vulnerable over time
-        const ageInMinutes = (now - target.spawnTime) / 60000;
-
-        // Targeting weight increases with age: 0.5x (new) → 1.5x (5+ min old)
-        // New NPCs are protected, old NPCs are vulnerable
-        rankWeight = 0.5 + Math.min(1.0, ageInMinutes / 5.0);
+      } else if (!target.isPlayer) {
+        // NPCs: Constant lower weight (less attractive than Dabbler players)
+        // Simplified from time-based scaling for more predictable behavior
+        // 0.3 weight makes NPCs less appealing than Dabbler (0.5) but not ignored like Rookies (0.0)
+        rankWeight = 0.3;
       }
 
       // Base scoring: walnuts * distance * rank weight
