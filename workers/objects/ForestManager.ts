@@ -906,6 +906,81 @@ export default class ForestManager extends DurableObject {
       });
     }
 
+    // MVP 13: Adjust predator count
+    if (path === "/admin/predators/adjust" && request.method === "POST") {
+      // Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const body = await request.json() as { count: number };
+      const targetCount = body.count;
+
+      if (typeof targetCount !== 'number' || targetCount < 0 || targetCount > 5) {
+        return new Response(JSON.stringify({
+          error: "Invalid count",
+          message: "Count must be a number between 0 and 5"
+        }), {
+          status: 400,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const currentPredators = this.predatorManager.getPredators();
+      const currentCount = currentPredators.length;
+      let spawned = 0;
+      let despawned = 0;
+
+      // Predator type rotation: cardinal, toucan, wildebeest
+      const predatorTypes: Array<'cardinal' | 'toucan' | 'wildebeest'> = ['cardinal', 'toucan', 'wildebeest'];
+
+      if (targetCount > currentCount) {
+        // Spawn new predators
+        spawned = targetCount - currentCount;
+        const getTerrainHeight = (_x: number, _z: number) => 0; // Simple flat terrain for admin spawning
+        for (let i = 0; i < spawned; i++) {
+          const type = predatorTypes[i % predatorTypes.length];
+          this.predatorManager.spawnPredator(type, getTerrainHeight);
+        }
+      } else if (targetCount < currentCount) {
+        // Despawn predators
+        despawned = currentCount - targetCount;
+        for (let i = 0; i < despawned; i++) {
+          const predator = currentPredators[i];
+          this.predatorManager.removePredator(predator.id);
+
+          // Broadcast predator despawn to all players
+          this.broadcastToOthers('', {
+            type: 'predator_despawn',
+            predatorId: predator.id
+          });
+        }
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        previousCount: currentCount,
+        newCount: targetCount,
+        spawned,
+        despawned,
+        message: spawned > 0
+          ? `Predator count adjusted - spawned ${spawned} new predators`
+          : despawned > 0
+          ? `Predator count adjusted - despawned ${despawned} predators`
+          : "Predator count unchanged"
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
     return new Response("Not Found", { status: 404 });
   }
 

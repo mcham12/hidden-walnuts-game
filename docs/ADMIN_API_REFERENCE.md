@@ -457,6 +457,58 @@ curl -X POST https://api.hiddenwalnuts.com/admin/predators/clear \
 
 ---
 
+### Adjust Predator Count
+
+Dynamically change the number of predators.
+
+**Endpoint**: `POST /admin/predators/adjust`
+**Auth**: Required
+
+**Request**:
+```bash
+curl -X POST https://api.hiddenwalnuts.com/admin/predators/adjust \
+  -H "X-Admin-Secret: YOUR_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"count": 3}'
+```
+
+**Body**:
+```json
+{
+  "count": 3
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "previousCount": 2,
+  "newCount": 3,
+  "spawned": 1,
+  "despawned": 0,
+  "message": "Predator count adjusted - spawned 1 new predators"
+}
+```
+
+**Effects**:
+- If count > current: Spawns new predators (cardinal, toucan, wildebeest rotation)
+- If count < current: Despawns random predators
+- Predators spawn at random locations
+- Broadcasts spawn/despawn to all clients
+
+**Validation**:
+- Count must be between 0 and 5
+- Invalid count returns 400 error
+
+**Use Cases**:
+- Testing predator interactions with varying numbers
+- Adjusting difficulty dynamically
+- Testing predator spawn system
+- Creating challenging scenarios for testing
+
+---
+
 ## Leaderboard Management
 
 ### Reset Leaderboard
