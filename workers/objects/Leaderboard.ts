@@ -100,8 +100,6 @@ export default class Leaderboard {
 
       const totalPlayers = type === "alltime" ? this.alltimeScores.size : this.scores.size;
 
-      console.log(`📊 Leaderboard /top request (${type}): ${topPlayers.length} players returned (${totalPlayers} total in DB)`);
-
       return new Response(JSON.stringify({
         leaderboard: topPlayers,
         count: topPlayers.length,
@@ -167,8 +165,6 @@ export default class Leaderboard {
     try {
       const record = await request.json() as ScoreRecord;
 
-      console.log(`📥 Leaderboard received score report: ${record.playerId} = ${record.score}`);
-
       // Validate record structure
       if (!record.playerId || typeof record.score !== 'number') {
         console.error(`❌ Invalid score record:`, record);
@@ -228,8 +224,6 @@ export default class Leaderboard {
         this.alltimeScores.set(record.playerId, record);
         await this.storage.put(`alltime_${record.playerId}`, record);
       }
-
-      console.log(`✅ Leaderboard saved: ${record.playerId} = ${record.score} (Weekly: ${this.scores.size}, All-time: ${this.alltimeScores.size})`);
 
       return new Response(JSON.stringify({
         success: true,

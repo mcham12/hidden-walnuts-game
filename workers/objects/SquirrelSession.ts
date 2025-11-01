@@ -117,12 +117,10 @@ export default class SquirrelSession {
           score: 0
         };
 
-        console.log(`✨ NEW SESSION CREATED for ${squirrelId} - isFirstJoin: true`);
         await this.saveSession();
       } else {
         // Update existing session
         this.sessionState.lastActivity = Date.now();
-        console.log(`♻️ EXISTING SESSION for ${squirrelId} - isFirstJoin: ${this.sessionState.isFirstJoin}`);
         await this.saveSession();
       }
 
@@ -292,7 +290,6 @@ export default class SquirrelSession {
       // MVP 12: Update current title if ranked up
       if (rankedUp) {
         this.sessionState.currentTitleId = rankedUp.id;
-        console.log(`🎉 Player ${data.squirrelId} ranked up to ${rankedUp.name}!`);
       }
 
       // MVP 12: Clear first join flag after player has been in game for at least 10 seconds
@@ -301,7 +298,6 @@ export default class SquirrelSession {
         const timeSinceJoin = Date.now() - this.sessionState.joinedAt;
         if (timeSinceJoin > 10000) { // 10 seconds
           this.sessionState.isFirstJoin = false;
-          console.log(`✅ Cleared isFirstJoin flag for ${data.squirrelId} (${timeSinceJoin}ms since join)`);
         }
       }
 

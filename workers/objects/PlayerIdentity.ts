@@ -191,7 +191,6 @@ export class PlayerIdentity extends DurableObject {
 
     await this.ctx.storage.put('player', data);
 
-    console.log(`✅ Username changed: ${oldUsername} → ${newUsername}`);
     return Response.json({ success: true, username: newUsername });
   }
 

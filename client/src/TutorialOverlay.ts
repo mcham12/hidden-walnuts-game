@@ -566,8 +566,6 @@ export class TutorialOverlay {
 
     // Industry standard: Don't pause multiplayer games
     // Overlay provides enough visual feedback, game continues running
-
-    console.log('📖 Tutorial overlay shown');
   }
 
   /**
@@ -581,8 +579,6 @@ export class TutorialOverlay {
 
     // Mark as seen
     this.markAsSeen();
-
-    console.log('📖 Tutorial overlay hidden');
   }
 
   /**

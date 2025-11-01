@@ -3347,8 +3347,6 @@ export class Game {
         predatorModel.userData.fleeing = false;
       }
 
-      console.log('✅ Created predator:', type, 'at', position, 'with', Object.keys(predatorActions).length, 'animations');
-
       delete (this as any)[loadingKey];
     } catch (error) {
       console.error('❌ Failed to create predator:', predatorId, error);
@@ -6877,7 +6875,6 @@ export class Game {
     // Initialize new tutorial overlay system
     // Industry standard: Don't pause multiplayer games - overlay is enough visual feedback
     this.tutorialOverlay = new TutorialOverlay();
-    console.log('✅ Tutorial overlay initialized');
   }
 
   // MVP 4: Leaderboard system methods

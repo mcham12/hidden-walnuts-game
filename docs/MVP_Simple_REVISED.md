@@ -206,10 +206,11 @@ Based on industry standards for casual multiplayer games (PlayFab, Unity Moderat
 4. **Leaderboard Moderation** - Remove cheaters, manual corrections
 
 ### Part 0 Analysis.
-- develop a definitive list of existing apis (including leaderboard-related) vs new apis to be developed via this MVP.  Document in docs/ folder
+- produce a concise explainer on how secrets are used to secure cloudflare apis, including how different from passwords, and practically how the secured-by-secret apis can be used from mac os terminal and a hypothetical (potentially future) admin web page.  included differences: preview vs production.  document this somehow in docs/ folder.
+- document/ list existing admin-related apis (including leaderboard-related) vs new apis to be developed via this MVP.  Document in docs/ folder
 - determine which APIs are secured by a secret now and can we reuse that secret or do we need to generate a new one
-- develop a plan for harmonized admin secret(s) if possible,  based on the above
-- Cursor performs the steps to acquire new secret(s) as needed (if possible)
+- develop a plan for harmonized admin secret(s) if possible,  based on the above.  ok if not possible to harmonize.  the goal is to make secure and usable from mac os terminal
+- Next, cursor performs the the steps to acquire new secret(s) as needed (if possible)
 - Desk-check existing APIs (reset-mapstate, reset-forest, reset-positions) to (1) understand functionality as implemented for documentation delivered via this MVP (2) confirm that they still will work given the extensive game development that has occured since the original APIs were developed (e.g. now have predators, technical implementation may have changed etc etc).  If changes are needed, document and do as "Part 0.5" in this MVP.
 
 ### Part 0.5
@@ -304,7 +305,6 @@ Create: `docs/ADMIN_SETUP.md`
 - add a special point bonus for hiding 50 walnuts, e.g. 50 points
 - adjust tree growing mechanism because we will be encouraging walnut hiding now: instead of current state: every walnut hidden by a given player will grow to a tree based on a timer, move to future state: only the 10th, 20th, 30th, etc hidden walnut hidden by the player will grow to be a tree (subject to the same time delay as before)
 - the bonus is only awarded if there are 50 walnuts currently hidden by that player (so if other players pick up walnuts hidden by the player, they are removed from the count for this awared.  also if a walnut grows into a tree it is removed from the count for this award).  
-- adjust tutorial to highlight this new walnut hiding bonus
 - Make a special screen overlay UI ( not the standard "toast" message) announcing the bonus.  be creative.
 
 **3. Tune NPC and Predator behavior**
@@ -322,6 +322,10 @@ Create: `docs/ADMIN_SETUP.md`
 **Goal**: Secure player accounts with passwords, email, cross-device sync
 
 ### Features
+
+**0. Architecture**
+- identify options for full authentication (technical, platforms, etc including email)
+- recommend options based on my use of cloudflare, and owning a custom domain (hiddenwalnuts.com) and NameCheap Private Email, and the ability to create new email account from that domain if needed.  not sure if can be used for sending emails for full authentication thought
 
 **1. Password System** (3-4 hours)
 - Secure password hashing (bcrypt)

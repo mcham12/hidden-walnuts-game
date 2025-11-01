@@ -132,8 +132,6 @@ export class NPCManager {
       // Broadcast NPC spawn to all players
       this.broadcastNPCSpawn(npc);
     }
-
-    console.log(`🎯 NPC spawn complete: ${this.npcs.size} total NPCs`);
   }
 
   /**
@@ -157,8 +155,6 @@ export class NPCManager {
    */
   despawnAllNPCs(): void {
     if (this.npcs.size === 0) return;
-
-    console.log(`🧹 Despawning all ${this.npcs.size} NPCs (no players remaining)`);
 
     for (const [npcId, npc] of this.npcs.entries()) {
       this.broadcastNPCDespawn(npcId);
@@ -742,8 +738,6 @@ export class NPCManager {
     npc.walnutInventory--;
     const healAmount = 20; // Same as player
     npc.health = Math.min(npc.maxHealth, npc.health + healAmount);
-
-    console.log(`🍴 NPC ${npc.id} (${npc.username}) ate walnut: ${npc.health}/${npc.maxHealth} HP (inventory: ${npc.walnutInventory})`);
 
     // Play idle animation while eating (no special eat animation yet)
     npc.animation = 'idle';

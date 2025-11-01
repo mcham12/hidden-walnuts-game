@@ -55,7 +55,6 @@ export class SkyManager {
     try {
       await this.createSun();
       await this.initializeClouds();
-      console.log('✅ Sky system initialized');
     } catch (error) {
       console.error('❌ Failed to initialize sky system:', error);
     }
@@ -85,7 +84,7 @@ export class SkyManager {
           // Position near camera far plane to ensure behind all game objects
           // Camera far=1000, game objects typically within -100 to +100
           // Higher Y position to place sun higher in sky
-          this.sun.position.set(50, 150, -950);
+          this.sun.position.set(50, 250, -950);
 
           // Scale for visibility at distance
           this.sun.scale.set(80, 80, 1);
@@ -96,7 +95,6 @@ export class SkyManager {
           // Add to scene
           this.scene.add(this.sun);
 
-          console.log('☀️ Sun created: position (50,150,-950), scale 80, depth testing enabled');
           resolve();
         },
         undefined,
@@ -145,8 +143,6 @@ export class SkyManager {
         isActive: false,
       });
     }
-
-    console.log(`☁️ Cloud system initialized (${this.MAX_CLOUDS} clouds)`);
   }
 
   /**
@@ -201,8 +197,6 @@ export class SkyManager {
       this.scene.add(cloud.sprite);
     }
     cloud.isActive = true;
-
-    console.log(`☁️ Cloud spawned at y=${y.toFixed(1)}, z=${z.toFixed(1)}, speed=${cloud.speed.toFixed(2)}`);
   }
 
   /**
@@ -216,7 +210,6 @@ export class SkyManager {
       Math.random() * (this.RESPAWN_DELAY_MAX - this.RESPAWN_DELAY_MIN);
 
     // Note: Keep sprite in scene to avoid memory thrashing (just mark inactive)
-    console.log(`☁️ Cloud despawned, respawn in ${(cloud.respawnTimer / 1000).toFixed(1)}s`);
   }
 
   /**
@@ -242,7 +235,5 @@ export class SkyManager {
       this.scene.remove(cloud.sprite);
     }
     this.clouds = [];
-
-    console.log('🌤️ Sky system disposed');
   }
 }

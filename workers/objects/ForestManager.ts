@@ -1624,8 +1624,6 @@ export default class ForestManager extends DurableObject {
         const sessionData = await sessionResponse.json() as any;
         if (sessionData.rankedUp && sessionData.newTitle) {
           // Player ranked up! Send rank-up notification via WebSocket
-          console.log(`🎉 Player ${playerConnection.username} ranked up to ${sessionData.newTitle.name}!`);
-
           try {
             playerConnection.socket.send(JSON.stringify({
               type: 'rank_up',
@@ -2105,8 +2103,6 @@ export default class ForestManager extends DurableObject {
 
     const walnutId = `tree-drop-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    console.log(`🌳 Tree ${randomTree.id} dropping walnut at (${randomTree.x.toFixed(1)}, ${randomTree.z.toFixed(1)})`);
-
     // Add walnut to mapState so server can track pickup
     const treeWalnut: Walnut = {
       id: walnutId,
@@ -2218,8 +2214,6 @@ export default class ForestManager extends DurableObject {
         return; // No walnuts ready to grow
       }
 
-      console.log(`🌱 Found ${data.walnuts.length} walnuts ready to grow into trees`);
-
       // Process each walnut
       for (const walnut of data.walnuts) {
         await this.growWalnutIntoTree(walnut);
@@ -2276,8 +2270,7 @@ export default class ForestManager extends DurableObject {
     // Award points to owner (only if player is online)
     const ownerPlayer = this.activePlayers.get(walnut.ownerId);
     if (ownerPlayer) {
-      ownerPlayer.score += 50; // TESTING: 50 points (normally 10) to facilitate rank testing
-      console.log(`🎉 Awarded 50 points to ${walnut.ownerId} for tree growth (new score: ${ownerPlayer.score})`);
+      ownerPlayer.score += 20; // Tree growth bonus
 
       // Report to leaderboard
       await this.reportScoreToLeaderboard(ownerPlayer);
@@ -2305,8 +2298,6 @@ export default class ForestManager extends DurableObject {
       originalPosition: walnut.location,
       newPosition: treePosition
     });
-
-    console.log(`🌳 Walnut ${walnut.id} grew into tree ${treeId} at (${treePosition.x.toFixed(1)}, ${treePosition.z.toFixed(1)})`);
 
     // MVP 9: Drop 5 walnuts in rapid succession from newly grown tree
     await this.dropWalnutsFromTree(newTree, 5);

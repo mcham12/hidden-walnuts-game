@@ -79,7 +79,6 @@ export class PredatorManager {
   // MVP 12: No health - predators are driven away, not killed (annoyance system)
 
   constructor() {
-    console.log('🦅 PredatorManager initialized');
   }
 
   /**
@@ -114,7 +113,6 @@ export class PredatorManager {
         const distanceFromCenter = Math.sqrt(predator.position.x ** 2 + predator.position.z ** 2);
         if (distanceFromCenter > 100) { // Far enough from center
           toRemove.push(id);
-          console.log(`🏃 ${predator.type} fled successfully`);
           return;
         }
       }
@@ -126,7 +124,6 @@ export class PredatorManager {
     // Remove dead/old predators
     toRemove.forEach(id => {
       this.predators.delete(id);
-      console.log(`🦅 Predator ${id} despawned`);
     });
   }
 
@@ -200,7 +197,6 @@ export class PredatorManager {
     };
 
     this.predators.set(id, predator);
-    console.log(`🦅 Spawned ${type} predator at (${x.toFixed(1)}, ${z.toFixed(1)})`);
 
     return id;
   }
@@ -299,7 +295,6 @@ export class PredatorManager {
     if (target) {
       predator.targetId = target.id;
       predator.state = 'targeting';
-      console.log(`🎯 ${predator.type} targeting ${target.username}`);
       return;
     }
 
@@ -398,7 +393,6 @@ export class PredatorManager {
 
     // Target too far? Give up
     if (distance > this.TARGET_RANGE * 1.5) {
-      console.log(`🦅 ${predator.type} lost target (too far)`);
       predator.targetId = null;
       predator.state = 'returning';
       return;
@@ -459,11 +453,9 @@ export class PredatorManager {
         target.inventory,
         Math.floor(Math.random() * this.AERIAL_STEAL_AMOUNT) + 1
       );
-      console.log(`🦅 ${predator.type} stole ${stealAmount} walnuts from ${target.username}`);
       // Note: Actual inventory decrement happens in ForestManager
     } else {
       // Ground: Deal damage
-      console.log(`🐃 ${predator.type} bit ${target.username} for ${this.GROUND_DAMAGE} damage`);
       // Note: Actual damage happens in ForestManager
     }
 
@@ -517,7 +509,6 @@ export class PredatorManager {
 
     // Check if distraction has ended
     if (predator.distractedUntil && now >= predator.distractedUntil) {
-      console.log(`🐦 ${predator.type} distraction ended, returning to patrol`);
       predator.state = 'patrol';
       predator.distractedByWalnut = undefined;
       predator.distractedUntil = undefined;
@@ -652,11 +643,9 @@ export class PredatorManager {
 
     // Increment annoyance
     predator.annoyanceLevel++;
-    console.log(`🎯 Wildebeest hit! Annoyance: ${predator.annoyanceLevel}/4`);
 
     // Check if wildebeest should flee (at 4 hits)
     if (predator.annoyanceLevel >= 4) {
-      console.log(`😤 Wildebeest is fed up and fleeing!`);
       predator.state = 'fleeing';
       predator.targetId = null; // Stop targeting
       return { hit: true, annoyanceLevel: 4, fleeing: true };
@@ -676,8 +665,6 @@ export class PredatorManager {
     if (!predator || predator.type === 'wildebeest') {
       return false;
     }
-
-    console.log(`🐦 ${predator.type} distracted by walnut ${walnutId}!`);
 
     // Enter distracted state
     predator.state = 'distracted';
@@ -722,6 +709,5 @@ export class PredatorManager {
    */
   clearAll(): void {
     this.predators.clear();
-    console.log('🦅 All predators cleared');
   }
 }
