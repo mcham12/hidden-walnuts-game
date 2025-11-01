@@ -4,15 +4,16 @@
  * Features:
  * - Platform-specific layouts (desktop keyboard vs mobile touch)
  * - Single-screen tutorial (all mechanics visible at once)
- * - Pauses game while reading
+ * - Non-blocking (game continues - multiplayer standard)
  * - localStorage tracking for first-time users
- * - Glowing button to attract new players
- * - F1 keyboard shortcut (desktop) and "?" button (mobile)
+ * - Glowing "?" button to attract new players
+ * - F1 keyboard shortcut (hidden power-user feature)
  *
  * Best Practices 2025:
  * - Launch directly into first action (<10 seconds)
  * - Progressive disclosure (not multi-screen click-through)
  * - Platform-specific UX
+ * - Don't pause multiplayer games (overlay is enough)
  */
 
 export class TutorialOverlay {
@@ -400,7 +401,7 @@ export class TutorialOverlay {
       </div>
 
       <p style="text-align: center; font-size: 12px; color: rgba(255,255,255,0.5); margin: 20px 0 0 0;">
-        Press <span class="hw-tutorial-key">F1</span> to reopen this guide
+        Click the <strong>?</strong> button (top-right) to reopen this guide
       </p>
     `;
   }

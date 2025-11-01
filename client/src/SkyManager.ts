@@ -37,8 +37,9 @@ export class SkyManager {
   private readonly RESPAWN_DELAY_MAX = 60000; // 60 seconds
   private readonly CLOUD_Y_MIN = 25;
   private readonly CLOUD_Y_MAX = 45;
-  private readonly CLOUD_Z_MIN = -100;
-  private readonly CLOUD_Z_MAX = -50;
+  // Industry standard: Far Z positions for skybox elements (always behind game objects)
+  private readonly CLOUD_Z_MIN = -550;
+  private readonly CLOUD_Z_MAX = -450;
   private readonly CLOUD_SCALE_MIN = 10;
   private readonly CLOUD_SCALE_MAX = 18;
 
@@ -69,22 +70,24 @@ export class SkyManager {
         '/assets/models/environment/sun.png',
         (texture) => {
           // Create sprite material with texture
+          // Industry standard: Skybox elements use depthTest:false + far Z position
           const material = new THREE.SpriteMaterial({
             map: texture,
             transparent: true,
             opacity: 0.9,
             depthTest: false, // Don't test depth - always behind objects
-            depthWrite: false, // Don't write to depth buffer - industry standard for sky elements
+            depthWrite: false, // Don't write to depth buffer - prevents z-fighting
           });
 
           // Create sprite
           this.sun = new THREE.Sprite(material);
 
-          // Position sun in upper-right background (lowered for visibility, far Z for proper layering)
-          this.sun.position.set(50, 30, -200);
+          // Position sun very far back (industry standard for skybox elements)
+          // Far Z position ensures it's always behind all game objects
+          this.sun.position.set(50, 30, -500);
 
-          // Scale to 10 units diameter (50% of previous size)
-          this.sun.scale.set(10, 10, 1);
+          // Scale to 15 units diameter (75% of original 20)
+          this.sun.scale.set(15, 15, 1);
 
           // Render order: behind everything else (negative = render first)
           this.sun.renderOrder = -2000;
@@ -92,7 +95,7 @@ export class SkyManager {
           // Add to scene
           this.scene.add(this.sun);
 
-          console.log('☀️ Sun created at position (50, 30, -200), scale 10 units');
+          console.log('☀️ Sun created at position (50, 30, -500), scale 15 units');
           resolve();
         },
         undefined,
