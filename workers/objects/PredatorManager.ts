@@ -356,9 +356,15 @@ export class PredatorManager {
         predator.velocity.x = Math.cos(angleToCenter) * speed;
         predator.velocity.z = Math.sin(angleToCenter) * speed;
       } else {
-        // GROUND: Instant reversal (squirrels can change direction quickly)
-        predator.velocity.x *= -1;
-        predator.velocity.z *= -1;
+        // GROUND: Turn back toward center naturally (like real animals)
+        // Only change direction if we're not already heading inward
+        const angleToCenter = Math.atan2(-predator.position.z, -predator.position.x);
+        predator.velocity.x = Math.cos(angleToCenter) * speed;
+        predator.velocity.z = Math.sin(angleToCenter) * speed;
+
+        // Reset decision timer so we pick a new direction after moving inward
+        predator.lastDecisionTime = now;
+        predator.nextDecisionDelay = 2000 + Math.random() * 2000;
       }
     }
   }
