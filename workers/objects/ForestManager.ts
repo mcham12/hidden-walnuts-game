@@ -147,6 +147,7 @@ export default class ForestManager extends DurableObject {
   private metrics = {
     treesGrownToday: 0,
     projectilesThrownToday: 0,
+    hitsToday: 0,
     npcDeathsToday: 0,
     predatorFleesCount: 0,
     peakPlayersToday: 0,
@@ -795,7 +796,7 @@ export default class ForestManager extends DurableObject {
         },
         combat: {
           projectilesThrown: this.metrics.projectilesThrownToday,
-          hits: activePlayers.reduce((sum, p) => sum + (p.combatStats?.hits || 0), 0),
+          hits: this.metrics.hitsToday,
           eliminations: activePlayers.reduce((sum, p) => sum + (p.combatStats?.knockouts || 0), 0)
         }
       }), {
@@ -1728,6 +1729,7 @@ export default class ForestManager extends DurableObject {
 
         // MVP 13: Track projectiles thrown
         this.metrics.projectilesThrownToday++;
+        await this.storage.put('metrics', this.metrics);
 
         // MVP 12: Distract visible aerial predators with thrown walnut
         if (data.visiblePredators && Array.isArray(data.visiblePredators) && data.visiblePredators.length > 0) {
@@ -1886,6 +1888,10 @@ export default class ForestManager extends DurableObject {
         playerConnection.score += 2;
         playerConnection.combatStats.hits += 1;
 
+        // MVP 13: Track hits
+        this.metrics.hitsToday++;
+        await this.storage.put('metrics', this.metrics);
+
         // MVP 8: Report score to leaderboard + send to player for HUD
         await this.reportScoreToLeaderboard(playerConnection);
         this.sendMessage(playerConnection.socket, {
@@ -1986,6 +1992,10 @@ export default class ForestManager extends DurableObject {
 
         if (hitResult.hit) {
           console.log(`🎯 Wildebeest ${predatorId} hit! Annoyance: ${hitResult.annoyanceLevel}/4`);
+
+          // MVP 13: Track hits (including predator hits)
+          this.metrics.hitsToday++;
+          await this.storage.put('metrics', this.metrics);
 
           // Broadcast annoyance update to all clients for UI
           this.broadcastToAll({
