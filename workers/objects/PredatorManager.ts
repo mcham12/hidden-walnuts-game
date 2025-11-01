@@ -49,6 +49,7 @@ export class PredatorManager {
   private predators: Map<string, Predator> = new Map();
   private nextPredatorId = 0;
   private lastSpawnCheck = 0;
+  private onPredatorFlee?: () => void; // MVP 13: Callback for flee tracking
 
   // Configuration constants
   private readonly MAX_PREDATORS = 2; // 2 active predators max
@@ -654,6 +655,12 @@ export class PredatorManager {
     if (predator.annoyanceLevel >= 4) {
       predator.state = 'fleeing';
       predator.targetId = null; // Stop targeting
+
+      // MVP 13: Notify of flee event
+      if (this.onPredatorFlee) {
+        this.onPredatorFlee();
+      }
+
       return { hit: true, annoyanceLevel: 4, fleeing: true };
     }
 

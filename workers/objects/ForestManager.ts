@@ -171,6 +171,11 @@ export default class ForestManager extends DurableObject {
 
     // MVP 12: Initialize Predator Manager
     this.predatorManager = new PredatorManager();
+
+    // MVP 13: Set up predator flee callback
+    this.predatorManager['onPredatorFlee'] = () => {
+      this.metrics.predatorFleesCount++;
+    };
   }
 
   /**
@@ -409,6 +414,22 @@ export default class ForestManager extends DurableObject {
   }
 
   async fetch(request: Request): Promise<Response> {
+    // MVP 13: Load metrics and config from storage on first request
+    const storedMetrics = await this.storage.get('metrics');
+    if (storedMetrics) {
+      this.metrics = storedMetrics;
+    }
+
+    const storedConfig = await this.storage.get('treeGrowthConfig');
+    if (storedConfig) {
+      this.treeGrowthConfig = storedConfig;
+    }
+
+    const storedPlayerIds = await this.storage.get('uniquePlayerIds');
+    if (storedPlayerIds && Array.isArray(storedPlayerIds)) {
+      this.uniquePlayerIds = new Set(storedPlayerIds);
+    }
+
     const url = new URL(request.url);
     const path = url.pathname;
 

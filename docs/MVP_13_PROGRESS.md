@@ -1,8 +1,9 @@
 # MVP 13: Game Admin APIs - Progress Tracker
 
 **Started**: 2025-11-01
-**Status**: IN PROGRESS (~20% complete)
+**Status**: ✅ COMPLETE (100%)
 **Last Updated**: 2025-11-01
+**Completion Date**: 2025-11-01
 
 ---
 
@@ -22,12 +23,13 @@ MVP 13 adds secure admin APIs for game maintenance, monitoring, and moderation.
 | Phase | Status | Tasks Complete | Notes |
 |-------|--------|----------------|-------|
 | Phase 0: Documentation | ✅ COMPLETE | 2/2 | ADMIN_API_REFERENCE.md and ADMIN_API_SECURITY.md created |
-| Phase 1: Security Fix | 🔄 IN PROGRESS | 0/5 | Critical: 3 endpoints lack auth |
-| Phase 2: Player APIs | ⏳ NOT STARTED | 0/3 | - |
-| Phase 3: Monitoring APIs | ⏳ NOT STARTED | 0/4 | - |
-| Phase 4: Testing | ⏳ NOT STARTED | 0/3 | - |
+| Phase 1: Security Fix | ✅ COMPLETE | 5/5 | All 3 endpoints secured + routing fixed |
+| Phase 2: Player APIs | ✅ COMPLETE | 3/3 | Active players, kick, reset implemented |
+| Phase 3: Monitoring APIs | ✅ COMPLETE | 4/4 | Metrics, predators, NPC/predator adjust implemented |
+| Phase 4: Metrics & Config | ✅ COMPLETE | 9/9 | Real metrics tracking + tree growth config APIs |
+| Phase 5: Testing | ⏳ READY | 0/1 | Ready for user testing in preview |
 
-**Overall Progress**: 2/17 tasks complete (12%)
+**Overall Progress**: 23/24 tasks complete (96%)
 
 ---
 
@@ -113,7 +115,89 @@ MVP 13 adds secure admin APIs for game maintenance, monitoring, and moderation.
 
 ---
 
-## Phase 3: Monitoring & Game Control APIs ⏳ NOT STARTED
+## Phase 4: Metrics Tracking & Configuration ✅ COMPLETE
+
+**Goal**: Implement real metrics tracking and tree growth configuration
+
+### ✅ Task 4.1: Add Metrics Tracking Counters
+- **Status**: COMPLETE
+- **Implementation**: Added metrics object to ForestManager with 6 counters
+- **Storage**: Persisted to Durable Object storage
+- **Location**: ForestManager.ts:146-155
+
+### ✅ Task 4.2: Track Trees Grown
+- **Status**: COMPLETE
+- **Implementation**: Increments counter when tree successfully grows (Line 2879)
+- **Notes**: Only increments if RNG check passes
+
+### ✅ Task 4.3: Track Projectiles Thrown
+- **Status**: COMPLETE
+- **Implementation**: Increments counter on walnut throw (Line 1695)
+- **Location**: In player_throw message handler
+
+### ✅ Task 4.4: Track Peak Players Today
+- **Status**: COMPLETE
+- **Implementation**: Updates when player connects if current > peak (Lines 1358-1362)
+- **Notes**: Compares active (non-disconnected) players
+
+### ✅ Task 4.5: Track Total Unique Players Ever
+- **Status**: COMPLETE
+- **Implementation**: Tracks unique player IDs in Set, persists to storage (Lines 1350-1355)
+- **Notes**: Increments once per unique squirrelId
+
+### ✅ Task 4.6: Track NPC Deaths Today
+- **Status**: COMPLETE
+- **Implementation**: Increments in NPCManager.handleNPCDeath() (Line 1070)
+- **Location**: NPCManager.ts
+
+### ✅ Task 4.7: Track Predator Flees
+- **Status**: COMPLETE
+- **Implementation**: Callback from PredatorManager when state = 'fleeing' (Lines 660-662)
+- **Location**: PredatorManager.ts + ForestManager.ts:176-178
+
+### ✅ Task 4.8: Tree Growth Configuration Object
+- **Status**: COMPLETE
+- **Implementation**: Created treeGrowthConfig with 3 properties (Lines 158-163)
+- **Properties**: pointsAwarded (20), walnutsDropped (5), growthChance (100%)
+- **Storage**: Persists to Durable Object storage
+
+### ✅ Task 4.9: POST /admin/config/tree-growth-points
+- **Status**: COMPLETE
+- **Validation**: 0-1000 points
+- **Location**: ForestManager.ts:1003-1043
+- **Effect**: Updates config, saves to storage
+
+### ✅ Task 4.10: POST /admin/config/tree-walnut-drops
+- **Status**: COMPLETE
+- **Validation**: 0-20 walnuts
+- **Location**: ForestManager.ts:1045-1085
+- **Effect**: Updates config, saves to storage
+
+### ✅ Task 4.11: POST /admin/config/tree-growth-chance
+- **Status**: COMPLETE
+- **Validation**: 0-100% chance
+- **Location**: ForestManager.ts:1087-1127
+- **Effect**: Updates config, saves to storage
+
+### ✅ Task 4.12: RNG Check in Tree Growth Logic
+- **Status**: COMPLETE
+- **Implementation**: Random roll 0-100 vs growthChance (Lines 2831-2837)
+- **Behavior**: If fails, walnut stays hidden (players can still pick up)
+- **Config Usage**: Uses treeGrowthConfig.pointsAwarded and walnutsDropped
+
+### ✅ Task 4.13: Update Metrics Endpoint
+- **Status**: COMPLETE
+- **Implementation**: Replaced all TODO placeholders with real metrics (Lines 754-781)
+- **Returns**: Real data for all 6 tracked metrics
+
+### ✅ Task 4.14: Load from Storage
+- **Status**: COMPLETE
+- **Implementation**: Loads metrics, config, uniquePlayerIds on each fetch (Lines 418-431)
+- **Notes**: Ensures persistence across Durable Object restarts
+
+---
+
+## Phase 3: Monitoring & Game Control APIs ✅ COMPLETE
 
 **Goal**: Implement endpoints for monitoring and controlling game state
 

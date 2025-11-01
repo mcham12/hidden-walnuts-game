@@ -12,7 +12,9 @@ Complete reference for Hidden Walnuts admin endpoints.
 1. [Game State Management](#game-state-management)
 2. [Player Management](#player-management)
 3. [Monitoring & Metrics](#monitoring--metrics)
-4. [Leaderboard Management](#leaderboard-management)
+4. [NPC & Predator Control](#npc--predator-control)
+5. [Tree Growth Configuration](#tree-growth-configuration)
+6. [Leaderboard Management](#leaderboard-management)
 
 ---
 
@@ -506,6 +508,171 @@ curl -X POST https://api.hiddenwalnuts.com/admin/predators/adjust \
 - Adjusting difficulty dynamically
 - Testing predator spawn system
 - Creating challenging scenarios for testing
+
+---
+
+## Tree Growth Configuration
+
+### Set Tree Growth Points
+
+Configure points awarded when a tree successfully grows.
+
+**Endpoint**: `POST /admin/config/tree-growth-points`
+**Auth**: Required
+
+**Request**:
+```bash
+curl -X POST https://api.hiddenwalnuts.com/admin/config/tree-growth-points \
+  -H "X-Admin-Secret: YOUR_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"points": 50}'
+```
+
+**Body**:
+```json
+{
+  "points": 50
+}
+```
+
+**Validation**:
+- Must be between 0 and 1000
+- Default: 20 points
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "config": {
+    "pointsAwarded": 50,
+    "walnutsDropped": 5,
+    "growthChance": 100
+  },
+  "message": "Tree growth points updated to 50"
+}
+```
+
+**Effects**:
+- Updates points awarded immediately
+- Affects all future tree growth events
+- Persists to Durable Object storage
+
+**Use Cases**:
+- Testing game economy balance
+- Adjusting difficulty dynamically
+- Special events with bonus points
+
+---
+
+### Set Tree Walnut Drops
+
+Configure number of walnuts dropped when a tree grows.
+
+**Endpoint**: `POST /admin/config/tree-walnut-drops`
+**Auth**: Required
+
+**Request**:
+```bash
+curl -X POST https://api.hiddenwalnuts.com/admin/config/tree-walnut-drops \
+  -H "X-Admin-Secret: YOUR_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"walnuts": 10}'
+```
+
+**Body**:
+```json
+{
+  "walnuts": 10
+}
+```
+
+**Validation**:
+- Must be between 0 and 20
+- Default: 5 walnuts
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "config": {
+    "pointsAwarded": 20,
+    "walnutsDropped": 10,
+    "growthChance": 100
+  },
+  "message": "Tree walnut drops updated to 10"
+}
+```
+
+**Effects**:
+- Updates walnut drop count immediately
+- Affects all future tree growth events
+- Persists to Durable Object storage
+
+**Use Cases**:
+- Testing walnut economy
+- Creating scarcity or abundance
+- Special events with bonus walnuts
+
+---
+
+### Set Tree Growth Chance
+
+Configure probability (0-100%) that a hidden walnut will grow into a tree.
+
+**Endpoint**: `POST /admin/config/tree-growth-chance`
+**Auth**: Required
+
+**Request**:
+```bash
+curl -X POST https://api.hiddenwalnuts.com/admin/config/tree-growth-chance \
+  -H "X-Admin-Secret: YOUR_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"chance": 75}'
+```
+
+**Body**:
+```json
+{
+  "chance": 75
+}
+```
+
+**Validation**:
+- Must be between 0 and 100
+- Default: 100% (all hidden walnuts grow)
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "config": {
+    "pointsAwarded": 20,
+    "walnutsDropped": 5,
+    "growthChance": 75
+  },
+  "message": "Tree growth chance updated to 75%"
+}
+```
+
+**Effects**:
+- Updates growth probability immediately
+- Uses `Math.random()` RNG check on each growth timer
+- If RNG fails: walnut stays hidden forever (players can pick up normally)
+- If RNG succeeds: walnut grows into tree (awards points, drops walnuts)
+- Persists to Durable Object storage
+
+**Use Cases**:
+- Reducing tree spam with many players
+- Testing tree growth mechanics
+- Adjusting game pace dynamically
+- Creating variation in gameplay
+
+**Example Probabilities**:
+- `100%` - Every hidden walnut grows (default)
+- `75%` - 3 out of 4 hidden walnuts grow
+- `50%` - Half of hidden walnuts grow
+- `25%` - 1 out of 4 hidden walnuts grow
+- `0%` - No trees grow (manual walnut collection only)
 
 ---
 

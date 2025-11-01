@@ -1066,6 +1066,8 @@ export class NPCManager {
       return;
     }
 
+    // MVP 13: Increment NPC deaths counter
+    (this.forestManager as any).metrics.npcDeathsToday++;
 
     // MVP 11: Drop all walnuts at death position (matches player death pattern)
     const dropCount = npc.walnutInventory;
