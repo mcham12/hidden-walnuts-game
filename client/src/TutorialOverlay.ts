@@ -368,8 +368,8 @@ export class TutorialOverlay {
         <div class="hw-tutorial-text">
           <p class="hw-tutorial-label">THROW WALNUT</p>
           <p class="hw-tutorial-desc">
-            <span class="hw-tutorial-key">SPACE</span>
-            Hit players & wildebeest • Distract aerial predators 🐦
+            <span class="hw-tutorial-key">T</span>
+            (or <span class="hw-tutorial-key">SPACE</span>) • Hit players & wildebeest • Distract aerial predators 🐦
           </p>
         </div>
       </div>
