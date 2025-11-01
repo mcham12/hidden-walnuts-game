@@ -143,6 +143,24 @@ export default class ForestManager extends DurableObject {
     chat: number[];
   }> = new Map(); // squirrelId -> action timestamps
 
+  // MVP 13: Metrics tracking
+  private metrics = {
+    treesGrownToday: 0,
+    projectilesThrownToday: 0,
+    npcDeathsToday: 0,
+    predatorFleesCount: 0,
+    peakPlayersToday: 0,
+    totalUniquePlayersEver: 0
+  };
+  private uniquePlayerIds: Set<string> = new Set();
+
+  // MVP 13: Tree growth configuration
+  private treeGrowthConfig = {
+    pointsAwarded: 20,        // Points for growing a tree
+    walnutsDropped: 5,        // Walnuts dropped when tree grows
+    growthChance: 100         // 0-100% chance walnut grows after timer
+  };
+
   constructor(ctx: any, env: Env) {
     super(ctx, env);
     this.storage = ctx.storage;
@@ -734,28 +752,28 @@ export default class ForestManager extends DurableObject {
         timestamp: Date.now(),
         players: {
           active: activePlayers.length,
-          peakToday: activePlayers.length, // TODO: Track actual peak
-          totalEver: activePlayers.length  // TODO: Track total from storage
+          peakToday: this.metrics.peakPlayersToday,
+          totalEver: this.metrics.totalUniquePlayersEver
         },
         npcs: {
           active: npcs.length,
-          deathsToday: 0 // TODO: Track NPC deaths
+          deathsToday: this.metrics.npcDeathsToday
         },
         predators: {
           active: predators.length,
           cardinal: predatorCounts['cardinal'] || 0,
           toucan: predatorCounts['toucan'] || 0,
           wildebeest: predatorCounts['wildebeest'] || 0,
-          fleeCount: 0 // TODO: Track flee count
+          fleeCount: this.metrics.predatorFleesCount
         },
         walnuts: {
           hidden: hiddenWalnuts,
           found: foundWalnuts,
           golden: goldenWalnuts,
-          treesGrown: 0 // TODO: Track tree growth count
+          treesGrown: this.metrics.treesGrownToday
         },
         combat: {
-          projectilesThrown: 0, // TODO: Track from player stats
+          projectilesThrown: this.metrics.projectilesThrownToday,
           hits: activePlayers.reduce((sum, p) => sum + (p.combatStats?.hits || 0), 0),
           eliminations: activePlayers.reduce((sum, p) => sum + (p.combatStats?.knockouts || 0), 0)
         }
@@ -981,6 +999,132 @@ export default class ForestManager extends DurableObject {
       });
     }
 
+    // MVP 13: Set tree growth points
+    if (path === "/admin/config/tree-growth-points" && request.method === "POST") {
+      // Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const body = await request.json() as { points: number };
+      const points = body.points;
+
+      if (typeof points !== 'number' || points < 0 || points > 1000) {
+        return new Response(JSON.stringify({
+          error: "Invalid points value",
+          message: "Points must be a number between 0 and 1000"
+        }), {
+          status: 400,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const previousPoints = this.treeGrowthConfig.pointsAwarded;
+      this.treeGrowthConfig.pointsAwarded = points;
+      await this.storage.put('treeGrowthConfig', this.treeGrowthConfig);
+
+      return new Response(JSON.stringify({
+        success: true,
+        previousPoints,
+        newPoints: points,
+        message: `Tree growth points set to ${points}`
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
+    // MVP 13: Set tree walnut drops
+    if (path === "/admin/config/tree-walnut-drops" && request.method === "POST") {
+      // Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const body = await request.json() as { drops: number };
+      const drops = body.drops;
+
+      if (typeof drops !== 'number' || drops < 0 || drops > 20) {
+        return new Response(JSON.stringify({
+          error: "Invalid drops value",
+          message: "Drops must be a number between 0 and 20"
+        }), {
+          status: 400,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const previousDrops = this.treeGrowthConfig.walnutsDropped;
+      this.treeGrowthConfig.walnutsDropped = drops;
+      await this.storage.put('treeGrowthConfig', this.treeGrowthConfig);
+
+      return new Response(JSON.stringify({
+        success: true,
+        previousDrops,
+        newDrops: drops,
+        message: `Tree walnut drops set to ${drops}`
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
+    // MVP 13: Set tree growth chance
+    if (path === "/admin/config/tree-growth-chance" && request.method === "POST") {
+      // Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const body = await request.json() as { chance: number };
+      const chance = body.chance;
+
+      if (typeof chance !== 'number' || chance < 0 || chance > 100) {
+        return new Response(JSON.stringify({
+          error: "Invalid chance value",
+          message: "Chance must be a number between 0 and 100"
+        }), {
+          status: 400,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const previousChance = this.treeGrowthConfig.growthChance;
+      this.treeGrowthConfig.growthChance = chance;
+      await this.storage.put('treeGrowthConfig', this.treeGrowthConfig);
+
+      return new Response(JSON.stringify({
+        success: true,
+        previousChance,
+        newChance: chance,
+        message: `Tree growth chance set to ${chance}%`
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
     return new Response("Not Found", { status: 404 });
   }
 
@@ -1200,6 +1344,21 @@ export default class ForestManager extends DurableObject {
 
 
       this.activePlayers.set(squirrelId, playerConnection);
+
+      // MVP 13: Track unique players and peak
+      if (!this.uniquePlayerIds.has(squirrelId)) {
+        this.uniquePlayerIds.add(squirrelId);
+        this.metrics.totalUniquePlayersEver++;
+        await this.storage.put('metrics', this.metrics);
+        await this.storage.put('uniquePlayerIds', Array.from(this.uniquePlayerIds));
+      }
+
+      // Update peak players if current count is higher
+      const activeCount = Array.from(this.activePlayers.values()).filter(p => !p.isDisconnected).length;
+      if (activeCount > this.metrics.peakPlayersToday) {
+        this.metrics.peakPlayersToday = activeCount;
+        await this.storage.put('metrics', this.metrics);
+      }
 
       // MVP 9: Only report to leaderboard if score > 0 (don't report initial joins)
       // This prevents overwriting existing scores with 0 on rejoin
@@ -1545,6 +1704,9 @@ export default class ForestManager extends DurableObject {
         // Validation passed - process throw
         playerConnection.lastThrowTime = throwTime;
         playerConnection.walnutInventory--;
+
+        // MVP 13: Track projectiles thrown
+        this.metrics.projectilesThrownToday++;
 
         // MVP 12: Distract visible aerial predators with thrown walnut
         if (data.visiblePredators && Array.isArray(data.visiblePredators) && data.visiblePredators.length > 0) {
@@ -2683,6 +2845,14 @@ export default class ForestManager extends DurableObject {
    * Includes collision detection and placement logic
    */
   private async growWalnutIntoTree(walnut: any): Promise<void> {
+    // MVP 13: RNG check - walnut only grows if random chance succeeds
+    // If fails, walnut stays hidden forever (players can still pick it up)
+    const roll = Math.random() * 100;
+    if (roll > this.treeGrowthConfig.growthChance) {
+      // RNG failed - walnut stays hidden, no tree growth
+      return;
+    }
+
     // Find suitable placement position (spiral search if original spot blocked)
     const treePosition = this.findTreePlacement(walnut.location);
 
@@ -2722,10 +2892,14 @@ export default class ForestManager extends DurableObject {
       body: JSON.stringify({ walnutId: walnut.id })
     }));
 
+    // MVP 13: Increment trees grown counter
+    this.metrics.treesGrownToday++;
+    await this.storage.put('metrics', this.metrics);
+
     // Award points to owner (only if player is online)
     const ownerPlayer = this.activePlayers.get(walnut.ownerId);
     if (ownerPlayer) {
-      ownerPlayer.score += 20; // Tree growth bonus
+      ownerPlayer.score += this.treeGrowthConfig.pointsAwarded; // MVP 13: Configurable points
 
       // Report to leaderboard
       await this.reportScoreToLeaderboard(ownerPlayer);
@@ -2754,8 +2928,8 @@ export default class ForestManager extends DurableObject {
       newPosition: treePosition
     });
 
-    // MVP 9: Drop 5 walnuts in rapid succession from newly grown tree
-    await this.dropWalnutsFromTree(newTree, 5);
+    // MVP 13: Drop configurable number of walnuts from newly grown tree
+    await this.dropWalnutsFromTree(newTree, this.treeGrowthConfig.walnutsDropped);
   }
 
   /**
