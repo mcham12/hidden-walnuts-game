@@ -488,6 +488,18 @@ export default class ForestManager extends DurableObject {
 
     // Admin endpoint to reset mapState (forces golden walnuts to respawn)
     if (path === "/admin/reset-mapstate" && request.method === "POST") {
+      // MVP 13: Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
       await this.storage.delete('mapState');
       this.mapState = []; // Also clear in-memory state
       this.isInitialized = false; // Force re-initialization on next connection
@@ -501,6 +513,18 @@ export default class ForestManager extends DurableObject {
 
     // Admin endpoint to reset forest (forces regeneration with landmark exclusions)
     if (path === "/admin/reset-forest" && request.method === "POST") {
+      // MVP 13: Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
       await this.storage.delete('forestObjects');
       this.forestObjects = []; // Clear in-memory state
       this.isInitialized = false; // Force re-initialization on next connection
@@ -514,6 +538,18 @@ export default class ForestManager extends DurableObject {
 
     // Admin endpoint to reset player positions
     if (path === "/admin/reset-positions" && request.method === "POST") {
+      // MVP 13: Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
       const playerKeys = await this.storage.list({ prefix: 'player:' });
       for (const key of playerKeys.keys()) {
         await this.storage.delete(key);

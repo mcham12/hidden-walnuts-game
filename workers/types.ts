@@ -116,4 +116,5 @@ export interface Env {
   PLAYER_IDENTITY: DurableObjectNamespace;
   TURNSTILE_SECRET: string; // Cloudflare Turnstile secret key
   RATE_LIMITER?: RateLimitBinding; // Rate limiting binding (optional for local dev)
+  ADMIN_SECRET?: string; // MVP 13: Admin API authentication
 }
