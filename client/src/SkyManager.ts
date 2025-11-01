@@ -37,11 +37,11 @@ export class SkyManager {
   private readonly RESPAWN_DELAY_MAX = 60000; // 60 seconds
   private readonly CLOUD_Y_MIN = 25;
   private readonly CLOUD_Y_MAX = 45;
-  // With render-last approach, Z position is less critical
-  private readonly CLOUD_Z_MIN = -250;
-  private readonly CLOUD_Z_MAX = -150;
-  private readonly CLOUD_SCALE_MIN = 15;
-  private readonly CLOUD_SCALE_MAX = 25;
+  // Position within camera frustum (far=1000), near the far plane
+  private readonly CLOUD_Z_MIN = -920;
+  private readonly CLOUD_Z_MAX = -900;
+  private readonly CLOUD_SCALE_MIN = 60;
+  private readonly CLOUD_SCALE_MAX = 100;
 
   constructor(scene: THREE.Scene, textureLoader: THREE.TextureLoader) {
     this.scene = scene;
@@ -70,34 +70,32 @@ export class SkyManager {
         '/assets/models/environment/sun.png',
         (texture) => {
           // Create sprite material with texture
-          // PROVEN APPROACH (from Stack Overflow #16247280):
-          // Background elements render LAST with depthTest:false
-          // This makes them fill in areas where nothing else rendered (the sky)
+          // Enable BOTH depthTest and depthWrite so depth buffer handles occlusion correctly
           const material = new THREE.SpriteMaterial({
             map: texture,
             transparent: true,
             opacity: 0.9,
-            depthTest: false,  // Don't test depth - render regardless
-            depthWrite: false, // Don't write to depth buffer
+            depthTest: true,  // Test against depth buffer
+            depthWrite: true, // Write to depth buffer (normal behavior)
           });
 
           // Create sprite
           this.sun = new THREE.Sprite(material);
 
-          // Position sun in sky (distance less critical with render-last approach)
-          this.sun.position.set(50, 30, -200);
+          // Position near camera far plane to ensure behind all game objects
+          // Camera far=1000, game objects typically within -100 to +100
+          this.sun.position.set(50, 30, -950);
 
-          // Scale to 25 units diameter (BIGGER than original 20)
-          this.sun.scale.set(25, 25, 1);
+          // Scale for visibility at distance
+          this.sun.scale.set(80, 80, 1);
 
-          // CRITICAL: Positive renderOrder = render LAST (after all game objects)
-          // This ensures sun renders in the "background" where nothing else drew
-          this.sun.renderOrder = 1000;
+          // Default renderOrder (0) is fine with proper depth testing
+          // Depth buffer will handle occlusion
 
           // Add to scene
           this.scene.add(this.sun);
 
-          console.log('☀️ Sun created: position (50,30,-200), scale 25 units, renderOrder 1000 (render last)');
+          console.log('☀️ Sun created: Z=-950 (near far plane), scale 80, depth testing enabled');
           resolve();
         },
         undefined,
@@ -129,13 +127,12 @@ export class SkyManager {
         map: cloudTexture.clone(),
         transparent: true,
         opacity: 0.7,
-        depthTest: false,  // Don't test depth - render regardless
-        depthWrite: false, // Don't write to depth buffer
+        depthTest: true,  // Test against depth buffer
+        depthWrite: true, // Write to depth buffer (normal behavior)
       });
 
       const sprite = new THREE.Sprite(material);
-      // Render clouds before sun (lower renderOrder) but both after scene objects
-      sprite.renderOrder = 900;
+      // Default renderOrder (0) - depth buffer handles occlusion
 
       // Start with random respawn timer (stagger initial spawns)
       const initialDelay = Math.random() * 30000; // 0-30s
