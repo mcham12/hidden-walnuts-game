@@ -35,8 +35,8 @@ export class SkyManager {
   private readonly CLOUD_DESPAWN_X = 100;
   private readonly RESPAWN_DELAY_MIN = 30000; // 30 seconds
   private readonly RESPAWN_DELAY_MAX = 60000; // 60 seconds
-  private readonly CLOUD_Y_MIN = 25;
-  private readonly CLOUD_Y_MAX = 45;
+  private readonly CLOUD_Y_MIN = 100;
+  private readonly CLOUD_Y_MAX = 200;
   // Position within camera frustum (far=1000), near the far plane
   private readonly CLOUD_Z_MIN = -920;
   private readonly CLOUD_Z_MAX = -900;
@@ -84,7 +84,8 @@ export class SkyManager {
 
           // Position near camera far plane to ensure behind all game objects
           // Camera far=1000, game objects typically within -100 to +100
-          this.sun.position.set(50, 30, -950);
+          // Higher Y position to place sun higher in sky
+          this.sun.position.set(50, 150, -950);
 
           // Scale for visibility at distance
           this.sun.scale.set(80, 80, 1);
@@ -95,7 +96,7 @@ export class SkyManager {
           // Add to scene
           this.scene.add(this.sun);
 
-          console.log('☀️ Sun created: Z=-950 (near far plane), scale 80, depth testing enabled');
+          console.log('☀️ Sun created: position (50,150,-950), scale 80, depth testing enabled');
           resolve();
         },
         undefined,
