@@ -562,6 +562,350 @@ export default class ForestManager extends DurableObject {
       });
     }
 
+    // MVP 13: Get active players
+    if (path === "/admin/players/active" && request.method === "GET") {
+      // Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const players = Array.from(this.activePlayers.values())
+        .filter(p => !p.isDisconnected)
+        .map(p => ({
+          id: p.squirrelId,
+          username: p.username,
+          score: p.score,
+          rank: p.titleName,
+          health: p.health,
+          inventory: p.walnutInventory,
+          position: p.position,
+          characterId: p.characterId,
+          connectedAt: p.lastActivity
+        }));
+
+      return new Response(JSON.stringify({
+        players,
+        count: players.length,
+        npcs: this.npcManager.getNPCs().length,
+        predators: this.predatorManager.getPredators().length,
+        timestamp: Date.now()
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
+    // MVP 13: Kick player
+    if (path.startsWith("/admin/players/") && path.endsWith("/kick") && request.method === "POST") {
+      // Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const playerId = path.split("/")[3];
+      const player = this.activePlayers.get(playerId);
+
+      if (!player) {
+        return new Response(JSON.stringify({
+          error: "Not found",
+          message: "Player not found or not connected"
+        }), {
+          status: 404,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      // Close the player's WebSocket
+      player.socket.close(1000, "Kicked by admin");
+
+      return new Response(JSON.stringify({
+        success: true,
+        playerId: playerId,
+        message: "Player kicked successfully"
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
+    // MVP 13: Reset player data
+    if (path.startsWith("/admin/players/") && path.endsWith("/reset") && request.method === "POST") {
+      // Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const playerId = path.split("/")[3];
+      const player = this.activePlayers.get(playerId);
+
+      if (!player) {
+        return new Response(JSON.stringify({
+          error: "Not found",
+          message: "Player not found"
+        }), {
+          status: 404,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      // Reset player state
+      player.score = 0;
+      player.walnutInventory = 0;
+      player.health = 100;
+      player.position = { x: 0, y: 2, z: 0 };
+      player.titleId = 'rookie';
+      player.titleName = 'Rookie';
+      player.combatStats = { hits: 0, knockouts: 0, deaths: 0 };
+
+      // Delete stored player data
+      await this.storage.delete(`player:${playerId}`);
+
+      // Kick player to force reconnect with new state
+      player.socket.close(1000, "Player data reset by admin");
+
+      return new Response(JSON.stringify({
+        success: true,
+        playerId: playerId,
+        message: "Player data reset successfully",
+        newState: {
+          score: 0,
+          rank: "Rookie",
+          inventory: 0,
+          health: 100,
+          position: { x: 0, y: 2, z: 0 }
+        }
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
+    // MVP 13: Get server metrics
+    if (path === "/admin/metrics" && request.method === "GET") {
+      // Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const activePlayers = Array.from(this.activePlayers.values()).filter(p => !p.isDisconnected);
+      const npcs = this.npcManager.getNPCs();
+      const predators = this.predatorManager.getPredators();
+
+      // Count walnuts
+      const hiddenWalnuts = this.mapState.filter(w => !w.found).length;
+      const foundWalnuts = this.mapState.filter(w => w.found).length;
+      const goldenWalnuts = this.mapState.filter(w => w.origin === 'game').length;
+
+      // Count predators by type
+      const predatorCounts = predators.reduce((acc, p) => {
+        acc[p.type] = (acc[p.type] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      return new Response(JSON.stringify({
+        timestamp: Date.now(),
+        players: {
+          active: activePlayers.length,
+          peakToday: activePlayers.length, // TODO: Track actual peak
+          totalEver: activePlayers.length  // TODO: Track total from storage
+        },
+        npcs: {
+          active: npcs.length,
+          deathsToday: 0 // TODO: Track NPC deaths
+        },
+        predators: {
+          active: predators.length,
+          cardinal: predatorCounts['cardinal'] || 0,
+          toucan: predatorCounts['toucan'] || 0,
+          wildebeest: predatorCounts['wildebeest'] || 0,
+          fleeCount: 0 // TODO: Track flee count
+        },
+        walnuts: {
+          hidden: hiddenWalnuts,
+          found: foundWalnuts,
+          golden: goldenWalnuts,
+          treesGrown: 0 // TODO: Track tree growth count
+        },
+        combat: {
+          projectilesThrown: 0, // TODO: Track from player stats
+          hits: activePlayers.reduce((sum, p) => sum + (p.combatStats?.hits || 0), 0),
+          eliminations: activePlayers.reduce((sum, p) => sum + (p.combatStats?.knockouts || 0), 0)
+        }
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
+    // MVP 13: Get predator status
+    if (path === "/admin/predators" && request.method === "GET") {
+      // Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const predators = this.predatorManager.getPredators().map(p => ({
+        id: p.id,
+        type: p.type,
+        state: p.state,
+        position: p.position,
+        targetId: p.targetId || null,
+        targetUsername: p.targetId ? this.activePlayers.get(p.targetId)?.username : null,
+        spawnTime: p.spawnTime,
+        attackCount: 0, // TODO: Track attack count
+        annoyanceLevel: p.annoyanceLevel || 0
+      }));
+
+      return new Response(JSON.stringify({
+        predators,
+        count: predators.length,
+        maxPredators: 2 // TODO: Get from config
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
+    // MVP 13: Adjust NPC count
+    if (path === "/admin/npcs/adjust" && request.method === "POST") {
+      // Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const body = await request.json() as { count: number };
+      const targetCount = body.count;
+
+      if (typeof targetCount !== 'number' || targetCount < 0 || targetCount > 10) {
+        return new Response(JSON.stringify({
+          error: "Invalid count",
+          message: "Count must be a number between 0 and 10"
+        }), {
+          status: 400,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const currentNPCs = this.npcManager.getNPCs();
+      const currentCount = currentNPCs.length;
+      let spawned = 0;
+      let despawned = 0;
+
+      if (targetCount > currentCount) {
+        // Spawn new NPCs
+        spawned = targetCount - currentCount;
+        // Use the existing spawnNPCs method which handles broadcasting
+        const originalMax = (this.npcManager as any).MAX_NPCS;
+        (this.npcManager as any).MAX_NPCS = targetCount;
+        this.npcManager.spawnNPCs();
+        (this.npcManager as any).MAX_NPCS = originalMax;
+      } else if (targetCount < currentCount) {
+        // Despawn NPCs
+        despawned = currentCount - targetCount;
+        for (let i = 0; i < despawned; i++) {
+          const npc = currentNPCs[i];
+          (this.npcManager as any).broadcastNPCDespawn(npc.id);
+          (this.npcManager as any).npcs.delete(npc.id);
+        }
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        previousCount: currentCount,
+        newCount: targetCount,
+        spawned,
+        despawned,
+        message: spawned > 0
+          ? `NPC count adjusted - spawned ${spawned} new NPCs`
+          : despawned > 0
+          ? `NPC count adjusted - despawned ${despawned} NPCs`
+          : "NPC count unchanged"
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
+    // MVP 13: Clear all predators
+    if (path === "/admin/predators/clear" && request.method === "POST") {
+      // Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const predators = this.predatorManager.getPredators();
+      const clearedCount = predators.length;
+
+      // Remove all predators and broadcast to clients
+      predators.forEach(p => {
+        this.predatorManager.removePredator(p.id);
+
+        // Broadcast predator despawn to all players
+        this.broadcastToOthers('', {
+          type: 'predator_despawn',
+          predatorId: p.id
+        });
+      });
+
+      return new Response(JSON.stringify({
+        success: true,
+        clearedCount,
+        message: "All predators cleared"
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
     return new Response("Not Found", { status: 404 });
   }
 
