@@ -1,6 +1,6 @@
 # 🎮 Hidden Walnuts - MVP Development Plan
 
-**Current Status**: MVP 12 (World Polish and Predators) - 🎯 **NEXT**
+**Current Status**: MVP 13 (Game Admin APIs) - 🎯 **IN PROGRESS**
 
 ---
 
@@ -23,6 +23,7 @@
 - **MVP 8**: Combat, Health & Resource Management - Projectile throwing, damage/health system, eating walnuts, death/respawn, inventory limits
 - **MVP 9**: Combat Completeness & World Resources - Health bars, NPC AI improvements, tree growth system, collision fixes, comprehensive logging cleanup
 - **MVP 11**: Sound Effects & Audio Enhancement - Comprehensive sound system with combat, player, and ambient sounds; iOS Safari audio support
+- **MVP 12**: World Polish, Predators & Defense - AI predators (cardinal, toucan, wildebeest), rank-based targeting system, defense mechanics, sky elements, tutorial redesign, UX polish
 
 ---
 
@@ -148,52 +149,79 @@
 
 ---
 
-## ⚔️ MVP 12: World Polish and Predators & Threats (6-8 hours)
+## ✅ MVP 12: World Polish, Predators & Defense (COMPLETE)
 
 **Goal**: Add AI predators that create PvE danger and excitement
 
-### Features
+### Completed Features
 
-**1. Cardinal, Toucan (Aerial Threat)s** (3-4 hours)
-- Fly overhead, dive-bomb players
-- Steal 1-2 walnuts on successful grab
-- ~30s cooldown between attacks
-- Avoidable with movement/awareness
+**1. Aerial Predators (Cardinal, Toucan)** ✅
+- Fly overhead with smooth wandering AI (Craig Reynolds steering)
+- Dive-bomb players to steal 1-2 walnuts
+- 45s cooldown between attacks (reduced aggression)
+- Can be distracted by throwing walnuts (5-8s distraction window)
+- Audio warnings: proximity sound + attack sound
+- Bob up/down for visibility (Zelda-style)
 
-**2. Wildebeest (Ground Threat)** (3-4 hours)
-- Patrol forest, chase players
-- Deal 30 damage on bite
-- Faster than players (must evade strategically)
-- Can be distracted by throwing walnuts
+**2. Ground Predator (Wildebeest)** ✅
+- Patrol forest with natural idle/walk behavior
+- Chase players and deal 30 damage on bite
+- Faster than players (5.5 vs 5.0) - must evade strategically
+- Annoyance system: 4 walnut hits = flees from map
+- Audio warnings: proximity growl + attack sound
+- Natural boundary handling (no rapid spinning)
 
-**3. AI Behaviors and new Player Ranking System**
-- Refactor original NPC behavior and the new Predator behaviors to be aware of (human) player ranking.  Note the current NPC behavior settings for later use.  To do this, we'll define new player ranks and system first.  Player ranks are based on score range: Rookie (0 to 20), Apprentice (21 to 100), Dabbler (101 to 200), Slick (201 to 300), Maestro (301 to 500), Ninja (501 to 1000), Legend (1001+).  When the player first joins, they should get a special screen overlay (not the normal messaging system)), saying, "Welcome, your rank is Rookie!" or something like that.  not sure if Rank is the best player-facing term? do research here.  As their score progresses, if they achieve a new rank, do the special screen overlay again, and say something like, "You've achieved {player rank} Status!".  Make NPCs not agressive nor throw at player ranks until "Slick", at which point make the NPC agression behaviors the same as current settings (that you remembered from earlier).  Then very gradually increase NPC aggression as we increase...we don't want NPCs to be overly aggressive because well also have predators.  
+**3. Player Ranking System** ✅
+- **Rank Titles**: Rookie (0-20), Apprentice (21-100), Dabbler (101-200), Slick (201-300), Maestro (301-500), Ninja (501-1000), Legend (1001+)
+- Welcome overlay on first join: "Welcome, your status is Rookie!"
+- Rank-up overlay: "You've achieved Slick Status!" with title description
+- Used "Title" terminology (friendlier than "Rank")
+- Shared PlayerRanks.ts between client/worker for consistency
 
-- Predators treat NPCs equally (but based on time since NPC original spawing or respawning, not player Rankings).  Predators don't start attacking players until they are of Dabbler rank, and target higher player ranks progressively more.  When the predators aren't attacking, they fly around or walk around or idle.
+**4. Rank-Based AI Targeting** ✅
+- **NPCs**: Friendly to Rookie/Apprentice/Dabbler, baseline aggression at Slick, gradually increase for higher ranks
+- **Predators**: Ignore Rookie/Apprentice, start targeting Dabbler+ with weighted preference
+- Targeting weights (reduced for balance):
+  - Dabbler: 0.4x, Slick: 0.7x, Maestro: 0.9x, Ninja: 1.1x, Legend: 1.3x
+- NPCs targeted by time-since-spawn (not rank)
+- Multi-targeting prevention (predators don't gang up)
 
-- Visual/audio warnings before attack
-- Respawn at random intervals
+**5. UX Polish** ✅
+- **Sky Elements**: Sun sprite (Y=250) and 1-2 clouds using THREE.Sprite billboards
+- Standard depth testing (depthTest:true, depthWrite:true) - industry standard approach
+- Clouds drift slowly (0.5-1.5 units/sec), respawn after 30-60s off-screen
+- **Tutorial Redesign**: Single-screen "How to Play" overlay
+  - Platform-specific: Desktop (keyboard shortcuts with key icons) vs Mobile (touch gestures + buttons)
+  - Shows all 5 mechanics at once (move, get walnut, throw, hide, eat)
+  - Glowing "?" button for easy re-access
+  - Auto-show for first-time users (localStorage tracking)
+  - Industry standard: No pause in multiplayer (overlay provides visual feedback)
+- Removed old multi-screen tutorial and desktop control legend
 
-**4.UX Polish**
-- Add some fun sky elements: sun.png and cloud.png.  implement industry-standard approaches for sun and clouds for a game like mine.  probably 1 max 2 clouds at any given time.  sun always or usually visible, nothing fancy.
-- better "how to play" instructional experience.  research similar games and how to do this, likely different tutorial for desktop (because of key usage) vs ipad/iphone.  Or a tab between desktop/mobile browser tutorials on the same experience if people are curious.  my personal opinion: when a new player is detected (not returning), provide a tempting (glowing/throbbing) UI control for "how to play" or something similar.  then try to show key game mechanics on one screen vs "nexting" through a bunch of screens.  for desktop, maybe use appropriate Key icons for showing how to do the actions.  for mobile, somehow illustrate screen touch/drag to move, then show the actual onscreen buttons for throw/eat/hide etc.  Key things to cover: move, get walnut, throw walnut (to hit other players and wildebeest, and to distract aerial predators), hide walnut (let them know this might grow into a tree)  Get rid of the existing tutorial click-through for desktop, and get rid of the key legend UI feature on desktop.  add a way to re-invoke the "how to play" dialog on desktop that pauses gameplay while you read it.  on mobile browsers, repurpose the existing "mobile controls" feature to convey the same info as in the desktop experience.  the "mobile controls" feature will need to be bigger than current state.  also need a way to re-invoke the "how to play" UI on mobile, and also pause gameplay.  Record our final design in a document in the docs/ before proceeding with implementation.
+**6. Production Settings Restored** ✅
+- Tree growth time: 1 minute (60000ms)
+- Tree growth bonus: 20 points
 
-**5. revert temporary changes made to facilitate testing
-- change tree growth time to 1 minute
-- change tree growth bonus to 20 points
-
-**6. remove any debug logging added for this MVP, both client and worker**
+**7. Logging Cleanup** ✅
+- Removed non-critical console.log statements from:
+  - Client: Game.ts, SkyManager.ts, TutorialOverlay.ts
+  - Worker: ForestManager.ts, PredatorManager.ts, NPCManager.ts, SquirrelSession.ts, Leaderboard.ts, PlayerIdentity.ts
+- Kept operational logs (errors, warnings, scheduled tasks)
 
 ### Success Criteria
-- ✅ predators add meaningful danger
-- ✅ Players must stay alert (not just PvP)
-- ✅ Predators are challenging but fair
-- ✅ Creates "close call" exciting moments
+- ✅ Predators add meaningful PvE danger
+- ✅ Players must stay alert (not just PvP focused)
+- ✅ Predators are challenging but fair (reduced aggression based on testing)
+- ✅ Creates "close call" exciting moments with defense mechanics
+- ✅ New players protected (Rookie/Apprentice safe from predators)
+- ✅ Progression system rewards skill with rank titles
 
 
-## 🎮 MVP 13: Game Admin APIs
+---
 
-**Goal**:  admin tools for game maintenance, monitoring, and moderation
+## 🎮 MVP 13: Game Admin APIs (IN PROGRESS)
+
+**Goal**: Admin tools for game maintenance, monitoring, and moderation
 
 ### Research Findings
 
@@ -205,7 +233,7 @@ Based on industry standards for casual multiplayer games (PlayFab, Unity Moderat
 3. **Game Control** - Reset systems, spawn resources, adjust parameters
 4. **Leaderboard Moderation** - Remove cheaters, manual corrections
 
-### Part 0 Analysis.
+### Part 0: Analysis & Planning
 - produce a concise explainer on how secrets are used to secure cloudflare apis, including how different from passwords, and practically how the secured-by-secret apis can be used from mac os terminal and a hypothetical (potentially future) admin web page.  included differences: preview vs production.  document this somehow in docs/ folder.
 - document/ list existing admin-related apis (including leaderboard-related) vs new apis to be developed via this MVP.  Document in docs/ folder
 - determine which APIs are secured by a secret now and can we reuse that secret or do we need to generate a new one
