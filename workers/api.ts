@@ -151,25 +151,11 @@ export default {
         });
       }
 
-      // Handle /admin/reset-mapstate route
-      if (pathname === "/admin/reset-mapstate") {
+      // MVP 13: Handle all /admin routes - forward to ForestManager
+      if (pathname.startsWith("/admin/")) {
         const forest = getObjectInstance(env, "forest", "daily-forest");
         return await forest.fetch(request);
       }
-
-      // Handle /admin/reset-forest route
-      if (pathname === "/admin/reset-forest") {
-        const forest = getObjectInstance(env, "forest", "daily-forest");
-        return await forest.fetch(request);
-      }
-
-      // Handle /admin/reset-positions route
-      if (pathname === "/admin/reset-positions") {
-        const forest = getObjectInstance(env, "forest", "daily-forest");
-        return await forest.fetch(request);
-      }
-
-
 
       // Handle not found case
       return new Response(JSON.stringify({
