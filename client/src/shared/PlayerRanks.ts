@@ -68,7 +68,7 @@ export const PLAYER_TITLES: PlayerTitle[] = [
     maxScore: 200,
     description: 'Finding your groove!',
     npcAggressionMultiplier: 0.0,        // NPCs still friendly
-    predatorTargetingWeight: 0.5,        // Predators START targeting (50% normal)
+    predatorTargetingWeight: 0.4,        // Predators START targeting (40% normal) - reduced
   },
   {
     id: 'slick',
@@ -77,7 +77,7 @@ export const PLAYER_TITLES: PlayerTitle[] = [
     maxScore: 300,
     description: 'Getting pretty good at this!',
     npcAggressionMultiplier: 1.0,        // NPCs use BASELINE aggression (current settings)
-    predatorTargetingWeight: 1.0,        // Predators normal targeting
+    predatorTargetingWeight: 0.7,        // Predators normal targeting - reduced
   },
   {
     id: 'maestro',
@@ -86,7 +86,7 @@ export const PLAYER_TITLES: PlayerTitle[] = [
     maxScore: 500,
     description: 'A master of walnut warfare!',
     npcAggressionMultiplier: 1.15,       // NPCs slightly more aggressive
-    predatorTargetingWeight: 1.3,        // Predators prefer Maestros
+    predatorTargetingWeight: 0.9,        // Predators prefer Maestros - reduced
   },
   {
     id: 'ninja',
@@ -95,7 +95,7 @@ export const PLAYER_TITLES: PlayerTitle[] = [
     maxScore: 1000,
     description: 'Stealthy, skilled, unstoppable!',
     npcAggressionMultiplier: 1.25,       // NPCs more aggressive
-    predatorTargetingWeight: 1.6,        // Predators highly prefer Ninjas
+    predatorTargetingWeight: 1.1,        // Predators highly prefer Ninjas - reduced
   },
   {
     id: 'legend',
@@ -104,7 +104,7 @@ export const PLAYER_TITLES: PlayerTitle[] = [
     maxScore: Infinity,
     description: 'The stuff of walnut folklore!',
     npcAggressionMultiplier: 1.35,       // NPCs most aggressive (but not overwhelming - we have predators)
-    predatorTargetingWeight: 2.0,        // Predators prioritize Legends
+    predatorTargetingWeight: 1.3,        // Predators prioritize Legends - reduced
   },
 ];
 

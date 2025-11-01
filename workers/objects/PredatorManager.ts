@@ -51,14 +51,14 @@ export class PredatorManager {
   private lastSpawnCheck = 0;
 
   // Configuration constants
-  private readonly MAX_PREDATORS = 2; // 3 active predators max
-  private readonly SPAWN_CHECK_INTERVAL = 10000; // Check every 10s (faster for testing)
-  private readonly MIN_SPAWN_INTERVAL = 60000; // At least 60s between spawns
-  private readonly PREDATOR_SPAWN_CHANCE = 1.0; // 100% chance per check (testing)
+  private readonly MAX_PREDATORS = 2; // 2 active predators max
+  private readonly SPAWN_CHECK_INTERVAL = 15000; // Check every 15s (less frequent)
+  private readonly MIN_SPAWN_INTERVAL = 90000; // At least 90s between spawns (increased)
+  private readonly PREDATOR_SPAWN_CHANCE = 0.4; // 40% chance per check (reduced from 100%)
 
   // Aerial predators (Cardinal, Toucan) - Zelda/Monster Hunter style
-  private readonly AERIAL_SPEED = 8.0; // Fast movement
-  private readonly AERIAL_ATTACK_COOLDOWN = 30000; // 30s between attacks
+  private readonly AERIAL_SPEED = 6.5; // Moderate speed (reduced from 8.0)
+  private readonly AERIAL_ATTACK_COOLDOWN = 45000; // 45s between attacks (increased from 30s)
   private readonly AERIAL_STEAL_AMOUNT = 2; // Steal 1-2 walnuts
   private readonly AERIAL_CRUISE_HEIGHT = 2.5; // Base cruise height (low enough to hit - player priority)
   private readonly AERIAL_DIVE_HEIGHT = 1.8; // Attack dive height (very vulnerable during dives)
@@ -67,13 +67,13 @@ export class PredatorManager {
   private readonly AERIAL_HEIGHT_LERP_SPEED = 2.0; // Smooth height transitions (industry standard)
 
   // Ground predators (Wildebeest)
-  private readonly GROUND_SPEED = 6.0; // Faster than players (5.0)
-  private readonly GROUND_ATTACK_COOLDOWN = 5000; // 5s between bites
+  private readonly GROUND_SPEED = 5.5; // Slightly faster than players (5.0) - reduced from 6.0
+  private readonly GROUND_ATTACK_COOLDOWN = 8000; // 8s between bites (increased from 5s)
   private readonly GROUND_DAMAGE = 30; // Damage per bite
   private readonly GROUND_ATTACK_RANGE = 1.5; // Close range attack
 
   // General behavior
-  private readonly TARGET_RANGE = 40.0; // Detection range
+  private readonly TARGET_RANGE = 30.0; // Detection range (reduced from 40.0)
   private readonly ATTACK_RANGE_AERIAL = 2.0; // Dive/grab range
   private readonly PATROL_RADIUS = 50.0; // Patrol area size
   // MVP 12: No health - predators are driven away, not killed (annoyance system)
