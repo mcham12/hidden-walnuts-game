@@ -49,8 +49,8 @@ interface PlayerConnection {
   titleId: string; // Player's current title ID ('rookie', 'apprentice', etc.)
   titleName: string; // Player's current title name ('Rookie', 'Apprentice', etc.)
 
-  // MVP 14: Walnut hiding bonus tracking
-  hiddenWalnutIds: Set<string>; // IDs of walnuts currently hidden by this player
+  // MVP 14: Tree growing bonus tracking
+  treesGrownCount: number; // Cumulative count of trees grown from player's hidden walnuts
   bonusMilestones: Set<number>; // Track awarded bonuses to prevent duplicates (e.g., Set{20, 40})
 }
 
@@ -166,10 +166,10 @@ export default class ForestManager extends DurableObject {
     growthChance: 100         // 0-100% chance walnut grows after timer
   };
 
-  // MVP 14: Walnut hiding bonus configuration
-  private walnutHidingBonus = {
-    requiredCount: 20,        // Walnuts needed for bonus
-    pointsAwarded: 10         // Bonus points
+  // MVP 14: Tree growing bonus configuration
+  private treeGrowingBonus = {
+    requiredCount: 20,        // Trees needed for bonus
+    pointsAwarded: 20         // Bonus points
   };
 
   constructor(ctx: any, env: Env) {
@@ -1372,8 +1372,8 @@ export default class ForestManager extends DurableObject {
         // MVP 12: Player Ranking System (will be updated from session below)
         titleId: 'rookie',
         titleName: 'Rookie',
-        // MVP 14: Walnut hiding bonus tracking
-        hiddenWalnutIds: new Set<string>(),
+        // MVP 14: Tree growing bonus tracking
+        treesGrownCount: 0,
         bonusMilestones: new Set<number>()
       };
 
@@ -1667,10 +1667,6 @@ export default class ForestManager extends DurableObject {
           walnutCount: playerConnection.walnutInventory
         });
 
-        // MVP 14: Track hidden walnut and check for bonus
-        playerConnection.hiddenWalnutIds.add(data.walnutId);
-        await this.checkWalnutHidingBonus(playerConnection);
-
         break;
 
       case "walnut_found":
@@ -1683,20 +1679,7 @@ export default class ForestManager extends DurableObject {
         // Mark walnut as found in mapState
         const walnutIndex = this.mapState.findIndex(w => w.id === data.walnutId);
         if (walnutIndex !== -1) {
-          const foundWalnut = this.mapState[walnutIndex];
-          foundWalnut.found = true;
-
-          // MVP 14: Remove from original owner's hidden walnut tracking
-          if (foundWalnut.ownerId && foundWalnut.ownerId !== playerConnection.squirrelId) {
-            const originalOwner = this.activePlayers.get(foundWalnut.ownerId);
-            if (originalOwner) {
-              originalOwner.hiddenWalnutIds.delete(data.walnutId);
-              // Clear bonus milestone if count drops below threshold
-              if (originalOwner.hiddenWalnutIds.size < this.walnutHidingBonus.requiredCount) {
-                originalOwner.bonusMilestones.delete(this.walnutHidingBonus.requiredCount);
-              }
-            }
-          }
+          this.mapState[walnutIndex].found = true;
 
           // MVP 9: Mark walnut as found in registry (prevents tree growth)
           const walnutRegistryId = this.env.WALNUTS.idFromName('global');
@@ -2248,25 +2231,25 @@ export default class ForestManager extends DurableObject {
   }
 
   /**
-   * MVP 14: Check if player earned walnut hiding bonus
+   * MVP 14: Check if player earned tree growing bonus
    */
-  private async checkWalnutHidingBonus(player: PlayerConnection): Promise<void> {
-    const count = player.hiddenWalnutIds.size;
-    const threshold = this.walnutHidingBonus.requiredCount;
+  private async checkTreeGrowingBonus(player: PlayerConnection): Promise<void> {
+    const count = player.treesGrownCount;
+    const threshold = this.treeGrowingBonus.requiredCount;
 
     // Check if reached threshold and hasn't received this bonus yet
     if (count === threshold && !player.bonusMilestones.has(threshold)) {
       player.bonusMilestones.add(threshold);
-      player.score += this.walnutHidingBonus.pointsAwarded;
+      player.score += this.treeGrowingBonus.pointsAwarded;
 
-      console.log(`🎉 ${player.username} earned walnut hiding bonus! ${count} walnuts hidden, +${this.walnutHidingBonus.pointsAwarded} points`);
+      console.log(`🎉 ${player.username} earned tree growing bonus! ${count} trees grown, +${this.treeGrowingBonus.pointsAwarded} points`);
 
       // Send special bonus message (triggers custom UI overlay on client)
       this.sendMessage(player.socket, {
-        type: 'walnut_hiding_bonus',
-        points: this.walnutHidingBonus.pointsAwarded,
+        type: 'tree_growing_bonus',
+        points: this.treeGrowingBonus.pointsAwarded,
         count: count,
-        message: `You've stored enough walnuts for winter! +${this.walnutHidingBonus.pointsAwarded} bonus points!`
+        message: `You've grown a thriving forest! +${this.treeGrowingBonus.pointsAwarded} bonus points!`
       });
 
       // Update score in leaderboard
@@ -3043,12 +3026,9 @@ export default class ForestManager extends DurableObject {
     if (ownerPlayer) {
       ownerPlayer.score += this.treeGrowthConfig.pointsAwarded; // MVP 13: Configurable points
 
-      // MVP 14: Remove from owner's hidden walnut tracking (tree growth counts as "found")
-      ownerPlayer.hiddenWalnutIds.delete(walnut.id);
-      // Clear bonus milestone if count drops below threshold
-      if (ownerPlayer.hiddenWalnutIds.size < this.walnutHidingBonus.requiredCount) {
-        ownerPlayer.bonusMilestones.delete(this.walnutHidingBonus.requiredCount);
-      }
+      // MVP 14: Increment tree growing counter and check for bonus
+      ownerPlayer.treesGrownCount++;
+      await this.checkTreeGrowingBonus(ownerPlayer);
 
       // Report to leaderboard
       await this.reportScoreToLeaderboard(ownerPlayer);
