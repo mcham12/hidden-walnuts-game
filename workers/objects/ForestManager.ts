@@ -1156,6 +1156,44 @@ export default class ForestManager extends DurableObject {
       });
     }
 
+    // MVP 13: Reset metrics to defaults (for fixing corrupted storage)
+    if (path === "/admin/reset-metrics" && request.method === "POST") {
+      // Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      // Delete stored metrics to force reload with defaults
+      await this.storage.delete('metrics');
+
+      // Reset to defaults
+      this.metrics = {
+        treesGrownToday: 0,
+        projectilesThrownToday: 0,
+        hitsToday: 0,
+        npcDeathsToday: 0,
+        predatorFleesCount: 0,
+        peakPlayersToday: 0,
+        totalUniquePlayersEver: 0
+      };
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: "Metrics reset to defaults",
+        metrics: this.metrics
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
     return new Response("Not Found", { status: 404 });
   }
 
