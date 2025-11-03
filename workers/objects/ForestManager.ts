@@ -416,12 +416,17 @@ export default class ForestManager extends DurableObject {
 
   async fetch(request: Request): Promise<Response> {
     // MVP 13: Load metrics and config from storage on first request
-    const storedMetrics = await this.storage.get('metrics');
+    const storedMetrics = await this.storage.get('metrics') as any;
     if (storedMetrics) {
       // Merge stored metrics with defaults to handle new properties
       this.metrics = {
-        ...this.metrics,
-        ...storedMetrics
+        treesGrownToday: storedMetrics.treesGrownToday ?? this.metrics.treesGrownToday,
+        projectilesThrownToday: storedMetrics.projectilesThrownToday ?? this.metrics.projectilesThrownToday,
+        hitsToday: storedMetrics.hitsToday ?? this.metrics.hitsToday,
+        npcDeathsToday: storedMetrics.npcDeathsToday ?? this.metrics.npcDeathsToday,
+        predatorFleesCount: storedMetrics.predatorFleesCount ?? this.metrics.predatorFleesCount,
+        peakPlayersToday: storedMetrics.peakPlayersToday ?? this.metrics.peakPlayersToday,
+        totalUniquePlayersEver: storedMetrics.totalUniquePlayersEver ?? this.metrics.totalUniquePlayersEver
       };
     }
 

@@ -335,8 +335,9 @@ Create: `docs/ADMIN_SETUP.md`
 - the bonus is only awarded if there are 50 walnuts currently hidden by that player (so if other players pick up walnuts hidden by the player, they are removed from the count for this awared.  also if a walnut grows into a tree it is removed from the count for this award).  
 - Make a special screen overlay UI ( not the standard "toast" message) announcing the bonus.  be creative.
 
-**3. Tune NPC and Predator behavior**
-- reduce agression of NPCs against human players...still slightly increase as the localplayer rank increases, but lessen the NPC agression at every level
+**3. Misc bug fixes**
+- golden walnut pickup Toast message says 5 points, but actual points awared is 1 (i think)
+- make rank initial announcement overlay and rank-up overlay more transparent
 
 **4. Remove any debug logging added during this MVP, both worker and client**
 
