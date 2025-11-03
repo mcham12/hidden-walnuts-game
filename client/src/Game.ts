@@ -7,6 +7,7 @@ import { AudioManager } from './AudioManager.js';
 import { VFXManager } from './VFXManager.js';
 import { ProjectileManager } from './ProjectileManager.js'; // MVP 8: Projectile system
 import { ToastManager } from './ToastManager.js';
+import { BonusOverlay } from './BonusOverlay.js';
 import { SettingsManager } from './SettingsManager.js';
 import { CollisionSystem } from './CollisionSystem.js';
 import { TouchControls } from './TouchControls.js';
@@ -281,6 +282,9 @@ export class Game {
 
   // MVP 12: Rank overlay system (full-screen announcements)
   private rankOverlay: RankOverlay = new RankOverlay();
+
+  // MVP 14: Tree growing bonus overlay
+  private bonusOverlay: BonusOverlay = new BonusOverlay();
   private playerTitleName: string = 'Rookie'; // Current player title name
 
   // Sky elements system (sun + clouds)
@@ -2128,6 +2132,14 @@ export class Game {
           this.playerTitleName = data.titleName;
           this.rankOverlay.showRankUp(data.titleName, data.description);
           console.log(`🎉 Ranked up to ${data.titleName}!`);
+        }
+        break;
+
+      case 'tree_growing_bonus':
+        // MVP 14: Player earned tree growing bonus!
+        if (typeof data.points === 'number' && typeof data.count === 'number' && data.message) {
+          this.bonusOverlay.show(data.message, data.points, data.count);
+          console.log(`🌳 Tree growing bonus! ${data.count} trees grown, +${data.points} points`);
         }
         break;
 

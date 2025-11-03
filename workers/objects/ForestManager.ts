@@ -1770,7 +1770,8 @@ export default class ForestManager extends DurableObject {
         // Mark walnut as found in mapState
         const walnutIndex = this.mapState.findIndex(w => w.id === data.walnutId);
         if (walnutIndex !== -1) {
-          this.mapState[walnutIndex].found = true;
+          const walnut = this.mapState[walnutIndex];
+          walnut.found = true;
 
           // MVP 9: Mark walnut as found in registry (prevents tree growth)
           const walnutRegistryId = this.env.WALNUTS.idFromName('global');
@@ -1789,8 +1790,10 @@ export default class ForestManager extends DurableObject {
             playerConnection.walnutInventory++;
           }
 
-          // MVP 8: Award +1 point for finding walnut
-          playerConnection.score += 1;
+          // MVP 14 FIX: Award correct points based on walnut type
+          // Golden walnuts (isGolden=true) = 5 points, buried = 3 points, others = 1 point
+          const points = walnut.isGolden ? 5 : (walnut.hiddenIn === 'buried' ? 3 : 1);
+          playerConnection.score += points;
 
           // Persist updated mapState
           await this.storage.put('mapState', this.mapState);
@@ -1800,7 +1803,7 @@ export default class ForestManager extends DurableObject {
             type: 'walnut_found',
             walnutId: data.walnutId,
             finderId: data.finderId,
-            points: data.points
+            points: points
           });
 
           // MVP 8: Send inventory + score update to the player who found it

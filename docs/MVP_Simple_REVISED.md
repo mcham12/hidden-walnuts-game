@@ -396,27 +396,34 @@ DEFERRED **1. Voiceover Work** (1-2 hours)
 **3. Misc bug fixes and improvements**
 - golden walnut pickup Toast message says 5 points, but actual points awared is 1 (i think)
 - make rank initial announcement overlay and rank-up overlay more transparent
-- research best practices, design, and implement a "tips" feature to convey important gameplay items not found in the control display feature.  Remember we have desktop, iphone (portrait and landscape) and ipad (portrait and landscape) browsers to design for and implement for.  Examples: As you progress through higher player ranks by earning points, NPCs and predators get more agressive.  Watch out!  Also: if you hide a walnut, it might grow into a tree if no one else steals it! Growing trees is a good way to get points *and* walnuts the newly grown tree will drop some walnuts right away. Check the minimap if you get a notice that you grew a tree: you'll get small tree icon for 30 seconds in case you forgot where you planted it!   Also, plant enough trees, and youll get a special tree growing bonus!  Also: Predator tips: throw a walnut at a bird, and it might get distracted and turn away without attacking, and hit a Wildebeest with 4 good walnut throws, and it will get annoyed and move away.   Might need improved phrasing/wording but you get the idea. 
+- research best practices, design, and implement a "tips" feature to convey important gameplay items not found in the control display feature.  Remember we have desktop, iphone (portrait and landscape) and ipad (portrait and landscape) browsers to design for and implement for.  Examples: NPCs and predators get more agressive the more points you get...watch out!  Also: if you hide a walnut, it might grow into a tree (if no one else steals it!). Growing trees is a good way to get points *and* walnuts the newly grown tree will drop some walnuts right away. Check the minimap if you get a notice that you grew a tree: you'll get small tree icon for 30 seconds in case you forgot where you planted it!   Also, plant enough trees, and youll get a special tree growing bonus!  Also: Predator tips: throw a walnut at a bird, and it might get distracted and turn away without attacking, and hit a Wildebeest with 4 good walnut throws, and it will get annoyed and move away.   Needs improved organization, and phrasing/wording but you get the idea. Add this to MVP 14 Progress document to track the implementation plan, and keep the MVP 14 Progress document up to date as you proceed. 
 
 **4. Remove any debug logging added during this MVP, both worker and client**
 
 ---
 
+##  MVP 15: Forest cycle automation and monetization reesearch
 
+**Goal**: Automate daily game reset activities and leaderboard maintenance activities.  Research and prioritize monetization options for a game like this
 
+### Tasks
+- every day, reset mapstate, forest, positions via existing API functionality (as approrpriate)
+- every week, automate resetting the weekly leaderboard
+- remove any debug logging, both client and server
+- research best practices for monetizing the game once authenticated players are implmented.  Recommend best monetization features for a game like this one, and keep those monetization features in mind when building the authenticated player functionality, and specifically build hooks or stubs for future integration with those monetization features where appropriate. Document this in a Monetization design doc (md) in the docs/ folder.
 
-## 🔐 MVP 15: Full Authentication (8-12 hours)
+## 🔐 MVP 16: Full Authentication (8-12 hours)
 
-**Goal**: Continue to provide quick, no authentication option for low friction play, but offer Secure player accounts with passwords, email, cross-device sync. Secure player accounts get access to full player list of characters, and the ability to appear on specific leaderboards.  "No authentication" players should now be limited to just the Squirrel character.
+**Goal**: Continue to provide quick, no authentication option for low friction play, but also offer authenticated player accounts with passwords, email, cross-device sync. Authenticated player accounts get access to full player list of characters, and the ability to appear on specific leaderboards.  "No authentication" players should now be limited to just the Squirrel character.  Build hooks into a future feature in which Secure players can optionally pay for access to additional characters, and have more capabilities (See monetization md doc)
 
 ### Features
 
 **0. Architecture**
-- identify options for full authentication (technical, platforms, etc including email)
-- recommend options based on my use of cloudflare, and owning a custom domain (hiddenwalnuts.com) and NameCheap Private Email, and the ability to create new email account from that domain if needed.  not sure if can be used for sending emails for full authentication thought
+- identify technical options for full authentication (technical, platforms, etc including email)
+- recommend technical options based on my use of cloudflare, and subscribing to a custom domain (hiddenwalnuts.com) and NameCheap Private Email, and the ability to create new email account from that domain if needed.  not sure if can be used for sending emails for full authentication thought
 - Research and recommend if no-authentication players can be on leaderboards, and if so, which
 - Research and recommend any differentiation on player names on leaderboards (if both player types are allowed to be on the same leaderboard)
-- Design UX experience for accomodating no authentication vs authenticated
+- Design UX experience for accomodating no authentication vs authenticated.  for example, no-authentication users don't need a character selection screen, because they are just squirrels.  but we want to tempt them to become authenticated users by teasing benefits like additional characters...this is just one consideration...
 - Develop a plan to refactor and implement new "no authentication or full authentication" experience
 - Create a design + implementation plan for the above in the docs/folder
 - Implement plan from above, keeping the design+implementation document up to date as work is completed.
@@ -463,7 +470,19 @@ DEFERRED **1. Voiceover Work** (1-2 hours)
 
 ---
 
-## 🧹 MVP 16: Code Cleanup & Optimization
+
+## 🧹 MVP 17: Monetization 
+
+**Goal**: Monetize the game
+
+### Tasks
+- Research technical options and perform recommendation (e.g. Stripe, etc)
+- Prioritize monetization options in the Monetization md doc
+- develop a detailed monetization implementation plan and document in the monetization md doc
+- implement top x options, based on feasibility
+- remove any debug logging, both client and server
+
+## 🧹 MVP 18: Code Cleanup & Optimization
 
 **Goal**: Remove technical debt, optimize performance
 
