@@ -418,7 +418,11 @@ export default class ForestManager extends DurableObject {
     // MVP 13: Load metrics and config from storage on first request
     const storedMetrics = await this.storage.get('metrics');
     if (storedMetrics) {
-      this.metrics = storedMetrics;
+      // Merge stored metrics with defaults to handle new properties
+      this.metrics = {
+        ...this.metrics,
+        ...storedMetrics
+      };
     }
 
     const storedConfig = await this.storage.get('treeGrowthConfig');

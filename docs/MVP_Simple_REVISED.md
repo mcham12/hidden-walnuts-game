@@ -347,13 +347,19 @@ Create: `docs/ADMIN_SETUP.md`
 
 ## 🔐 MVP 15: Full Authentication (8-12 hours)
 
-**Goal**: Secure player accounts with passwords, email, cross-device sync
+**Goal**: Continue to provide quick, no authentication option for low friction play, but offer Secure player accounts with passwords, email, cross-device sync. Secure player accounts get access to full player list of characters, and the ability to appear on specific leaderboards.  "No authentication" players should now be limited to just the Squirrel character.
 
 ### Features
 
 **0. Architecture**
 - identify options for full authentication (technical, platforms, etc including email)
 - recommend options based on my use of cloudflare, and owning a custom domain (hiddenwalnuts.com) and NameCheap Private Email, and the ability to create new email account from that domain if needed.  not sure if can be used for sending emails for full authentication thought
+- Research and recommend if no-authentication players can be on leaderboards, and if so, which
+- Research and recommend any differentiation on player names on leaderboards (if both player types are allowed to be on the same leaderboard)
+- Design UX experience for accomodating no authentication vs authenticated
+- Develop a plan to refactor and implement new "no authentication or full authentication" experience
+- Create a design + implementation plan for the above in the docs/folder
+- Implement plan from above, keeping the design+implementation document up to date as work is completed.
 
 **1. Password System** (3-4 hours)
 - Secure password hashing (bcrypt)
@@ -388,7 +394,9 @@ Create: `docs/ADMIN_SETUP.md`
 **6. remove any debug logging added for this MVP, both client and worker
 
 ### Success Criteria
-- ✅ Players can create secure accounts
+- ✅ Players can create secure accounts or use no-authentication accounts
+- smooth and intuitive user experience
+- Different gameplay and leaderboard experience by account type
 - ✅ Password recovery works reliably
 - ✅ Can play on multiple devices
 - ✅ No major security vulnerabilities
