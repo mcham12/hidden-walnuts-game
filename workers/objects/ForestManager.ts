@@ -48,11 +48,15 @@ interface PlayerConnection {
   // MVP 12: Player Ranking System
   titleId: string; // Player's current title ID ('rookie', 'apprentice', etc.)
   titleName: string; // Player's current title name ('Rookie', 'Apprentice', etc.)
+
+  // MVP 14: Walnut hiding bonus tracking
+  hiddenWalnutIds: Set<string>; // IDs of walnuts currently hidden by this player
+  bonusMilestones: Set<number>; // Track awarded bonuses to prevent duplicates (e.g., Set{20, 40})
 }
 
 interface Walnut {
   id: string;
-  ownerId: string;
+  ownerId: string; // MVP 14: Already tracks who hid the walnut!
   origin: 'game' | 'player';
   hiddenIn: 'buried' | 'bush' | 'ground'; // MVP 8: 'ground' = dropped from throw
   location: { x: number, y: number, z: number };
@@ -160,6 +164,12 @@ export default class ForestManager extends DurableObject {
     pointsAwarded: 20,        // Points for growing a tree
     walnutsDropped: 5,        // Walnuts dropped when tree grows
     growthChance: 100         // 0-100% chance walnut grows after timer
+  };
+
+  // MVP 14: Walnut hiding bonus configuration
+  private walnutHidingBonus = {
+    requiredCount: 20,        // Walnuts needed for bonus
+    pointsAwarded: 10         // Bonus points
   };
 
   constructor(ctx: any, env: Env) {
@@ -1361,7 +1371,10 @@ export default class ForestManager extends DurableObject {
         lastCollisionDamageTime: 0, // No collision damage cooldown initially
         // MVP 12: Player Ranking System (will be updated from session below)
         titleId: 'rookie',
-        titleName: 'Rookie'
+        titleName: 'Rookie',
+        // MVP 14: Walnut hiding bonus tracking
+        hiddenWalnutIds: new Set<string>(),
+        bonusMilestones: new Set<number>()
       };
 
       // MVP 9: Check for recent disconnect and restore score (.io game pattern)
