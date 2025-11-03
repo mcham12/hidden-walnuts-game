@@ -1,6 +1,6 @@
 # 🎮 Hidden Walnuts - MVP Development Plan
 
-**Current Status**: MVP 13 (Game Admin APIs) - 🎯 **IN PROGRESS**
+**Current Status**: MVP 14 (Walnut Hiding Bonuses & Polish) - 🎯 **IN PROGRESS**
 
 ---
 
@@ -24,6 +24,7 @@
 - **MVP 9**: Combat Completeness & World Resources - Health bars, NPC AI improvements, tree growth system, collision fixes, comprehensive logging cleanup
 - **MVP 11**: Sound Effects & Audio Enhancement - Comprehensive sound system with combat, player, and ambient sounds; iOS Safari audio support
 - **MVP 12**: World Polish, Predators & Defense - AI predators (cardinal, toucan, wildebeest), rank-based targeting system, defense mechanics, sky elements, tutorial redesign, UX polish
+- **MVP 13**: Game Admin APIs - Secure admin endpoints, player management APIs, game metrics tracking, tree growth configuration, NPC/predator control
 
 ---
 
@@ -219,7 +220,7 @@
 
 ---
 
-## 🎮 MVP 13: Game Admin APIs (IN PROGRESS)
+## ✅ MVP 13: Game Admin APIs (COMPLETE)
 
 **Goal**: Admin tools for game maintenance, monitoring, and moderation
 
@@ -265,6 +266,55 @@ if (!adminSecret || adminSecret !== env.ADMIN_SECRET) {
 - ✅ Add auth check to `/admin/reset-forest`
 - ✅ Add auth check to `/admin/reset-positions`
 - ✅ Test all endpoints with valid/invalid secrets
+
+### Completed Implementation
+
+**Admin Endpoints Delivered (15 total):**
+
+**Game State Management:**
+- ✅ `POST /admin/reset-mapstate` - Reset golden walnut spawn state
+- ✅ `POST /admin/reset-forest` - Regenerate all forest objects
+- ✅ `POST /admin/reset-positions` - Reset player spawn positions
+
+**Player Management:**
+- ✅ `GET /admin/players/active` - List active players with stats
+- ✅ `POST /admin/players/:id/kick` - Force disconnect player
+- ✅ `POST /admin/players/:id/reset` - Reset player data
+
+**Monitoring & Metrics:**
+- ✅ `GET /admin/metrics` - Comprehensive server/game metrics
+- ✅ `GET /admin/predators` - Active predator details
+- ✅ `POST /admin/reset-metrics` - Reset metrics to defaults
+
+**NPC & Predator Control:**
+- ✅ `POST /admin/npcs/adjust` - Dynamically adjust NPC count
+- ✅ `POST /admin/predators/clear` - Remove all predators
+- ✅ `POST /admin/predators/adjust` - Dynamically adjust predator count
+
+**Tree Growth Configuration:**
+- ✅ `POST /admin/config/tree-growth-points` - Set points awarded (0-1000)
+- ✅ `POST /admin/config/tree-walnut-drops` - Set walnuts dropped (0-20)
+- ✅ `POST /admin/config/tree-growth-chance` - Set growth probability (0-100%)
+
+**Leaderboard Management:**
+- ✅ `POST /api/leaderboard/reset` - Manual leaderboard reset
+- ✅ `POST /api/leaderboard/cleanup` - Remove corrupted entries
+
+**Metrics Tracking Implemented:**
+- Trees grown today
+- Projectiles thrown today
+- Hits today (players, NPCs, predators)
+- NPC deaths today
+- Predator flees count
+- Peak players today
+- Total unique players ever
+
+**Documentation Created:**
+- ✅ `docs/ADMIN_API_SECURITY.md` - Security best practices
+- ✅ `docs/ADMIN_API_REFERENCE.md` - Complete API reference with examples
+- ✅ `docs/MVP_13_PROGRESS.md` - Detailed implementation tracking
+
+**Note**: Ban/unban system deferred to future MVP as not critical for current needs.
 
 ### Part 2: New Admin API Endpoints (3-4 hours)
 
@@ -321,7 +371,7 @@ Create: `docs/ADMIN_SETUP.md`
 - Troubleshooting
 
 ## MVP 14: voiceover and more gameplay polish
-**1. Voiceover Work** (1-2 hours)
+DEFERRED **1. Voiceover Work** (1-2 hours)
 - Character selection voice lines (one per character)
 - Combat reactions ("Ouch!", "Gotcha!", "Oh no!")
 - Victory/defeat voiceovers
@@ -330,10 +380,12 @@ Create: `docs/ADMIN_SETUP.md`
 
 
 **2. Walnut hiding bonus**
-- add a special point bonus for hiding 50 walnuts, e.g. 50 points
-- adjust tree growing mechanism because we will be encouraging walnut hiding now: instead of current state: every walnut hidden by a given player will grow to a tree based on a timer, move to future state: only the 10th, 20th, 30th, etc hidden walnut hidden by the player will grow to be a tree (subject to the same time delay as before)
+- add a special point bonus for hiding 20 walnuts, e.g. 10 points
 - the bonus is only awarded if there are 50 walnuts currently hidden by that player (so if other players pick up walnuts hidden by the player, they are removed from the count for this awared.  also if a walnut grows into a tree it is removed from the count for this award).  
-- Make a special screen overlay UI ( not the standard "toast" message) announcing the bonus.  be creative.
+- Make a special screen overlay UI ( not the standard "toast" message) announcing the bonus.  be creative, maybe reference storing enough walnuts for winter or something goofy like that.
+- Add an admin api to change the number of walnuts need to hide for this bonus
+- add an admin api to change the number of points
+- update the Admin api reference md doc with new APIs info
 
 **3. Misc bug fixes**
 - golden walnut pickup Toast message says 5 points, but actual points awared is 1 (i think)
