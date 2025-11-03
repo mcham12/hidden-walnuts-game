@@ -1,6 +1,6 @@
 # 🎮 Hidden Walnuts - MVP Development Plan
 
-**Current Status**: MVP 14 (Walnut Hiding Bonuses & Polish) - 🎯 **IN PROGRESS**
+**Current Status**: MVP 14 (Tree Growing Bonuses & Polish) - 🎯 **IN PROGRESS**
 
 ---
 
@@ -379,13 +379,19 @@ DEFERRED **1. Voiceover Work** (1-2 hours)
 - remove any debug logging added for this MVP, both client and worker
 
 
-**2. Walnut hiding bonus**
-- add a special point bonus for hiding 20 walnuts, e.g. 10 points
-- the bonus is only awarded if there are 50 walnuts currently hidden by that player (so if other players pick up walnuts hidden by the player, they are removed from the count for this awared.  also if a walnut grows into a tree it is removed from the count for this award).  
-- Make a special screen overlay UI ( not the standard "toast" message) announcing the bonus.  be creative, maybe reference storing enough walnuts for winter or something goofy like that.
-- Add an admin api to change the number of walnuts need to hide for this bonus
-- add an admin api to change the number of points
-- update the Admin api reference md doc with new APIs info
+**2. Tree growing bonus** (REVISED from walnut hiding bonus per play-tester feedback)
+- Add a special point bonus for growing 20 trees total (cumulative lifetime achievement), e.g. 20 points
+- Track `treesGrownCount` per player - increments when a tree grows from a walnut they hid
+- Bonus awarded when player reaches milestone (20 trees, 40 trees, 60 trees, etc.)
+- Make a special screen overlay UI (not the standard "toast" message) announcing the bonus. Be creative, maybe reference "growing a thriving forest" or something nature-themed.
+- Add admin API to change the number of trees needed for bonus (default: 20)
+- Add admin API to change the bonus points awarded (default: 20)
+- Update the Admin API reference md doc with new APIs info
+
+**Key Difference from Original Design**:
+- OLD: Bonus for 20 walnuts hidden SIMULTANEOUSLY (decreases when found)
+- NEW: Bonus for 20 trees GROWN TOTAL (cumulative, never decreases)
+- Rationale: More rewarding long-term achievement vs temporary state
 
 **3. Misc bug fixes**
 - golden walnut pickup Toast message says 5 points, but actual points awared is 1 (i think)

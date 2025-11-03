@@ -1,17 +1,27 @@
-# MVP 14: Walnut Hiding Bonuses & Polish - Progress Tracker
+# MVP 14: Tree Growing Bonuses & Polish - Progress Tracker
 
 **Started**: 2025-11-03
-**Status**: 🎯 IN PROGRESS (0%)
+**Status**: 🔄 REFACTORING (30%)
 **Last Updated**: 2025-11-03
+
+---
+
+## ⚠️ REFACTOR ALERT - Design Change
+
+**Original Design**: Bonus for maintaining 20 hidden walnuts simultaneously
+**New Design**: Bonus for growing 20 trees total (cumulative lifetime achievement)
+
+**Rationale**: Play-tester feedback - cumulative trees grown is more rewarding than simultaneous hidden count
 
 ---
 
 ## Overview
 
-MVP 14 focuses on rewarding strategic walnut hiding behavior and fixing critical bugs.
+MVP 14 focuses on rewarding strategic tree growing behavior and fixing critical bugs.
 
 **Key Goals**:
-- Incentivize walnut hiding with special bonus system
+- Incentivize strategic walnut hiding that leads to tree growth
+- Reward players for growing 20 trees total (cumulative)
 - Add admin configuration for bonus parameters
 - Fix golden walnut point award bug
 - Polish UI with special bonus announcement
@@ -22,18 +32,71 @@ MVP 14 focuses on rewarding strategic walnut hiding behavior and fixing critical
 
 | Phase | Status | Tasks Complete | Notes |
 |-------|--------|----------------|-------|
-| Phase 1: Walnut Hiding Tracking | ⏳ NOT STARTED | 0/3 | Track player-hidden walnuts |
-| Phase 2: Bonus System | ⏳ NOT STARTED | 0/4 | Implement 20-walnut bonus |
+| Phase 1: Refactor to Tree Counter | 🔄 IN PROGRESS | 1/2 | Switch from Set to counter |
+| Phase 2: Bonus System | ✅ PARTIAL | 2/3 | Backend logic done, needs refactor |
 | Phase 3: Special UI | ⏳ NOT STARTED | 0/3 | Custom bonus announcement |
 | Phase 4: Admin APIs | ⏳ NOT STARTED | 0/2 | Configuration endpoints |
 | Phase 5: Bug Fixes | ⏳ NOT STARTED | 0/1 | Golden walnut points fix |
 | Phase 6: Testing | ⏳ NOT STARTED | 0/1 | User acceptance testing |
 
-**Overall Progress**: 0/14 tasks complete (0%)
+**Overall Progress**: 3/12 tasks complete (25%)
 
 ---
 
-## Phase 1: Walnut Hiding Tracking (2-3 hours)
+## 🔧 Refactoring Plan
+
+### What Changes From Walnut Hiding → Tree Growing
+
+**Old System (implemented but needs refactor)**:
+- Track `hiddenWalnutIds: Set<string>` - walnuts currently hidden
+- Bonus when 20 walnuts SIMULTANEOUSLY hidden
+- Remove from set when picked up or grown
+
+**New System (simpler!)**:
+- Track `treesGrownCount: number` - cumulative counter
+- Bonus when 20 trees GROWN TOTAL (lifetime achievement)
+- Counter only increments, never decrements
+
+### Refactor Tasks
+
+#### ✅ Task R.1: Update Data Structures
+- **Status**: DONE (commit ab5e4f1, 1e2d659)
+- Remove: `hiddenWalnutIds: Set<string>` ❌ NEEDS REMOVAL
+- Keep: `bonusMilestones: Set<number>` ✅ (for 20, 40, 60, etc.)
+- Add: `treesGrownCount: number` ❌ NEEDS ADDING
+
+#### ⏳ Task R.2: Refactor Config Object
+- **Status**: NOT STARTED
+- Rename: `walnutHidingBonus` → `treeGrowingBonus`
+- Update: `requiredCount: 20` (trees, not walnuts)
+- Update: `pointsAwarded: 20` (per user feedback)
+
+#### ⏳ Task R.3: Remove Walnut Tracking Logic
+- **Status**: NOT STARTED
+- Remove: `hiddenWalnutIds.add()` in walnut_hidden handler
+- Remove: `hiddenWalnutIds.delete()` in walnut_found handler
+- Remove: `hiddenWalnutIds.delete()` in growWalnutIntoTree
+
+#### ⏳ Task R.4: Add Tree Growing Counter
+- **Status**: NOT STARTED
+- Add: `treesGrownCount++` in growWalnutIntoTree (after owner check)
+- Add: Call `checkTreeGrowingBonus()` after incrementing
+
+#### ⏳ Task R.5: Refactor Bonus Check Method
+- **Status**: NOT STARTED
+- Rename: `checkWalnutHidingBonus` → `checkTreeGrowingBonus`
+- Change: Check `treesGrownCount` instead of `hiddenWalnutIds.size`
+- Update message: "You've grown a thriving forest! +20 bonus points!"
+- Update message type: `tree_growing_bonus` instead of `walnut_hiding_bonus`
+
+#### ⏳ Task R.6: Storage Persistence
+- **Status**: NOT STARTED
+- Save `treesGrownCount` to Durable Object storage
+- Load on player reconnect
+
+---
+
+## Phase 1: Tree Growing Counter (REFACTORED - 1-2 hours)
 
 **Goal**: Track per-player hidden walnut counts
 
@@ -141,37 +204,59 @@ MVP 14 focuses on rewarding strategic walnut hiding behavior and fixing critical
 
 ---
 
-## Phase 4: Admin Configuration APIs (1-2 hours)
+## Phase 4: Admin Configuration APIs (1-2 hours) - REFACTORED
 
-**Goal**: Allow runtime configuration of bonus parameters
+**Goal**: Allow runtime configuration of tree growing bonus parameters
 
-### ⏳ Task 4.1: POST /admin/config/walnut-hiding-count
+### ⏳ Task 4.1: POST /admin/config/tree-growing-count
 - **Status**: NOT STARTED
-- **Endpoint**: `POST /admin/config/walnut-hiding-count`
+- **Endpoint**: `POST /admin/config/tree-growing-count`
 - **Body**: `{ count: 20 }`
-- **Validation**: 1-100 walnuts
+- **Validation**: 1-100 trees
 - **Files**: `workers/objects/ForestManager.ts`
 - **Implementation**:
   ```typescript
-  // Set required walnut count for bonus
-  if (path === "/admin/config/walnut-hiding-count" && request.method === "POST") {
+  // Set required tree count for bonus
+  if (path === "/admin/config/tree-growing-count" && request.method === "POST") {
     const { count } = await request.json();
     if (typeof count !== 'number' || count < 1 || count > 100) {
       return error(400, "Count must be between 1 and 100");
     }
-    this.walnutHidingBonus.requiredCount = count;
-    await this.storage.put('walnutHidingBonus', this.walnutHidingBonus);
-    return success({ config: this.walnutHidingBonus });
+    this.treeGrowingBonus.requiredCount = count;
+    await this.storage.put('treeGrowingBonus', this.treeGrowingBonus);
+    return success({ config: this.treeGrowingBonus, message: `Tree growing bonus count set to ${count}` });
   }
   ```
+- **Response**: `{ success: true, config: { requiredCount: 20, pointsAwarded: 20 }, message: "..." }`
 
-### ⏳ Task 4.2: POST /admin/config/walnut-hiding-points
+### ⏳ Task 4.2: POST /admin/config/tree-growing-points
 - **Status**: NOT STARTED
-- **Endpoint**: `POST /admin/config/walnut-hiding-points`
-- **Body**: `{ points: 10 }`
+- **Endpoint**: `POST /admin/config/tree-growing-points`
+- **Body**: `{ points: 20 }`
 - **Validation**: 0-1000 points
 - **Files**: `workers/objects/ForestManager.ts`
-- **Implementation**: Similar to 4.1, set pointsAwarded
+- **Implementation**:
+  ```typescript
+  // Set points awarded for tree growing bonus
+  if (path === "/admin/config/tree-growing-points" && request.method === "POST") {
+    const { points } = await request.json();
+    if (typeof points !== 'number' || points < 0 || points > 1000) {
+      return error(400, "Points must be between 0 and 1000");
+    }
+    this.treeGrowingBonus.pointsAwarded = points;
+    await this.storage.put('treeGrowingBonus', this.treeGrowingBonus);
+    return success({ config: this.treeGrowingBonus, message: `Tree growing bonus points set to ${points}` });
+  }
+  ```
+- **Response**: `{ success: true, config: { requiredCount: 20, pointsAwarded: 20 }, message: "..." }`
+
+### ⏳ Task 4.3: Update ADMIN_API_REFERENCE.md
+- **Status**: NOT STARTED
+- **Files**: `docs/ADMIN_API_REFERENCE.md`
+- **Updates**:
+  - Add "Tree Growing Configuration" section
+  - Document both endpoints with examples (zsh-safe formatting)
+  - Update table of contents
 
 ---
 
