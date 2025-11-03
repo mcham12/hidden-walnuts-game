@@ -445,6 +445,11 @@ export default class ForestManager extends DurableObject {
       this.treeGrowthConfig = storedConfig;
     }
 
+    const storedBonusConfig = await this.storage.get('treeGrowingBonus');
+    if (storedBonusConfig) {
+      this.treeGrowingBonus = storedBonusConfig;
+    }
+
     const storedPlayerIds = await this.storage.get('uniquePlayerIds');
     if (storedPlayerIds && Array.isArray(storedPlayerIds)) {
       this.uniquePlayerIds = new Set(storedPlayerIds);
@@ -1198,6 +1203,92 @@ export default class ForestManager extends DurableObject {
         success: true,
         message: "Metrics reset to defaults",
         metrics: this.metrics
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
+    // MVP 14: Set tree growing bonus count
+    if (path === "/admin/config/tree-growing-count" && request.method === "POST") {
+      // Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const body = await request.json() as { count: number };
+      const count = body.count;
+
+      if (typeof count !== 'number' || count < 1 || count > 100) {
+        return new Response(JSON.stringify({
+          error: "Invalid count value",
+          message: "Count must be a number between 1 and 100"
+        }), {
+          status: 400,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const previousCount = this.treeGrowingBonus.requiredCount;
+      this.treeGrowingBonus.requiredCount = count;
+      await this.storage.put('treeGrowingBonus', this.treeGrowingBonus);
+
+      return new Response(JSON.stringify({
+        success: true,
+        previousCount,
+        newCount: count,
+        config: this.treeGrowingBonus,
+        message: `Tree growing bonus count set to ${count} trees`
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
+    // MVP 14: Set tree growing bonus points
+    if (path === "/admin/config/tree-growing-points" && request.method === "POST") {
+      // Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const body = await request.json() as { points: number };
+      const points = body.points;
+
+      if (typeof points !== 'number' || points < 0 || points > 1000) {
+        return new Response(JSON.stringify({
+          error: "Invalid points value",
+          message: "Points must be a number between 0 and 1000"
+        }), {
+          status: 400,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const previousPoints = this.treeGrowingBonus.pointsAwarded;
+      this.treeGrowingBonus.pointsAwarded = points;
+      await this.storage.put('treeGrowingBonus', this.treeGrowingBonus);
+
+      return new Response(JSON.stringify({
+        success: true,
+        previousPoints,
+        newPoints: points,
+        config: this.treeGrowingBonus,
+        message: `Tree growing bonus points set to ${points}`
       }), {
         status: 200,
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
