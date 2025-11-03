@@ -376,6 +376,51 @@ curl https://api.hiddenwalnuts.com/admin/predators \
 
 ---
 
+### Reset Metrics
+
+Resets all server metrics to defaults (clears corrupted storage).
+
+**Endpoint**: `POST /admin/reset-metrics`
+**Auth**: Required
+
+**Request**:
+```bash
+curl -X POST https://api.hiddenwalnuts.com/admin/reset-metrics \
+  -H "X-Admin-Secret: YOUR_SECRET"
+```
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "message": "Metrics reset to defaults",
+  "metrics": {
+    "treesGrownToday": 0,
+    "projectilesThrownToday": 0,
+    "hitsToday": 0,
+    "npcDeathsToday": 0,
+    "predatorFleesCount": 0,
+    "peakPlayersToday": 0,
+    "totalUniquePlayersEver": 0
+  }
+}
+```
+
+**Effects**:
+- Deletes stored metrics from Durable Object storage
+- Resets all metrics counters to 0
+- Fixes corrupted or null metric values
+- Preserves other game state (players, walnuts, forest)
+
+**Use Cases**:
+- Fixing corrupted metrics after code updates
+- Resetting daily counters manually
+- Debugging metrics tracking issues
+
+**Warning**: This resets all historical metric data. Use carefully.
+
+---
+
 ## NPC & Predator Control
 
 ### Adjust NPC Count
