@@ -14,7 +14,8 @@ Complete reference for Hidden Walnuts admin endpoints.
 3. [Monitoring & Metrics](#monitoring--metrics)
 4. [NPC & Predator Control](#npc--predator-control)
 5. [Tree Growth Configuration](#tree-growth-configuration)
-6. [Leaderboard Management](#leaderboard-management)
+6. [Tree Growing Bonus Configuration](#tree-growing-bonus-configuration)
+7. [Leaderboard Management](#leaderboard-management)
 
 ---
 
@@ -718,6 +719,123 @@ curl -X POST https://api.hiddenwalnuts.com/admin/config/tree-growth-chance \
 - `50%` - Half of hidden walnuts grow
 - `25%` - 1 out of 4 hidden walnuts grow
 - `0%` - No trees grow (manual walnut collection only)
+
+---
+
+## Tree Growing Bonus Configuration
+
+### Set Tree Growing Bonus Count
+
+Configure number of trees needed to earn bonus (cumulative lifetime achievement).
+
+**Endpoint**: `POST /admin/config/tree-growing-count`
+**Auth**: Required
+
+**Request (zsh-safe)**:
+```bash
+curl -X POST https://api.hiddenwalnuts.com/admin/config/tree-growing-count \
+  -H "X-Admin-Secret: YOUR_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"count":20}'
+```
+
+**Body**:
+```json
+{
+  "count": 20
+}
+```
+
+**Validation**:
+- Must be between 1 and 100
+- Default: 20 trees
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "previousCount": 20,
+  "newCount": 25,
+  "config": {
+    "requiredCount": 25,
+    "pointsAwarded": 20
+  },
+  "message": "Tree growing bonus count set to 25 trees"
+}
+```
+
+**Effects**:
+- Updates tree count threshold immediately
+- Applies to future tree growth milestones
+- Players who already reached old threshold keep their bonus
+- Persists to Durable Object storage
+
+**Use Cases**:
+- Adjusting difficulty for active player base
+- Testing bonus system
+- Special events with easier/harder thresholds
+
+**Note**: Remove spaces in JSON (`"count":20` not `"count": 20`) for maximum zsh compatibility.
+
+---
+
+### Set Tree Growing Bonus Points
+
+Configure bonus points awarded when player reaches tree growing milestone.
+
+**Endpoint**: `POST /admin/config/tree-growing-points`
+**Auth**: Required
+
+**Request (zsh-safe)**:
+```bash
+curl -X POST https://api.hiddenwalnuts.com/admin/config/tree-growing-points \
+  -H "X-Admin-Secret: YOUR_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"points":50}'
+```
+
+**Body**:
+```json
+{
+  "points": 50
+}
+```
+
+**Validation**:
+- Must be between 0 and 1000
+- Default: 20 points
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "previousPoints": 20,
+  "newPoints": 50,
+  "config": {
+    "requiredCount": 20,
+    "pointsAwarded": 50
+  },
+  "message": "Tree growing bonus points set to 50"
+}
+```
+
+**Effects**:
+- Updates bonus points immediately
+- Applies to future tree growth milestones
+- Persists to Durable Object storage
+
+**Use Cases**:
+- Increasing rewards to encourage tree growing
+- Testing game economy balance
+- Special events with bonus rewards
+
+**System Behavior**:
+- Player grows trees from hidden walnuts (cumulative counter)
+- When `treesGrownCount` reaches `requiredCount` → Award bonus
+- Milestones: 20, 40, 60, 80, etc. (repeating rewards)
+- Counter never decreases (lifetime achievement)
+
+**Note**: Remove spaces in JSON (`"points":50` not `"points": 50`) for maximum zsh compatibility.
 
 ---
 
