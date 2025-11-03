@@ -38,8 +38,10 @@ MVP 14 focuses on rewarding strategic tree growing behavior and fixing critical 
 | Phase 3: Special UI | ✅ COMPLETE | 3/3 | Custom bonus overlay (commit 9267e00) |
 | Phase 5: Bug Fixes | ✅ COMPLETE | 1/1 | Golden walnut points fix (commit 9267e00) |
 | Phase 6: Testing | ⏳ READY | 0/1 | Ready for preview testing |
+| **Phase 7: Rank Transparency** | ⏳ NOT STARTED | 0/2 | Added scope: Make overlays more transparent |
+| **Phase 8: Tips System** | ⏳ NOT STARTED | 0/5 | Added scope: Gameplay tips feature |
 
-**Overall Progress**: 13/14 tasks complete (93% - Ready for testing)
+**Overall Progress**: 13/21 tasks complete (62% - Core complete, polish items added)
 
 ---
 
@@ -344,5 +346,132 @@ MVP 14 is complete when:
 
 ---
 
+## 📋 Additional Scope Items (Added After Initial Implementation)
+
+### Phase 7: Make Rank Overlays More Transparent
+
+**Goal**: Reduce visual opacity of rank announcement overlays for better game visibility
+
+**Current State**:
+- RankOverlay shows on first join: "Welcome, your status is Rookie!"
+- RankOverlay shows on rank up: "You've achieved Slick Status!"
+- Current background may be too opaque, blocking game view
+
+**Tasks**:
+1. ⏳ **Reduce Background Opacity** (15 min)
+   - File: `client/src/RankOverlay.ts`
+   - Current: Likely `rgba(0, 0, 0, 0.8)` or similar
+   - Target: `rgba(0, 0, 0, 0.5)` or `rgba(0, 0, 0, 0.6)`
+   - Maintain readability while reducing visual block
+
+2. ⏳ **Test on All Platforms** (15 min)
+   - Desktop: Verify text is still readable
+   - Mobile (iPhone portrait/landscape): Check contrast
+   - Tablet (iPad portrait/landscape): Verify overlay positioning
+   - Ensure golden text remains visible against lighter background
+
+**Estimated Time**: 30 minutes
+
+---
+
+### Phase 8: Gameplay Tips System
+
+**Goal**: Implement contextual tips system to educate players about game mechanics
+
+**Research Phase** (1 hour):
+
+**Industry Best Practices for Game Tips**:
+1. **Loading Screen Tips** - Rotating tips during initial load (low friction)
+2. **Contextual Tooltips** - Show when player first encounters feature
+3. **Progressive Disclosure** - Don't overwhelm, reveal as needed
+4. **Dismissable** - Player control over tip visibility
+5. **Persistent State** - Don't repeat seen tips (localStorage)
+
+**Tip Categories & Content**:
+
+**Combat & Survival**:
+- "NPCs and predators get more aggressive as your score increases - stay alert!"
+- "Throw a walnut at a bird predator to distract it and avoid an attack"
+- "Hit a Wildebeest with 4 walnuts to annoy it and make it flee"
+- "Eat walnuts to restore health (+25 HP per walnut)"
+
+**Tree Growing System**:
+- "Hide a walnut and protect it for 1 minute - it will grow into a tree for bonus points!"
+- "Growing trees is efficient: earn points AND the tree drops walnuts immediately"
+- "Check the minimap after growing a tree - a tree icon appears for 30 seconds"
+- "Grow 20 trees total to earn a special tree growing bonus!"
+
+**Strategy & Resources**:
+- "Buried walnuts are worth 3 points, regular walnuts are worth 1 point"
+- "Golden walnuts are rare bonuses worth 5 points - grab them quickly!"
+- "Trees drop walnuts periodically - watch for falling walnuts in the forest"
+
+**Platform-Specific Design**:
+
+**Desktop**:
+- Tips panel accessible via settings menu
+- Loading screen tips (larger text)
+- Optional: Small tip icon in HUD (click to see random tip)
+
+**iPhone Portrait**:
+- Compact loading screen tips
+- Bottom toast-style contextual tips
+- Tips menu in settings (full-screen overlay)
+
+**iPhone Landscape**:
+- Ultra-compact loading tips
+- Side toast notifications
+- Horizontal tips layout in settings
+
+**iPad Portrait/Landscape**:
+- Larger loading screen tips
+- Corner toast notifications
+- Tabbed tips menu in settings
+
+**Implementation Plan**:
+
+**Task 8.1: Create TipsManager** (1 hour)
+- File: `client/src/TipsManager.ts`
+- Features:
+  - Tip storage and retrieval
+  - Random tip selection
+  - Seen tips tracking (localStorage)
+  - Category-based filtering
+
+**Task 8.2: Loading Screen Integration** (1 hour)
+- File: `client/src/LoadingScreen.ts`
+- Add rotating tip display during asset loading
+- Responsive text sizing for all platforms
+- Auto-cycle tips every 5 seconds during load
+
+**Task 8.3: Contextual Tip System** (1.5 hours)
+- File: `client/src/Game.ts`
+- Trigger tips on first-time events:
+  - First tree grown → tree growth tip
+  - First predator encounter → predator defense tips
+  - First walnut hidden → hiding mechanics tip
+  - Reaching rank milestones → aggression warning
+- Small non-blocking toast-style notifications
+- Auto-dismiss after 8 seconds
+
+**Task 8.4: Tips Menu in Settings** (1 hour)
+- File: `client/src/SettingsManager.ts`
+- Add "Tips" tab to settings panel
+- Categories: Combat, Trees, Strategy, Basics
+- Scrollable list of all tips
+- "Mark all as read" button
+- Responsive layout for all devices
+
+**Task 8.5: Content Writing & Polish** (30 min)
+- Write polished tip text (friendly, concise)
+- Add emojis for visual interest
+- Organize by priority/relevance
+- Test readability on all platforms
+
+**Estimated Time**: 5 hours total
+
+---
+
+**Updated Status**: ✅ Core MVP 14 complete, 2 additional polish items in progress
+
 **Last Updated**: 2025-11-03 by Claude Code
-**Status**: ✅ MVP 14 IMPLEMENTATION COMPLETE - Ready for preview deployment and testing
