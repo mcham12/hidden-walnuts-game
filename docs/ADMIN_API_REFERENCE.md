@@ -576,13 +576,13 @@ Configure number of walnuts dropped when a tree grows.
 curl -X POST https://api.hiddenwalnuts.com/admin/config/tree-walnut-drops \
   -H "X-Admin-Secret: YOUR_SECRET" \
   -H "Content-Type: application/json" \
-  -d '{"walnuts": 10}'
+  -d '{"drops": 10}'
 ```
 
 **Body**:
 ```json
 {
-  "walnuts": 10
+  "drops": 10
 }
 ```
 
