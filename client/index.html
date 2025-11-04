@@ -1302,6 +1302,40 @@
         box-shadow: 0 2px 8px rgba(0,0,0,0.2);
       }
 
+      /* MVP 14 Phase 9: Mobile/Tablet tip card optimizations */
+      @media (max-width: 768px) {
+        #tip-card-container {
+          width: 95%;
+          max-width: 500px;
+          bottom: 15px;
+        }
+        .tip-card-content {
+          font-size: 14px;
+        }
+        .tip-card-button {
+          padding: 10px 24px;
+          font-size: 15px;
+        }
+      }
+      /* iPhone landscape: smaller tip cards */
+      @media (max-height: 500px) and (orientation: landscape) {
+        #tip-card-container {
+          bottom: 10px;
+          width: 80%;
+          max-width: 400px;
+        }
+        .tip-card-content {
+          padding: 12px;
+          font-size: 13px;
+        }
+        .tip-card-header {
+          padding: 10px 14px;
+        }
+        .tip-card-footer {
+          padding: 10px 14px;
+        }
+      }
+
       /* MVP 5.7: Mobile/Touch-Friendly Styles */
       @media (max-width: 768px), (hover: none) and (pointer: coarse) {
         /* Make character select mobile-friendly - Forest Theme */
@@ -1544,10 +1578,10 @@
           min-width: 38px !important;
         }
 
-        /* Smaller minimap in landscape, respects notch */
+        /* MVP 14 Phase 9: Minimap same size as portrait (120px) for better visibility */
         #minimap {
-          width: 70px;
-          height: 70px;
+          width: 120px;
+          height: 120px;
           top: max(5px, env(safe-area-inset-top));
           right: max(5px, env(safe-area-inset-right));
         }

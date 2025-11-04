@@ -676,4 +676,28 @@ MVP 14 is complete when:
 
 ---
 
-**Last Updated**: 2025-11-03 (Phase 9 COMPLETE)
+### **Phase 9 Follow-Up Fixes** ✅ COMPLETE
+**Date**: 2025-11-03
+
+**Issues Reported**:
+1. ❌ iPad showing toasts instead of tip cards (caching/responsive issue)
+2. ❌ iPhone landscape minimap too small (70px vs 120px portrait)
+
+**Fixes Applied**:
+1. ✅ **iPad Responsive CSS**: Added mobile/tablet media queries for tip cards
+   - Optimized sizing for tablets (max-width: 768px)
+   - Larger touch targets for buttons (10px padding, 15px font)
+   - Better content sizing (14px font)
+
+2. ✅ **iPhone Landscape Minimap**: Increased from 70px to 120px (same as portrait)
+   - Better visibility in landscape mode
+   - Consistent with portrait experience
+
+**Files Modified**:
+- `client/index.html` - Responsive tip card CSS + minimap size fix
+
+**Build Status**: ✅ SUCCESS (289 KB gzipped)
+
+---
+
+**Last Updated**: 2025-11-03 (Phase 9 COMPLETE + Follow-up fixes)

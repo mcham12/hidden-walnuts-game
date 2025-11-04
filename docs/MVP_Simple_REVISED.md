@@ -418,9 +418,9 @@ DEFERRED **1. Voiceover Work** (1-2 hours)
 
 ### Features
 
-**0. Architecture**
-- identify technical options for full authentication (technical, platforms, etc including email)
-- recommend technical approach, based on my use of cloudflare, and subscribing to a custom domain (hiddenwalnuts.com) and NameCheap Private Email, and the ability to create new email account from that domain if needed.  not sure if can be used for sending emails for full authentication though.  Document this tech approach in a new doc called something like Authentication_Tech_approach.md.
+**0. Architecture, Design, and Planning
+- identify technical options for full authentication (technical, platforms, etc including email sending, password system, email verification, account recovery, cross-device sync, etc).
+- recommend technical approach, based on my use of cloudflare, and subscribing to a custom domain (hiddenwalnuts.com) and NameCheap Private Email, and the ability to create new email account from that domain if needed.  not sure if can be used for sending emails for full authentication though.  Document this tech approach in a new doc called something like Authentication_Tech_approach.md.  Note i prefer industry-standard solutions, and reusing existing building blocks if available, vs custom design and custom build.
 - Research and recommend if no-authentication players can be on leaderboards, and if so, which
 - Research and recommend any differentiation on player names on leaderboards (if both player types are allowed to be on the same leaderboard)
 - Design UX experience for accomodating no authentication vs authenticated.  for example, no-authentication users don't necessarily need a character selection screen, because they are just able to play as a squirrel character.  but we want to tempt them to become authenticated users by teasing benefits like additional characters...this is just one example UX / monetization consideration...Remember we have desktop browser, ipad browser (portrait and landscape), and iphone browser (portrait and landscape) to consider.  Create a standalone design for this called something like Authentication_UX_design.md.
