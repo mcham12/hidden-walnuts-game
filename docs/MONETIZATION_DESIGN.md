@@ -48,7 +48,142 @@ Hidden Walnuts will implement a fair, player-friendly monetization strategy that
 
 ---
 
-## 2. Recommended Monetization Strategy
+## 2. Ad Network Research & Recommendations
+
+### Overview of Ad Monetization for Browser Games
+
+Ad-based monetization is the dominant revenue model for browser-based games, typically generating **90% of total revenue** for .io-style games. However, research shows that ad revenue alone is challenging for indie developers without significant scale.
+
+### Key Findings from 2025 Research
+
+**Revenue Expectations**:
+- CPM rates for HTML5 browser games: **$1-5 per 1,000 impressions (RPMI)**
+- Real-world case study (kazap.io): $0.007 per MAU, $1,128.47/month with 100 concurrent players
+- Ad frequency needed for viability: Every 4-5 minutes of gameplay
+- Server costs can consume 60% of gross ad revenue
+- **Conclusion**: Ad revenue alone rarely generates substantial income unless viral adoption is achieved
+
+**Ad Network Options for Browser Games**:
+
+1. **AdinPlay** (Recommended for Browser Games)
+   - Specializes exclusively in HTML5 browser game monetization
+   - Works with popular .io games (Paper.io, Gartic Phone, Skribbl.io)
+   - Formats: Rewarded video, interstitials, display banners, branded takeovers
+   - Uses header bidding to maximize CPMs
+   - Best for developers with <5M monthly impressions who don't qualify for AdSense for Games
+   - **Best fit for Hidden Walnuts**: Specialized platform designed for exactly our use case
+
+2. **Google AdSense for Games**
+   - Industry standard with highest fill rates
+   - Requires 5M+ non-iframed impressions per month
+   - Multiple ad formats: display, video, native
+   - **Limitation**: High traffic requirements make this unsuitable for launch phase
+
+3. **Venatus Media**
+   - 100% fill rate in UK market
+   - Excellent CPMs for UK traffic
+   - Supports website and browser game monetization
+   - **Good secondary option**: Strong for European audiences
+
+4. **AppLixir**
+   - Focuses on rewarded video ads
+   - Simple integration (single line of JavaScript)
+   - Good for casual games
+   - **Alternative**: Consider for rewarded video specifically
+
+5. **Playwire**
+   - High CPM video ads
+   - Works with 700+ publishers
+   - Gaming-focused
+   - **Alternative**: Worth testing alongside primary network
+
+### Ad Format Recommendations
+
+**Primary: Rewarded Video Ads**
+- Player chooses to watch for in-game benefit
+- Higher CPMs ($3-5 per 1,000 impressions)
+- Less intrusive, better user experience
+- Example rewards: 2x XP for 5 minutes, bonus walnut spawn, cosmetic currency
+
+**Secondary: Interstitial Ads**
+- Shown between game sessions (post-match, after logout)
+- Standard CPMs ($1-3 per 1,000 impressions)
+- Natural break points minimize disruption
+- Less frequent than rewarded (every 10-15 minutes)
+
+**Avoid: Banner Ads**
+- Lower CPMs ($0.50-1.50 per 1,000 impressions)
+- Intrusive on gameplay experience
+- Not suitable for immersive 3D environment
+- Only consider for pre-game lobby area
+
+### Implementation Strategy for Hidden Walnuts
+
+**Phase 0: Initial Launch (MVP 15-16)**
+- **No ads initially** - Focus on player acquisition and retention
+- Build engaged user base first (target: 500+ weekly active users)
+- Collect analytics on session length and engagement patterns
+
+**Phase 1: Rewarded Video Ads (MVP 17)**
+- Integrate **AdinPlay** as primary ad network
+- Offer optional rewarded videos with clear value:
+  - "Watch ad for 2x XP for 10 minutes"
+  - "Watch ad for 500 cosmetic currency"
+  - "Watch ad to reveal nearest hidden walnut"
+- Frequency limit: Max 3 rewarded ads per hour per player
+- Target authenticated players first (better retention = more views)
+
+**Phase 2: Interstitial Ads (MVP 18)**
+- Add interstitials at natural break points only:
+  - After player dies and returns to lobby
+  - Between leaderboard cycles (weekly reset)
+- Frequency limit: Max 1 interstitial every 15 minutes
+- Allow ad removal via IAP ($2.99 one-time or included in subscription)
+
+**Phase 3: Multiple Ad Networks (MVP 19)**
+- Add **Venatus** as secondary network for mediation
+- Test **Playwire** for video ad fill rates
+- Implement ad network waterfall for maximum fill rate
+- A/B test ad frequency and placement
+
+### Revenue Projections from Ads
+
+**Conservative Estimate** (1,000 weekly active users, 30-minute avg session):
+- Daily ad impressions: 1,000 users × 6 sessions/week ÷ 7 = ~850 users/day
+- Ads per session: 2 rewarded + 1 interstitial = 3 ads
+- Daily impressions: 850 × 3 = 2,550
+- Monthly impressions: 2,550 × 30 = 76,500
+- Revenue at $2 CPM: 76.5 × $2 = **$153/month**
+
+**Optimistic Estimate** (2,500 weekly active users, 45-minute avg session):
+- Daily active users: ~1,400
+- Ads per session: 3 rewarded + 1 interstitial = 4 ads
+- Daily impressions: 1,400 × 4 = 5,600
+- Monthly impressions: 5,600 × 30 = 168,000
+- Revenue at $3 CPM: 168 × $3 = **$504/month**
+
+**Note**: Server costs for Cloudflare Workers are estimated at $50-100/month at this scale, leaving $50-400/month net revenue from ads.
+
+### Final Recommendation
+
+**Start with AdinPlay as primary ad network** for the following reasons:
+1. Specializes in browser games (exact use case match)
+2. Works with indie developers and smaller traffic volumes
+3. Supports rewarded video (best user experience + highest CPM)
+4. No minimum traffic requirements (unlike AdSense)
+5. Proven track record with .io games similar to Hidden Walnuts
+
+**Supplement with IAP monetization** (cosmetics, battle pass) as documented below, since ad revenue alone is insufficient for sustainability. Research shows successful browser games use a **hybrid model: 60-70% ad revenue + 30-40% IAP revenue**.
+
+**Timeline**:
+- MVP 15-16: No ads, build player base
+- MVP 17: Launch AdinPlay rewarded videos + cosmetic store
+- MVP 18: Add interstitials + ad removal IAP
+- MVP 19: Add secondary networks for optimization
+
+---
+
+## 3. Recommended IAP Monetization Strategy
 
 ### Phase 1: Foundation (MVP 16 - Authentication)
 
@@ -182,7 +317,7 @@ Hidden Walnuts will implement a fair, player-friendly monetization strategy that
 
 ---
 
-## 3. Revenue Projections (Conservative Estimates)
+## 4. Combined Revenue Projections (Ads + IAP)
 
 ### Assumptions
 - 1000 weekly active users (WAU) after 6 months
@@ -194,12 +329,15 @@ Hidden Walnuts will implement a fair, player-friendly monetization strategy that
 
 | Source | Users | Revenue |
 |--------|-------|---------|
+| **Ad Revenue** (76.5k impressions @ $2 CPM) | 1,000 WAU | **$153** |
 | Character Purchases (one-time) | 5 users @ $4.99 | $25 |
 | Cosmetics | 8 users @ $2.00 avg | $16 |
 | Battle Pass | 5 users @ $4.99 | $25 |
 | Consumables | 7 users @ $1.50 avg | $11 |
 | Subscription | 2 users @ $4.99 | $10 |
-| **Total Monthly Revenue** | | **$87** |
+| **Total Monthly Revenue** | | **$240** |
+| Server Costs | | -$75 |
+| **Net Revenue** | | **$165** |
 
 ### Growth Projections (12 months)
 
@@ -208,14 +346,18 @@ Hidden Walnuts will implement a fair, player-friendly monetization strategy that
 | Weekly Active Users | 500 | 1,000 | 2,500 |
 | Authenticated Users (5%) | 25 | 50 | 125 |
 | Paying Users (2% of auth) | 10 | 20 | 50 |
-| Monthly Revenue | $35 | $87 | $220 |
-| Annual Run Rate | $420 | $1,044 | $2,640 |
+| **Ad Revenue** | $75 | $153 | $380 |
+| **IAP Revenue** | $35 | $87 | $220 |
+| **Total Revenue** | **$110** | **$240** | **$600** |
+| Server Costs | -$30 | -$75 | -$150 |
+| **Net Revenue** | **$80** | **$165** | **$450** |
+| Annual Run Rate | $960 | $1,980 | $5,400 |
 
-**Note**: These are conservative estimates. Successful .io games can generate $10k-100k/month with proper scaling.
+**Note**: These are conservative estimates. Successful .io games can generate $10k-100k/month with proper scaling. The hybrid model (ads + IAP) provides **2-3x more revenue** than IAP alone.
 
 ---
 
-## 4. Enticement & Conversion Funnel
+## 5. Enticement & Conversion Funnel
 
 ### For No-Auth Players → Authenticated
 
@@ -275,7 +417,7 @@ Hidden Walnuts will implement a fair, player-friendly monetization strategy that
 
 ---
 
-## 5. Technical Implementation Considerations
+## 6. Technical Implementation Considerations
 
 ### Authentication Integration (MVP 16)
 
@@ -335,9 +477,30 @@ Hidden Walnuts will implement a fair, player-friendly monetization strategy that
 - Archive previous season data
 - Handle mid-season purchases (prorated progression)
 
+### Ad Network Integration
+
+**AdinPlay Integration**:
+- JavaScript SDK integration in client
+- Ad placement components (rewarded video modal, interstitial overlay)
+- Server-side reward verification (prevent fraud)
+- Analytics tracking (impressions, completions, revenue)
+- Frequency capping (3 rewarded per hour, 1 interstitial per 15 min)
+
+**Client-Side**:
+- Rewarded video UI: "Watch ad for bonus?" with clear reward preview
+- Loading states and error handling
+- Ad blocker detection with friendly messaging
+- Frequency limits enforced client-side (backed by server validation)
+
+**Server-Side**:
+- Verify ad completion before granting rewards
+- Track ad impressions per user (prevent abuse)
+- Admin analytics dashboard (revenue, fill rates, eCPM)
+- A/B testing framework for ad placement
+
 ---
 
-## 6. Ethical & Legal Considerations
+## 7. Ethical & Legal Considerations
 
 ### Fair Play Principles
 
@@ -371,9 +534,27 @@ Hidden Walnuts will implement a fair, player-friendly monetization strategy that
 - Usage analytics: Anonymized
 - Third-party sharing: None
 
+### Ad-Specific Considerations
+
+**User Experience**:
+- Rewarded ads are 100% optional (never forced)
+- Clear value proposition before showing ad
+- Skip button available after 5 seconds for interstitials
+- Respect ad blocker users (don't nag or block gameplay)
+
+**Child Safety** (COPPA for Ads):
+- No behavioral advertising for users <13
+- Age-appropriate ad content filtering
+- Parental controls for ad viewing
+
+**Transparency**:
+- Privacy policy clearly explains ad usage
+- Option to remove ads via IAP
+- Show users how ads support free gameplay
+
 ---
 
-## 7. Marketing & Promotion Strategy
+## 8. Marketing & Promotion Strategy
 
 ### Launch Phases
 
@@ -416,7 +597,7 @@ Hidden Walnuts will implement a fair, player-friendly monetization strategy that
 
 ---
 
-## 8. Metrics & Success Indicators
+## 9. Metrics & Success Indicators
 
 ### Key Performance Indicators (KPIs)
 
@@ -449,6 +630,14 @@ Hidden Walnuts will implement a fair, player-friendly monetization strategy that
 - Average time to first purchase
 - Consumable repeat purchase rate
 
+**Ad-Specific Metrics**:
+- Ad impressions per user per session
+- Rewarded video completion rate (target: >80%)
+- Interstitial skip rate
+- Ad revenue per user (ARPU from ads)
+- Fill rate by ad network
+- eCPM by ad format and placement
+
 ### A/B Testing Opportunities
 
 - Character pack pricing: $9.99 vs $7.99 vs $11.99
@@ -456,10 +645,13 @@ Hidden Walnuts will implement a fair, player-friendly monetization strategy that
 - Cosmetic bundle composition
 - First-time buyer incentives
 - Enticement messaging ("Sign Up" vs "Unlock 6 Characters")
+- Rewarded ad value: 2x XP vs 500 currency vs walnut reveal
+- Interstitial frequency: Every 10 min vs 15 min vs 20 min
+- Ad placement timing: Post-death vs post-match vs time-based
 
 ---
 
-## 9. Competitive Analysis
+## 10. Competitive Analysis
 
 ### Similar Games Monetization
 
@@ -482,7 +674,7 @@ Hidden Walnuts will stand out by:
 
 ---
 
-## 10. Implementation Roadmap
+## 11. Implementation Roadmap
 
 ### MVP 16: Authentication Foundation (4-6 weeks)
 - User signup/login system
@@ -502,20 +694,27 @@ Hidden Walnuts will stand out by:
 
 ### MVP 17: Monetization Launch (6-8 weeks)
 
-**Phase 1: Infrastructure (2 weeks)**
+**Phase 1: Ad Network Integration (1 week)**
+- AdinPlay SDK integration
+- Rewarded video UI implementation
+- Server-side reward verification
+- Analytics tracking setup
+- Ad frequency capping logic
+
+**Phase 2: Infrastructure (2 weeks)**
 - Stripe payment integration
 - Purchase verification system
 - Inventory management (server + client)
 - Admin tools for granting items
 
-**Phase 2: Cosmetics (3 weeks)**
+**Phase 3: Cosmetics (3 weeks)**
 - Character skins (5-10 variations)
 - Accessories (5-10 items)
 - Emote expansion (5 new emotes)
 - Purchase UI (store page)
 - Preview system
 
-**Phase 3: Battle Pass (3 weeks)**
+**Phase 4: Battle Pass (2 weeks)**
 - XP progression system
 - Tier reward configuration
 - Free vs Premium tier logic
@@ -523,14 +722,17 @@ Hidden Walnuts will stand out by:
 - Challenge system (daily/weekly)
 
 **Success Criteria**:
+- 70%+ rewarded ad completion rate
+- $100-200 monthly revenue (ads + IAP) within 3 months
 - 2% conversion rate (authenticated → paying)
-- $50-100 monthly revenue within 3 months
 - No payment processing issues
-- Positive player feedback on cosmetics
+- Positive player feedback on cosmetics and ad experience
 
 ---
 
-### MVP 18: Convenience Features (3-4 weeks)
+### MVP 18: Convenience Features & Interstitial Ads (3-4 weeks)
+- **Interstitial ad integration** (natural break points)
+- **Ad removal IAP** ($2.99 or included in subscription)
 - Fly mode implementation
 - Speed boost implementation
 - Golden walnut radar
@@ -539,27 +741,34 @@ Hidden Walnuts will stand out by:
 - Daily usage limits
 
 **Success Criteria**:
+- Interstitial ads don't negatively impact retention
+- 10-15% of users purchase ad removal
 - Consumables do not create pay-to-win perception
 - 5% of paying users purchase consumables
 - No gameplay balance issues
 
 ---
 
-### MVP 19: Subscription (2-3 weeks)
+### MVP 19: Advanced Ad Optimization & Subscription (3-4 weeks)
+- **Add Venatus & Playwire** as secondary ad networks
+- **Ad mediation/waterfall** implementation
+- **A/B testing framework** for ad placement
 - Subscription billing (Stripe)
-- Walnut Club benefits implementation
+- Walnut Club benefits (includes ad removal)
 - Member-only leaderboard
 - Exclusive cosmetic drops
 - Discount system for subscribers
 
 **Success Criteria**:
+- 2-3x ad fill rate with multiple networks
+- 20%+ increase in ad revenue vs single network
 - 10-20% of paying users subscribe
 - Subscribers have 2x higher retention
 - Monthly recurring revenue established
 
 ---
 
-## 11. Risk Mitigation
+## 12. Risk Mitigation
 
 ### Potential Risks
 
@@ -591,39 +800,65 @@ Hidden Walnuts will stand out by:
 - Mitigation: Clear terms of service
 - Mitigation: Refund policy aligned with Stripe/platform standards
 
+**Risk: Ad Revenue Lower Than Expected**
+- Mitigation: Implement multiple ad networks for better fill rates
+- Mitigation: A/B test ad placements and frequency
+- Mitigation: Focus on rewarded video (higher eCPM)
+- Mitigation: Diversify with IAP (don't rely solely on ads)
+
+**Risk: Ad Blocker Usage**
+- Mitigation: Don't block gameplay for ad blocker users
+- Mitigation: Friendly messaging: "Ads support free gameplay, consider allowing"
+- Mitigation: Offer ad removal IAP as alternative
+- Mitigation: Focus on engaged users who don't use ad blockers
+
 ---
 
-## 12. Conclusion & Next Steps
+## 13. Conclusion & Next Steps
 
 ### Summary
 
-Hidden Walnuts will implement a **fair, cosmetic-focused monetization strategy** that respects player experience while generating sustainable revenue. By following industry best practices from 2025 and learning from successful browser/casual multiplayer games, we can build a monetization system that:
+Hidden Walnuts will implement a **hybrid monetization strategy (ads + IAP)** that respects player experience while generating sustainable revenue. By following industry best practices from 2025 and learning from successful browser/casual multiplayer games, we can build a monetization system that:
 
 1. **Enhances, not hinders** gameplay
-2. **Rewards engagement** through Battle Passes
-3. **Provides choice** (cosmetics, convenience, subscription)
-4. **Maintains competitive balance** (no pay-to-win)
-5. **Grows revenue** gradually as player base scales
+2. **Balances ad revenue with IAP** (60-70% ads + 30-40% IAP)
+3. **Uses player-friendly ad formats** (rewarded video primary, minimal interstitials)
+4. **Rewards engagement** through Battle Passes
+5. **Provides choice** (watch ads, buy cosmetics, subscribe)
+6. **Maintains competitive balance** (no pay-to-win)
+7. **Grows revenue** gradually as player base scales (target: $165/month at 1,000 WAU)
 
 ### Immediate Next Steps
 
 1. **MVP 16: Implement authentication** (prerequisite for monetization)
-2. **Create cosmetic assets** (character skins, accessories, emotes)
-3. **Integrate Stripe** for payment processing
-4. **Build cosmetics store UI** (purchase, preview, equip)
-5. **Deploy MVP 17** with initial cosmetics and Battle Pass
-6. **Monitor metrics** and iterate based on player feedback
+2. **Apply to AdinPlay** ad network (get approved before MVP 17)
+3. **Create cosmetic assets** (character skins, accessories, emotes)
+4. **Integrate AdinPlay SDK** for rewarded video ads
+5. **Integrate Stripe** for payment processing
+6. **Build cosmetics store UI** (purchase, preview, equip)
+7. **Deploy MVP 17** with ads, cosmetics, and Battle Pass
+8. **Monitor metrics** (ad completion rate, eCPM, conversion rate)
+9. **Iterate** based on player feedback and revenue data
 
 ### Long-Term Vision
 
-With a player base of 2,500+ weekly active users and a 2-5% paying conversion rate, Hidden Walnuts can generate **$200-500/month** in sustainable revenue. This supports ongoing development, server costs, and potential content creator partnerships.
+With a player base of 2,500+ weekly active users, Hidden Walnuts can generate **$450-600/month net revenue** through the hybrid model:
+- **$380/month from ads** (168k impressions @ $3 CPM with rewarded video focus)
+- **$220/month from IAP** (cosmetics, battle pass, consumables, subscriptions)
+- **-$150/month server costs** (Cloudflare Workers at scale)
 
-As the game grows, opportunities for **sponsored cosmetics** (brand partnerships), **community-created content** (user-generated skins), and **cross-promotions** (other games) can further diversify revenue streams.
+This sustainable revenue supports ongoing development, server costs, content creation, and potential marketing.
 
-**Success is measured not just in revenue, but in player satisfaction and long-term engagement.**
+As the game grows, opportunities for:
+- **Sponsored cosmetics** (brand partnerships)
+- **Community-created content** (user-generated skins via marketplace)
+- **Cross-promotions** (collaborate with other indie games)
+- **Premium ad campaigns** (higher CPM brand deals)
+
+**Success is measured not just in revenue, but in player satisfaction, engagement, and long-term retention.**
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-11-04
+**Document Version**: 2.0
+**Last Updated**: 2025-11-04 (Added comprehensive ad network research and recommendations)
 **Next Review**: After MVP 16 completion

@@ -471,7 +471,7 @@ TBD
 ---
 
 
-## 🧹 MVP 17: Monetization 
+## 🧹 MVP 17: Monetization phase 1
 
 **Goal**: Monetize the game
 
