@@ -1,6 +1,6 @@
 # 🎮 Hidden Walnuts - MVP Development Plan
 
-**Current Status**: MVP 15 (Forest Cycle Automation & Monetization Research) - 🎯 **IN PROGRESS**
+**Current Status**: MVP 16 (Full Authentication & UX Changes) - 🎯 **IN PROGRESS**
 
 ---
 
@@ -25,7 +25,8 @@
 - **MVP 11**: Sound Effects & Audio Enhancement - Comprehensive sound system with combat, player, and ambient sounds; iOS Safari audio support
 - **MVP 12**: World Polish, Predators & Defense - AI predators (cardinal, toucan, wildebeest), rank-based targeting system, defense mechanics, sky elements, tutorial redesign, UX polish
 - **MVP 13**: Game Admin APIs - Secure admin endpoints, player management APIs, game metrics tracking, tree growth configuration, NPC/predator control
-- **MVP 14**: Tree Growing Bonuses & Polish - Tree growing bonus system, overlay queue management, 21-tip gameplay education system, platform-specific notification positioning
+- **MVP 14**: Tree Growing Bonuses & Polish - Tree growing bonus system, overlay queue management, 21-tip gameplay education system, platform-specific notification positioning (✅ COMPLETE 2025-11-04)
+- **MVP 15**: Forest Cycle Automation & Monetization Research - Cloudflare cron triggers, automated daily/weekly resets, comprehensive ad network research, AdinPlay recommendation, revenue projections ($165-450/month net) (✅ COMPLETE 2025-11-04)
 
 ---
 
@@ -371,7 +372,65 @@ Create: `docs/ADMIN_SETUP.md`
 - Common admin tasks guide
 - Troubleshooting
 
-## MVP 14: voiceover and more gameplay polish
+---
+
+## ✅ MVP 14: Tree Growing Bonuses & Polish (COMPLETE)
+
+**Goal**: Add tree growing milestone bonuses and comprehensive gameplay tips system
+
+### Completed Features
+- ✅ Tree growing bonus system (20 trees = 20 bonus points, configurable via admin APIs)
+- ✅ Custom bonus overlay UI with nature-themed messaging
+- ✅ Admin APIs for tree growth configuration (points, walnuts, probability)
+- ✅ Golden walnut points fix (correctly awards 5 points)
+- ✅ Rank overlay transparency improvements
+- ✅ Comprehensive tips system: 21 tips total
+  - Loading screen tips (cycling)
+  - Contextual tips (event-triggered)
+  - Settings menu tips browser
+- ✅ Non-intrusive notification system (toast messages)
+  - Platform-specific positioning (desktop, iPad, iPhone portrait/landscape)
+  - Queue management for multiple overlays
+- ✅ Debug logging cleanup
+
+### Success Criteria
+- ✅ Tree growing bonuses incentivize long-term play
+- ✅ Tips educate players on mechanics (NPCs, predators, tree growing)
+- ✅ Notification system works across all platforms
+- ✅ Admin APIs allow dynamic configuration
+
+---
+
+## ✅ MVP 15: Forest Cycle Automation & Monetization Research (COMPLETE)
+
+**Goal**: Automate daily game reset activities, leaderboard maintenance, and research monetization
+
+### Completed Features
+- ✅ Cloudflare cron triggers (wrangler.toml)
+  - Daily reset at 8am UTC (2am CST): Walnut pool replenishment
+  - Weekly leaderboard reset at 8:05am UTC on Sunday (2:05am CST)
+  - Fixed cron syntax bug (day-of-week: 1=Sunday in Cloudflare, not 0)
+- ✅ Automated forest regeneration via ForestManager scheduled handler
+- ✅ Automated leaderboard archival (top 100, 12-week rolling history)
+- ✅ Comprehensive monetization research (MONETIZATION_DESIGN.md v2.0)
+  - Evaluated 5+ ad networks (AdinPlay, AdSense, Venatus, AppLixir, Playwire)
+  - **Recommendation**: AdinPlay (specializes in HTML5 browser games)
+  - CPM rates: $1-5 per 1,000 impressions (rewarded video: $3-5)
+  - Revenue model: Hybrid (60-70% ads + 30-40% IAP)
+  - Projections: $165/month net at 1,000 WAU, $450/month at 2,500 WAU
+  - Implementation roadmap (MVP 17-19)
+- ✅ MVP_15_COMPLETION.md created
+- ✅ Debug logging cleanup
+
+### Success Criteria
+- ✅ Daily and weekly resets automated
+- ✅ Monetization strategy documented with actionable plan
+- ✅ Ad network selected (AdinPlay primary)
+- ✅ Revenue projections realistic and conservative
+
+---
+
+## MVP 14: voiceover and more gameplay polish (DEFERRED)
 DEFERRED **1. Voiceover Work** (1-2 hours)
 - Character selection voice lines (one per character)
 - Combat reactions ("Ouch!", "Gotcha!", "Oh no!")
@@ -403,15 +462,15 @@ DEFERRED **1. Voiceover Work** (1-2 hours)
 
 ---
 
-##  MVP 15: Forest cycle automation and monetization reesearch
+## MVP 15: Forest cycle automation and monetization research (ORIGINAL PLANNING - SEE ABOVE FOR COMPLETION)
 
 **Goal**: Automate daily game reset activities and leaderboard maintenance activities.  Research and prioritize monetization options for a game like this
 
-### Tasks
-- every day, maybe at 2am usa central standard time, reset mapstate, forest, positions via existing API functionality (as approrpriate)
-- every week, automate resetting the weekly leaderboard, maybe Sunday at 2:05pm usa central standard time
-- remove any debug logging, both client and server
-- Use Plan, Research, and/or Ultrathink as appropriate for this: research best practices for monetizing the game once authenticated players are implmented.  Recommend best monetization features for a game like this one Document this in a Monetization design doc (md) in the docs/ folder.  Examples: pay for access to certain characters, pay to have a limited flyaround feature, where the character gets a flying capability, but limited duration, and maybe some understandable cooldown limitation (cant be constantly flying).  Include "enticement" aspects as well: features or lack of features that would push someone into becoming an authenticated user to improve chances that they will then take the next step to buying a feature later.  I don't want monetization features that provide too much of an advantage, so players can still feel they can compete without buying anything.
+### Original Tasks (Completed - See Section Above)
+- ✅ every day, maybe at 2am usa central standard time, reset mapstate, forest, positions via existing API functionality (as approrpriate)
+- ✅ every week, automate resetting the weekly leaderboard, maybe Sunday at 2:05pm usa central standard time
+- ✅ remove any debug logging, both client and server
+- ✅ Use Plan, Research, and/or Ultrathink as appropriate for this: research best practices for monetizing the game once authenticated players are implmented.  Recommend best monetization features for a game like this one Document this in a Monetization design doc (md) in the docs/ folder.  Examples: pay for access to certain characters, pay to have a limited flyaround feature, where the character gets a flying capability, but limited duration, and maybe some understandable cooldown limitation (cant be constantly flying).  Include "enticement" aspects as well: features or lack of features that would push someone into becoming an authenticated user to improve chances that they will then take the next step to buying a feature later.  I don't want monetization features that provide too much of an advantage, so players can still feel they can compete without buying anything.
 
 ## 🔐 MVP 16: Full Authentication and corresponding UX changes.
 
