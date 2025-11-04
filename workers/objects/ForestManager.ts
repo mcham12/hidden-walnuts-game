@@ -2304,7 +2304,6 @@ export default class ForestManager extends DurableObject {
     // AGGRESSIVE FIX: Always filter out test-walnut before sending
     const filteredMapState = this.mapState.filter(w => w.id !== 'test-walnut');
     if (filteredMapState.length !== this.mapState.length) {
-      console.log(`🧹 FILTERED OUT test-walnut before sending (was in mapState despite filter)`);
       this.mapState = filteredMapState;
       await this.storage.put('mapState', this.mapState);
     }

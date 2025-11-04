@@ -407,8 +407,8 @@ DEFERRED **1. Voiceover Work** (1-2 hours)
 **Goal**: Automate daily game reset activities and leaderboard maintenance activities.  Research and prioritize monetization options for a game like this
 
 ### Tasks
-- every day, reset mapstate, forest, positions via existing API functionality (as approrpriate)
-- every week, automate resetting the weekly leaderboard
+- every day, maybe at 2am usa central standard time, reset mapstate, forest, positions via existing API functionality (as approrpriate)
+- every week, automate resetting the weekly leaderboard, maybe Sunday at 2:05pm usa central standard time
 - remove any debug logging, both client and server
 - research best practices for monetizing the game once authenticated players are implmented.  Recommend best monetization features for a game like this one Document this in a Monetization design doc (md) in the docs/ folder.  Examples: pay for access to certain characters, pay to have a limited flyaround feature, where the character gets a flying capability, but limited duration, and maybe some understandable cooldown limitation (cant be constantly flying).  Include "enticement" aspects as well: features or lack of features that would push someone into becoming an authenticated user to improve chances that they will then take the next step to buying a feature later.  I don't want monetization features that provide too much of an advantage, so players can still feel they can compete without buying anything.
 

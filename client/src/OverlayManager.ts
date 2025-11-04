@@ -39,7 +39,6 @@ export class OverlayManager {
   enqueue(id: string, priority: OverlayPriority, show: () => void, duration: number): void {
     // Skip LOW priority if queue is busy (industry standard)
     if (priority === OverlayPriority.LOW && this.queue.length > 2) {
-      console.log(`⏭️ OverlayManager: Skipping LOW priority overlay "${id}" (queue busy)`);
       return;
     }
 
@@ -67,8 +66,6 @@ export class OverlayManager {
       this.queue.push(request);
     }
 
-    console.log(`📥 OverlayManager: Queued "${id}" (priority: ${priority}, queue size: ${this.queue.length})`);
-
     // Start processing if not already showing
     if (!this.isShowing) {
       this.processQueue();
@@ -85,27 +82,21 @@ export class OverlayManager {
       // Mark as showing
       this.isShowing = true;
 
-      console.log(`📺 OverlayManager: Showing "${request.id}" for ${request.duration}ms`);
-
       // Show the overlay
       request.show();
 
       // Wait for overlay duration + delay
       await this.sleep(request.duration + this.DELAY_BETWEEN_OVERLAYS);
-
-      console.log(`✅ OverlayManager: Finished "${request.id}"`);
     }
 
     // Queue empty
     this.isShowing = false;
-    console.log(`🏁 OverlayManager: Queue empty`);
   }
 
   /**
    * Clear the queue (emergency use only)
    */
   clearQueue(): void {
-    console.log(`🗑️ OverlayManager: Clearing queue (${this.queue.length} items)`);
     this.queue = [];
   }
 

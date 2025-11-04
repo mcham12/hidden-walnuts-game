@@ -31,7 +31,6 @@ export class TipCard {
     // If already showing, queue this tip
     if (this.isShowing) {
       this.queue.push({ text, emoji });
-      console.log(`💡 TipCard: Queued tip (queue size: ${this.queue.length})`);
       return;
     }
 
@@ -94,8 +93,6 @@ export class TipCard {
     requestAnimationFrame(() => {
       card.classList.add('tip-card-visible');
     });
-
-    console.log(`💡 TipCard: Showing tip - "${text.substring(0, 50)}..."`);
   }
 
   /**
@@ -121,12 +118,9 @@ export class TipCard {
       // Show next tip in queue if any
       if (this.queue.length > 0) {
         const next = this.queue.shift()!;
-        console.log(`💡 TipCard: Showing queued tip (${this.queue.length} remaining)`);
         this.show(next.text, next.emoji);
       }
     }, 300); // Match CSS animation duration
-
-    console.log(`💡 TipCard: Dismissed`);
   }
 
   /**
@@ -134,7 +128,6 @@ export class TipCard {
    */
   clearQueue(): void {
     this.queue = [];
-    console.log(`💡 TipCard: Queue cleared`);
   }
 
   /**
