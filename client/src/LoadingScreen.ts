@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { TipsManager } from './TipsManager.js';
 
 /**
  * LoadingScreen - Displays animated 3D walnut while game assets load
@@ -19,6 +20,10 @@ export class LoadingScreen {
   // MVP 7.1: Turnstile bot protection
   private turnstileContainer: HTMLElement | null = null;
   private turnstileToken: string | null = null;
+  // MVP 14: Gameplay tips
+  private tipElement: HTMLElement;
+  private tipsManager: TipsManager;
+  private tipRotationInterval: number | null = null;
 
   constructor() {
     // Get DOM elements
@@ -26,6 +31,10 @@ export class LoadingScreen {
     this.progressBar = document.getElementById('loading-progress-bar')!;
     this.progressText = document.getElementById('loading-text')!;
     this.progressPercentage = document.getElementById('loading-percentage')!;
+    this.tipElement = document.getElementById('loading-tip')!;
+
+    // MVP 14: Initialize tips manager
+    this.tipsManager = new TipsManager();
 
     // Create canvas for 3D walnut
     this.canvas = document.createElement('canvas');
@@ -78,6 +87,9 @@ export class LoadingScreen {
 
     // Initialize progress to 0%
     this.updateProgress(0, 'Verifying you are human...');
+
+    // MVP 14: Start tip rotation
+    this.startTipRotation();
 
     // MVP 7.1: Create Turnstile widget container
     if (!this.turnstileContainer) {
@@ -224,6 +236,7 @@ export class LoadingScreen {
    */
   hide(): void {
     this.stopAnimation();
+    this.stopTipRotation(); // MVP 14: Stop tip rotation
     this.container.classList.add('hidden');
   }
 
@@ -238,10 +251,46 @@ export class LoadingScreen {
   }
 
   /**
+   * MVP 14: Start rotating gameplay tips
+   */
+  private startTipRotation(): void {
+    // Show first tip immediately
+    this.showNextTip();
+
+    // Rotate tips every 5 seconds
+    this.tipRotationInterval = window.setInterval(() => {
+      this.showNextTip();
+    }, 5000);
+  }
+
+  /**
+   * MVP 14: Stop tip rotation
+   */
+  private stopTipRotation(): void {
+    if (this.tipRotationInterval !== null) {
+      clearInterval(this.tipRotationInterval);
+      this.tipRotationInterval = null;
+    }
+  }
+
+  /**
+   * MVP 14: Display next random tip
+   */
+  private showNextTip(): void {
+    const tip = this.tipsManager.getRandomTip();
+    if (tip) {
+      const emoji = tip.emoji ? `${tip.emoji} ` : '';
+      this.tipElement.textContent = `${emoji}${tip.text}`;
+      this.tipsManager.markTipAsSeen(tip.id);
+    }
+  }
+
+  /**
    * Clean up resources
    */
   destroy(): void {
     this.stopAnimation();
+    this.stopTipRotation(); // MVP 14: Clean up tip rotation
     this.renderer.dispose();
     if (this.walnutModel) {
       this.scene.remove(this.walnutModel);

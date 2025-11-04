@@ -3120,9 +3120,8 @@ export default class ForestManager extends DurableObject {
     if (ownerPlayer) {
       ownerPlayer.score += this.treeGrowthConfig.pointsAwarded; // MVP 13: Configurable points
 
-      // MVP 14: Increment tree growing counter and check for bonus
+      // MVP 14: Increment tree growing counter (check bonus AFTER tree_grown broadcast)
       ownerPlayer.treesGrownCount++;
-      await this.checkTreeGrowingBonus(ownerPlayer);
 
       // Report to leaderboard
       await this.reportScoreToLeaderboard(ownerPlayer);
@@ -3141,7 +3140,7 @@ export default class ForestManager extends DurableObject {
       }
     }
 
-    // Broadcast tree growth to all players
+    // Broadcast tree growth to all players (BEFORE bonus check for correct message order)
     this.broadcastToAll({
       type: 'tree_grown',
       tree: newTree,
@@ -3150,6 +3149,12 @@ export default class ForestManager extends DurableObject {
       originalPosition: walnut.location,
       newPosition: treePosition
     });
+
+    // MVP 14: Check for tree growing bonus AFTER tree_grown broadcast
+    // This ensures tree grows visually before bonus overlay appears
+    if (ownerPlayer) {
+      await this.checkTreeGrowingBonus(ownerPlayer);
+    }
 
     // MVP 13: Drop configurable number of walnuts from newly grown tree
     await this.dropWalnutsFromTree(newTree, this.treeGrowthConfig.walnutsDropped);

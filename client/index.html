@@ -798,6 +798,36 @@
         font-weight: bold;
         color: #FFD700;
       }
+      /* MVP 14: Loading Screen Tips */
+      #loading-tip {
+        margin-top: 30px;
+        padding: 16px 24px;
+        background: rgba(255, 215, 0, 0.1);
+        border: 1px solid rgba(255, 215, 0, 0.3);
+        border-radius: 12px;
+        max-width: 500px;
+        font-size: 16px;
+        line-height: 1.5;
+        color: #FFE4B5;
+        text-align: center;
+        opacity: 0.9;
+      }
+      #loading-tip:empty {
+        display: none;
+      }
+      @media (max-width: 768px) {
+        #loading-tip {
+          max-width: 90%;
+          font-size: 14px;
+          padding: 12px 18px;
+        }
+      }
+      @media (max-width: 480px) {
+        #loading-tip {
+          font-size: 13px;
+          padding: 10px 14px;
+        }
+      }
 
       /* MVP 5.8: Welcome Screen */
       #welcome-screen {
@@ -1849,6 +1879,8 @@
       </div>
       <div id="loading-text">Loading assets...</div>
       <div id="loading-percentage">0%</div>
+      <!-- MVP 14: Gameplay Tips -->
+      <div id="loading-tip"></div>
     </div>
     <!-- MVP 5: Toast Notification Container -->
     <div id="toast-container"></div>
@@ -1998,6 +2030,7 @@
       <div class="settings-tabs">
         <button class="settings-tab active" data-tab="audio">🔊 Audio</button>
         <button class="settings-tab" data-tab="controls">🎮 Controls</button>
+        <button class="settings-tab" data-tab="tips">💡 Tips</button>
       </div>
       <div id="audio-tab" class="settings-content active">
         <div class="setting-group">
@@ -2064,6 +2097,17 @@
               <span class="control-key">L</span> Leader
             </div>
           </div>
+        </div>
+      </div>
+      <!-- MVP 14: Tips Tab -->
+      <div id="tips-tab" class="settings-content">
+        <div class="setting-group">
+          <div id="tips-container" style="display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto;">
+            <!-- Tips will be populated by SettingsManager -->
+          </div>
+        </div>
+        <div class="setting-group">
+          <button id="reset-tips-btn" class="settings-button secondary" style="width: 100%;">Reset Seen Tips</button>
         </div>
       </div>
       <div class="settings-buttons">

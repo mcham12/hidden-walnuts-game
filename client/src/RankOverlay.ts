@@ -29,7 +29,7 @@ export class RankOverlay {
         left: 0;
         width: 100vw;
         height: 100vh;
-        background-color: rgba(20, 60, 30, 0.9); /* Semi-transparent dark forest green */
+        background-color: rgba(20, 60, 30, 0.6); /* MVP 14: More transparent for better game visibility */
         display: none;
         align-items: center;
         justify-content: center;
@@ -56,7 +56,10 @@ export class RankOverlay {
         color: #FFD700;
         text-align: center;
         margin: 0 0 16px 0;
-        text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.5);
+        text-shadow:
+          0 2px 4px rgba(0, 0, 0, 0.8),
+          0 0 20px rgba(255, 215, 0, 0.9),
+          0 0 40px rgba(255, 215, 0, 0.6); /* MVP 14: Enhanced contrast for lighter background */
         font-family: Arial, sans-serif;
         letter-spacing: 2px;
         line-height: 1.3;
@@ -67,7 +70,8 @@ export class RankOverlay {
         color: #FFFFFF;
         text-align: center;
         margin: 0;
-        opacity: 0.9;
+        opacity: 0.95;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8); /* MVP 14: Better readability on transparent background */
         font-family: Arial, sans-serif;
         line-height: 1.4;
       }

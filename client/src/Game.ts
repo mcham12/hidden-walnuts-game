@@ -15,6 +15,8 @@ import { RankOverlay } from './RankOverlay.js';
 import { SkyManager } from './SkyManager.js';
 import { TutorialOverlay } from './TutorialOverlay.js';
 import { getPlayerTitle } from '@shared/PlayerRanks';
+import { TipsManager } from './TipsManager.js'; // MVP 14: Contextual tips
+import { OverlayManager, OverlayPriority } from './OverlayManager.js'; // MVP 14: Overlay queue
 
 interface Character {
   id: string;
@@ -279,6 +281,12 @@ export class Game {
 
   // MVP 5: Toast notification system
   private toastManager: ToastManager = new ToastManager();
+
+  // MVP 14: Contextual tips system
+  private tipsManager: TipsManager = new TipsManager();
+
+  // MVP 14: Overlay queue manager (prevents conflicts)
+  private overlayManager: OverlayManager = new OverlayManager();
 
   // MVP 12: Rank overlay system (full-screen announcements)
   private rankOverlay: RankOverlay = new RankOverlay();
@@ -1832,8 +1840,13 @@ export class Game {
 
           // Show welcome overlay if this is first join
           if (data.isFirstJoin) {
-            console.log(`🎉 CLIENT: Showing welcome overlay for ${data.titleName}`);
-            this.rankOverlay.showWelcome(data.titleName);
+            console.log(`🎉 CLIENT: Queueing welcome overlay for ${data.titleName}`);
+            this.overlayManager.enqueue(
+              'welcome',
+              OverlayPriority.MEDIUM,
+              () => this.rankOverlay.showWelcome(data.titleName),
+              3000 // Duration from RankOverlay
+            );
           } else {
             console.log(`📝 CLIENT: Not first join, skipping welcome overlay`);
           }
@@ -2130,16 +2143,33 @@ export class Game {
         // MVP 12: Player ranked up!
         if (data.titleName && data.description) {
           this.playerTitleName = data.titleName;
-          this.rankOverlay.showRankUp(data.titleName, data.description);
           console.log(`🎉 Ranked up to ${data.titleName}!`);
+
+          // MVP 14: Queue rank up overlay (prevents conflicts with bonus overlay)
+          this.overlayManager.enqueue(
+            'rank_up',
+            OverlayPriority.MEDIUM,
+            () => this.rankOverlay.showRankUp(data.titleName, data.description),
+            3500 // Duration from RankOverlay
+          );
+
+          // MVP 14: Show contextual tip on first rank up
+          this.showContextualTip('first_rank_up', 'combat');
         }
         break;
 
       case 'tree_growing_bonus':
         // MVP 14: Player earned tree growing bonus!
         if (typeof data.points === 'number' && typeof data.count === 'number' && data.message) {
-          this.bonusOverlay.show(data.message, data.points, data.count);
           console.log(`🌳 Tree growing bonus! ${data.count} trees grown, +${data.points} points`);
+
+          // MVP 14: Queue bonus overlay (prevents conflicts with rank overlay)
+          this.overlayManager.enqueue(
+            'tree_bonus',
+            OverlayPriority.MEDIUM,
+            () => this.bonusOverlay.show(data.message, data.points, data.count),
+            4000 // Duration from BonusOverlay
+          );
         }
         break;
 
@@ -3437,6 +3467,9 @@ export class Game {
             // MMO-style threat warning (for players with sound off)
             const predatorName = data.type.charAt(0).toUpperCase() + data.type.slice(1);
             this.toastManager.warning(`⚠️ ${predatorName} nearby!`, 2000);
+
+            // MVP 14: Show contextual tip on first predator encounter
+            this.showContextualTip('first_predator', 'combat');
 
             cooldowns.nearby = now;
           }
@@ -6163,6 +6196,9 @@ export class Game {
       points: walnutGroup.userData.points,
       timestamp: Date.now()
     });
+
+    // MVP 14: Show contextual tip on first walnut hidden
+    this.showContextualTip('first_walnut_hidden', 'trees');
   }
 
   /**
@@ -7596,6 +7632,9 @@ export class Game {
         if (this.toastManager) {
           this.toastManager.success('🌳 YOUR TREE GREW! +10 points! 🌳', 4000);
         }
+
+        // MVP 14: Show contextual tip on first tree growth
+        this.showContextualTip('first_tree_grown', 'trees');
       } else {
         // Other players see subtle sparkles only
         if (this.vfxManager) {
@@ -7605,6 +7644,25 @@ export class Game {
 
     } catch (error) {
       console.error('Failed to load tree model for growth:', error);
+    }
+  }
+
+  /**
+   * MVP 14: Show contextual tip on first occurrence of an event
+   */
+  private showContextualTip(eventKey: string, category: 'combat' | 'trees' | 'strategy' | 'basics'): void {
+    const storageKey = `hiddenWalnuts_tip_${eventKey}`;
+    const hasSeenTip = localStorage.getItem(storageKey);
+
+    if (!hasSeenTip) {
+      const tip = this.tipsManager.getRandomTipByCategory(category);
+      if (tip) {
+        // Show as info toast (non-blocking, auto-dismiss after 8 seconds)
+        const emoji = tip.emoji ? `${tip.emoji} ` : '';
+        this.toastManager.info(`💡 TIP: ${emoji}${tip.text}`, 8000);
+        this.tipsManager.markTipAsSeen(tip.id);
+        localStorage.setItem(storageKey, 'true');
+      }
     }
   }
 

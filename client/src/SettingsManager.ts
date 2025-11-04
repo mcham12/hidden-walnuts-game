@@ -1,10 +1,12 @@
 import { AudioManager } from './AudioManager';
+import { TipsManager } from './TipsManager'; // MVP 14: Tips system
 
 /**
  * SettingsManager - Handles game settings and UI controls
  */
 export class SettingsManager {
   private audioManager: AudioManager;
+  private tipsManager: TipsManager = new TipsManager(); // MVP 14
   private isOpen: boolean = false;
 
   // Settings state
@@ -33,6 +35,10 @@ export class SettingsManager {
   // Other controls
   private sensitivitySlider: HTMLInputElement;
 
+  // MVP 14: Tips tab elements
+  private tipsContainer: HTMLElement | null = null;
+  private resetTipsButton: HTMLElement | null = null;
+
   constructor(audioManager: AudioManager) {
     this.audioManager = audioManager;
 
@@ -53,8 +59,13 @@ export class SettingsManager {
     // Other controls
     this.sensitivitySlider = document.getElementById('mouse-sensitivity') as HTMLInputElement;
 
+    // MVP 14: Tips tab elements
+    this.tipsContainer = document.getElementById('tips-container');
+    this.resetTipsButton = document.getElementById('reset-tips-btn');
+
     this.setupEventListeners();
     this.loadSettings();
+    this.populateTips(); // MVP 14: Populate tips on init
   }
 
   /**
@@ -114,6 +125,15 @@ export class SettingsManager {
       // Apply mute immediately for preview
       this.audioManager.setMute(this.muteCheckbox.checked);
     });
+
+    // MVP 14: Reset tips button
+    if (this.resetTipsButton) {
+      this.resetTipsButton.addEventListener('click', () => {
+        this.tipsManager.resetSeenTips();
+        this.populateTips(); // Refresh display
+        this.audioManager.playSound('ui', 'button_click');
+      });
+    }
   }
 
   /**
@@ -273,5 +293,79 @@ export class SettingsManager {
    */
   show(): void {
     this.toggleButton.classList.remove('hidden');
+  }
+
+  /**
+   * MVP 14: Populate tips in the Tips tab
+   */
+  private populateTips(): void {
+    if (!this.tipsContainer) return;
+
+    const container = this.tipsContainer; // Local variable for TypeScript narrowing
+
+    // Clear existing tips
+    container.innerHTML = '';
+
+    // Get all tips grouped by category
+    const categories = ['combat', 'trees', 'strategy', 'basics'] as const;
+    const categoryNames = {
+      combat: '⚔️ Combat & Survival',
+      trees: '🌳 Tree Growing',
+      strategy: '⭐ Strategy & Resources',
+      basics: '🎮 Basics'
+    };
+
+    categories.forEach(category => {
+      const tips = this.tipsManager.getTipsByCategory(category);
+      if (tips.length === 0) return;
+
+      // Create category header
+      const header = document.createElement('div');
+      header.style.fontWeight = 'bold';
+      header.style.fontSize = '14px';
+      header.style.color = '#FFD700';
+      header.style.marginBottom = '8px';
+      header.style.paddingBottom = '4px';
+      header.style.borderBottom = '1px solid rgba(255, 215, 0, 0.3)';
+      header.textContent = categoryNames[category];
+      container.appendChild(header);
+
+      // Create tips list for this category
+      tips.forEach(tip => {
+        const tipElement = document.createElement('div');
+        tipElement.style.padding = '8px';
+        tipElement.style.background = 'rgba(0, 0, 0, 0.2)';
+        tipElement.style.borderRadius = '4px';
+        tipElement.style.fontSize = '13px';
+        tipElement.style.lineHeight = '1.4';
+        tipElement.style.marginBottom = '6px';
+
+        // Check if tip has been seen
+        const hasSeen = this.tipsManager.hasSeen(tip.id);
+        if (hasSeen) {
+          tipElement.style.opacity = '0.6';
+        }
+
+        const emoji = tip.emoji ? `${tip.emoji} ` : '';
+        tipElement.textContent = `${emoji}${tip.text}`;
+
+        container.appendChild(tipElement);
+      });
+    });
+
+    // Show unseen count
+    const unseenCount = this.tipsManager.getUnseenCount();
+    if (unseenCount > 0) {
+      const unseenInfo = document.createElement('div');
+      unseenInfo.style.marginTop = '12px';
+      unseenInfo.style.padding = '8px';
+      unseenInfo.style.background = 'rgba(255, 215, 0, 0.2)';
+      unseenInfo.style.borderRadius = '4px';
+      unseenInfo.style.fontSize = '12px';
+      unseenInfo.style.textAlign = 'center';
+      unseenInfo.style.color = '#FFE4B5';
+      unseenInfo.textContent = `💡 ${unseenCount} new tip${unseenCount > 1 ? 's' : ''} to discover!`;
+      container.appendChild(unseenInfo);
+    }
   }
 }
