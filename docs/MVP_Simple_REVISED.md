@@ -410,23 +410,23 @@ DEFERRED **1. Voiceover Work** (1-2 hours)
 - every day, reset mapstate, forest, positions via existing API functionality (as approrpriate)
 - every week, automate resetting the weekly leaderboard
 - remove any debug logging, both client and server
-- research best practices for monetizing the game once authenticated players are implmented.  Recommend best monetization features for a game like this one, and keep those monetization features in mind when building the authenticated player functionality, and specifically build hooks or stubs for future integration with those monetization features where appropriate. Document this in a Monetization design doc (md) in the docs/ folder.
+- research best practices for monetizing the game once authenticated players are implmented.  Recommend best monetization features for a game like this one Document this in a Monetization design doc (md) in the docs/ folder.  Examples: pay for access to certain characters, pay to have a limited flyaround feature, where the character gets a flying capability, but limited duration, and maybe some understandable cooldown limitation (cant be constantly flying).  Include "enticement" aspects as well: features or lack of features that would push someone into becoming an authenticated user to improve chances that they will then take the next step to buying a feature later.  I don't want monetization features that provide too much of an advantage, so players can still feel they can compete without buying anything.
 
-## 🔐 MVP 16: Full Authentication (8-12 hours)
+## 🔐 MVP 16: Full Authentication and corresponding UX changes.
 
-**Goal**: Continue to provide quick, no authentication option for low friction play, but also offer authenticated player accounts with passwords, email, cross-device sync. Authenticated player accounts get access to full player list of characters, and the ability to appear on specific leaderboards.  "No authentication" players should now be limited to just the Squirrel character.  Build hooks into a future feature in which Secure players can optionally pay for access to additional characters, and have more capabilities (See monetization md doc)
+**Goal**: Continue to provide the existing quick, no-authentication option for low friction play, but also offer a new authenticated player accounts with passwords, email, cross-device sync. Authenticated player accounts get access to full player list of characters, and the ability to appear on specific leaderboards (TBD).  "No authentication" players should now be limited to just the Squirrel character.  The new authenticated player functionality should be built with montetization features in mind (per the Monetization design md doc). Immediate benefit to authentication users is a selection of several characters (but not the full list, some existing characters will now be moved to pay-for only status). Where appropriate and practical, build hooks or comments indicating placeholders where the new authenticated user functionality will likely integrate with monetization features which will come later.  Examples: authenticated players can optionally pay for access to additional characters, and have more capabilities (See monetization md doc)
 
 ### Features
 
 **0. Architecture**
 - identify technical options for full authentication (technical, platforms, etc including email)
-- recommend technical options based on my use of cloudflare, and subscribing to a custom domain (hiddenwalnuts.com) and NameCheap Private Email, and the ability to create new email account from that domain if needed.  not sure if can be used for sending emails for full authentication thought
+- recommend technical approach, based on my use of cloudflare, and subscribing to a custom domain (hiddenwalnuts.com) and NameCheap Private Email, and the ability to create new email account from that domain if needed.  not sure if can be used for sending emails for full authentication though.  Document this tech approach in a new doc called something like Authentication_Tech_approach.md.
 - Research and recommend if no-authentication players can be on leaderboards, and if so, which
 - Research and recommend any differentiation on player names on leaderboards (if both player types are allowed to be on the same leaderboard)
-- Design UX experience for accomodating no authentication vs authenticated.  for example, no-authentication users don't need a character selection screen, because they are just squirrels.  but we want to tempt them to become authenticated users by teasing benefits like additional characters...this is just one consideration...
+- Design UX experience for accomodating no authentication vs authenticated.  for example, no-authentication users don't necessarily need a character selection screen, because they are just able to play as a squirrel character.  but we want to tempt them to become authenticated users by teasing benefits like additional characters...this is just one example UX / monetization consideration...Remember we have desktop browser, ipad browser (portrait and landscape), and iphone browser (portrait and landscape) to consider.  Create a standalone design for this called something like Authentication_UX_design.md.
 - Develop a plan to refactor and implement new "no authentication or full authentication" experience
-- Create a design + implementation plan for the above in the docs/folder
-- Implement plan from above, keeping the design+implementation document up to date as work is completed.
+- Create an implementation plan for the above in the docs/folder, called something like MVP_15_Progress.md.  Be sure to reference the Authentication_Tech_approach.md doc and  and the Authentication_UX_Design.md docs when developing the impementation plan.
+- Implement plan from above, keeping MVP_15_Progress.md document up to date as work is completed.
 
 **1. Password System** (3-4 hours)
 - Secure password hashing (bcrypt)

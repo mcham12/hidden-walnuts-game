@@ -1141,6 +1141,12 @@
         gap: 10px;
         pointer-events: none;
       }
+      /* MVP 14 Phase 9: Desktop - move toasts below minimap to avoid overlap */
+      @media (min-width: 1025px) {
+        #toast-container {
+          top: 220px; /* Below 200px minimap + 20px gap */
+        }
+      }
       .toast {
         background: rgba(44, 95, 45, 0.95);
         color: white;
@@ -1203,6 +1209,99 @@
           opacity: 0;
         }
       }
+
+      /* MVP 14 Phase 9: Dismissible Tip Card System */
+      #tip-card-container {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9500; /* Below overlays (10000) but above game UI (1001) */
+        pointer-events: none;
+        width: 90%;
+        max-width: 600px;
+      }
+      .tip-card {
+        background: linear-gradient(135deg, rgba(33, 150, 243, 0.95), rgba(21, 101, 192, 0.95));
+        color: white;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 2px rgba(33, 150, 243, 0.3);
+        pointer-events: auto;
+        transform: translateY(150%);
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        overflow: hidden;
+      }
+      .tip-card-visible {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      .tip-card-exit {
+        transform: translateY(150%);
+        opacity: 0;
+      }
+      .tip-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: rgba(0, 0, 0, 0.2);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      .tip-card-title {
+        font-weight: bold;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .tip-card-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+      }
+      .tip-card-close:hover {
+        opacity: 1;
+      }
+      .tip-card-content {
+        padding: 16px;
+        font-size: 15px;
+        line-height: 1.5;
+      }
+      .tip-card-footer {
+        padding: 12px 16px;
+        display: flex;
+        justify-content: flex-end;
+        background: rgba(0, 0, 0, 0.1);
+      }
+      .tip-card-button {
+        background: rgba(255, 255, 255, 0.9);
+        color: #1976D2;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 20px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .tip-card-button:hover {
+        background: white;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      }
+
       /* MVP 5.7: Mobile/Touch-Friendly Styles */
       @media (max-width: 768px), (hover: none) and (pointer: coarse) {
         /* Make character select mobile-friendly - Forest Theme */
@@ -1360,14 +1459,14 @@
           right: 10px;
         }
 
-        /* Make toast notifications stack at top-center on mobile */
+        /* MVP 14 Phase 9: Toast notifications left-aligned, leave minimap clear */
         #toast-container {
           top: 10px;
+          left: 10px;
           right: auto;
-          left: 50%;
-          transform: translateX(-50%);
-          width: calc(100% - 20px);
-          max-width: 400px;
+          transform: none;
+          width: calc(100% - 140px); /* Leave 130px for minimap (120px + 10px gaps) */
+          max-width: 300px;
         }
         .toast {
           min-width: auto;
@@ -1884,6 +1983,8 @@
     </div>
     <!-- MVP 5: Toast Notification Container -->
     <div id="toast-container"></div>
+    <!-- MVP 14 Phase 9: Dismissible Tip Card Container -->
+    <div id="tip-card-container"></div>
     <!-- MVP 5: Score Popup Container -->
     <div id="score-popups"></div>
     <div id="character-select" class="hidden">

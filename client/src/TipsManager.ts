@@ -157,7 +157,7 @@ export class TipsManager {
       {
         id: 'basics_chat',
         category: 'basics',
-        text: 'Use quick chat to communicate with other players - press number keys 1-5',
+        text: 'Use quick chat to communicate with other players - tap the chat bubble icon',
         emoji: '💬'
       }
     ];

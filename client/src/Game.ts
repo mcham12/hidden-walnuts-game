@@ -17,6 +17,7 @@ import { TutorialOverlay } from './TutorialOverlay.js';
 import { getPlayerTitle } from '@shared/PlayerRanks';
 import { TipsManager } from './TipsManager.js'; // MVP 14: Contextual tips
 import { OverlayManager, OverlayPriority } from './OverlayManager.js'; // MVP 14: Overlay queue
+import { TipCard } from './TipCard.js'; // MVP 14 Phase 9: Dismissible tips
 
 interface Character {
   id: string;
@@ -284,6 +285,9 @@ export class Game {
 
   // MVP 14: Contextual tips system
   private tipsManager: TipsManager = new TipsManager();
+
+  // MVP 14 Phase 9: Dismissible tip cards (separate from toasts)
+  private tipCard: TipCard = new TipCard();
 
   // MVP 14: Overlay queue manager (prevents conflicts)
   private overlayManager: OverlayManager = new OverlayManager();
@@ -7648,7 +7652,8 @@ export class Game {
   }
 
   /**
-   * MVP 14: Show contextual tip on first occurrence of an event
+   * MVP 14 Phase 9: Show contextual tip on first occurrence of an event
+   * Uses dismissible TipCard (not toast) for better UX
    */
   private showContextualTip(eventKey: string, category: 'combat' | 'trees' | 'strategy' | 'basics'): void {
     const storageKey = `hiddenWalnuts_tip_${eventKey}`;
@@ -7657,9 +7662,8 @@ export class Game {
     if (!hasSeenTip) {
       const tip = this.tipsManager.getRandomTipByCategory(category);
       if (tip) {
-        // Show as info toast (non-blocking, auto-dismiss after 8 seconds)
-        const emoji = tip.emoji ? `${tip.emoji} ` : '';
-        this.toastManager.info(`💡 TIP: ${emoji}${tip.text}`, 8000);
+        // MVP 14 Phase 9: Use dismissible tip card (not toast)
+        this.tipCard.show(tip.text, tip.emoji);
         this.tipsManager.markTipAsSeen(tip.id);
         localStorage.setItem(storageKey, 'true');
       }

@@ -203,7 +203,7 @@ export class TutorialOverlay {
         position: fixed;
         top: 10px;
         right: 220px; /* Left of minimap (minimap at right: 10px, width: 200px) */
-        z-index: 10000;
+        z-index: 1001; /* MVP 14 Phase 9: Below toasts (10000) and tips */
         background: rgba(255, 215, 0, 0.9);
         border: 2px solid #FFD700;
         border-radius: 50%;
