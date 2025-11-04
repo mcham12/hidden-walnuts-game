@@ -185,21 +185,62 @@ export default {
     }
   },
 
-  // MVP 9: Cron handler for scheduled leaderboard resets
-  // Runs every Monday at 00:00 UTC (configured in wrangler.toml)
+  // MVP 15: Cron handler for daily game resets and weekly leaderboard resets
+  // Daily: 8am UTC (2am CST) - reset mapstate, forest, positions
+  // Weekly: Sunday 8:05am UTC (2:05am CST) - reset leaderboard
   async scheduled(event: ScheduledEvent, env: EnvWithBindings, ctx: ExecutionContext): Promise<void> {
-    console.log(`⏰ Cron triggered: ${new Date(event.scheduledTime).toISOString()}`);
+    const triggerTime = new Date(event.scheduledTime);
+    console.log(`⏰ Cron triggered: ${triggerTime.toISOString()}`);
 
     try {
-      // Get the leaderboard Durable Object instance
-      const leaderboard = getObjectInstance(env, "leaderboard", "global-leaderboard") as unknown as Leaderboard;
+      const dayOfWeek = triggerTime.getUTCDay(); // 0 = Sunday
+      const hour = triggerTime.getUTCHours();
+      const minute = triggerTime.getUTCMinutes();
 
-      // Call the scheduledReset method
-      await leaderboard.scheduledReset();
+      // Weekly leaderboard reset: Sunday at 8:05am UTC
+      if (dayOfWeek === 0 && hour === 8 && minute === 5) {
+        console.log(`📊 Running weekly leaderboard reset...`);
+        const leaderboard = getObjectInstance(env, "leaderboard", "global-leaderboard") as unknown as Leaderboard;
+        await leaderboard.scheduledReset();
+        console.log(`✅ Weekly leaderboard reset completed`);
+      }
+      // Daily game reset: Every day at 8am UTC
+      else if (hour === 8 && minute === 0) {
+        console.log(`🌲 Running daily game reset...`);
+        const forest = getObjectInstance(env, "forest", "daily-forest") as unknown as ForestManager;
 
-      console.log(`✅ Scheduled leaderboard reset completed`);
+        // Create admin requests for each reset operation
+        const resetMapStateReq = new Request("https://internal/admin/reset-mapstate", {
+          method: "POST",
+          headers: { "X-Admin-Secret": env.ADMIN_SECRET }
+        });
+
+        const resetForestReq = new Request("https://internal/admin/reset-forest", {
+          method: "POST",
+          headers: { "X-Admin-Secret": env.ADMIN_SECRET }
+        });
+
+        const resetPositionsReq = new Request("https://internal/admin/reset-positions", {
+          method: "POST",
+          headers: { "X-Admin-Secret": env.ADMIN_SECRET }
+        });
+
+        // Execute resets sequentially
+        await forest.fetch(resetMapStateReq);
+        console.log(`  ✓ Map state reset (golden walnuts)`);
+
+        await forest.fetch(resetForestReq);
+        console.log(`  ✓ Forest objects reset`);
+
+        await forest.fetch(resetPositionsReq);
+        console.log(`  ✓ Player positions reset`);
+
+        console.log(`✅ Daily game reset completed`);
+      } else {
+        console.log(`⚠️ Cron triggered at unexpected time: ${triggerTime.toISOString()}`);
+      }
     } catch (error) {
-      console.error(`❌ Scheduled reset failed:`, error);
+      console.error(`❌ Scheduled task failed:`, error);
     }
   }
 };

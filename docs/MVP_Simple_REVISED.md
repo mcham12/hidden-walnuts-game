@@ -1,6 +1,6 @@
 # 🎮 Hidden Walnuts - MVP Development Plan
 
-**Current Status**: MVP 14 (Tree Growing Bonuses & Polish) - 🎯 **IN PROGRESS**
+**Current Status**: MVP 15 (Forest Cycle Automation & Monetization Research) - 🎯 **IN PROGRESS**
 
 ---
 
@@ -25,6 +25,7 @@
 - **MVP 11**: Sound Effects & Audio Enhancement - Comprehensive sound system with combat, player, and ambient sounds; iOS Safari audio support
 - **MVP 12**: World Polish, Predators & Defense - AI predators (cardinal, toucan, wildebeest), rank-based targeting system, defense mechanics, sky elements, tutorial redesign, UX polish
 - **MVP 13**: Game Admin APIs - Secure admin endpoints, player management APIs, game metrics tracking, tree growth configuration, NPC/predator control
+- **MVP 14**: Tree Growing Bonuses & Polish - Tree growing bonus system, overlay queue management, 21-tip gameplay education system, platform-specific notification positioning
 
 ---
 
@@ -410,7 +411,7 @@ DEFERRED **1. Voiceover Work** (1-2 hours)
 - every day, maybe at 2am usa central standard time, reset mapstate, forest, positions via existing API functionality (as approrpriate)
 - every week, automate resetting the weekly leaderboard, maybe Sunday at 2:05pm usa central standard time
 - remove any debug logging, both client and server
-- research best practices for monetizing the game once authenticated players are implmented.  Recommend best monetization features for a game like this one Document this in a Monetization design doc (md) in the docs/ folder.  Examples: pay for access to certain characters, pay to have a limited flyaround feature, where the character gets a flying capability, but limited duration, and maybe some understandable cooldown limitation (cant be constantly flying).  Include "enticement" aspects as well: features or lack of features that would push someone into becoming an authenticated user to improve chances that they will then take the next step to buying a feature later.  I don't want monetization features that provide too much of an advantage, so players can still feel they can compete without buying anything.
+- Use Plan, Research, and/or Ultrathink as appropriate for this: research best practices for monetizing the game once authenticated players are implmented.  Recommend best monetization features for a game like this one Document this in a Monetization design doc (md) in the docs/ folder.  Examples: pay for access to certain characters, pay to have a limited flyaround feature, where the character gets a flying capability, but limited duration, and maybe some understandable cooldown limitation (cant be constantly flying).  Include "enticement" aspects as well: features or lack of features that would push someone into becoming an authenticated user to improve chances that they will then take the next step to buying a feature later.  I don't want monetization features that provide too much of an advantage, so players can still feel they can compete without buying anything.
 
 ## 🔐 MVP 16: Full Authentication and corresponding UX changes.
 
@@ -418,7 +419,7 @@ DEFERRED **1. Voiceover Work** (1-2 hours)
 
 ### Features
 
-**0. Architecture, Design, and Planning
+**0. Architecture, Design, and Planning**
 - identify technical options for full authentication (technical, platforms, etc including email sending, password system, email verification, account recovery, cross-device sync, etc).
 - recommend technical approach, based on my use of cloudflare, and subscribing to a custom domain (hiddenwalnuts.com) and NameCheap Private Email, and the ability to create new email account from that domain if needed.  not sure if can be used for sending emails for full authentication though.  Document this tech approach in a new doc called something like Authentication_Tech_approach.md.  Note i prefer industry-standard solutions, and reusing existing building blocks if available, vs custom design and custom build.
 - Research and recommend if no-authentication players can be on leaderboards, and if so, which
@@ -428,45 +429,44 @@ DEFERRED **1. Voiceover Work** (1-2 hours)
 - Create an implementation plan for the above in the docs/folder, called something like MVP_15_Progress.md.  Be sure to reference the Authentication_Tech_approach.md doc and  and the Authentication_UX_Design.md docs when developing the impementation plan.
 - Implement plan from above, keeping MVP_15_Progress.md document up to date as work is completed.
 
-**1. Password System** (3-4 hours)
+**1. Implement authentication system**
+
+**2 Implement UX changes**
+
+Items to consider re: technical authentication
 - Secure password hashing (bcrypt)
 - Password requirements (8+ chars, no common passwords)
 - Password change functionality
 - Builds on existing username system (MVP 6)
 
-**2. Email Verification** (2-3 hours)
+Email Verification** (2-3 hours)
 - Email required for account creation
 - Verification email with token
 - Resend verification link
 - Prevents duplicate emails
 
-**3. Account Recovery** (2-3 hours)
+Account Recovery** (2-3 hours)
 - "Forgot Password" flow
 - Email reset link with expiring token
 - Secure password reset process
 - Account lockout after failed attempts
 
-**4. Cross-Device Sync** (2-3 hours)
+Cross-Device Sync** (2-3 hours)
 - Session tokens work across devices
 - Position/score/inventory persists
 - Multiple concurrent sessions handled gracefully
 - Auto-logout old sessions (optional)
 
-**5. Security Hardening**
+Security Hardening**
 - Rate limiting on auth endpoints
 - Session expiration/refresh
 - HTTPS enforcement
 - Input sanitization
 
-**6. remove any debug logging added for this MVP, both client and worker
+**3. remove any debug logging added for this MVP, both client and worker**
 
 ### Success Criteria
-- ✅ Players can create secure accounts or use no-authentication accounts
-- smooth and intuitive user experience
-- Different gameplay and leaderboard experience by account type
-- ✅ Password recovery works reliably
-- ✅ Can play on multiple devices
-- ✅ No major security vulnerabilities
+TBD
 
 ---
 

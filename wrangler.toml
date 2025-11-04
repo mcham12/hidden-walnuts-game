@@ -78,10 +78,13 @@ tag = "v3"
 # MVP 6: Player Identity - Session token → username mapping
 new_sqlite_classes = ["PlayerIdentity"]
 
-# MVP 9: Cron trigger for weekly leaderboard reset
-# Runs every Monday at 00:00 UTC (industry standard)
+# MVP 15: Cron triggers for daily reset and weekly leaderboard reset
+# CST is UTC-6, so 2am CST = 8am UTC
 [triggers]
-crons = ["0 0 * * 1"]  # Monday at midnight UTC
+crons = [
+  "0 8 * * *",    # Daily reset at 8am UTC (2am CST)
+  "5 8 * * 0"     # Weekly leaderboard reset at 8:05am UTC on Sunday (2:05am CST)
+]
 
 # Note: No environment-specific config needed
 # Separate workers (hidden-walnuts-api and hidden-walnuts-api-preview)

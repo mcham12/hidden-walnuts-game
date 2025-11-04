@@ -13,6 +13,9 @@ export interface EnvWithBindings {
   // Environment variables from wrangler.toml
   ENVIRONMENT: string;
   CYCLE_DURATION_SECONDS: string;
+
+  // MVP 13: Admin secret for secure endpoints
+  ADMIN_SECRET: string;
 }
 
 // Get the Durable Object ID by name and key
