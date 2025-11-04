@@ -83,7 +83,7 @@ new_sqlite_classes = ["PlayerIdentity"]
 [triggers]
 crons = [
   "0 8 * * *",    # Daily reset at 8am UTC (2am CST)
-  "5 8 * * 0"     # Weekly leaderboard reset at 8:05am UTC on Sunday (2:05am CST)
+  "5 8 * * 1"     # Weekly leaderboard reset at 8:05am UTC on Sunday (2:05am CST) - Note: 1=Sunday in Cloudflare
 ]
 
 # Note: No environment-specific config needed
