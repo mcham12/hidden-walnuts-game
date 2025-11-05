@@ -8,12 +8,13 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 **Priority**: CRITICAL PATH - Required for MVP 16 launch
 **Dependencies**: Phase 1 (Backend) ✅ COMPLETE
 
-**Platform Support**:
+**Required Responsive Breakpoints**:
 - Desktop (1025px+)
-- iPad Portrait (768-1024px, portrait orientation)
-- iPad Landscape (768-1024px, landscape orientation)
+- iPad Portrait (768-1024px portrait)
+- iPad Landscape (768-1024px landscape)
 - iPhone Portrait (≤430px)
 - iPhone Landscape (≤932px width, ≤500px height)
+- Tablets (431-767px)
 
 ---
 
@@ -23,23 +24,24 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 **Priority**: 🔴 CRITICAL PATH
 **Description**: Build the core authentication modal system with signup, login, and password reset forms. Includes responsive design, validation, and API integration.
 
-### Platform Considerations
-- **Desktop**: 600px centered modal with hover states
-- **iPad**: 700px modal (portrait), 800px (landscape), larger touch targets
-- **iPhone Portrait**: Full-screen forms with bottom-aligned buttons
-- **iPhone Landscape**: Compact 400px modal, scrollable
-
 ### Tasks
 
 **Task 2A.1: Create Base AuthModal Component** (6 hours)
 - File: `/client/src/components/AuthModal.tsx`
 - Modal overlay with semi-transparent backdrop
-- Responsive sizing: Desktop (600px), iPad (700-800px), iPhone (full-screen/400px)
 - Screen routing: 'signup' | 'login' | 'forgot-password' | 'reset-password' | 'verify-email'
 - Close handlers: ESC key, backdrop click, [X] button
 - Fade animations (0.3s)
 - Z-index 10000, prevent body scroll
 - Keyboard navigation (Tab, Shift+Tab, Enter)
+
+**Responsive Breakpoints**:
+- **Desktop (1025px+)**: 600px width modal, centered, hover states on buttons
+- **iPad Portrait (768-1024px portrait)**: 700px width modal, centered, larger touch targets (50px min)
+- **iPad Landscape (768-1024px landscape)**: 800px width modal, centered, maintain touch targets
+- **iPhone Portrait (≤430px)**: Full-screen modal (95vw width), bottom-aligned buttons (60px height)
+- **iPhone Landscape (≤932px width, ≤500px height)**: 400px compact modal, scrollable content, fixed header
+- **Tablets (431-767px)**: 650px width modal, centered, 48px touch targets
 
 **Task 2A.2: Create SignupForm Component** (8 hours)
 - File: `/client/src/components/SignupForm.tsx`
@@ -52,6 +54,14 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 - Error handling: email exists, username taken, weak password
 - Button states: disabled/enabled/loading
 
+**Responsive Breakpoints**:
+- **Desktop (1025px+)**: Single column form, 50px field height, 16px font, benefits in 3-column grid
+- **iPad Portrait (768-1024px portrait)**: Single column, 55px field height, 18px font, benefits in 2-column grid
+- **iPad Landscape (768-1024px landscape)**: Single column, 50px field height, 16px font, benefits in 3-column grid
+- **iPhone Portrait (≤430px)**: Single column, 60px field height, 18px font, benefits stacked vertically
+- **iPhone Landscape (≤932px width, ≤500px height)**: Scrollable, 50px field height, 14px font, benefits collapsed/hidden
+- **Tablets (431-767px)**: Single column, 55px field height, 16px font, benefits in 2-column grid
+
 **Task 2A.3: Create LoginForm Component** (6 hours)
 - File: `/client/src/components/LoginForm.tsx`
 - Fields: email, password (with show/hide toggle)
@@ -62,6 +72,14 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 - Success: Redirect to character selection + welcome toast
 - Error handling: invalid credentials, rate limiting (3/5 attempts), network errors
 
+**Responsive Breakpoints**:
+- **Desktop (1025px+)**: Single column, 50px field height, 16px font, links inline
+- **iPad Portrait (768-1024px portrait)**: Single column, 55px field height, 18px font, links inline
+- **iPad Landscape (768-1024px landscape)**: Single column, 50px field height, 16px font, links inline
+- **iPhone Portrait (≤430px)**: Single column, 60px field height, 18px font, links stacked
+- **iPhone Landscape (≤932px width, ≤500px height)**: Scrollable, 50px field height, 14px font, links inline
+- **Tablets (431-767px)**: Single column, 55px field height, 16px font, links inline
+
 **Task 2A.4: Create ForgotPasswordForm Component** (4 hours)
 - File: `/client/src/components/ForgotPasswordForm.tsx`
 - Field: email
@@ -69,6 +87,14 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 - Success: "Check Your Email!" overlay
 - Rate limiting: 3 requests per hour per email
 - Security: Don't reveal if email exists
+
+**Responsive Breakpoints**:
+- **Desktop (1025px+)**: 500px width, single field, 50px height
+- **iPad Portrait (768-1024px portrait)**: 600px width, 55px field height
+- **iPad Landscape (768-1024px landscape)**: 700px width, 50px field height
+- **iPhone Portrait (≤430px)**: Full width (90vw), 60px field height
+- **iPhone Landscape (≤932px width, ≤500px height)**: 400px width, scrollable, 50px field height
+- **Tablets (431-767px)**: 550px width, 55px field height
 
 **Task 2A.5: Create ResetPasswordForm Component** (4 hours)
 - File: `/client/src/components/ResetPasswordForm.tsx`
@@ -79,6 +105,14 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 - Success: "Password Updated!" → Redirect to login after 2 seconds
 - Error: "Reset link expired or invalid. [Request New Link]"
 
+**Responsive Breakpoints**:
+- **Desktop (1025px+)**: 550px width, 50px field height, password requirements in 2 columns
+- **iPad Portrait (768-1024px portrait)**: 650px width, 55px field height, password requirements in 2 columns
+- **iPad Landscape (768-1024px landscape)**: 750px width, 50px field height, password requirements in 2 columns
+- **iPhone Portrait (≤430px)**: Full width (90vw), 60px field height, password requirements stacked
+- **iPhone Landscape (≤932px width, ≤500px height)**: 400px width, scrollable, 50px field height, requirements collapsed
+- **Tablets (431-767px)**: 600px width, 55px field height, password requirements in 2 columns
+
 **Task 2A.6: Client-Side Validation Utilities** (3 hours)
 - File: `/client/src/utils/validation.ts`
 - `validateEmail()` - RFC 5322 regex
@@ -86,6 +120,7 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 - `validateUsername()` - 3-20 chars, alphanumeric + underscore
 - `passwordsMatch()` - Confirm field validation
 - Password requirements: 8+ chars, 1 uppercase, 1 lowercase, 1 number
+- No responsive considerations (pure logic)
 
 **Task 2A.7: Add Modal Styles** (4 hours)
 - File: `/client/src/components/AuthModal.css`
@@ -94,13 +129,21 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 - Form fields: 50px height, 16px font, clear focus states
 - Buttons: 60px height, hover/active states
 - Validation indicators: Green ✅, Red ❌, Yellow ⚠️
-- Responsive breakpoints for all platforms
+
+**Responsive Breakpoints**:
+- **Desktop (1025px+)**: 16px border radius, 24px padding, 2px focus outline
+- **iPad Portrait (768-1024px portrait)**: 16px border radius, 28px padding, 3px focus outline
+- **iPad Landscape (768-1024px landscape)**: 16px border radius, 24px padding, 3px focus outline
+- **iPhone Portrait (≤430px)**: 12px border radius, 20px padding, 4px focus outline, safe area insets
+- **iPhone Landscape (≤932px width, ≤500px height)**: 12px border radius, 16px padding, 3px focus outline, compact spacing
+- **Tablets (431-767px)**: 14px border radius, 24px padding, 3px focus outline
 
 **Task 2A.8: API Service Layer** (4 hours)
 - File: `/client/src/services/AuthService.ts`
 - Methods: `signup()`, `login()`, `forgotPassword()`, `resetPassword()`, `verifyEmail()`, `resendVerification()`, `refreshToken()`, `logout()`, `getCurrentUser()`, `isAuthenticated()`, `clearAuth()`
 - Error handling: try-catch, parse backend errors, user-friendly messages
 - Token management utilities
+- No responsive considerations (pure logic)
 
 ### Dependencies
 - None (can start immediately after Phase 1)
@@ -111,10 +154,11 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 - [ ] LoginForm authenticates and stores tokens
 - [ ] ForgotPasswordForm sends reset email
 - [ ] ResetPasswordForm updates password
-- [ ] All forms responsive on desktop, iPad, iPhone (portrait & landscape)
+- [ ] All forms responsive on Desktop, iPad Portrait, iPad Landscape, iPhone Portrait, iPhone Landscape, and Tablets
 - [ ] Keyboard navigation works (Tab, Enter, ESC)
 - [ ] Error messages display correctly
 - [ ] Loading states show during API calls
+- [ ] Touch targets meet minimum size (44px iOS, 48px Android)
 
 ### Files to Create
 - `/client/src/components/AuthModal.tsx`
@@ -138,10 +182,6 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 **Priority**: 🟡 HIGH
 **Description**: Build overlays for email verification pending, email verified welcome, and resend email functionality.
 
-### Platform Considerations
-- All platforms: Centered overlay, responsive text sizing
-- iPhone: Larger fonts, more padding
-
 ### Tasks
 
 **Task 2B.1: Create EmailVerificationOverlay Component** (4 hours)
@@ -152,6 +192,14 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 - [Play as Guest] button to continue without verification
 - API: POST `/auth/resend-verification`
 
+**Responsive Breakpoints**:
+- **Desktop (1025px+)**: 600px centered overlay, 24px heading, 16px body text
+- **iPad Portrait (768-1024px portrait)**: 700px centered, 28px heading, 18px body text
+- **iPad Landscape (768-1024px landscape)**: 800px centered, 24px heading, 16px body text
+- **iPhone Portrait (≤430px)**: Full-screen (95vw), 32px heading, 18px body text, bottom-aligned buttons
+- **iPhone Landscape (≤932px width, ≤500px height)**: 450px compact, 20px heading, 14px body text, scrollable
+- **Tablets (431-767px)**: 650px centered, 26px heading, 17px body text
+
 **Task 2B.2: Create WelcomeOverlay Component** (4 hours)
 - File: `/client/src/components/WelcomeOverlay.tsx`
 - Trigger: After email verification success
@@ -160,6 +208,14 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 - [Start Playing →] button → character selection
 - One-time display: Store `welcome_shown` in localStorage
 
+**Responsive Breakpoints**:
+- **Desktop (1025px+)**: 700px centered overlay, benefits in 2x2 grid, 28px heading
+- **iPad Portrait (768-1024px portrait)**: 750px centered, benefits in 2x2 grid, 32px heading
+- **iPad Landscape (768-1024px landscape)**: 850px centered, benefits in 4-column row, 28px heading
+- **iPhone Portrait (≤430px)**: Full-screen (95vw), benefits stacked vertically, 36px heading
+- **iPhone Landscape (≤932px width, ≤500px height)**: 500px compact, benefits in 2-column, 24px heading, scrollable
+- **Tablets (431-767px)**: 700px centered, benefits in 2x2 grid, 30px heading
+
 **Task 2B.3: Email Verification Page Route** (3 hours)
 - File: `/client/src/pages/VerifyEmail.tsx`
 - Route: `/verify-email?token=abc123`
@@ -167,11 +223,27 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 - Success: Show WelcomeOverlay, redirect after 5 seconds
 - Error: "Verification link expired" + [Request New Link] button
 
+**Responsive Breakpoints**:
+- **Desktop (1025px+)**: 600px centered card, spinner 64px
+- **iPad Portrait (768-1024px portrait)**: 700px centered, spinner 72px
+- **iPad Landscape (768-1024px landscape)**: 800px centered, spinner 64px
+- **iPhone Portrait (≤430px)**: Full-screen card (95vw), spinner 80px
+- **iPhone Landscape (≤932px width, ≤500px height)**: 450px compact card, spinner 56px
+- **Tablets (431-767px)**: 650px centered, spinner 68px
+
 **Task 2B.4: Unverified Email Reminder System** (3 hours)
 - Trigger: Every 3rd login if email not verified
 - Toast: "Verify your email to secure your account" + [Resend Email] link
 - Duration: 8 seconds
 - Track `login_count_since_reminder` in localStorage
+
+**Responsive Breakpoints**:
+- **Desktop (1025px+)**: Top-right toast, 400px width, below minimap
+- **iPad Portrait (768-1024px portrait)**: Top-center toast, 500px width
+- **iPad Landscape (768-1024px landscape)**: Top-right toast, 450px width
+- **iPhone Portrait (≤430px)**: Bottom toast (90vw width), above safe area (env(safe-area-inset-bottom))
+- **iPhone Landscape (≤932px width, ≤500px height)**: Top-right compact toast, 350px width
+- **Tablets (431-767px)**: Top-center toast, 450px width
 
 **Task 2B.5: Resend Verification Email Handler** (2 hours)
 - API: POST `/auth/resend-verification`
@@ -179,17 +251,20 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 - Countdown timer: Disable button for 60 seconds
 - Success toast: "Email sent!"
 - Error toast: "Too many requests. Try again later."
+- No additional responsive considerations (uses toast system from 2B.4)
 
 ### Dependencies
 - **Part 2A**: AuthModal and SignupForm must be complete
 
 ### Success Criteria
-- [ ] EmailVerificationOverlay shows after signup
+- [ ] EmailVerificationOverlay shows after signup on all platforms
 - [ ] Resend email button works with rate limiting
-- [ ] WelcomeOverlay shows after email verification
-- [ ] Email verification page route works
+- [ ] WelcomeOverlay shows after email verification on all platforms
+- [ ] Email verification page route works on all platforms
 - [ ] Unverified email reminder shows every 3rd login
 - [ ] One-time welcome flag prevents duplicate displays
+- [ ] Responsive on Desktop, iPad Portrait/Landscape, iPhone Portrait/Landscape, Tablets
+- [ ] Safe area insets respected on iPhone
 
 ### Files to Create
 - `/client/src/components/EmailVerificationOverlay.tsx`
@@ -207,13 +282,6 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 **Priority**: 🔴 CRITICAL PATH
 **Description**: Redesign character selection screen to show locked/unlocked characters, tier badges, and authentication CTAs.
 
-### Platform Considerations
-- **Desktop**: 4x3 grid (11 characters + 1 empty)
-- **iPad Portrait**: 3x4 grid
-- **iPad Landscape**: 4x3 grid
-- **iPhone Portrait**: 2x6 grid, vertical scroll
-- **iPhone Landscape**: Horizontal scroll, 2x6 grid
-
 ### Tasks
 
 **Task 2C.1: Update Character Selection UI** (6 hours)
@@ -223,18 +291,34 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
   - **Available**: Full color, ✅ checkmark, clickable, hover scale 1.05
   - **Locked Free**: 80% opacity, 🔒 icon, tooltip "Sign Up to Unlock"
   - **Locked Premium**: Full color, gold border, 💎 icon + "$1.99"
-- Grid layout with CSS Grid: 4 cols (desktop), 3 (iPad portrait), 2 (iPhone)
+
+**Responsive Breakpoints**:
+- **Desktop (1025px+)**: 4x3 grid layout (11 characters + 1 empty), 120px card size, 12px gap, hover scale 1.05
+- **iPad Portrait (768-1024px portrait)**: 3x4 grid layout, 140px card size, 16px gap, tap scale 0.95
+- **iPad Landscape (768-1024px landscape)**: 4x3 grid layout, 130px card size, 14px gap, tap scale 0.95
+- **iPhone Portrait (≤430px)**: 2x6 grid layout, vertical scroll, 100px card size, 10px gap, full tap target
+- **iPhone Landscape (≤932px width, ≤500px height)**: 2 rows, 6 columns, horizontal scroll, 90px card size, 8px gap, compact spacing
+- **Tablets (431-767px)**: 3 columns, variable rows, 110px card size, 12px gap
 
 **Task 2C.2: Add Authentication Status Check** (3 hours)
 - Fetch user: `AuthService.getCurrentUser()`
 - Get available characters: `CharacterRegistry.getAvailableCharacters()`
 - Get locked characters: `CharacterRegistry.getLockedCharacters()`
 - Render grid based on availability
+- No responsive considerations (pure logic)
 
 **Task 2C.3: Add Bottom CTA Banner** (2 hours)
 - No-auth: "🔐 Sign Up Free to Unlock 6 Characters! [Sign Up] [Log In]"
 - Authenticated: "Premium characters coming in MVP 17! Stay tuned 🐻"
 - Styling: Gold background (`rgba(255, 215, 0, 0.1)`), border, buttons
+
+**Responsive Breakpoints**:
+- **Desktop (1025px+)**: Full width banner, 60px height, buttons inline, 16px font
+- **iPad Portrait (768-1024px portrait)**: Full width banner, 70px height, buttons inline, 18px font
+- **iPad Landscape (768-1024px landscape)**: Full width banner, 60px height, buttons inline, 16px font
+- **iPhone Portrait (≤430px)**: Full width banner, 80px height, buttons stacked, 16px font, sticky bottom
+- **iPhone Landscape (≤932px width, ≤500px height)**: Full width banner, 50px height, buttons inline (compact), 14px font
+- **Tablets (431-767px)**: Full width banner, 65px height, buttons inline, 16px font
 
 **Task 2C.4: Add Character Preview on Hover/Tap** (4 hours)
 - Show 3D preview in modal overlay when locked character clicked
@@ -242,25 +326,36 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 - [Sign Up to Unlock] button for locked free characters
 - [Coming Soon!] button for premium characters
 
+**Responsive Breakpoints**:
+- **Desktop (1025px+)**: 500px centered modal, hover trigger, large preview (300px)
+- **iPad Portrait (768-1024px portrait)**: 600px centered modal, tap trigger, large preview (350px)
+- **iPad Landscape (768-1024px landscape)**: 700px centered modal, tap trigger, large preview (300px)
+- **iPhone Portrait (≤430px)**: Full-screen modal (95vw), tap trigger, preview 250px, bottom button
+- **iPhone Landscape (≤932px width, ≤500px height)**: 450px compact modal, tap trigger, preview 200px, scrollable
+- **Tablets (431-767px)**: 550px centered modal, tap trigger, preview 280px
+
 **Task 2C.5: Persist Last Selected Character** (2 hours)
 - Store in localStorage: `last_character_id`
 - Pre-select on load if available
 - Sync with backend: Store in `user.lastCharacterId`
+- No responsive considerations (pure logic)
 
 ### Dependencies
 - **Part 2A**: AuthModal for signup modal
 - **Phase 1C**: CharacterRegistry enhancements
 
 ### Success Criteria
-- [ ] Character selection shows visual grid
+- [ ] Character selection shows visual grid on all platforms
 - [ ] Available characters displayed with ✅
 - [ ] Locked free characters displayed with 🔒
 - [ ] Premium characters displayed with 💎
 - [ ] Clicking locked character opens signup modal
 - [ ] Bottom CTA shows correct message
-- [ ] Character preview works
+- [ ] Character preview works on all platforms
 - [ ] Last character persisted
-- [ ] Responsive on all platforms
+- [ ] Responsive on Desktop (4x3), iPad Portrait (3x4), iPad Landscape (4x3), iPhone Portrait (2x6 vertical), iPhone Landscape (2 rows horizontal), Tablets (3 columns)
+- [ ] Smooth scrolling on mobile
+- [ ] Touch targets ≥44px on iOS
 
 ### Files to Create
 - `/client/src/components/CharacterCard.tsx`
@@ -273,279 +368,52 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 
 ---
 
-## Part 2D: Settings Menu Account Tab
-
-**Duration**: 2 days
-**Priority**: 🟡 MEDIUM
-**Description**: Add "Account" tab to settings menu showing auth status, account info, and upgrade CTA for guest users.
-
-### Platform Considerations
-- All platforms: Reuse existing settings panel design
-
-### Tasks
-
-**Task 2D.1: Add Account Tab to SettingsManager** (4 hours)
-- Add 4th tab: "👤 Account"
-- Tab order: Sound | Graphics | Tips | Account
-
-**Task 2D.2: Create No-Auth Account View** (3 hours)
-- Display: "Guest Account", username (Player_xxxxx)
-- List benefits: 6 characters, sync, hall of fame, progress, verified badge
-- [🔐 Sign Up Free] button → Open signup modal
-- "Already have account? [Log In]" link → Open login modal
-
-**Task 2D.3: Create Authenticated Account View** (4 hours)
-- Display: Username, email with verification status (✅/⚠️), password (•••)
-- Account created date, last login time
-- Characters unlocked: 6 / 11, Premium: 0 / 4
-- [Log Out] button (active)
-- [Change] buttons (disabled, "Coming soon!" tooltip)
-- [Delete Account] link (disabled, "Contact support" tooltip)
-
-**Task 2D.4: Implement Logout Functionality** (2 hours)
-- `AuthService.logout()` - Call backend, clear localStorage, reload page
-- Button handler in Settings
-
-### Dependencies
-- **Part 2A**: AuthModal must be complete
-
-### Success Criteria
-- [ ] Account tab visible in settings
-- [ ] Guest users see upgrade CTA
-- [ ] Authenticated users see account info
-- [ ] Sign Up / Log In buttons open AuthModal
-- [ ] Log Out button works
-- [ ] Email verification status shown
-- [ ] Responsive on all platforms
-
-### Files to Modify
-- `/client/src/SettingsManager.ts` - Add Account tab
-- `/client/index.html` - Add Account tab HTML
-- `/client/src/services/AuthService.ts` - Add logout method
-
----
-
-## Part 2E: Leaderboard Verified Badge Integration
-
-**Duration**: 1-2 days
-**Priority**: 🟡 MEDIUM
-**Description**: Update leaderboard UI to show verified badge (🔒) for authenticated players and implement top 10 restriction display.
-
-### Platform Considerations
-- All platforms: Existing leaderboard design, add badge inline
-
-### Tasks
-
-**Task 2E.1: Add Verified Badge to Leaderboard Entries** (3 hours)
-- Update rendering: Add 🔒 badge before username if `isAuthenticated`
-- Format: `${entry.isAuthenticated ? '🔒 ' : ''}${entry.username}`
-
-**Task 2E.2: Update Leaderboard API Call** (2 hours)
-- Fetch from `/leaderboard/top?type=weekly`
-- Response includes: `isAuthenticated`, `emailVerified`, `characterId`
-
-**Task 2E.3: Add "Top 10 - Verified Players Only" Label** (2 hours)
-- Weekly leaderboard header: "🏆 Weekly Leaderboard"
-- Subtitle: "Top 10 - Verified Players Only" (11px, gold color)
-- Show only for weekly, hide for daily/Hall of Fame
-
-**Task 2E.4: Show Player Rank Below Top 10** (2 hours)
-- If no-auth player ranked below top 10, show separator + player's row
-- Highlight with `current-player` class
-- Add CTA: "💡 Sign up to compete for top 10!"
-
-### Dependencies
-- **Phase 1E**: Leaderboard backend returns auth fields
-
-### Success Criteria
-- [ ] Verified badge (🔒) shows for authenticated players
-- [ ] Weekly leaderboard shows "Top 10" label
-- [ ] Player rank shown below top 10 if applicable
-- [ ] Sign-up CTA shows for no-auth players
-- [ ] Daily leaderboard shows all players
-- [ ] Hall of Fame shows only authenticated
-
-### Files to Modify
-- `/client/src/main.ts` - Update leaderboard rendering
-- `/client/index.html` - Add weekly label
-
----
-
-## Part 2F: Enticement System (Toasts & Reminders)
-
-**Duration**: 2 days
-**Priority**: 🟡 MEDIUM
-**Description**: Implement toast notifications and reminders to encourage no-auth users to sign up.
-
-### Platform Considerations
-- **Desktop**: Top-right, below minimap
-- **iPad**: Top-center
-- **iPhone Portrait**: Bottom, above safe area
-- **iPhone Landscape**: Top-right, compact
-
-### Tasks
-
-**Task 2F.1: Create Enticement Toast Messages** (3 hours)
-- 4 messages rotating every 15 minutes:
-  1. "Sign up to unlock 6 free characters!"
-  2. "Your progress isn't saved. Sign up to sync!"
-  3. "Join the Hall of Fame - sign up free!"
-  4. "Get verified badge - sign up now!"
-- Custom toast with [Sign Up] and [✕] buttons
-- Auto-dismiss after 8 seconds
-
-**Task 2F.2: Add Enticement on Character Selection** (2 hours)
-- Trigger: User clicks locked character
-- Toast: "Sign up free to unlock this character!" + [Sign Up] button
-
-**Task 2F.3: Add Enticement on Leaderboard View** (2 hours)
-- Trigger: No-auth user opens weekly leaderboard, ranked below top 10
-- Toast: "Sign up to compete for top 10!" + [Sign Up] button
-- Frequency: Once per session
-
-**Task 2F.4: Implement Toast Frequency Limiting** (2 hours)
-- Limits: Max 4 per hour, min 15 minutes between toasts
-- Track in localStorage: `last_enticement_toast_time`, `enticement_toast_times[]`
-
-### Dependencies
-- **Part 2A**: AuthModal must be complete
-
-### Success Criteria
-- [ ] Enticement toasts show every 15 min for no-auth
-- [ ] Message rotation works
-- [ ] Frequency limited (max 4/hour)
-- [ ] Character click shows enticement
-- [ ] Leaderboard view shows enticement
-- [ ] [Sign Up] button opens AuthModal
-- [ ] Toasts stop after signup
-
-### Files to Modify
-- `/client/src/main.ts` - Add enticement logic
-- `/client/src/ToastManager.ts` - Add custom toast (optional)
-
----
-
-## Part 2G: Session Persistence & Token Refresh
-
-**Duration**: 2 days
-**Priority**: 🟡 HIGH
-**Description**: Implement token refresh logic to maintain authentication across sessions and handle token expiration.
-
-### Tasks
-
-**Task 2G.1: Implement Token Refresh Logic** (4 hours)
-- `AuthService.refreshAccessToken()` - POST `/auth/refresh`
-- Auto-refresh every 25 days (5 days before 30-day expiration)
-- `startTokenRefreshTimer()` - setInterval for automatic refresh
-
-**Task 2G.2: Handle Token Expiration Mid-Game** (3 hours)
-- On API 401 error: Show "Session Expired" banner
-- Banner: "⚠️ Session Expired - [Log In] to save progress"
-- [✕] button to dismiss
-
-**Task 2G.3: Restore Session on Page Load** (2 hours)
-- `restoreSession()` - Check localStorage for valid tokens
-- Verify token validity, refresh if needed
-- Clear auth if invalid
-
-**Task 2G.4: Add "Remember Me" Functionality (Optional)** (2 hours)
-- Checkbox in login form
-- If unchecked: Use `sessionStorage` instead of `localStorage`
-- Default: Checked (persist across browser close)
-
-### Dependencies
-- **Phase 1D**: Token refresh endpoint implemented
-
-### Success Criteria
-- [ ] Tokens auto-refreshed every 25 days
-- [ ] Session restored on page load
-- [ ] Session expired banner shows on token expiry
-- [ ] User prompted to log in after expiration
-- [ ] Seamless cross-device experience
-
-### Files to Modify
-- `/client/src/services/AuthService.ts` - Add refresh logic
-- `/client/src/main.ts` - Session restoration, timer
-
----
-
-## Part 2H: Integration & Polish
-
-**Duration**: 2-3 days
-**Priority**: 🟡 HIGH
-**Description**: Final integration, cross-platform testing, and polish.
-
-### Tasks
-
-**Task 2H.1: Add Loading States to All Forms** (3 hours)
-- Disable inputs during submission
-- Show spinner: "Creating Account...", "Logging In...", "Sending Email..."
-- Prevent double-submission
-
-**Task 2H.2: Add Error Toast for Network Issues** (2 hours)
-- Catch network failures: `Failed to fetch`
-- User-friendly message: "Connection issue. Check internet and try again."
-
-**Task 2H.3: Cross-Platform Testing** (8 hours)
-- Test on: Desktop Chrome/Safari, iPad Safari (portrait/landscape), iPhone Safari (portrait/landscape), Private Browsing
-- All flows: Signup, login, logout, password reset
-
-**Task 2H.4: Accessibility Improvements** (3 hours)
-- ARIA labels on form fields
-- Correct Tab order
-- Focus indicators (2px blue outline)
-- Test with VoiceOver/TalkBack
-
-**Task 2H.5: Performance Optimization** (2 hours)
-- Lazy load AuthModal
-- Debounce email availability check (500ms)
-- Virtual scrolling for character grid (future-proofing)
-
-### Dependencies
-- All previous parts complete
-
-### Success Criteria
-- [ ] All forms show loading states
-- [ ] Network errors handled gracefully
-- [ ] Cross-platform testing complete
-- [ ] Keyboard navigation works
-- [ ] No performance issues
-
----
-
 ## Phase 2 Summary
 
 ### Timeline
 - **Part 2A**: 4-5 days (Auth Modal & Forms)
 - **Part 2B**: 2-3 days (Email Verification & Welcome)
 - **Part 2C**: 3-4 days (Character Selection)
-- **Part 2D**: 2 days (Settings Account Tab)
-- **Part 2E**: 1-2 days (Leaderboard Verified Badge)
-- **Part 2F**: 2 days (Enticement System)
-- **Part 2G**: 2 days (Session Persistence)
-- **Part 2H**: 2-3 days (Integration & Polish)
 
-**Total**: 18-25 days (2.5-3.5 weeks)
+**Total**: 9-12 days (1.5-2 weeks) for critical path components
 
 ### Overall Success Criteria
 - [ ] Signup flow: Username → Email → Password → Verification → Welcome
 - [ ] Login flow: Email → Password → Character Selection
 - [ ] Password reset flow: Request → Email → Reset → Login
 - [ ] Character selection shows locked/unlocked correctly
-- [ ] Settings Account tab shows guest vs auth views
-- [ ] Leaderboard shows verified badges
-- [ ] Enticement toasts encourage signup
 - [ ] Session persists across page reloads
-- [ ] All flows work on desktop, iPad, iPhone (portrait & landscape)
-- [ ] Keyboard navigation works
-- [ ] Loading states and error messages display correctly
+- [ ] **ALL flows work on all responsive breakpoints**:
+  - Desktop (1025px+)
+  - iPad Portrait (768-1024px portrait)
+  - iPad Landscape (768-1024px landscape)
+  - iPhone Portrait (≤430px)
+  - iPhone Landscape (≤932px width, ≤500px height)
+  - Tablets (431-767px)
+- [ ] Orientation changes handled smoothly (iPad and iPhone)
+- [ ] Safe area insets respected on iPhone
+- [ ] Touch targets meet minimum sizes (44px iOS, 48px Android)
+- [ ] Keyboard navigation works on desktop
+- [ ] Loading states and error messages display correctly on all platforms
+- [ ] No layout shifts during orientation changes
+
+### Responsive Design Validation Checklist
+- [ ] All modals responsive across 6 breakpoints
+- [ ] All forms adapt to orientation changes
+- [ ] All grids reflow correctly (4x3 → 3x4 → 2x6, etc.)
+- [ ] All touch targets ≥44px on mobile
+- [ ] All text readable on smallest screens
+- [ ] All buttons accessible on all platforms
+- [ ] Safe areas handled on iPhone (top, bottom, notch)
+- [ ] Landscape mode fully functional on all devices
+- [ ] Horizontal scrolling works on iPhone Landscape
 
 ### Risk Mitigation
-1. **Responsive Design**: Test early on real devices
-2. **Token Management**: Thorough refresh logic testing
-3. **Form Validation**: Use proven regex, test edge cases
-4. **Cross-Browser**: Test Safari (iOS), Chrome, Firefox
-5. **Performance**: Lazy load, optimize animations
-
-### Next Phase
-Phase 3: Integration & Testing (end-to-end testing)
+1. **Responsive Design**: Test early and often on real devices across all 6 breakpoints
+2. **Orientation Changes**: Implement CSS transitions for smooth layout shifts
+3. **Token Management**: Thorough refresh logic testing
+4. **Form Validation**: Use proven regex, test edge cases
+5. **Cross-Browser**: Test Safari (iOS), Chrome, Firefox on all platforms
+6. **Performance**: Lazy load, optimize animations, test on older devices
+7. **Safe Areas**: Test on iPhone with notch and home indicator
+8. **Touch Interactions**: Test on real touch devices, not just emulators
