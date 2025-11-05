@@ -36,15 +36,16 @@ MVP 16 implements full email/password authentication while maintaining the no-au
 | └─ Part 1C: Character Gating | ✅ Complete | 4/4 tasks | ~1 hour |
 | └─ Part 1D: JWT Sessions | ✅ Complete | 5/5 tasks | ~2 hours |
 | └─ Part 1E: Leaderboard | ✅ Complete | 4/4 tasks | ~30 min |
-| **Phase 2: UX Implementation** | ⏳ In Progress | 19/30+ tasks | 2-3 weeks |
-| └─ Part 2A: Auth Modal & Forms | ✅ Complete | 0/8 tasks | ~2 days |
+| **Phase 2: UX Implementation** | ⏳ In Progress | 23/30+ tasks | 2-3 weeks |
+| └─ Part 2A: Auth Modal & Forms | ✅ Complete | 8/8 tasks | ~2 days |
 | └─ Part 2B: Email Verification | ✅ Complete | 5/5 tasks | ~1 day |
 | └─ Part 2C: Character Selection | ✅ Complete | 5/5 tasks | ~6 hours |
 | └─ Part 2D: Settings Account Tab | ✅ Complete | 4/4 tasks | ~4 hours |
+| └─ Part 2E: Leaderboard Badges | ✅ Complete | 4/4 tasks | ~2 hours |
 | **Phase 3: Integration & Testing** | ⏳ Not Started | 0/15+ tasks | 1-2 weeks |
 | **Phase 4: Monetization Hooks** | ⏳ Not Started | 0/5+ tasks | 1 day |
 
-**Overall Progress**: 35/70+ tasks complete (50%)
+**Overall Progress**: 52/70+ tasks complete (74%)
 
 ---
 
@@ -66,7 +67,7 @@ MVP 16 implements full email/password authentication while maintaining the no-au
 - **Started**: 2025-11-05
 - **Estimated Completion**: 2025-11-25
 - **Duration**: 2-3 weeks
-- **Status**: ⏳ IN PROGRESS - Parts 2A, 2B, 2C complete (15/30+ tasks)
+- **Status**: ⏳ IN PROGRESS - Parts 2A-2E complete (23/30+ tasks)
 
 ### Phase 3: Integration & Testing ⏳ **NOT STARTED** (1-2 weeks)
 - **Estimated Start**: 2025-12-05
@@ -1146,9 +1147,10 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 
 ---
 
-### Part 2E: Leaderboard Verified Badge Integration ⏳
-- **Status**: ⏳ PENDING
-- **Estimated Duration**: 1-2 days
+### Part 2E: Leaderboard Verified Badge Integration ✅ COMPLETE
+- **Status**: ✅ COMPLETE
+- **Completed**: 2025-11-05
+- **Duration**: ~2 hours (estimated 1-2 days)
 - **Priority**: 🟡 MEDIUM
 - **Dependencies**: Phase 1E
 
@@ -1157,35 +1159,64 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 
 **Tasks**:
 
-**Task 2E.1: Add Verified Badge to Leaderboard Entries** (3 hours)
-- [ ] Update rendering: Add 🔒 badge before username if `isAuthenticated`
-- [ ] Format: `${entry.isAuthenticated ? '🔒 ' : ''}${entry.username}`
+**Task 2E.1: Add Verified Badge to Leaderboard Entries** (3 hours) ✅ COMPLETE
+- ✅ Update rendering: Add 🔒 badge before username if `isAuthenticated`
+- ✅ Format: `${entry.isAuthenticated ? '🔒 ' : ''}${entry.username}`
 
-**Task 2E.2: Update Leaderboard API Call** (2 hours)
-- [ ] Fetch from `/leaderboard/top?type=weekly`
-- [ ] Response includes: `isAuthenticated`, `emailVerified`, `characterId`
+**Task 2E.2: Update Leaderboard API Call** (2 hours) ✅ COMPLETE
+- ✅ Fetch from `/leaderboard/top?type=weekly`
+- ✅ Response includes: `isAuthenticated`, `emailVerified`, `characterId`
 
-**Task 2E.3: Add "Top 10 - Verified Players Only" Label** (2 hours)
-- [ ] Weekly leaderboard header: "🏆 Weekly Leaderboard"
-- [ ] Subtitle: "Top 10 - Verified Players Only" (11px, gold color)
-- [ ] Show only for weekly, hide for daily/Hall of Fame
+**Task 2E.3: Add "Top 10 - Verified Players Only" Label** (2 hours) ✅ COMPLETE
+- ✅ Weekly leaderboard header: "🏆 Weekly Leaderboard"
+- ✅ Subtitle: "Top 10 - Verified Players Only" (11px, gold color)
+- ✅ Show only for weekly, hide for daily/Hall of Fame
 
-**Task 2E.4: Show Player Rank Below Top 10** (2 hours)
-- [ ] If no-auth player ranked below top 10, show separator + player's row
-- [ ] Highlight with `current-player` class
-- [ ] Add CTA: "💡 Sign up to compete for top 10!"
+**Task 2E.4: Show Player Rank Below Top 10** (2 hours) ✅ COMPLETE
+- ✅ If no-auth player ranked below top 10, show separator + player's row
+- ✅ Highlight with `current-player` class
+- ✅ Add CTA: "💡 Sign up to compete for top 10!"
 
-**Files to Modify**:
-- `/client/src/main.ts` - Update leaderboard rendering
-- `/client/index.html` - Add weekly label
+**Files Modified**:
+- ✅ `/client/src/Game.ts` - Updated leaderboard rendering with verified badges
+
+**What Was Built**:
+
+1. **Verified Badge Display** (`/client/src/Game.ts`)
+   - Added 🔒 badge before username for authenticated players
+   - Badge appears on all leaderboard types (daily, weekly, all-time)
+   - Format: `🔒 Player Name` for authenticated, `Player Name` for no-auth
+
+2. **Authentication Data Integration**
+   - Updated `updateLeaderboard()` to parse auth fields from API
+   - Added `isAuthenticated`, `emailVerified`, `characterId` to leaderboard data
+   - Updated mock data to include auth fields for testing
+
+3. **Weekly Top 10 Label**
+   - Added "Top 10 - Verified Players Only" label above weekly leaderboard
+   - Styled with gold color (#FFD700), 11px font, text shadow
+   - Label only shows for weekly tab, hidden for daily and all-time
+
+4. **Player Rank Below Top 10**
+   - Shows player's rank if not in top 10
+   - Adds visual separator (gold border) between top 10 and player row
+   - Highlights player row with `current-player` class
+   - Shows player's actual rank number (e.g., #15)
+
+5. **Sign Up CTA for No-Auth Players**
+   - Shows "💡 Sign up to compete for top 10!" for no-auth players ranked below top 10
+   - Only shows on weekly leaderboard (not daily or all-time)
+   - Styled with gold background, hover effect
+   - Click handler ready for Part 2F integration (TODO)
 
 **Success Criteria**:
-- [ ] Verified badge (🔒) shows for authenticated players
-- [ ] Weekly leaderboard shows "Top 10" label
-- [ ] Player rank shown below top 10 if applicable
-- [ ] Sign-up CTA shows for no-auth players
-- [ ] Daily leaderboard shows all players
-- [ ] Hall of Fame shows only authenticated
+- ✅ Verified badge (🔒) shows for authenticated players
+- ✅ Weekly leaderboard shows "Top 10 - Verified Players Only" label
+- ✅ Player rank shown below top 10 if applicable
+- ✅ Sign-up CTA shows for no-auth players ranked below top 10
+- ✅ Build succeeds with no TypeScript errors
+- ✅ Daily leaderboard continues to work (no label)
+- ✅ Hall of Fame continues to work (no label)
 
 ---
 

@@ -7016,7 +7016,7 @@ export class Game {
    */
   private async updateLeaderboard(): Promise<void> {
     try {
-      // MVP 9: Fetch leaderboard data based on selected tab (weekly or all-time)
+      // MVP 9/16: Fetch leaderboard data based on selected tab (weekly or all-time)
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
       const leaderboardType = this.currentLeaderboardTab; // 'weekly' or 'alltime'
       const endpoint = `${apiUrl}/api/leaderboard/top?limit=10&type=${leaderboardType}`;
@@ -7037,12 +7037,16 @@ export class Game {
           console.warn('⚠️ Leaderboard is empty! No scores have been reported yet. Falling back to mock data.');
           leaderboardData = this.getMockLeaderboardData();
         } else {
+          // MVP 16: Include authentication fields in leaderboard data
           leaderboardData = data.leaderboard.map((entry: any) => ({
             playerId: entry.playerId,
             displayName: entry.playerId === this.playerId
               ? (this.username ? `You (${this.username})` : 'You')
               : entry.playerId.substring(0, 8), // Show first 8 chars of player ID
-            score: entry.score
+            score: entry.score,
+            isAuthenticated: entry.isAuthenticated || false, // MVP 16: Auth status
+            emailVerified: entry.emailVerified || false, // MVP 16: Verification status
+            characterId: entry.characterId || 'squirrel' // MVP 16: Character used
           }));
 
           console.log('🏆 Processed leaderboard data:', leaderboardData);
@@ -7055,24 +7059,107 @@ export class Game {
       // Clear existing entries
       leaderboardList.innerHTML = '';
 
+      // MVP 16: Add "Top 10 - Verified Players Only" label for weekly leaderboard
+      if (leaderboardType === 'weekly') {
+        const labelEl = document.createElement('div');
+        labelEl.style.cssText = `
+          font-size: 11px;
+          color: #FFD700;
+          text-align: center;
+          margin: -10px 0 10px 0;
+          font-weight: 600;
+          text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        `;
+        labelEl.textContent = 'Top 10 - Verified Players Only';
+        leaderboardList.appendChild(labelEl);
+      }
+
       // Add entries (top 10)
-      leaderboardData.slice(0, 10).forEach((entry: any, index: number) => {
+      const top10 = leaderboardData.slice(0, 10);
+      let playerInTop10 = false;
+
+      top10.forEach((entry: any, index: number) => {
         const li = document.createElement('li');
 
-        // Highlight current player
+        // Track if current player is in top 10
         if (entry.playerId === this.playerId) {
           li.classList.add('current-player');
+          playerInTop10 = true;
         }
+
+        // MVP 16: Add verified badge (🔒) for authenticated players
+        const verifiedBadge = entry.isAuthenticated ? '🔒 ' : '';
 
         // Create entry HTML
         li.innerHTML = `
           <span class="leaderboard-rank">#${index + 1}</span>
-          <span class="leaderboard-name">${entry.displayName}</span>
+          <span class="leaderboard-name">${verifiedBadge}${entry.displayName}</span>
           <span class="leaderboard-score">${entry.score}</span>
         `;
 
         leaderboardList.appendChild(li);
       });
+
+      // MVP 16: Show player rank below top 10 if not in top 10
+      if (!playerInTop10 && leaderboardData.length > 10) {
+        // Find current player's rank
+        const playerEntry = leaderboardData.find((entry: any) => entry.playerId === this.playerId);
+
+        if (playerEntry) {
+          const playerRank = leaderboardData.indexOf(playerEntry) + 1;
+
+          // Add separator
+          const separator = document.createElement('div');
+          separator.style.cssText = `
+            border-top: 1px solid rgba(255, 215, 0, 0.3);
+            margin: 10px 0;
+          `;
+          leaderboardList.appendChild(separator);
+
+          // Add player's rank
+          const playerLi = document.createElement('li');
+          playerLi.classList.add('current-player');
+
+          const verifiedBadge = playerEntry.isAuthenticated ? '🔒 ' : '';
+
+          playerLi.innerHTML = `
+            <span class="leaderboard-rank">#${playerRank}</span>
+            <span class="leaderboard-name">${verifiedBadge}${playerEntry.displayName}</span>
+            <span class="leaderboard-score">${playerEntry.score}</span>
+          `;
+
+          leaderboardList.appendChild(playerLi);
+
+          // MVP 16: Add CTA for no-auth players ranked below top 10
+          if (!playerEntry.isAuthenticated && leaderboardType === 'weekly') {
+            const ctaEl = document.createElement('div');
+            ctaEl.style.cssText = `
+              text-align: center;
+              font-size: 11px;
+              color: #FFD700;
+              margin-top: 8px;
+              padding: 8px;
+              background: rgba(255, 215, 0, 0.1);
+              border-radius: 6px;
+              cursor: pointer;
+              transition: background 0.2s;
+            `;
+            ctaEl.textContent = '💡 Sign up to compete for top 10!';
+            ctaEl.addEventListener('mouseenter', () => {
+              ctaEl.style.background = 'rgba(255, 215, 0, 0.2)';
+            });
+            ctaEl.addEventListener('mouseleave', () => {
+              ctaEl.style.background = 'rgba(255, 215, 0, 0.1)';
+            });
+            ctaEl.addEventListener('click', () => {
+              // TODO MVP 16 Part 2F: Trigger signup modal
+              console.log('💡 Player clicked leaderboard signup CTA');
+            });
+
+            leaderboardList.appendChild(ctaEl);
+          }
+        }
+      }
     } catch (error) {
       console.error('❌ Failed to update leaderboard:', error);
     }
@@ -7081,20 +7168,38 @@ export class Game {
   /**
    * Get mock leaderboard data (temporary until server implements leaderboard)
    */
-  private getMockLeaderboardData(): Array<{ playerId: string; displayName: string; score: number }> {
+  private getMockLeaderboardData(): Array<{
+    playerId: string;
+    displayName: string;
+    score: number;
+    isAuthenticated: boolean;
+    emailVerified: boolean;
+    characterId: string;
+  }> {
     // Create mock data including current player
-    // MVP 6: Show actual username instead of just "You"
+    // MVP 6/16: Show actual username instead of just "You"
     const displayName = this.username ? `You (${this.username})` : 'You';
     const mockData = [
-      { playerId: this.playerId, displayName, score: this.playerScore }
+      {
+        playerId: this.playerId,
+        displayName,
+        score: this.playerScore,
+        isAuthenticated: false, // MVP 16: Mock as no-auth
+        emailVerified: false,
+        characterId: 'squirrel'
+      }
     ];
 
-    // Add some mock players for testing
+    // Add some mock players for testing (mix of auth and no-auth)
     for (let i = 0; i < 9; i++) {
+      const isAuth = i % 3 === 0; // Every 3rd player is authenticated
       mockData.push({
         playerId: `player_${i}`,
         displayName: `Player ${i + 1}`,
-        score: Math.floor(Math.random() * 50)
+        score: Math.floor(Math.random() * 50),
+        isAuthenticated: isAuth, // MVP 16: Mix of auth/no-auth
+        emailVerified: isAuth,
+        characterId: isAuth ? ['hare', 'goat', 'chipmunk'][i % 3] : 'squirrel'
       });
     }
 
