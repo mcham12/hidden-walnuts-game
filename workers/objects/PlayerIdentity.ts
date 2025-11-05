@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { PasswordUtils } from '../utils/PasswordUtils';
 import { TokenGenerator } from '../utils/TokenGenerator';
+import type { EnvWithBindings } from './registry';
 
 /**
  * PlayerIdentityData - Stored data for each username
@@ -44,15 +45,24 @@ export interface PlayerIdentityData {
  * PlayerIdentity - Durable Object for username → identity mapping
  *
  * MVP 6: Player Authentication & Identity (Fixed for Private Browsing)
+ * MVP 16: Enhanced with full email/password authentication
  *
  * Design:
  * - One DO instance per USERNAME (not sessionToken)
  * - Stores: username, sessionTokens[], created, lastSeen
  * - Multiple sessionTokens per username (different browsers/devices)
  * - Works in private browsing: same username = same identity
- * - Rate limiting: 1 username change per hour (not implemented yet)
+ * - Rate limiting: 1 username change per hour
+ * - MVP 16: Email/password authentication, JWT tokens, character gating
  */
 export class PlayerIdentity extends DurableObject {
+  protected env: EnvWithBindings;
+
+  constructor(ctx: DurableObjectState, env: EnvWithBindings) {
+    super(ctx, env);
+    this.env = env;
+  }
+
   /**
    * Handle incoming requests
    */
@@ -336,6 +346,17 @@ export class PlayerIdentity extends DurableObject {
         }, { status: 409 });
       }
 
+      // MVP 16: Check email uniqueness across all users (global KV index)
+      const normalizedEmail = email.toLowerCase().trim();
+      const emailKey = `email:${normalizedEmail}`;
+
+      const existingUsername = await this.env.EMAIL_INDEX.get(emailKey);
+      if (existingUsername && existingUsername !== username) {
+        return Response.json({
+          error: 'Email already registered'
+        }, { status: 409 });
+      }
+
       // Hash password (this takes ~200-300ms)
       const passwordHash = await PasswordUtils.hashPassword(password);
 
@@ -375,6 +396,9 @@ export class PlayerIdentity extends DurableObject {
       ];
 
       await this.ctx.storage.put('player', data);
+
+      // MVP 16: Register email in global KV index
+      await this.env.EMAIL_INDEX.put(emailKey, username);
 
       return Response.json({
         success: true,

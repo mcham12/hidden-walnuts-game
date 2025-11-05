@@ -10,12 +10,20 @@ export interface EnvWithBindings {
   LEADERBOARD: DurableObjectNamespace;
   PLAYER_IDENTITY: DurableObjectNamespace; // MVP 6: Player identity management
 
+  // KV Namespaces
+  EMAIL_INDEX: KVNamespace; // MVP 16: Email uniqueness index for authentication
+
   // Environment variables from wrangler.toml
   ENVIRONMENT: string;
   CYCLE_DURATION_SECONDS: string;
 
   // MVP 13: Admin secret for secure endpoints
   ADMIN_SECRET: string;
+
+  // MVP 16: Authentication secrets (added via wrangler secret put)
+  SMTP_USER?: string;
+  SMTP_PASSWORD?: string;
+  JWT_SECRET?: string;
 }
 
 // Get the Durable Object ID by name and key

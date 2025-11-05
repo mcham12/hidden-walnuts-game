@@ -28,6 +28,12 @@ LEADERBOARD_ARCHIVE_LIMIT = "12"  # Keep last 12 weeks of archives
 binding = "LEADERBOARD_ARCHIVES"
 id = "ba952f7d616541f7be6a6a9ffbadc93b"  # Created via: npx wrangler kv namespace create "LEADERBOARD_ARCHIVES"
 
+# MVP 16: Email uniqueness index for authentication
+[[kv_namespaces]]
+binding = "EMAIL_INDEX"
+id = "1c7b48760aae43c891eddeeae77c2030"
+preview_id = "21344757db994f7bb7a9cb31862128d4"
+
 # MVP 7.1: Rate Limiting for bot protection
 [[unsafe.bindings]]
 name = "RATE_LIMITER"
