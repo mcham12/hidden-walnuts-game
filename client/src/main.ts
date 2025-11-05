@@ -9,238 +9,13 @@ import { TouchControls } from './TouchControls';
 import { SessionManager } from './SessionManager'; // MVP 6: Player identity
 import { restoreSession, startTokenRefreshTimer } from './services/AuthService'; // MVP 16: Session persistence
 import { AuthModal } from './components/AuthModal'; // MVP 16: Authentication modals
-// TODO MVP 16: Replace old dropdown with CharacterGrid component
-// import { CharacterGrid } from './components/CharacterGrid'; // MVP 16: Character selection
-import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
-
-// Character interface matching characters.json structure
-interface Character {
-  id: string;
-  name: string;
-  modelPath: string;
-  animations: { [key: string]: string };
-  scale: number;
-  category: string;
-  description?: string;
-  emoteAnimations?: { [emoteId: string]: string };
-}
-
-// Character descriptions for the selection screen (dynamically loaded from characters.json)
-let CHARACTER_DESCRIPTIONS: Record<string, { name: string; description: string; category: string }> = {};
-let CHARACTERS: Character[] = [];
+import { CharacterGrid } from './components/CharacterGrid'; // MVP 16: Character selection
 
 // MVP 6: API URL from environment (for worker communication)
 const API_URL = import.meta.env.VITE_API_URL || '';
 
-/**
- * Load characters from characters.json and populate dropdown
- */
-async function loadCharactersAndPopulateDropdown(charSelect: HTMLSelectElement): Promise<void> {
-  try {
-    const response = await fetch('/characters.json');
-    if (!response.ok) {
-      throw new Error(`Failed to fetch characters.json: ${response.status}`);
-    }
-    CHARACTERS = await response.json();
-
-    // Populate CHARACTER_DESCRIPTIONS
-    CHARACTERS.forEach(char => {
-      CHARACTER_DESCRIPTIONS[char.id] = {
-        name: char.name,
-        description: char.description || '',
-        category: char.category
-      };
-    });
-
-    // Clear existing options
-    charSelect.innerHTML = '';
-
-    // Group characters by category
-    const categories: Record<string, Character[]> = {};
-    CHARACTERS.forEach(char => {
-      if (!categories[char.category]) {
-        categories[char.category] = [];
-      }
-      categories[char.category].push(char);
-    });
-
-    // Add optgroups and options
-    const categoryOrder = ['mammal', 'reptile', 'bird', 'aquatic'];
-    const categoryLabels: Record<string, string> = {
-      'mammal': 'Mammals',
-      'reptile': 'Reptiles',
-      'bird': 'Birds',
-      'aquatic': 'Aquatic'
-    };
-
-    categoryOrder.forEach(category => {
-      if (categories[category] && categories[category].length > 0) {
-        const optgroup = document.createElement('optgroup');
-        optgroup.label = categoryLabels[category] || category;
-
-        categories[category].forEach(char => {
-          const option = document.createElement('option');
-          option.value = char.id;
-          option.textContent = char.name;
-          optgroup.appendChild(option);
-        });
-
-        charSelect.appendChild(optgroup);
-      }
-    });
-
-    // Set default selection to first character (Squirrel)
-    if (CHARACTERS.length > 0) {
-      charSelect.value = CHARACTERS[0].id;
-    }
-
-  } catch (error) {
-    console.error('❌ Failed to load characters.json:', error);
-    // Fallback to hardcoded Squirrel
-    CHARACTERS = [{
-      id: 'squirrel',
-      name: 'Squirrel',
-      modelPath: '/assets/models/characters/Squirrel_LOD0.glb',
-      animations: {
-        idle: '/assets/models/characters/Animations/Single/Squirrel_Idle_A.glb',
-        walk: '/assets/models/characters/Animations/Single/Squirrel_Walk.glb',
-        run: '/assets/models/characters/Animations/Single/Squirrel_Run.glb',
-        jump: '/assets/models/characters/Animations/Single/Squirrel_Jump.glb'
-      },
-      scale: 0.3,
-      category: 'mammal',
-      description: 'Agile forest dweller'
-    }];
-    CHARACTER_DESCRIPTIONS['squirrel'] = {
-      name: 'Squirrel',
-      description: 'Agile forest dweller',
-      category: 'mammal'
-    };
-    charSelect.innerHTML = '<option value="squirrel">Squirrel</option>';
-  }
-}
-
-// Character preview system
-class CharacterPreview {
-  private scene: THREE.Scene;
-  private camera: THREE.PerspectiveCamera;
-  private renderer: THREE.WebGLRenderer;
-  private currentModel: THREE.Group | null = null;
-  private loader: GLTFLoader;
-  private animationId: number | null = null;
-
-  constructor(canvas: HTMLCanvasElement) {
-    // Scene setup
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0xe8f5e9);
-
-    // Get proper canvas dimensions
-    const width = canvas.clientWidth || 500;
-    const height = canvas.clientHeight || 250;
-
-    // Camera setup
-    this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-    this.camera.position.set(0, 1.5, 4);
-    this.camera.lookAt(0, 1, 0);
-
-    // Renderer setup
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    this.renderer.setSize(width, height);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    this.scene.add(ambientLight);
-
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(5, 10, 5);
-    this.scene.add(directionalLight);
-
-    // Model loader
-    this.loader = new GLTFLoader();
-  }
-
-  async loadCharacter(characterId: string): Promise<void> {
-    try {
-      // Find character in loaded characters data
-      const char = CHARACTERS.find(c => c.id === characterId);
-      if (!char) {
-        console.error('❌ Character not found:', characterId);
-        return;
-      }
-
-      const modelPath = char.modelPath;
-
-      const gltf = await this.loader.loadAsync(modelPath);
-
-      // Remove ALL non-light objects from scene (nuclear option)
-      const objectsToRemove: THREE.Object3D[] = [];
-      this.scene.traverse((obj) => {
-        if (!obj.isLight && obj !== this.scene) {
-          objectsToRemove.push(obj);
-        }
-      });
-      objectsToRemove.forEach(obj => {
-        if (obj.parent) {
-          obj.parent.remove(obj);
-        }
-      });
-
-      // Use SkeletonUtils.clone() for proper cloning of animated models
-      const modelClone = clone(gltf.scene);
-
-      // Get bounds for centering and scaling
-      const box = new THREE.Box3().setFromObject(modelClone);
-      const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
-
-
-      // Create a wrapper group for clean transforms
-      this.currentModel = new THREE.Group();
-
-      // Center the clone within wrapper
-      modelClone.position.set(-center.x, -center.y, -center.z);
-      this.currentModel.add(modelClone);
-
-      // Scale the wrapper to fit in view (target height reduced to fit window)
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const scale = 1.2 / maxDim;
-      this.currentModel.scale.setScalar(scale);
-
-      this.scene.add(this.currentModel);
-    } catch (error) {
-      console.error('❌ Failed to load preview model:', error);
-    }
-  }
-
-  startAnimation(): void {
-    const animate = () => {
-      this.animationId = requestAnimationFrame(animate);
-
-      // Rotate the model
-      if (this.currentModel) {
-        this.currentModel.rotation.y += 0.01;
-      }
-
-      this.renderer.render(this.scene, this.camera);
-    };
-    animate();
-  }
-
-  stopAnimation(): void {
-    if (this.animationId !== null) {
-      cancelAnimationFrame(this.animationId);
-      this.animationId = null;
-    }
-  }
-
-  destroy(): void {
-    this.stopAnimation();
-    this.renderer.dispose();
-  }
-}
+// MVP 16: Character selection now handled by CharacterGrid component
+// Old dropdown and preview code removed
 
 // MVP 5.7: Global error handler for debugging
 window.addEventListener('error', (event) => {
@@ -474,83 +249,37 @@ async function main() {
       // Returning user with saved character - skip selection!
       selectedCharacterId = savedCharacterId;
     } else {
-      // New user or no saved character - show character selection
+      // MVP 16: New user or no saved character - show CharacterGrid
       const selectDiv = document.getElementById('character-select') as HTMLDivElement;
-      const previewCanvas = document.getElementById('character-preview-canvas') as HTMLCanvasElement;
-      const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
-      const charSelect = document.getElementById('char-select') as HTMLSelectElement;
-      const charDescription = document.getElementById('char-description') as HTMLDivElement;
 
-      // Load characters.json (tiny, instant)
-      await loadCharactersAndPopulateDropdown(charSelect);
-
-      // Show character selection
+      // Show character selection container
       selectDiv.classList.remove('hidden');
 
-      // Initialize character preview
-      let characterPreview: CharacterPreview | null = null;
-      if (previewCanvas) {
-        characterPreview = new CharacterPreview(previewCanvas);
-        characterPreview.startAnimation();
-        await characterPreview.loadCharacter(charSelect.value);
-      }
-
-      // Update character description and preview when selection changes
-      const updateCharacter = async () => {
-        const selectedId = charSelect.value;
-        const charInfo = CHARACTER_DESCRIPTIONS[selectedId];
-
-        // MVP 5: Unlock audio on first user interaction
-        await audioManager.unlock();
-
-        // MVP 5: Play UI sound for character selection
-        audioManager.playSound('ui', 'button_click');
-
-        // Update description
-        if (charInfo && charDescription) {
-          charDescription.innerHTML = `<strong>${charInfo.name}</strong> ${charInfo.description}`;
-        }
-
-        // Update preview
-        if (characterPreview) {
-          await characterPreview.loadCharacter(selectedId);
-        }
-      };
-
-      // Set initial character description (before updateCharacter to avoid audio unlock)
-      const initialCharInfo = CHARACTER_DESCRIPTIONS[charSelect.value];
-      if (initialCharInfo && charDescription) {
-        charDescription.innerHTML = `<strong>${initialCharInfo.name}</strong> ${initialCharInfo.description}`;
-      }
-
-      // Update on change
-      charSelect.addEventListener('change', updateCharacter);
-
-      // Wait for user to click start button
+      // Wait for character selection using CharacterGrid
       selectedCharacterId = await new Promise<string>((resolve) => {
-        startBtn.addEventListener('click', async () => {
-          // Unlock audio on button click
-          await audioManager.unlock();
+        new CharacterGrid(selectDiv, {
+          onCharacterSelect: async (charId: string) => {
+            // MVP 5: Unlock audio on character selection
+            await audioManager.unlock();
 
-          // Play start sound
-          audioManager.playSound('ui', 'button_click');
+            // MVP 5: Play UI sound
+            audioManager.playSound('ui', 'button_click');
 
-          // Get selected character
-          const charId = charSelect.value;
+            // Save character selection to server
+            await updateCharacterSelection(username, charId);
 
-          // Save character selection to server
-          await updateCharacterSelection(username, charId);
+            // Hide character selection
+            selectDiv.classList.add('hidden');
 
-          // Clean up preview
-          if (characterPreview) {
-            characterPreview.destroy();
-            characterPreview = null;
-          }
-
-          // Hide character selection
-          selectDiv.classList.add('hidden');
-
-          resolve(charId);
+            resolve(charId);
+          },
+          onSignUpClick: () => {
+            authModal.open('signup');
+          },
+          onLoginClick: () => {
+            authModal.open('login');
+          },
+          selectedCharacterId: undefined // No pre-selected character for new users
         });
       });
     }
