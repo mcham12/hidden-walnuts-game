@@ -8,6 +8,9 @@ import { SettingsManager } from './SettingsManager';
 import { TouchControls } from './TouchControls';
 import { SessionManager } from './SessionManager'; // MVP 6: Player identity
 import { restoreSession, startTokenRefreshTimer } from './services/AuthService'; // MVP 16: Session persistence
+import { AuthModal } from './components/AuthModal'; // MVP 16: Authentication modals
+// TODO MVP 16: Replace old dropdown with CharacterGrid component
+// import { CharacterGrid } from './components/CharacterGrid'; // MVP 16: Character selection
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
@@ -360,7 +363,30 @@ async function main() {
     // Refreshes access token 5 days before expiration (every 25 days)
     startTokenRefreshTimer();
 
-    // MVP 6: STEP 0C - Initialize session management
+    // MVP 16: STEP 0C - Initialize AuthModal for signup/login flows
+    const authModal = new AuthModal({
+      onAuthSuccess: (userData) => {
+        console.log('✅ User authenticated:', userData);
+        // Reload page to refresh character availability and session
+        window.location.reload();
+      },
+      onClose: () => {
+        console.log('🚪 Auth modal closed');
+      }
+    });
+
+    // MVP 16: STEP 0D - Handle /reset-password route
+    if (window.location.pathname === '/reset-password') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      if (token) {
+        authModal.open('reset-password');
+        // Don't continue with game initialization
+        return;
+      }
+    }
+
+    // MVP 6: STEP 0E - Initialize session management
     const sessionManager = new SessionManager();
     const sessionToken = sessionManager.getToken();
 
@@ -438,7 +464,7 @@ async function main() {
     // Initialize audio manager (don't load sounds yet - will load when game starts)
     const audioManager = new AudioManager();
 
-    // Initialize settings manager
+    // Initialize settings manager (callbacks will be set later after Game instance is created)
     const settingsManager = new SettingsManager(audioManager);
 
     let selectedCharacterId: string;
