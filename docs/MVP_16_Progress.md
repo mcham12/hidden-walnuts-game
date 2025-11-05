@@ -19,9 +19,13 @@ MVP 16 implements full email/password authentication while maintaining the no-au
 - ✅ UX flows designed (signup, login, verification, enticement)
 - ✅ Documentation complete (3 documents: Tech, UX, Progress)
 
-**Current Status**: ✅ **PHASE 1 COMPLETE** - Ready for Phase 2 (UX Implementation)
+**Current Status**: 🔴 **CRITICAL FIX APPLIED** - API routes added, integration in progress
 
-**Latest Update**: 2025-11-05 - Phase 1 COMPLETE (All Technical Implementation)
+**Latest Update**: 2025-11-05 - CRITICAL API ROUTING FIX
+- **Issue Discovered**: All MVP 16 code was built but `/auth/*` API routes were missing in api.ts
+- **Impact**: Authentication system was 100% non-functional (all auth requests returned 404)
+- **Fix Applied**: Added `/auth/*` routing that transforms paths to PlayerIdentity DO action parameters
+- **Status**: Backend now connected, frontend integration continuing
 
 ---
 

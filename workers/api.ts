@@ -66,6 +66,86 @@ export default {
         return forest.fetch(request);
       }
 
+      // MVP 16: Handle /auth/* routes (authentication system)
+      // Transform /auth/signup → PlayerIdentity DO with action=signup
+      if (pathname.startsWith("/auth/")) {
+        const action = pathname.replace("/auth/", "");
+
+        // For most auth actions, we need to extract email/username from request body
+        let identifier: string | null = null;
+
+        try {
+          const bodyText = await request.text();
+          const body = bodyText ? JSON.parse(bodyText) : {};
+
+          // Different actions use different identifiers
+          if (action === 'signup' || action === 'login' || action === 'requestPasswordReset') {
+            identifier = body.email || body.username;
+          } else if (action === 'refreshToken' || action === 'logout' || action === 'logoutAll' || action === 'changePassword') {
+            // These require JWT token in Authorization header
+            const authHeader = request.headers.get('Authorization');
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+              const token = authHeader.substring(7);
+              // We'll need to decode the JWT to get the username
+              // For now, extract from body if available
+              identifier = body.username || body.email;
+            }
+          } else if (action === 'verifyEmail' || action === 'resetPassword') {
+            // These use tokens, extract username from body or token
+            identifier = body.username || body.email;
+          }
+
+          if (!identifier) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Missing identifier',
+              message: 'Email or username required for this action'
+            }), {
+              status: 400,
+              headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+            });
+          }
+
+          // Get PlayerIdentity DO instance (one per email/username)
+          const id = env.PLAYER_IDENTITY.idFromName(identifier);
+          const stub = env.PLAYER_IDENTITY.get(id);
+
+          // Create new URL with action parameter
+          const newUrl = new URL(request.url);
+          newUrl.searchParams.set('action', action);
+          newUrl.pathname = '/api/identity';
+
+          // Recreate request with modified URL and original body
+          const newRequest = new Request(newUrl, {
+            method: request.method,
+            headers: request.headers,
+            body: bodyText || undefined
+          });
+
+          // Forward to PlayerIdentity DO
+          const response = await stub.fetch(newRequest);
+
+          // Add CORS headers
+          return new Response(response.body, {
+            status: response.status,
+            headers: {
+              ...CORS_HEADERS,
+              "Content-Type": "application/json"
+            }
+          });
+        } catch (error) {
+          console.error('Auth route error:', error);
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Invalid request',
+            message: error instanceof Error ? error.message : 'Failed to process request'
+          }), {
+            status: 400,
+            headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+          });
+        }
+      }
+
       // MVP 6: Handle /api/identity routes (player identity management)
       // FIXED: Use username as DO ID (not sessionToken) for private browsing support
       if (pathname.startsWith("/api/identity")) {
