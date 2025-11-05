@@ -21,7 +21,7 @@ MVP 16 implements full email/password authentication while maintaining the no-au
 
 **Current Status**: 🟡 **PHASE 1 IN PROGRESS (Technical Implementation)**
 
-**Latest Update**: 2025-11-05 - Part 1A & 1B Complete
+**Latest Update**: 2025-11-05 - Part 1A, 1B & 1C Complete
 
 ---
 
@@ -30,17 +30,17 @@ MVP 16 implements full email/password authentication while maintaining the no-au
 | Phase/Part | Status | Progress | Time |
 |------------|--------|----------|------|
 | **Phase 0: Research & Design** | ✅ Complete | 6/6 tasks | 2 days |
-| **Phase 1: Technical Implementation** | 🟡 In Progress | 16/29 tasks | 8 hours |
+| **Phase 1: Technical Implementation** | 🟡 In Progress | 20/29 tasks | 9 hours |
 | └─ Part 1A: PlayerIdentity DO | ✅ Complete | 11/11 tasks | ~6 hours |
 | └─ Part 1B: Email Integration | ✅ Complete | 5/5 tasks | ~2 hours |
-| └─ Part 1C: Character Gating | ⏳ Pending | 0/4 tasks | ~1.5 days |
+| └─ Part 1C: Character Gating | ✅ Complete | 4/4 tasks | ~1 hour |
 | └─ Part 1D: JWT Sessions | ⏳ Pending | 0/5 tasks | ~3 days |
 | └─ Part 1E: Leaderboard | ⏳ Pending | 0/4 tasks | ~1.5 days |
 | **Phase 2: UX Implementation** | ⏳ Not Started | 0/20+ tasks | 2-3 weeks |
 | **Phase 3: Integration & Testing** | ⏳ Not Started | 0/15+ tasks | 1-2 weeks |
 | **Phase 4: Monetization Hooks** | ⏳ Not Started | 0/5+ tasks | 1 day |
 
-**Overall Progress**: 22/70+ tasks complete (31%)
+**Overall Progress**: 26/70+ tasks complete (37%)
 
 ---
 
@@ -56,7 +56,7 @@ MVP 16 implements full email/password authentication while maintaining the no-au
 - **Started**: 2025-11-05
 - **Estimated Completion**: 2025-11-25
 - **Duration**: 2-3 weeks
-- **Status**: 🟡 IN PROGRESS - Part 1A & 1B Complete
+- **Status**: 🟡 IN PROGRESS - Part 1A, 1B & 1C Complete
 
 ### Phase 2: UX Implementation ⏳ **NOT STARTED** (2-3 weeks)
 - **Estimated Start**: 2025-11-20 (parallel with Phase 1)
@@ -416,9 +416,10 @@ File: `/workers/services/EmailService.ts`
 
 ---
 
-### Part 1C: Character Gating System ⏳
-- **Status**: ⏳ PENDING
-- **Estimated Duration**: 1.5 days
+### Part 1C: Character Gating System ✅
+- **Status**: ✅ COMPLETE
+- **Completed**: 2025-11-05
+- **Duration**: ~1 hour (estimated 1.5 days)
 - **Priority**: 🟡 MEDIUM
 
 #### Overview
@@ -479,10 +480,38 @@ Update ForestManager or character selection handler:
 - Manual testing checklist
 
 #### Success Criteria
-- [ ] No-auth users can only select Squirrel
-- [ ] Authenticated users can select 6 free characters
-- [ ] Premium characters show locked (💎) for all users
-- [ ] Server rejects invalid character selection attempts
+- ✅ No-auth users can only select Squirrel
+- ✅ Authenticated users can select 6 free characters
+- ✅ Premium characters show locked (💎) for all users
+- ✅ Server rejects invalid character selection attempts
+
+#### What Was Built
+1. **Server-Side Character Tier Definitions**
+   - Created `/workers/constants/CharacterTiers.ts` with tier constants and validation functions
+   - `isCharacterAvailable()` - Validates character availability based on auth status
+   - `getAvailableCharacters()` - Returns all available characters for user
+   - `getCharacterTier()` - Returns tier for a character
+   - `getCharacterPrice()` - Returns price for premium characters ($1.99)
+
+2. **Character Metadata Updates**
+   - Updated `/client/public/characters.json` with tier and price fields
+   - 1 no-auth character: Squirrel
+   - 6 free characters: Squirrel, Hare, Goat, Chipmunk, Turkey, Mallard
+   - 4 premium characters: Lynx, Bear, Moose, Badger ($1.99 each)
+   - 1 future character: Skunk (seasonal/event)
+
+3. **Client-Side CharacterRegistry Enhancement**
+   - Completely refactored `/client/src/services/CharacterRegistry.ts`
+   - Added async `loadCharacters()` method to load from characters.json
+   - Added tier validation methods matching server-side logic
+   - `getLockedCharacters()` - Returns locked characters for UI display
+   - Updated CharacterDefinition interface with tier and price fields
+
+4. **Server-Side Character Validation in ForestManager**
+   - Added character validation before WebSocket connection acceptance
+   - Fetches player auth status and unlocked characters from PlayerIdentity DO
+   - Returns 403 error with helpful message if character unavailable
+   - Prevents unauthorized character selection at server level
 
 ---
 

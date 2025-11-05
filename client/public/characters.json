@@ -2,6 +2,7 @@
   {
     "id": "squirrel",
     "name": "Squirrel",
+    "tier": "no-auth",
     "modelPath": "/assets/models/characters/Squirrel_LOD0.glb",
     "animations": {
       "idle": "/assets/models/characters/Animations/Single/Squirrel_Idle_A.glb",
@@ -35,6 +36,8 @@
   {
     "id": "lynx",
     "name": "Lynx",
+    "tier": "premium",
+    "price": 1.99,
     "modelPath": "/assets/models/characters/Lynx_LOD0.glb",
     "animations": {
       "idle": "/assets/models/characters/Animations/Single/Lynx_Idle_A.glb",
@@ -68,6 +71,7 @@
   {
     "id": "goat",
     "name": "Goat",
+    "tier": "free",
     "modelPath": "/assets/models/characters/Goat_LOD0.glb",
     "animations": {
       "idle": "/assets/models/characters/Animations/Single/Goat_Idle_A.glb",
@@ -101,6 +105,7 @@
   {
     "id": "hare",
     "name": "Hare",
+    "tier": "free",
     "modelPath": "/assets/models/characters/Hare_LOD0.glb",
     "animations": {
       "idle": "/assets/models/characters/Animations/Single/Hare_Idle_A.glb",
@@ -134,6 +139,8 @@
   {
     "id": "moose",
     "name": "Moose",
+    "tier": "premium",
+    "price": 1.99,
     "modelPath": "/assets/models/characters/Moose_LOD0.glb",
     "animations": {
       "idle": "/assets/models/characters/Animations/Single/Moose_Idle_A.glb",
@@ -167,6 +174,8 @@
   {
     "id": "bear",
     "name": "Bear",
+    "tier": "premium",
+    "price": 1.99,
     "modelPath": "/assets/models/characters/Bear_LOD0.glb",
     "animations": {
       "idle": "/assets/models/characters/Animations/Single/Bear_Idle_A.glb",
@@ -200,6 +209,7 @@
   {
     "id": "skunk",
     "name": "Skunk",
+    "tier": "future",
     "modelPath": "/assets/models/characters/Skunk_LOD0.glb",
     "animations": {
       "idle": "/assets/models/characters/Animations/Single/Skunk_Idle_A.glb",
@@ -233,6 +243,8 @@
   {
     "id": "badger",
     "name": "Badger",
+    "tier": "premium",
+    "price": 1.99,
     "modelPath": "/assets/models/characters/Badger_LOD0.glb",
     "animations": {
       "idle": "/assets/models/characters/Animations/Single/Badger_Idle_A.glb",
@@ -266,6 +278,7 @@
   {
     "id": "chipmunk",
     "name": "Chipmunk",
+    "tier": "free",
     "modelPath": "/assets/models/characters/Chipmunk_LOD0.glb",
     "animations": {
       "idle": "/assets/models/characters/Animations/Single/Chipmunk_Idle_A.glb",
@@ -299,6 +312,7 @@
   {
     "id": "turkey",
     "name": "Turkey",
+    "tier": "free",
     "modelPath": "/assets/models/characters/Turkey_LOD0.glb",
     "animations": {
       "idle": "/assets/models/characters/Animations/Single/Turkey_Idle_A.glb",
@@ -332,6 +346,7 @@
   {
     "id": "mallard",
     "name": "Mallard",
+    "tier": "free",
     "modelPath": "/assets/models/characters/Mallard_LOD0.glb",
     "animations": {
       "idle": "/assets/models/characters/Animations/Single/Mallard_Idle_A.glb",

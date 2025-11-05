@@ -1,159 +1,182 @@
 // Character Registry - Manages all available animated characters for multiplayer
+// MVP 16: Enhanced with character tier system and authentication-based gating
+
+export type CharacterTier = 'no-auth' | 'free' | 'premium' | 'future';
 
 export interface CharacterDefinition {
   id: string;
   name: string;
+  tier: CharacterTier;
+  price?: number; // Only for premium characters
   modelPath: string;
   animations: {
     idle: string;
+    idle_b?: string;
+    idle_c?: string;
     walk: string;
     run: string;
     jump?: string;
-    attack?: string;
+    eat?: string;
+    bounce?: string;
+    spin?: string;
+    clicked?: string;
     sit?: string;
+    roll?: string;
+    attack?: string;
+    hit?: string;
+    fear?: string;
+    death?: string;
+    fly?: string;
+    swim?: string;
   };
   scale: number;
   category: 'mammal' | 'bird' | 'reptile' | 'aquatic';
+  description?: string;
+  emoteAnimations?: {
+    wave?: string;
+    point?: string;
+    celebrate?: string;
+  };
 }
 
-export class CharacterRegistry {
-  private static characters: CharacterDefinition[] = [
-    // Mammals
-    {
-      id: 'colobus',
-      name: 'Colobus Monkey',
-      modelPath: '/assets/models/characters/Colobus_LOD0.glb',
-      animations: {
-        idle: '/assets/animations/characters/Single/Colobus_Idle_A.glb',
-        walk: '/assets/animations/characters/Single/Colobus_Walk.glb',
-        run: '/assets/animations/characters/Single/Colobus_Run.glb',
-        jump: '/assets/animations/characters/Single/Colobus_Jump.glb',
-        attack: '/assets/animations/characters/Single/Colobus_Attack.glb',
-        sit: '/assets/animations/characters/Single/Colobus_Sit.glb'
-      },
-      scale: 0.3,
-      category: 'mammal'
-    },
-    {
-      id: 'muskrat',
-      name: 'Muskrat',
-      modelPath: '/assets/models/characters/Muskrat_LOD0.glb',
-      animations: {
-        idle: '/assets/animations/characters/Single/Muskrat_Idle_A.glb',
-        walk: '/assets/animations/characters/Single/Muskrat_Walk.glb',
-        run: '/assets/animations/characters/Single/Muskrat_Run.glb',
-        jump: '/assets/animations/characters/Single/Muskrat_Jump.glb',
-        attack: '/assets/animations/characters/Single/Muskrat_Attack.glb'
-      },
-      scale: 0.3,
-      category: 'mammal'
-    },
-    {
-      id: 'pudu',
-      name: 'Pudu (Small Deer)',
-      modelPath: '/assets/models/characters/Pudu_LOD0.glb',
-      animations: {
-        idle: '/assets/animations/characters/Single/Pudu_Idle_A.glb',
-        walk: '/assets/animations/characters/Single/Pudu_Walk.glb',
-        run: '/assets/animations/characters/Single/Pudu_Run.glb',
-        jump: '/assets/animations/characters/Single/Pudu_Jump.glb',
-        attack: '/assets/animations/characters/Single/Pudu_Attack.glb'
-      },
-      scale: 0.3,
-      category: 'mammal'
-    },
-    
-    // Reptiles
-    {
-      id: 'gecko',
-      name: 'Gecko',
-      modelPath: '/assets/models/characters/Gecko_LOD0.glb',
-      animations: {
-        idle: '/assets/animations/characters/Single/Gecko_Idle_A.glb',
-        walk: '/assets/animations/characters/Single/Gecko_Walk.glb',
-        run: '/assets/animations/characters/Single/Gecko_Run.glb',
-        jump: '/assets/animations/characters/Single/Gecko_Jump.glb',
-        attack: '/assets/animations/characters/Single/Gecko_Attack.glb'
-      },
-      scale: 0.3,
-      category: 'reptile'
-    },
-    {
-      id: 'taipan',
-      name: 'Taipan Snake',
-      modelPath: '/assets/models/characters/Taipan_LOD0.glb',
-      animations: {
-        idle: '/assets/animations/characters/Single/Taipan_Idle_A.glb',
-        walk: '/assets/animations/characters/Single/Taipan_Walk.glb',
-        run: '/assets/animations/characters/Single/Taipan_Run.glb',
-        attack: '/assets/animations/characters/Single/Taipan_Attack.glb'
-      },
-      scale: 0.3,
-      category: 'reptile'
-    },
-    
-    // Birds
-    {
-      id: 'sparrow',
-      name: 'Sparrow',
-      modelPath: '/assets/models/characters/Sparrow_LOD0.glb',
-      animations: {
-        idle: '/assets/animations/characters/Single/Sparrow_Idle_A.glb',
-        walk: '/assets/animations/characters/Single/Sparrow_Walk.glb',
-        run: '/assets/animations/characters/Single/Sparrow_Run.glb',
-        jump: '/assets/animations/characters/Single/Sparrow_Jump.glb',
-        attack: '/assets/animations/characters/Single/Sparrow_Attack.glb'
-      },
-      scale: 0.3,
-      category: 'bird'
-    },
-    
-    // Aquatic
-    {
-      id: 'herring',
-      name: 'Herring Fish',
-      modelPath: '/assets/models/characters/Herring_LOD0.glb',
-      animations: {
-        idle: '/assets/animations/characters/Single/Herring_Idle_A.glb',
-        walk: '/assets/animations/characters/Single/Herring_Swim.glb',
-        run: '/assets/animations/characters/Single/Herring_Swim.glb',
-        attack: '/assets/animations/characters/Single/Herring_Attack.glb'
-      },
-      scale: 0.3,
-      category: 'aquatic'
-    },
-    {
-      id: 'inkfish',
-      name: 'Inkfish (Squid)',
-      modelPath: '/assets/models/characters/Inkfish_LOD0.glb',
-      animations: {
-        idle: '/assets/animations/characters/Single/Inkfish_Idle_A.glb',
-        walk: '/assets/animations/characters/Single/Inkfish_Swim.glb',
-        run: '/assets/animations/characters/Single/Inkfish_Swim.glb',
-        attack: '/assets/animations/characters/Single/Inkfish_Attack.glb'
-      },
-      scale: 0.3,
-      category: 'aquatic'
-    }
-  ];
+// Character tier constants matching server-side validation
+export const NO_AUTH_CHARACTERS = ['squirrel'];
 
-  // Get all available characters
+export const FREE_AUTH_CHARACTERS = [
+  'squirrel',
+  'hare',
+  'goat',
+  'chipmunk',
+  'turkey',
+  'mallard'
+];
+
+export const PREMIUM_CHARACTERS = [
+  'lynx',
+  'bear',
+  'moose',
+  'badger'
+];
+
+export const FUTURE_PREMIUM_CHARACTERS = [
+  'skunk' // Seasonal/event character
+];
+
+export class CharacterRegistry {
+  private static characters: CharacterDefinition[] = [];
+  private static loaded = false;
+
+  // Load characters from JSON file
+  static async loadCharacters(): Promise<void> {
+    if (this.loaded) return;
+
+    try {
+      const response = await fetch('/characters.json');
+      if (!response.ok) {
+        throw new Error(`Failed to load characters: ${response.statusText}`);
+      }
+      this.characters = await response.json();
+      this.loaded = true;
+    } catch (error) {
+      console.error('Failed to load character definitions:', error);
+      this.characters = [];
+    }
+  }
+
+  // Ensure characters are loaded before using registry
+  private static ensureLoaded(): void {
+    if (!this.loaded) {
+      throw new Error('CharacterRegistry not loaded. Call loadCharacters() first.');
+    }
+  }
+
+  // Get all characters (regardless of availability)
   static getAllCharacters(): CharacterDefinition[] {
+    this.ensureLoaded();
     return [...this.characters];
   }
 
   // Get character by ID
   static getCharacterById(id: string): CharacterDefinition | null {
+    this.ensureLoaded();
     return this.characters.find(char => char.id === id) || null;
+  }
+
+  // Get character tier
+  static getCharacterTier(characterId: string): CharacterTier | null {
+    const character = this.getCharacterById(characterId);
+    return character?.tier || null;
+  }
+
+  // Get character price (returns null for non-premium characters)
+  static getCharacterPrice(characterId: string): number | null {
+    const character = this.getCharacterById(characterId);
+    return character?.price || null;
+  }
+
+  // Check if character is available to user
+  static isCharacterAvailable(
+    characterId: string,
+    isAuthenticated: boolean,
+    unlockedCharacters: string[] = []
+  ): boolean {
+    const character = this.getCharacterById(characterId);
+    if (!character) return false;
+
+    const tier = character.tier;
+
+    // No-auth users: only squirrel
+    if (!isAuthenticated) {
+      return tier === 'no-auth';
+    }
+
+    // Authenticated users: free characters + unlocked premium
+    if (tier === 'free') return true;
+    if (tier === 'premium' && unlockedCharacters.includes(characterId)) return true;
+
+    // Future characters not available yet
+    return false;
+  }
+
+  // Get all available characters for user
+  static getAvailableCharacters(
+    isAuthenticated: boolean,
+    unlockedCharacters: string[] = []
+  ): CharacterDefinition[] {
+    this.ensureLoaded();
+
+    return this.characters.filter(char =>
+      this.isCharacterAvailable(char.id, isAuthenticated, unlockedCharacters)
+    );
+  }
+
+  // Get locked characters (premium characters not yet unlocked)
+  static getLockedCharacters(
+    isAuthenticated: boolean,
+    unlockedCharacters: string[] = []
+  ): CharacterDefinition[] {
+    this.ensureLoaded();
+
+    if (!isAuthenticated) {
+      // No-auth users see all premium + free characters as locked
+      return this.characters.filter(char => char.tier !== 'no-auth' && char.tier !== 'future');
+    }
+
+    // Authenticated users see only premium characters they haven't unlocked
+    return this.characters.filter(char =>
+      char.tier === 'premium' && !unlockedCharacters.includes(char.id)
+    );
   }
 
   // Get characters by category
   static getCharactersByCategory(category: CharacterDefinition['category']): CharacterDefinition[] {
+    this.ensureLoaded();
     return this.characters.filter(char => char.category === category);
   }
 
   // Get random character (excluding specific ones)
   static getRandomCharacter(excludeIds: string[] = []): CharacterDefinition {
+    this.ensureLoaded();
     const availableChars = this.characters.filter(char => !excludeIds.includes(char.id));
     const randomIndex = Math.floor(Math.random() * availableChars.length);
     return availableChars[randomIndex] || this.characters[0]; // Fallback to first character
@@ -161,14 +184,15 @@ export class CharacterRegistry {
 
   // Get random character for multiplayer (ensures variety)
   static getRandomMultiplayerCharacter(usedCharacters: string[] = []): CharacterDefinition {
+    this.ensureLoaded();
     // Prefer unused characters first
     const unusedChars = this.characters.filter(char => !usedCharacters.includes(char.id));
-    
+
     if (unusedChars.length > 0) {
       const randomIndex = Math.floor(Math.random() * unusedChars.length);
       return unusedChars[randomIndex];
     }
-    
+
     // If all characters are used, pick any random one
     return this.getRandomCharacter();
   }
@@ -182,7 +206,7 @@ export class CharacterRegistry {
       hash = ((hash << 5) - hash) + char;
       hash = hash & hash; // Convert to 32bit integer
     }
-    
+
     // Predefined color palette for good visibility
     const colors = [
       '#FF6B6B', // Red
@@ -201,7 +225,7 @@ export class CharacterRegistry {
       '#E67E22', // Carrot
       '#8E44AD'  // Violet
     ];
-    
+
     const colorIndex = Math.abs(hash) % colors.length;
     return colors[colorIndex];
   }
@@ -210,27 +234,35 @@ export class CharacterRegistry {
   static validateCharacter(characterId: string): boolean {
     const character = this.getCharacterById(characterId);
     if (!character) return false;
-    
+
     // Basic validation - ensure required animations exist
     return !!(character.animations.idle && character.animations.walk && character.animations.run);
   }
 
   // Get character display info for UI
-  static getCharacterDisplayInfo(characterId: string): { name: string; category: string; emoji: string } | null {
+  static getCharacterDisplayInfo(characterId: string): {
+    name: string;
+    category: string;
+    tier: CharacterTier;
+    price?: number;
+    emoji: string;
+  } | null {
     const character = this.getCharacterById(characterId);
     if (!character) return null;
-    
+
     // Category emojis for UI
     const categoryEmojis = {
       'mammal': '🐒',
       'bird': '🐦',
-      'reptile': '🦎', 
+      'reptile': '🦎',
       'aquatic': '🐟'
     };
-    
+
     return {
       name: character.name,
       category: character.category,
+      tier: character.tier,
+      price: character.price,
       emoji: categoryEmojis[character.category]
     };
   }
@@ -239,7 +271,7 @@ export class CharacterRegistry {
   static getAnimationForState(characterId: string, state: 'idle' | 'walking' | 'running'): string | null {
     const character = this.getCharacterById(characterId);
     if (!character) return null;
-    
+
     switch (state) {
       case 'idle':
         return character.animations.idle;
@@ -256,7 +288,7 @@ export class CharacterRegistry {
   static isCharacterSuitableForTerrain(characterId: string, terrainType: 'land' | 'water'): boolean {
     const character = this.getCharacterById(characterId);
     if (!character) return false;
-    
+
     // Aquatic characters prefer water, others prefer land
     if (terrainType === 'water') {
       return character.category === 'aquatic';

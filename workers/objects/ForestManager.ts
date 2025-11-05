@@ -8,6 +8,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { NPCManager } from './NPCManager';
 import { PredatorManager } from './PredatorManager';
 import { Env } from '../types';
+import { isCharacterAvailable } from '../constants/CharacterTiers';
 
 // Use Cloudflare's built-in types - no need to redefine interfaces
 
@@ -507,6 +508,58 @@ export default class ForestManager extends DurableObject {
       } else {
         // No token provided - log but allow (for backwards compatibility during rollout)
         console.warn(`⚠️ No Turnstile token provided for ${squirrelId} (${username})`);
+      }
+
+      // MVP 16: Validate character selection based on authentication and unlocked characters
+      let isAuthenticated = false;
+      let unlockedCharacters: string[] = [];
+
+      if (sessionToken) {
+        // Fetch player data from PlayerIdentity DO to check auth status and unlocked characters
+        try {
+          const playerIdentityId = this.env.PLAYER_IDENTITY.idFromName(username);
+          const playerIdentityStub = this.env.PLAYER_IDENTITY.get(playerIdentityId);
+
+          // Create internal request to get player data
+          const playerDataRequest = new Request('https://internal/player-data', {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${sessionToken}`
+            }
+          });
+
+          const playerDataResponse = await playerIdentityStub.fetch(playerDataRequest);
+
+          if (playerDataResponse.ok) {
+            const playerData = await playerDataResponse.json() as {
+              username: string;
+              isAuthenticated: boolean;
+              unlockedCharacters: string[];
+            };
+
+            isAuthenticated = playerData.isAuthenticated;
+            unlockedCharacters = playerData.unlockedCharacters || [];
+          }
+        } catch (error) {
+          console.error(`Failed to fetch player data for ${username}:`, error);
+          // Default to unauthenticated if fetch fails
+        }
+      }
+
+      // Validate character availability
+      if (!isCharacterAvailable(characterId, isAuthenticated, unlockedCharacters)) {
+        console.warn(`❌ Character ${characterId} not available for user ${username} (auth: ${isAuthenticated})`);
+        return new Response(JSON.stringify({
+          error: 'Character not available',
+          message: `The character '${characterId}' is not available for your account. ${
+            isAuthenticated
+              ? 'This is a premium character that requires purchase.'
+              : 'Please sign in to access more characters.'
+          }`
+        }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
 
       const webSocketPair = new WebSocketPair();
