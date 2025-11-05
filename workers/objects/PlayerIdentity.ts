@@ -2,14 +2,40 @@ import { DurableObject } from 'cloudflare:workers';
 
 /**
  * PlayerIdentityData - Stored data for each username
+ * MVP 16: Enhanced with full authentication support
  */
 export interface PlayerIdentityData {
+  // Existing fields (MVP 6)
   username: string;
   sessionTokens: string[]; // Multiple sessions (different browsers/devices)
   created: number;
   lastSeen: number;
   lastUsernameChange?: number;
   lastCharacterId?: string; // Last selected character (for returning users)
+
+  // NEW: Authentication fields (MVP 16)
+  email?: string;                     // Email address (unique)
+  passwordHash?: string;              // bcrypt hash (60 chars, cost factor 12)
+  emailVerified: boolean;             // Email verification status (default: false)
+  emailVerificationToken?: string;    // Verification token (UUID v4)
+  emailVerificationExpiry?: number;   // Token expiration timestamp (24 hours)
+  passwordResetToken?: string;        // Password reset token (UUID v4)
+  passwordResetExpiry?: number;       // Token expiration timestamp (1 hour)
+  isAuthenticated: boolean;           // true if has email/password, false if no-auth
+  accountCreated?: number;            // When authenticated account created
+  lastPasswordChange?: number;        // Timestamp of last password change
+
+  // NEW: Character entitlements (MVP 16)
+  unlockedCharacters: string[];       // Array of character IDs ['squirrel', 'hare', ...]
+
+  // NEW: Session tracking (MVP 16)
+  authTokens: {                       // JWT auth tokens (multiple devices)
+    tokenId: string;                  // Unique token ID (for revocation)
+    created: number;                  // Creation timestamp
+    expiresAt: number;                // Expiration timestamp
+    deviceInfo?: string;              // User agent string
+    lastUsed?: number;                // Last used timestamp
+  }[];
 }
 
 /**
@@ -90,6 +116,12 @@ export class PlayerIdentity extends DurableObject {
     const data = await this.ctx.storage.get<PlayerIdentityData>('player');
 
     if (data) {
+      // MVP 16: Migrate existing users - add default values if missing
+      if (data.emailVerified === undefined) data.emailVerified = false;
+      if (data.isAuthenticated === undefined) data.isAuthenticated = false;
+      if (!data.unlockedCharacters) data.unlockedCharacters = ['squirrel'];
+      if (!data.authTokens) data.authTokens = [];
+
       // Username exists! Link this sessionToken if not already linked
       if (!data.sessionTokens.includes(sessionToken)) {
         data.sessionTokens.push(sessionToken);
@@ -144,12 +176,17 @@ export class PlayerIdentity extends DurableObject {
       });
     }
 
-    // Create new identity
+    // Create new identity (MVP 16: Add default values for authentication)
     const data: PlayerIdentityData = {
       username,
       sessionTokens: [sessionToken],
       created: Date.now(),
-      lastSeen: Date.now()
+      lastSeen: Date.now(),
+      // MVP 16: Default values for no-auth users
+      emailVerified: false,
+      isAuthenticated: false,
+      unlockedCharacters: ['squirrel'], // No-auth users get only Squirrel
+      authTokens: []
     };
 
     await this.ctx.storage.put('player', data);
