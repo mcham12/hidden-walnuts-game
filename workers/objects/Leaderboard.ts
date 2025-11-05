@@ -25,6 +25,11 @@ interface ScoreRecord {
   walnuts: { hidden: number; found: number };
   updatedAt: number;
   lastScoreIncrease?: number; // For rate limiting
+
+  // MVP 16: Authentication fields
+  isAuthenticated?: boolean; // true if has email/password account
+  emailVerified?: boolean; // true if email verified
+  characterId?: string; // Character used by player
 }
 
 interface LeaderboardMetadata {
@@ -92,13 +97,25 @@ export default class Leaderboard {
     // Get top players (weekly by default, or all-time if specified)
     if (path.endsWith("/top")) {
       const limit = parseInt(url.searchParams.get("limit") || "10");
-      const type = url.searchParams.get("type") || "weekly"; // MVP 9: Support ?type=alltime
+      const type = url.searchParams.get("type") || "weekly"; // MVP 9: Support ?type=alltime or daily
 
-      const topPlayers = type === "alltime"
-        ? this.getTopPlayers(limit, this.alltimeScores)
-        : this.getTopPlayers(limit, this.scores);
+      // MVP 16: Implement authentication-based filtering
+      let topPlayers;
+      let totalPlayers;
 
-      const totalPlayers = type === "alltime" ? this.alltimeScores.size : this.scores.size;
+      if (type === "alltime") {
+        // Hall of Fame: Authenticated players ONLY
+        topPlayers = this.getTopPlayers(limit, this.alltimeScores, { requireAuth: true });
+        totalPlayers = Array.from(this.alltimeScores.values()).filter(r => r.isAuthenticated).length;
+      } else if (type === "weekly") {
+        // Weekly leaderboard: Top 10 restricted to authenticated players
+        topPlayers = this.getTopPlayers(limit, this.scores, { authOnlyForTopN: 10 });
+        totalPlayers = this.scores.size;
+      } else {
+        // Daily leaderboard: All players (no filtering)
+        topPlayers = this.getTopPlayers(limit, this.scores);
+        totalPlayers = this.scores.size;
+      }
 
       return new Response(JSON.stringify({
         leaderboard: topPlayers,
@@ -128,12 +145,17 @@ export default class Leaderboard {
       const playerRecord = this.scores.get(playerId);
       const rank = this.getPlayerRank(playerId);
 
+      // MVP 16: Include authentication info in player rank response
       return new Response(JSON.stringify({
         playerId,
         score: playerRecord?.score || 0,
         walnuts: playerRecord?.walnuts || { hidden: 0, found: 0 },
         rank: rank,
-        totalPlayers: this.scores.size
+        totalPlayers: this.scores.size,
+        // Authentication fields
+        isAuthenticated: playerRecord?.isAuthenticated || false,
+        emailVerified: playerRecord?.emailVerified || false,
+        characterId: playerRecord?.characterId || 'squirrel'
       }), {
         headers: { "Content-Type": "application/json" }
       });
@@ -212,6 +234,11 @@ export default class Leaderboard {
 
       record.updatedAt = now;
       record.lastScoreIncrease = now;
+
+      // MVP 16: Set defaults for authentication fields (backward compatibility)
+      if (record.isAuthenticated === undefined) record.isAuthenticated = false;
+      if (record.emailVerified === undefined) record.emailVerified = false;
+      if (!record.characterId) record.characterId = 'squirrel'; // Default character
 
       // MVP 9: Update both weekly and all-time leaderboards
       // Weekly leaderboard (resets every Monday)
@@ -522,16 +549,62 @@ export default class Leaderboard {
   }
 
   // Get top players by score (MVP 9: Support both weekly and all-time)
-  private getTopPlayers(limit: number = 10, scoresMap: Map<string, ScoreRecord> = this.scores): Array<{ playerId: string; score: number; walnuts: { hidden: number; found: number }; rank: number }> {
-    const sortedPlayers = Array.from(scoresMap.values())
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit)
-      .map((record, index) => ({
-        playerId: record.playerId,
-        score: record.score,
-        walnuts: record.walnuts,
-        rank: index + 1
-      }));
+  /**
+   * MVP 16: Enhanced getTopPlayers with authentication filtering
+   * @param limit - Number of players to return
+   * @param scoresMap - Map of player scores
+   * @param options - Filtering options
+   *   - requireAuth: Only include authenticated players
+   *   - authOnlyForTopN: First N positions restricted to authenticated players
+   */
+  private getTopPlayers(
+    limit: number = 10,
+    scoresMap: Map<string, ScoreRecord> = this.scores,
+    options?: { requireAuth?: boolean; authOnlyForTopN?: number }
+  ): Array<{
+    playerId: string;
+    score: number;
+    walnuts: { hidden: number; found: number };
+    rank: number;
+    isAuthenticated?: boolean;
+    emailVerified?: boolean;
+    characterId?: string;
+  }> {
+    let players = Array.from(scoresMap.values());
+
+    // Apply authentication filter if required
+    if (options?.requireAuth) {
+      players = players.filter(p => p.isAuthenticated);
+    }
+
+    // Sort by score
+    players.sort((a, b) => b.score - a.score);
+
+    // Apply top N authenticated filter if specified
+    if (options?.authOnlyForTopN) {
+      const topN = options.authOnlyForTopN;
+      const authenticatedPlayers = players.filter(p => p.isAuthenticated);
+      const unauthenticatedPlayers = players.filter(p => !p.isAuthenticated);
+
+      // First N positions: authenticated only
+      const topNAuth = authenticatedPlayers.slice(0, topN);
+      // Remaining positions: fill with unauthenticated players
+      const remainingAuth = authenticatedPlayers.slice(topN);
+      const remaining = [...remainingAuth, ...unauthenticatedPlayers];
+
+      players = [...topNAuth, ...remaining];
+    }
+
+    // Take limit and add rank
+    const sortedPlayers = players.slice(0, limit).map((record, index) => ({
+      playerId: record.playerId,
+      score: record.score,
+      walnuts: record.walnuts,
+      rank: index + 1,
+      isAuthenticated: record.isAuthenticated,
+      emailVerified: record.emailVerified,
+      characterId: record.characterId
+    }));
 
     return sortedPlayers;
   }
