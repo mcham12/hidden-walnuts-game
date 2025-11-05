@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { PasswordUtils } from '../utils/PasswordUtils';
 import { TokenGenerator } from '../utils/TokenGenerator';
+import { EmailService } from '../services/EmailService';
 import type { EnvWithBindings } from './registry';
 
 /**
@@ -400,11 +401,30 @@ export class PlayerIdentity extends DurableObject {
       // MVP 16: Register email in global KV index
       await this.env.EMAIL_INDEX.put(emailKey, username);
 
+      // Send verification email
+      if (this.env.SMTP_USER && this.env.SMTP_PASSWORD) {
+        const emailService = new EmailService({
+          smtpUser: this.env.SMTP_USER,
+          smtpPassword: this.env.SMTP_PASSWORD
+        });
+
+        const emailResult = await emailService.sendVerificationEmail(
+          data.email!,
+          data.username,
+          verificationToken
+        );
+
+        if (!emailResult.success) {
+          console.error('Failed to send verification email:', emailResult.error);
+          // Don't fail signup if email fails - user can resend later
+        }
+      }
+
       return Response.json({
         success: true,
         username: data.username,
         email: data.email,
-        verificationToken, // Return token for email sending
+        verificationToken, // Return token for debugging (remove in production)
         unlockedCharacters: data.unlockedCharacters
       });
 
@@ -520,6 +540,17 @@ export class PlayerIdentity extends DurableObject {
       data.lastSeen = Date.now();
       await this.ctx.storage.put('player', data);
 
+      // Send welcome email
+      if (this.env.SMTP_USER && this.env.SMTP_PASSWORD) {
+        const emailService = new EmailService({
+          smtpUser: this.env.SMTP_USER,
+          smtpPassword: this.env.SMTP_PASSWORD
+        });
+
+        await emailService.sendWelcomeEmail(data.email!, data.username);
+        // Don't wait for result - it's non-critical
+      }
+
       return Response.json({
         success: true,
         message: 'Email verified successfully',
@@ -563,12 +594,23 @@ export class PlayerIdentity extends DurableObject {
       data.lastSeen = Date.now();
       await this.ctx.storage.put('player', data);
 
+      // Send password reset email
+      if (this.env.SMTP_USER && this.env.SMTP_PASSWORD) {
+        const emailService = new EmailService({
+          smtpUser: this.env.SMTP_USER,
+          smtpPassword: this.env.SMTP_PASSWORD
+        });
+
+        await emailService.sendPasswordResetEmail(
+          data.email,
+          data.username,
+          resetToken
+        );
+      }
+
       return Response.json({
         success: true,
-        message: 'If an account exists with that email, a password reset link has been sent.',
-        resetToken, // Return for email sending
-        email: data.email,
-        username: data.username
+        message: 'If an account exists with that email, a password reset link has been sent.'
       });
     } catch (error) {
       console.error('Password reset request error:', error);

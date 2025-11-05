@@ -8,10 +8,12 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250524.0",
     "@types/bcryptjs": "^2.4.6",
+    "@types/nodemailer": "^7.0.3",
     "typescript": "^5.5.4",
     "wrangler": "^4.16.1"
   },
   "dependencies": {
-    "bcryptjs": "^3.0.3"
+    "bcryptjs": "^3.0.3",
+    "nodemailer": "^7.0.10"
   }
 }
