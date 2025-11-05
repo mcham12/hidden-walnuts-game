@@ -13,6 +13,8 @@ import { CollisionSystem } from './CollisionSystem.js';
 import { TouchControls } from './TouchControls.js';
 import { RankOverlay } from './RankOverlay.js';
 import { SkyManager } from './SkyManager.js';
+import { EnticementService } from './services/EnticementService.js'; // MVP 16: Signup reminders
+import { AuthModal } from './components/AuthModal.js'; // MVP 16: Authentication modal
 import { TutorialOverlay } from './TutorialOverlay.js';
 import { getPlayerTitle } from '@shared/PlayerRanks';
 import { TipsManager } from './TipsManager.js'; // MVP 14: Contextual tips
@@ -283,6 +285,12 @@ export class Game {
   // MVP 5: Toast notification system
   private toastManager: ToastManager = new ToastManager();
 
+  // MVP 16: Enticement system for signup reminders
+  private enticementService: EnticementService | null = null;
+
+  // MVP 16: Authentication modal
+  private authModal: AuthModal | null = null;
+
   // MVP 14: Contextual tips system
   private tipsManager: TipsManager = new TipsManager();
 
@@ -459,6 +467,23 @@ export class Game {
 
       // Start debug overlay updates
       this.startDebugUpdates();
+
+      // MVP 16: Initialize authentication modal
+      this.authModal = new AuthModal({
+        onAuthSuccess: (userData) => {
+          console.log('✅ User authenticated:', userData);
+          // Reload page to refresh character availability
+          window.location.reload();
+        },
+        onClose: () => {
+          console.log('🚪 Auth modal closed');
+        }
+      });
+
+      // MVP 16: Start enticement system (passive signup reminders)
+      // IMPORTANT: Only passive toasts, no action buttons during gameplay
+      this.enticementService = new EnticementService(this.toastManager);
+      this.enticementService.start();
 
       window.addEventListener('resize', this.onResize.bind(this));
     } catch (error) {
@@ -4153,6 +4178,12 @@ export class Game {
           clearInterval(countdownInterval);
         }
       }, 1000);
+
+      // MVP 16: Show signup enticement after death (safe timing, player is waiting)
+      // Only shows once per session to avoid annoyance
+      if (this.enticementService) {
+        this.enticementService.showAfterDeathEnticement();
+      }
     }
 
     // Drop all walnuts at death location
@@ -7152,8 +7183,8 @@ export class Game {
               ctaEl.style.background = 'rgba(255, 215, 0, 0.1)';
             });
             ctaEl.addEventListener('click', () => {
-              // TODO MVP 16 Part 2F: Trigger signup modal
-              console.log('💡 Player clicked leaderboard signup CTA');
+              // MVP 16: Open signup modal (safe context, player is viewing leaderboard)
+              this.openSignupModal();
             });
 
             leaderboardList.appendChild(ctaEl);
@@ -7772,6 +7803,30 @@ export class Game {
         this.tipsManager.markTipAsSeen(tip.id);
         localStorage.setItem(storageKey, 'true');
       }
+    }
+  }
+
+  /**
+   * MVP 16: Open the signup modal
+   * Used by enticement CTAs (leaderboard, character selection, etc.)
+   */
+  public openSignupModal(): void {
+    if (this.authModal) {
+      this.authModal.open('signup');
+    } else {
+      console.error('❌ AuthModal not initialized');
+    }
+  }
+
+  /**
+   * MVP 16: Open the login modal
+   * Used by existing users
+   */
+  public openLoginModal(): void {
+    if (this.authModal) {
+      this.authModal.open('login');
+    } else {
+      console.error('❌ AuthModal not initialized');
     }
   }
 

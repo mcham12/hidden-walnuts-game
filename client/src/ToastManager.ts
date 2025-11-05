@@ -1,9 +1,9 @@
 /**
- * MVP 5: Toast Notification System
+ * MVP 5/16: Toast Notification System
  * Manages toast notifications for game events
  */
 
-export type ToastType = 'success' | 'error' | 'info' | 'warning' | 'default';
+export type ToastType = 'success' | 'error' | 'info' | 'warning' | 'default' | 'enticement';
 
 interface ToastOptions {
   type?: ToastType;
@@ -97,6 +97,15 @@ export class ToastManager {
    */
   warning(message: string, duration?: number): void {
     this.show(message, { type: 'warning', duration });
+  }
+
+  /**
+   * MVP 16: Show an enticement toast (passive signup reminder)
+   * These are non-intrusive, info-only toasts that encourage signup
+   * Duration defaults to 8 seconds to give players time to read
+   */
+  enticement(message: string, duration: number = 8000): void {
+    this.show(message, { type: 'enticement', duration, icon: '💡' });
   }
 
   /**

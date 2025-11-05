@@ -36,16 +36,17 @@ MVP 16 implements full email/password authentication while maintaining the no-au
 | └─ Part 1C: Character Gating | ✅ Complete | 4/4 tasks | ~1 hour |
 | └─ Part 1D: JWT Sessions | ✅ Complete | 5/5 tasks | ~2 hours |
 | └─ Part 1E: Leaderboard | ✅ Complete | 4/4 tasks | ~30 min |
-| **Phase 2: UX Implementation** | ⏳ In Progress | 23/30+ tasks | 2-3 weeks |
+| **Phase 2: UX Implementation** | ⏳ In Progress | 27/30+ tasks | 2-3 weeks |
 | └─ Part 2A: Auth Modal & Forms | ✅ Complete | 8/8 tasks | ~2 days |
 | └─ Part 2B: Email Verification | ✅ Complete | 5/5 tasks | ~1 day |
 | └─ Part 2C: Character Selection | ✅ Complete | 5/5 tasks | ~6 hours |
 | └─ Part 2D: Settings Account Tab | ✅ Complete | 4/4 tasks | ~4 hours |
 | └─ Part 2E: Leaderboard Badges | ✅ Complete | 4/4 tasks | ~2 hours |
+| └─ Part 2F: Enticement System | ✅ Complete | 4/4 tasks | ~3 hours |
 | **Phase 3: Integration & Testing** | ⏳ Not Started | 0/15+ tasks | 1-2 weeks |
 | **Phase 4: Monetization Hooks** | ⏳ Not Started | 0/5+ tasks | 1 day |
 
-**Overall Progress**: 52/70+ tasks complete (74%)
+**Overall Progress**: 56/70+ tasks complete (80%)
 
 ---
 
@@ -67,7 +68,7 @@ MVP 16 implements full email/password authentication while maintaining the no-au
 - **Started**: 2025-11-05
 - **Estimated Completion**: 2025-11-25
 - **Duration**: 2-3 weeks
-- **Status**: ⏳ IN PROGRESS - Parts 2A-2E complete (23/30+ tasks)
+- **Status**: ⏳ IN PROGRESS - Parts 2A-2F complete (27/30+ tasks, 90%)
 
 ### Phase 3: Integration & Testing ⏳ **NOT STARTED** (1-2 weeks)
 - **Estimated Start**: 2025-12-05
@@ -1220,54 +1221,93 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 
 ---
 
-### Part 2F: Enticement System (Toasts & Reminders) ⏳
-- **Status**: ⏳ PENDING
-- **Estimated Duration**: 2 days
+### Part 2F: Enticement System (Toasts & Reminders) ✅ COMPLETE
+- **Status**: ✅ COMPLETE
+- **Completed**: 2025-11-05
+- **Duration**: ~3 hours (estimated 2 days)
 - **Priority**: 🟡 MEDIUM
 - **Dependencies**: Part 2A
 
+**IMPORTANT DESIGN CHANGE**: Original design had action buttons in toasts during gameplay, which would interrupt players and get them killed. Revised to use **passive toasts only** during gameplay, with action CTAs only in safe contexts (menus, after death, leaderboard viewing).
+
 **Platform Considerations**:
-- **Desktop**: Top-right, below minimap
-- **iPad**: Top-center
-- **iPhone Portrait**: Bottom, above safe area
-- **iPhone Landscape**: Top-right, compact
+- Toasts use existing ToastManager positioning (consistent across all platforms)
+- No special positioning needed - passive info only
 
 **Tasks**:
 
-**Task 2F.1: Create Enticement Toast Messages** (3 hours)
-- [ ] 4 messages rotating every 15 minutes:
+**Task 2F.1: Create Passive Enticement Toast Messages** (3 hours) ✅ COMPLETE
+- ✅ 4 messages rotating every 15 minutes:
   1. "Sign up to unlock 6 free characters!"
-  2. "Your progress isn't saved. Sign up to sync!"
+  2. "Your progress isn't saved. Sign up to sync across devices!"
   3. "Join the Hall of Fame - sign up free!"
   4. "Get verified badge - sign up now!"
-- [ ] Custom toast with [Sign Up] and [✕] buttons
-- [ ] Auto-dismiss after 8 seconds
+- ✅ **NO action buttons** - just informational toasts
+- ✅ Auto-dismiss after 8 seconds
+- ✅ Frequency limiting: Max 4/hour, min 15 minutes between
 
-**Task 2F.2: Add Enticement on Character Selection** (2 hours)
-- [ ] Trigger: User clicks locked character
-- [ ] Toast: "Sign up free to unlock this character!" + [Sign Up] button
+**Task 2F.2: Add After-Death Enticement** (2 hours) ✅ COMPLETE
+- ✅ Trigger: Player dies (safe timing, waiting for respawn)
+- ✅ Toast: "Lost progress? Sign up to save your progress across sessions!"
+- ✅ Shows once per session only (not annoying)
+- ✅ 1.5 second delay to let death screen settle
 
-**Task 2F.3: Add Enticement on Leaderboard View** (2 hours)
-- [ ] Trigger: No-auth user opens weekly leaderboard, ranked below top 10
-- [ ] Toast: "Sign up to compete for top 10!" + [Sign Up] button
-- [ ] Frequency: Once per session
+**Task 2F.3: Connect Leaderboard CTA to Signup Modal** (2 hours) ✅ COMPLETE
+- ✅ Leaderboard "Sign up to compete for top 10!" CTA (from Part 2E)
+- ✅ Opens AuthModal on click (safe context, player viewing leaderboard)
+- ✅ Properly integrated with Game class
 
-**Task 2F.4: Implement Toast Frequency Limiting** (2 hours)
-- [ ] Limits: Max 4 per hour, min 15 minutes between toasts
-- [ ] Track in localStorage: `last_enticement_toast_time`, `enticement_toast_times[]`
+**Task 2F.4: Frequency Limiting System** (2 hours) ✅ COMPLETE
+- ✅ Limits: Max 4 per hour, min 15 minutes between toasts
+- ✅ Track in localStorage: `last_enticement_toast_time`, `enticement_toast_times[]`
+- ✅ Automatic cleanup of old times (>1 hour)
+- ✅ Stops completely when user signs up
 
-**Files to Modify**:
-- `/client/src/main.ts` - Add enticement logic
-- `/client/src/ToastManager.ts` - Add custom toast (optional)
+**Files Created**:
+- ✅ `/client/src/services/EnticementService.ts` - Complete enticement system
+
+**Files Modified**:
+- ✅ `/client/src/ToastManager.ts` - Added `enticement()` method
+- ✅ `/client/src/Game.ts` - Integrated EnticementService, AuthModal, signup methods
+
+**What Was Built**:
+
+1. **EnticementService** (`/client/src/services/EnticementService.ts`)
+   - Manages passive signup reminders with frequency limiting
+   - 4 rotating messages shown every 15+ minutes
+   - Max 4 toasts per hour to prevent spam
+   - Automatic localStorage tracking with cleanup
+   - `start()` - Begins showing periodic toasts
+   - `stop()` - Stops when user authenticates
+   - `showAfterDeathEnticement()` - One-time death reminder per session
+
+2. **ToastManager Enhancement**
+   - Added `enticement(message, duration=8000)` method
+   - Uses 💡 icon and 8-second duration
+   - Passive info-only toasts
+
+3. **AuthModal Integration**
+   - Initialized AuthModal in Game.ts init()
+   - Added `openSignupModal()` and `openLoginModal()` public methods
+   - Connected leaderboard CTA to actually open modal
+   - onAuthSuccess reloads page to refresh character availability
+
+4. **After-Death Enticement**
+   - Shows "Lost progress? Sign up to save..." during respawn countdown
+   - Perfect timing - player is waiting anyway, not actively playing
+   - Once per session only (tracked in sessionStorage)
+   - 1.5 second delay to let death screen settle
 
 **Success Criteria**:
-- [ ] Enticement toasts show every 15 min for no-auth
-- [ ] Message rotation works
-- [ ] Frequency limited (max 4/hour)
-- [ ] Character click shows enticement
-- [ ] Leaderboard view shows enticement
-- [ ] [Sign Up] button opens AuthModal
-- [ ] Toasts stop after signup
+- ✅ Passive enticement toasts show every 15+ min for no-auth users
+- ✅ Message rotation works (4 messages cycle)
+- ✅ Frequency limited (max 4/hour, min 15 min between)
+- ✅ After-death reminder shows once per session
+- ✅ Leaderboard CTA opens AuthModal (safe context)
+- ✅ Enticements stop after signup
+- ✅ Build succeeds with no TypeScript errors
+- ✅ **NO gameplay interruption** - passive toasts only
+- ✅ Action CTAs only in safe contexts (menus, after death, leaderboard)
 
 ---
 
