@@ -752,61 +752,61 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 
 **Tasks**:
 
-**Task 2A.1: Create Base AuthModal Component** (6 hours) ⏳ IN PROGRESS
-- File: `/client/src/components/AuthModal.tsx`
-- [ ] Modal overlay with semi-transparent backdrop
-- [ ] Responsive sizing: Desktop (600px), iPad (700-800px), iPhone (full-screen/400px)
-- [ ] Screen routing: 'signup' | 'login' | 'forgot-password' | 'reset-password' | 'verify-email'
-- [ ] Close handlers: ESC key, backdrop click, [X] button
-- [ ] Fade animations (0.3s)
-- [ ] Z-index 10000, prevent body scroll
-- [ ] Keyboard navigation (Tab, Shift+Tab, Enter)
+**Task 2A.1: Create Base AuthModal Component** (6 hours) ✅ COMPLETE
+- File: `/client/src/components/AuthModal.ts`
+- [x] Modal overlay with semi-transparent backdrop
+- [x] Responsive sizing: Desktop (600px), iPad (700-800px), iPhone (full-screen/400px)
+- [x] Screen routing: 'signup' | 'login' | 'forgot-password' | 'reset-password' | 'verify-email'
+- [x] Close handlers: ESC key, backdrop click, [X] button
+- [x] Fade animations (0.3s)
+- [x] Z-index 10000, prevent body scroll
+- [x] Keyboard navigation (Tab, Shift+Tab, Enter)
 
-**Task 2A.2: Create SignupForm Component** (8 hours)
-- File: `/client/src/components/SignupForm.tsx`
-- [ ] Fields: username, email, password, confirm password
-- [ ] Real-time validation with ✅/❌ indicators
-- [ ] Password strength meter (weak/medium/strong)
-- [ ] Password show/hide toggle (👁️ icon)
-- [ ] Benefits display above form (6 characters, sync, hall of fame)
-- [ ] API: POST `/auth/signup`
-- [ ] Error handling: email exists, username taken, weak password
-- [ ] Button states: disabled/enabled/loading
+**Task 2A.2: Create SignupForm Component** (8 hours) ✅ COMPLETE
+- File: `/client/src/components/SignupForm.ts`
+- [x] Fields: username, email, password, confirm password
+- [x] Real-time validation with ✅/❌ indicators
+- [x] Password strength meter (weak/medium/strong)
+- [x] Password show/hide toggle (👁️ icon)
+- [x] Benefits display above form (6 characters, sync, hall of fame)
+- [x] API: POST `/auth/signup`
+- [x] Error handling: email exists, username taken, weak password
+- [x] Button states: disabled/enabled/loading
 
-**Task 2A.3: Create LoginForm Component** (6 hours)
-- File: `/client/src/components/LoginForm.tsx`
-- [ ] Fields: email, password (with show/hide toggle)
-- [ ] "Forgot Password?" link
-- [ ] "Don't have an account? [Sign Up]" link
-- [ ] API: POST `/auth/login`
-- [ ] Store tokens in localStorage: `auth_access_token`, `auth_refresh_token`, `auth_user`
-- [ ] Success: Redirect to character selection + welcome toast
-- [ ] Error handling: invalid credentials, rate limiting (3/5 attempts), network errors
+**Task 2A.3: Create LoginForm Component** (6 hours) ✅ COMPLETE
+- File: `/client/src/components/LoginForm.ts`
+- [x] Fields: email, password (with show/hide toggle)
+- [x] "Forgot Password?" link
+- [x] "Don't have an account? [Sign Up]" link
+- [x] API: POST `/auth/login`
+- [x] Store tokens in localStorage: `auth_access_token`, `auth_refresh_token`, `auth_user`
+- [x] Success: Redirect to character selection + welcome toast
+- [x] Error handling: invalid credentials, rate limiting (3/5 attempts), network errors
 
-**Task 2A.4: Create ForgotPasswordForm Component** (4 hours)
-- File: `/client/src/components/ForgotPasswordForm.tsx`
-- [ ] Field: email
-- [ ] API: POST `/auth/forgot-password`
-- [ ] Success: "Check Your Email!" overlay
-- [ ] Rate limiting: 3 requests per hour per email
-- [ ] Security: Don't reveal if email exists
+**Task 2A.4: Create ForgotPasswordForm Component** (4 hours) ✅ COMPLETE
+- File: `/client/src/components/ForgotPasswordForm.ts`
+- [x] Field: email
+- [x] API: POST `/auth/forgot-password`
+- [x] Success: "Check Your Email!" overlay
+- [x] Rate limiting: 3 requests per hour per email
+- [x] Security: Don't reveal if email exists
 
-**Task 2A.5: Create ResetPasswordForm Component** (4 hours)
-- File: `/client/src/components/ResetPasswordForm.tsx`
-- [ ] Trigger: Route `/reset-password?token=abc123`
-- [ ] Fields: new password, confirm password
-- [ ] Password strength meter and requirements
-- [ ] API: POST `/auth/reset-password`
-- [ ] Success: "Password Updated!" → Redirect to login after 2 seconds
-- [ ] Error: "Reset link expired or invalid. [Request New Link]"
+**Task 2A.5: Create ResetPasswordForm Component** (4 hours) ✅ COMPLETE
+- File: `/client/src/components/ResetPasswordForm.ts`
+- [x] Trigger: Route `/reset-password?token=abc123`
+- [x] Fields: new password, confirm password
+- [x] Password strength meter and requirements
+- [x] API: POST `/auth/reset-password`
+- [x] Success: "Password Updated!" → Redirect to login after 2 seconds
+- [x] Error: "Reset link expired or invalid. [Request New Link]"
 
-**Task 2A.6: Client-Side Validation Utilities** (3 hours)
+**Task 2A.6: Client-Side Validation Utilities** (3 hours) ✅ COMPLETE
 - File: `/client/src/utils/validation.ts`
-- [ ] `validateEmail()` - RFC 5322 regex
-- [ ] `validatePassword()` - Returns strength + errors
-- [ ] `validateUsername()` - 3-20 chars, alphanumeric + underscore
-- [ ] `passwordsMatch()` - Confirm field validation
-- [ ] Password requirements: 8+ chars, 1 uppercase, 1 lowercase, 1 number
+- [x] `validateEmail()` - RFC 5322 regex
+- [x] `validatePassword()` - Returns strength + errors
+- [x] `validateUsername()` - 3-20 chars, alphanumeric + underscore
+- [x] `passwordsMatch()` - Confirm field validation
+- [x] Password requirements: 8+ chars, 1 uppercase, 1 lowercase, 1 number
 
 **Task 2A.7: Add Modal Styles** (4 hours)
 - File: `/client/src/components/AuthModal.css`
@@ -817,11 +817,11 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 - [ ] Validation indicators: Green ✅, Red ❌, Yellow ⚠️
 - [ ] Responsive breakpoints for all platforms
 
-**Task 2A.8: API Service Layer** (4 hours)
+**Task 2A.8: API Service Layer** (4 hours) ✅ COMPLETE
 - File: `/client/src/services/AuthService.ts`
-- [ ] Methods: `signup()`, `login()`, `forgotPassword()`, `resetPassword()`, `verifyEmail()`, `resendVerification()`, `refreshToken()`, `logout()`, `getCurrentUser()`, `isAuthenticated()`, `clearAuth()`
-- [ ] Error handling: try-catch, parse backend errors, user-friendly messages
-- [ ] Token management utilities
+- [x] Methods: `signup()`, `login()`, `forgotPassword()`, `resetPassword()`, `verifyEmail()`, `resendVerification()`, `refreshToken()`, `logout()`, `getCurrentUser()`, `isAuthenticated()`, `clearAuth()`
+- [x] Error handling: try-catch, parse backend errors, user-friendly messages
+- [x] Token management utilities
 
 **Files to Create**:
 - `/client/src/components/AuthModal.tsx`

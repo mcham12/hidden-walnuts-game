@@ -303,6 +303,29 @@ export class AuthModal {
   private renderScreen(): void {
     if (!this.modalElement) return;
 
+    // Import form components dynamically
+    import('./SignupForm').then(({ SignupForm }) => {
+      import('./LoginForm').then(({ LoginForm }) => {
+        import('./ForgotPasswordForm').then(({ ForgotPasswordForm }) => {
+          import('./ResetPasswordForm').then(({ ResetPasswordForm }) => {
+            this.renderScreenWithForms(SignupForm, LoginForm, ForgotPasswordForm, ResetPasswordForm);
+          });
+        });
+      });
+    });
+  }
+
+  /**
+   * Render screen with form components loaded
+   */
+  private renderScreenWithForms(
+    SignupForm: any,
+    LoginForm: any,
+    ForgotPasswordForm: any,
+    ResetPasswordForm: any
+  ): void {
+    if (!this.modalElement) return;
+
     // Clear existing content
     this.modalElement.innerHTML = '';
 
@@ -358,19 +381,48 @@ export class AuthModal {
     // Render screen-specific content
     switch (this.currentScreen) {
       case 'signup':
-        content.innerHTML = '<p>Signup form will be rendered here</p>';
+        new SignupForm(content, {
+          onSuccess: (response: any) => {
+            this.options.onAuthSuccess?.(response);
+            this.close();
+          },
+          onSwitchToLogin: () => this.navigateTo('login')
+        });
         break;
       case 'login':
-        content.innerHTML = '<p>Login form will be rendered here</p>';
+        new LoginForm(content, {
+          onSuccess: (response: any) => {
+            this.options.onAuthSuccess?.(response);
+            this.close();
+          },
+          onSwitchToSignup: () => this.navigateTo('signup'),
+          onForgotPassword: () => this.navigateTo('forgot-password')
+        });
         break;
       case 'forgot-password':
-        content.innerHTML = '<p>Forgot password form will be rendered here</p>';
+        new ForgotPasswordForm(content, {
+          onSuccess: () => {
+            // Keep modal open to show success message
+          },
+          onBackToLogin: () => this.navigateTo('login')
+        });
         break;
       case 'reset-password':
-        content.innerHTML = '<p>Reset password form will be rendered here</p>';
+        // Get token from URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token') || '';
+
+        new ResetPasswordForm(content, {
+          token,
+          onSuccess: () => {
+            // Redirect to login after success message
+            setTimeout(() => this.navigateTo('login'), 2000);
+          },
+          onRequestNewLink: () => this.navigateTo('forgot-password')
+        });
         break;
       case 'verify-email':
-        content.innerHTML = '<p>Email verification message will be shown here</p>';
+        content.innerHTML = '<p>Email verification page will be implemented in Part 2B</p>';
         break;
     }
 
