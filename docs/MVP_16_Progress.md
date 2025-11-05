@@ -21,7 +21,7 @@ MVP 16 implements full email/password authentication while maintaining the no-au
 
 **Current Status**: 🟡 **PHASE 1 IN PROGRESS (Technical Implementation)**
 
-**Latest Update**: 2025-11-05 - Part 1A, 1B & 1C Complete
+**Latest Update**: 2025-11-05 - Part 1A, 1B, 1C & 1D Complete
 
 ---
 
@@ -30,17 +30,17 @@ MVP 16 implements full email/password authentication while maintaining the no-au
 | Phase/Part | Status | Progress | Time |
 |------------|--------|----------|------|
 | **Phase 0: Research & Design** | ✅ Complete | 6/6 tasks | 2 days |
-| **Phase 1: Technical Implementation** | 🟡 In Progress | 20/29 tasks | 9 hours |
+| **Phase 1: Technical Implementation** | 🟡 In Progress | 25/29 tasks | 11 hours |
 | └─ Part 1A: PlayerIdentity DO | ✅ Complete | 11/11 tasks | ~6 hours |
 | └─ Part 1B: Email Integration | ✅ Complete | 5/5 tasks | ~2 hours |
 | └─ Part 1C: Character Gating | ✅ Complete | 4/4 tasks | ~1 hour |
-| └─ Part 1D: JWT Sessions | ⏳ Pending | 0/5 tasks | ~3 days |
+| └─ Part 1D: JWT Sessions | ✅ Complete | 5/5 tasks | ~2 hours |
 | └─ Part 1E: Leaderboard | ⏳ Pending | 0/4 tasks | ~1.5 days |
 | **Phase 2: UX Implementation** | ⏳ Not Started | 0/20+ tasks | 2-3 weeks |
 | **Phase 3: Integration & Testing** | ⏳ Not Started | 0/15+ tasks | 1-2 weeks |
 | **Phase 4: Monetization Hooks** | ⏳ Not Started | 0/5+ tasks | 1 day |
 
-**Overall Progress**: 26/70+ tasks complete (37%)
+**Overall Progress**: 31/70+ tasks complete (44%)
 
 ---
 
@@ -56,7 +56,7 @@ MVP 16 implements full email/password authentication while maintaining the no-au
 - **Started**: 2025-11-05
 - **Estimated Completion**: 2025-11-25
 - **Duration**: 2-3 weeks
-- **Status**: 🟡 IN PROGRESS - Part 1A, 1B & 1C Complete
+- **Status**: 🟡 IN PROGRESS - Part 1A, 1B, 1C & 1D Complete
 
 ### Phase 2: UX Implementation ⏳ **NOT STARTED** (2-3 weeks)
 - **Estimated Start**: 2025-11-20 (parallel with Phase 1)
@@ -515,9 +515,10 @@ Update ForestManager or character selection handler:
 
 ---
 
-### Part 1D: Session Management & JWT Tokens ⏳
-- **Status**: ⏳ PENDING
-- **Estimated Duration**: 3 days
+### Part 1D: Session Management & JWT Tokens ✅
+- **Status**: ✅ COMPLETE
+- **Completed**: 2025-11-05
+- **Duration**: ~2 hours (estimated 3 days)
 - **Priority**: 🔴 CRITICAL PATH
 
 #### Overview
@@ -581,12 +582,46 @@ File: `/workers/middleware/AuthMiddleware.ts`
 - Manual testing checklist (cross-device sync)
 
 #### Success Criteria
-- [ ] Access token valid for 30 days
-- [ ] Refresh token valid for 90 days
-- [ ] Multiple devices can be logged in simultaneously
-- [ ] Logout from one device doesn't affect others
-- [ ] Logout from all devices clears all tokens
-- [ ] Password change invalidates all existing tokens
+- ✅ Access token valid for 30 days
+- ✅ Refresh token valid for 90 days
+- ✅ Multiple devices can be logged in simultaneously
+- ✅ Logout from one device doesn't affect others
+- ✅ Logout from all devices clears all tokens
+- ✅ Password change invalidates all existing tokens
+
+#### What Was Built
+1. **AuthService Module** (`/workers/services/AuthService.ts`)
+   - `generateAccessToken()` - Creates 30-day JWT access tokens
+   - `generateRefreshToken()` - Creates 90-day JWT refresh tokens
+   - `generateTokenPair()` - Generates both tokens with expiry timestamps
+   - `verifyAccessToken()` - Validates and decodes access tokens
+   - `verifyRefreshToken()` - Validates and decodes refresh tokens
+   - `extractTokenFromHeader()` - Parses Bearer tokens from Authorization header
+   - `generateTokenId()` - Creates unique token IDs for tracking/revocation
+
+2. **PlayerIdentity Token Management Updates**
+   - Updated `handleSignup()` to return JWT tokens immediately
+   - Updated `handleLogin()` to return JWT tokens
+   - Added `handleRefreshToken()` - Exchange refresh token for new access token
+   - Added `handleLogout()` - Revoke single device token
+   - Added `handleLogoutAll()` - Revoke all tokens (security feature)
+   - Token metadata tracking: tokenId, created, expiresAt, deviceInfo, lastUsed
+   - Automatic token limit (10 per user) with oldest-first removal
+
+3. **Authentication Middleware** (`/workers/middleware/AuthMiddleware.ts`)
+   - `authenticateRequest()` - Extract and verify JWT token
+   - `requireAuth()` - Return 401 if not authenticated
+   - `requireEmailVerified()` - Return 403 if email not verified
+   - `optionalAuth()` - Support both auth and no-auth users
+
+4. **Type System Updates**
+   - Made `JWT_SECRET` required in `EnvWithBindings` interface
+   - Added `AccessTokenPayload` and `RefreshTokenPayload` interfaces
+   - Added `TokenPair` interface for token generation responses
+
+5. **Dependencies**
+   - Installed `jsonwebtoken` and `@types/jsonwebtoken`
+   - JWT_SECRET already stored in both preview and production environments
 
 ---
 

@@ -13,7 +13,9 @@
     "wrangler": "^4.16.1"
   },
   "dependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "bcryptjs": "^3.0.3",
+    "jsonwebtoken": "^9.0.2",
     "nodemailer": "^7.0.10"
   }
 }

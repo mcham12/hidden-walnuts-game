@@ -2,6 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { PasswordUtils } from '../utils/PasswordUtils';
 import { TokenGenerator } from '../utils/TokenGenerator';
 import { EmailService } from '../services/EmailService';
+import { generateTokenPair, generateTokenId, verifyRefreshToken } from '../services/AuthService';
 import type { EnvWithBindings } from './registry';
 
 /**
@@ -116,6 +117,16 @@ export class PlayerIdentity extends DurableObject {
 
         case 'changePassword':
           return await this.handleChangePassword(request);
+
+        // MVP 16: Token management
+        case 'refreshToken':
+          return await this.handleRefreshToken(request);
+
+        case 'logout':
+          return await this.handleLogout(request);
+
+        case 'logoutAll':
+          return await this.handleLogoutAll(request);
 
         default:
           console.error(`❌ Invalid action: ${action}`);
@@ -396,6 +407,31 @@ export class PlayerIdentity extends DurableObject {
         'mallard'
       ];
 
+      // MVP 16: Generate JWT tokens for immediate session
+      const tokenId = generateTokenId();
+      const deviceInfo = request.headers.get('User-Agent') || 'Unknown';
+
+      const tokens = generateTokenPair(
+        {
+          username: data.username,
+          email: data.email,
+          isAuthenticated: data.isAuthenticated,
+          emailVerified: data.emailVerified,
+          unlockedCharacters: data.unlockedCharacters
+        },
+        tokenId,
+        this.env.JWT_SECRET
+      );
+
+      // Store token metadata
+      data.authTokens.push({
+        tokenId,
+        created: Date.now(),
+        expiresAt: tokens.refreshTokenExpiry,
+        deviceInfo,
+        lastUsed: Date.now()
+      });
+
       await this.ctx.storage.put('player', data);
 
       // MVP 16: Register email in global KV index
@@ -425,7 +461,12 @@ export class PlayerIdentity extends DurableObject {
         username: data.username,
         email: data.email,
         verificationToken, // Return token for debugging (remove in production)
-        unlockedCharacters: data.unlockedCharacters
+        unlockedCharacters: data.unlockedCharacters,
+        // JWT tokens
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        accessTokenExpiry: tokens.accessTokenExpiry,
+        refreshTokenExpiry: tokens.refreshTokenExpiry
       });
 
     } catch (error) {
@@ -482,6 +523,41 @@ export class PlayerIdentity extends DurableObject {
         }, { status: 401 });
       }
 
+      // MVP 16: Generate JWT tokens for session management
+      const tokenId = generateTokenId();
+      const deviceInfo = request.headers.get('User-Agent') || 'Unknown';
+
+      const tokens = generateTokenPair(
+        {
+          username: data.username,
+          email: data.email,
+          isAuthenticated: data.isAuthenticated,
+          emailVerified: data.emailVerified,
+          unlockedCharacters: data.unlockedCharacters
+        },
+        tokenId,
+        this.env.JWT_SECRET
+      );
+
+      // Store token metadata for tracking/revocation
+      if (!data.authTokens) {
+        data.authTokens = [];
+      }
+
+      data.authTokens.push({
+        tokenId,
+        created: Date.now(),
+        expiresAt: tokens.refreshTokenExpiry,
+        deviceInfo,
+        lastUsed: Date.now()
+      });
+
+      // Limit to 10 active tokens per user (remove oldest if exceeded)
+      if (data.authTokens.length > 10) {
+        data.authTokens.sort((a, b) => b.created - a.created);
+        data.authTokens = data.authTokens.slice(0, 10);
+      }
+
       // Update last seen
       data.lastSeen = Date.now();
       await this.ctx.storage.put('player', data);
@@ -492,7 +568,12 @@ export class PlayerIdentity extends DurableObject {
         email: data.email,
         emailVerified: data.emailVerified,
         unlockedCharacters: data.unlockedCharacters,
-        lastCharacterId: data.lastCharacterId
+        lastCharacterId: data.lastCharacterId,
+        // JWT tokens
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        accessTokenExpiry: tokens.accessTokenExpiry,
+        refreshTokenExpiry: tokens.refreshTokenExpiry
       });
 
     } catch (error) {
@@ -724,6 +805,179 @@ export class PlayerIdentity extends DurableObject {
     } catch (error) {
       console.error('Change password error:', error);
       return Response.json({ error: 'Failed to change password' }, { status: 500 });
+    }
+  }
+
+  /**
+   * Handle token refresh
+   * POST with body: { refreshToken }
+   * Returns new access token
+   */
+  private async handleRefreshToken(request: Request): Promise<Response> {
+    try {
+      const body = await request.json() as { refreshToken: string };
+      const { refreshToken } = body;
+
+      if (!refreshToken) {
+        return Response.json({ error: 'Missing refresh token' }, { status: 400 });
+      }
+
+      // Verify refresh token
+      const decoded = verifyRefreshToken(refreshToken, this.env.JWT_SECRET);
+      if (!decoded) {
+        return Response.json({ error: 'Invalid or expired refresh token' }, { status: 401 });
+      }
+
+      // Get player data
+      const data = await this.ctx.storage.get<PlayerIdentityData>('player');
+      if (!data) {
+        return Response.json({ error: 'Account not found' }, { status: 404 });
+      }
+
+      // Check if token is still valid (not revoked)
+      const tokenRecord = data.authTokens?.find(t => t.tokenId === decoded.tokenId);
+      if (!tokenRecord) {
+        return Response.json({ error: 'Token has been revoked' }, { status: 401 });
+      }
+
+      // Check if token is expired
+      if (tokenRecord.expiresAt < Date.now()) {
+        // Remove expired token
+        data.authTokens = data.authTokens.filter(t => t.tokenId !== decoded.tokenId);
+        await this.ctx.storage.put('player', data);
+        return Response.json({ error: 'Refresh token expired' }, { status: 401 });
+      }
+
+      // Generate new token pair
+      const newTokenId = generateTokenId();
+      const deviceInfo = request.headers.get('User-Agent') || 'Unknown';
+
+      const tokens = generateTokenPair(
+        {
+          username: data.username,
+          email: data.email,
+          isAuthenticated: data.isAuthenticated,
+          emailVerified: data.emailVerified,
+          unlockedCharacters: data.unlockedCharacters
+        },
+        newTokenId,
+        this.env.JWT_SECRET
+      );
+
+      // Replace old token with new one
+      data.authTokens = data.authTokens.filter(t => t.tokenId !== decoded.tokenId);
+      data.authTokens.push({
+        tokenId: newTokenId,
+        created: Date.now(),
+        expiresAt: tokens.refreshTokenExpiry,
+        deviceInfo,
+        lastUsed: Date.now()
+      });
+
+      data.lastSeen = Date.now();
+      await this.ctx.storage.put('player', data);
+
+      return Response.json({
+        success: true,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        accessTokenExpiry: tokens.accessTokenExpiry,
+        refreshTokenExpiry: tokens.refreshTokenExpiry
+      });
+
+    } catch (error) {
+      console.error('Refresh token error:', error);
+      return Response.json({ error: 'Failed to refresh token' }, { status: 500 });
+    }
+  }
+
+  /**
+   * Handle logout (single device)
+   * POST with body: { refreshToken } or Authorization header
+   * Revokes specific token
+   */
+  private async handleLogout(request: Request): Promise<Response> {
+    try {
+      const body = await request.json() as { refreshToken?: string };
+      const refreshToken = body.refreshToken;
+
+      if (!refreshToken) {
+        return Response.json({ error: 'Missing refresh token' }, { status: 400 });
+      }
+
+      // Verify token to get tokenId
+      const decoded = verifyRefreshToken(refreshToken, this.env.JWT_SECRET);
+      if (!decoded) {
+        return Response.json({ error: 'Invalid refresh token' }, { status: 401 });
+      }
+
+      // Get player data
+      const data = await this.ctx.storage.get<PlayerIdentityData>('player');
+      if (!data) {
+        return Response.json({ error: 'Account not found' }, { status: 404 });
+      }
+
+      // Remove this specific token
+      const initialLength = data.authTokens?.length || 0;
+      data.authTokens = data.authTokens?.filter(t => t.tokenId !== decoded.tokenId) || [];
+
+      if (data.authTokens.length === initialLength) {
+        return Response.json({ error: 'Token not found' }, { status: 404 });
+      }
+
+      data.lastSeen = Date.now();
+      await this.ctx.storage.put('player', data);
+
+      return Response.json({
+        success: true,
+        message: 'Logged out from this device'
+      });
+
+    } catch (error) {
+      console.error('Logout error:', error);
+      return Response.json({ error: 'Failed to logout' }, { status: 500 });
+    }
+  }
+
+  /**
+   * Handle logout all devices
+   * POST with body: { refreshToken } or Authorization header
+   * Revokes all tokens for user
+   */
+  private async handleLogoutAll(request: Request): Promise<Response> {
+    try {
+      const body = await request.json() as { refreshToken?: string };
+      const refreshToken = body.refreshToken;
+
+      if (!refreshToken) {
+        return Response.json({ error: 'Missing refresh token' }, { status: 400 });
+      }
+
+      // Verify token to authenticate user
+      const decoded = verifyRefreshToken(refreshToken, this.env.JWT_SECRET);
+      if (!decoded) {
+        return Response.json({ error: 'Invalid refresh token' }, { status: 401 });
+      }
+
+      // Get player data
+      const data = await this.ctx.storage.get<PlayerIdentityData>('player');
+      if (!data) {
+        return Response.json({ error: 'Account not found' }, { status: 404 });
+      }
+
+      // Remove all tokens
+      data.authTokens = [];
+      data.lastSeen = Date.now();
+      await this.ctx.storage.put('player', data);
+
+      return Response.json({
+        success: true,
+        message: 'Logged out from all devices'
+      });
+
+    } catch (error) {
+      console.error('Logout all error:', error);
+      return Response.json({ error: 'Failed to logout' }, { status: 500 });
     }
   }
 }

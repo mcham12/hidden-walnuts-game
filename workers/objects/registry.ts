@@ -23,7 +23,7 @@ export interface EnvWithBindings {
   // MVP 16: Authentication secrets (added via wrangler secret put)
   SMTP_USER?: string;
   SMTP_PASSWORD?: string;
-  JWT_SECRET?: string;
+  JWT_SECRET: string; // Required for JWT token generation/verification
 }
 
 // Get the Durable Object ID by name and key
