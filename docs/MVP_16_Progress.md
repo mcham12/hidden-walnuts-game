@@ -850,11 +850,11 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 
 ---
 
-### Part 2B: Email Verification & Welcome Overlays ⏳
-- **Status**: ⏳ PENDING
-- **Estimated Duration**: 2-3 days
+### Part 2B: Email Verification & Welcome Overlays ✅ COMPLETE
+- **Status**: ✅ COMPLETE
+- **Estimated Duration**: 2-3 days (Actual: ~1 day)
 - **Priority**: 🟡 HIGH
-- **Dependencies**: Part 2A must be complete
+- **Dependencies**: Part 2A ✅ COMPLETE
 
 **Platform Considerations**:
 - All platforms: Centered overlay, responsive text sizing
@@ -862,41 +862,43 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 
 **Tasks**:
 
-**Task 2B.1: Create EmailVerificationOverlay Component** (4 hours)
-- File: `/client/src/components/EmailVerificationOverlay.tsx`
-- [ ] Display: "✉️ Check Your Email!" with user's email
-- [ ] Message: "Click the link to verify your account and unlock 6 characters!"
-- [ ] [Resend Email] button with rate limiting (3 per hour) and countdown timer
-- [ ] [Play as Guest] button to continue without verification
-- [ ] API: POST `/auth/resend-verification`
+**Task 2B.1: Create EmailVerificationOverlay Component** (4 hours) ✅ COMPLETE
+- File: `/client/src/components/EmailVerificationOverlay.ts`
+- [x] Display: "✉️ Check Your Email!" with user's email
+- [x] Message: "Click the link to verify your account and unlock 6 characters!"
+- [x] [Resend Email] button with rate limiting (3 per hour) and countdown timer
+- [x] [Play as Guest] button to continue without verification
+- [x] API: POST `/auth/resend-verification`
 
-**Task 2B.2: Create WelcomeOverlay Component** (4 hours)
-- File: `/client/src/components/WelcomeOverlay.tsx`
-- [ ] Trigger: After email verification success
-- [ ] Display: "🎉 Welcome to Hidden Walnuts, [Username]!"
-- [ ] List benefits: 6 characters, sync, hall of fame, progress tracking
-- [ ] [Start Playing →] button → character selection
-- [ ] One-time display: Store `welcome_shown` in localStorage
+**Task 2B.2: Create WelcomeOverlay Component** (4 hours) ✅ COMPLETE
+- File: `/client/src/components/WelcomeOverlay.ts`
+- [x] Trigger: After email verification success
+- [x] Display: "🎉 Welcome to Hidden Walnuts, [Username]!"
+- [x] List benefits: 6 characters, sync, hall of fame, progress tracking
+- [x] [Start Playing →] button → character selection
+- [x] One-time display: Store `welcome_shown` in localStorage
 
-**Task 2B.3: Email Verification Page Route** (3 hours)
-- File: `/client/src/pages/VerifyEmail.tsx`
-- [ ] Route: `/verify-email?token=abc123`
-- [ ] Extract token, call API: POST `/auth/verify-email`
-- [ ] Success: Show WelcomeOverlay, redirect after 5 seconds
-- [ ] Error: "Verification link expired" + [Request New Link] button
+**Task 2B.3: Email Verification Page Route** (3 hours) ✅ COMPLETE
+- File: `/client/src/pages/VerifyEmail.ts`
+- [x] Route: `/verify-email?token=abc123`
+- [x] Extract token, call API: POST `/auth/verify-email`
+- [x] Success: Show WelcomeOverlay, redirect after 5 seconds
+- [x] Error: "Verification link expired" + [Request New Link] button
 
-**Task 2B.4: Unverified Email Reminder System** (3 hours)
-- [ ] Trigger: Every 3rd login if email not verified
-- [ ] Toast: "Verify your email to secure your account" + [Resend Email] link
-- [ ] Duration: 8 seconds
-- [ ] Track `login_count_since_reminder` in localStorage
+**Task 2B.4: Unverified Email Reminder System** (3 hours) ✅ COMPLETE
+- File: `/client/src/utils/emailReminder.ts`
+- [x] Trigger: Every 3rd login if email not verified
+- [x] Toast: "Verify your email to secure your account" + [Resend Email] link
+- [x] Duration: 8 seconds
+- [x] Track `login_count_since_reminder` in localStorage
 
-**Task 2B.5: Resend Verification Email Handler** (2 hours)
-- [ ] API: POST `/auth/resend-verification`
-- [ ] Rate limiting: 3 per hour
-- [ ] Countdown timer: Disable button for 60 seconds
-- [ ] Success toast: "Email sent!"
-- [ ] Error toast: "Too many requests. Try again later."
+**Task 2B.5: Resend Verification Email Handler** (2 hours) ✅ COMPLETE
+- Integrated into EmailVerificationOverlay and emailReminder utility
+- [x] API: POST `/auth/resend-verification`
+- [x] Rate limiting: 3 per hour
+- [x] Countdown timer: Disable button for 60 seconds
+- [x] Success toast: "Email sent!"
+- [x] Error toast: "Too many requests. Try again later."
 
 **Files to Create**:
 - `/client/src/components/EmailVerificationOverlay.tsx`
