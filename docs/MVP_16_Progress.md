@@ -114,54 +114,176 @@ MVP 16 implements full email/password authentication while maintaining the no-au
 
 ---
 
-## Phase 1: Technical Implementation ⏳ NOT STARTED (2-3 weeks)
+## Phase 1: Technical Implementation ⏳ IN PROGRESS (2-3 weeks)
 
-### Part 1A: PlayerIdentity Durable Object Enhancement ⏳
+**Started**: 2025-11-05
+**Status**: 🟡 IN PROGRESS
+
+---
+
+## 📋 COMPREHENSIVE PHASE 1 IMPLEMENTATION PLAN
+
+### Overview
+Phase 1 implements the core backend authentication infrastructure for Hidden Walnuts MVP 16. This includes enhancing the PlayerIdentity Durable Object with email/password authentication, integrating email sending via NameCheap SMTP, implementing JWT session management, building character gating logic, and updating the leaderboard system to support authenticated users.
+
+**Timeline**: 2-3 weeks (Nov 5-25, 2025)
+**Priority**: CRITICAL PATH - All Phase 2 (UX) work depends on this
+
+### Recommended Implementation Order
+
+**Week 1 (Nov 5-11): Foundation**
+1. **Part 1A (Days 1-5)**: PlayerIdentity DO Enhancement - Foundation for everything else
+2. **Part 1D (Days 6-7)**: Session Management (Start) - Begin JWT implementation
+
+**Week 2 (Nov 12-18): Integration**
+3. **Part 1D (Days 8-10)**: Session Management (Complete) - Finish JWT and middleware
+4. **Part 1B (Days 11-13)**: Email Sending Integration - Integrate with PlayerIdentity
+5. **Part 1C (Days 14-15)**: Character Gating System - Define tiers and implement
+
+**Week 3 (Nov 19-25): Finalization**
+6. **Part 1E (Days 16-17)**: Leaderboard Integration - Update leaderboard schema
+7. **Integration Testing (Days 18-20)**: End-to-end testing
+8. **Buffer Time (Days 21-23)**: Troubleshooting & documentation
+
+---
+
+### Part 1A: PlayerIdentity DO Enhancement ⏳
 - **Status**: ⏳ PENDING
-- **Estimated Duration**: 3-4 days
-- **Priority**: 🔴 CRITICAL PATH
+- **Estimated Duration**: 5-6 days
+- **Priority**: 🔴 CRITICAL PATH - Everything depends on this
 
-**Tasks**:
-- [ ] Add authentication fields to PlayerIdentityData interface
-  - [ ] email?: string
-  - [ ] passwordHash?: string
-  - [ ] emailVerified: boolean (default: false)
-  - [ ] emailVerificationToken?: string
-  - [ ] emailVerificationExpiry?: number
-  - [ ] passwordResetToken?: string
-  - [ ] passwordResetExpiry?: number
-  - [ ] isAuthenticated: boolean
-  - [ ] unlockedCharacters: string[]
-  - [ ] authTokens: { token, created, expiresAt, deviceInfo }[]
+#### Overview
+Enhance the existing PlayerIdentity Durable Object to support full authentication (email/password) while maintaining backward compatibility with the current no-auth username system. This is the foundation for all authentication features.
 
-- [ ] Install bcrypt library
-  ```bash
-  cd workers
-  npm install @tsndr/cloudflare-worker-bcrypt
-  ```
+#### Files to Create
+1. **`/workers/utils/PasswordUtils.ts`** - Password hashing and validation utilities
+2. **`/workers/utils/TokenGenerator.ts`** - Generate secure verification/reset tokens
 
-- [ ] Implement new methods
-  - [ ] `signup(email, username, password)` - Create authenticated account
-  - [ ] `login(email, password)` - Email/password login
-  - [ ] `verifyEmail(token)` - Email verification
-  - [ ] `requestPasswordReset(email)` - Request password reset
-  - [ ] `resetPassword(token, newPassword)` - Complete password reset
-  - [ ] `changePassword(oldPassword, newPassword)` - Change password
-  - [ ] `invalidateToken(tokenId)` - Logout single device
-  - [ ] `invalidateAllTokens()` - Logout all devices
+#### Files to Modify
+1. **`/workers/objects/PlayerIdentity.ts`** - Add authentication methods and fields
+2. **`/workers/package.json`** - Add bcrypt dependency
 
-- [ ] Add email uniqueness index (KV)
-  - [ ] Create EMAIL_INDEX KV namespace
-  - [ ] Add binding to wrangler.toml
-  - [ ] Implement email → username lookup
+#### Detailed Tasks
 
-- [ ] Migration for existing users
-  - [ ] Add default values: isAuthenticated: false, unlockedCharacters: ['squirrel']
+**Task 1A.1: Install Dependencies** (30 minutes)
+```bash
+cd workers
+npm install @tsndr/cloudflare-worker-bcrypt
+```
 
-**Success Criteria**:
+**Task 1A.2: Update PlayerIdentityData Interface** (1 hour)
+Add new authentication fields to existing interface:
+```typescript
+export interface PlayerIdentityData {
+  // Existing fields (MVP 6)
+  username: string;
+  sessionTokens: string[];
+  created: number;
+  lastSeen: number;
+  lastUsernameChange?: number;
+  lastCharacterId?: string;
+
+  // NEW: Authentication fields (MVP 16)
+  email?: string;
+  passwordHash?: string;
+  emailVerified: boolean;
+  emailVerificationToken?: string;
+  emailVerificationExpiry?: number;
+  passwordResetToken?: string;
+  passwordResetExpiry?: number;
+  isAuthenticated: boolean;
+  accountCreated?: number;
+  lastPasswordChange?: number;
+
+  // NEW: Character entitlements (MVP 16)
+  unlockedCharacters: string[];
+
+  // NEW: Session tracking (MVP 16)
+  authTokens: {
+    tokenId: string;
+    created: number;
+    expiresAt: number;
+    deviceInfo?: string;
+    lastUsed?: number;
+  }[];
+}
+```
+
+**Task 1A.3: Create Password Utility Module** (2 hours)
+File: `/workers/utils/PasswordUtils.ts`
+- bcrypt cost factor 12
+- Password validation (8+ chars, uppercase, lowercase, number)
+- Common password rejection
+- Password uniqueness check (vs username/email)
+
+**Task 1A.4: Create Token Generator Module** (1 hour)
+File: `/workers/utils/TokenGenerator.ts`
+- Generate verification tokens (crypto.randomUUID)
+- Generate password reset tokens
+- Token expiration helpers
+- Token validation helpers
+
+**Task 1A.5: Implement Signup Method** (3 hours)
+- Validate email format, password requirements
+- Hash password with bcrypt
+- Generate verification token (24h expiry)
+- Unlock 6 free characters for authenticated users
+- Return verification token for email sending
+
+**Task 1A.6: Implement Login Method** (2 hours)
+- Validate email/password
+- Compare password hash
+- Update last seen timestamp
+- Return user data + authentication status
+
+**Task 1A.7: Implement Email Verification Method** (1.5 hours)
+- Validate verification token
+- Check token expiration (24 hours)
+- Mark email as verified
+- Clear verification token
+
+**Task 1A.8: Implement Password Reset Request Method** (1.5 hours)
+- Generate reset token (1h expiry)
+- Security: Don't reveal if email exists
+- Return token for email sending
+
+**Task 1A.9: Implement Password Reset Method** (1.5 hours)
+- Validate reset token
+- Check token expiration (1 hour)
+- Hash new password
+- Invalidate all auth tokens (force re-login)
+- Clear reset token
+
+**Task 1A.10: Implement Change Password Method** (1 hour)
+- Verify old password
+- Validate new password
+- Hash new password
+- Invalidate all auth tokens (force re-login)
+
+**Task 1A.11: Add Email Uniqueness Index (KV)** (2 hours)
+- Create EMAIL_INDEX KV namespace
+- Add binding to wrangler.toml
+- Add to EnvWithBindings interface
+- Check email uniqueness on signup
+
+#### Dependencies
+- None (can start immediately)
+
+#### Integration Points
+- **Part 1B (Email)**: Signup and password reset need email sending
+- **Part 1D (JWT)**: Login needs JWT token generation
+- **Part 1E (Leaderboard)**: isAuthenticated flag used for filtering
+
+#### Testing Strategy
+- Unit tests for PasswordUtils (validation, hashing, comparison)
+- Integration tests for all auth methods
+- Manual testing checklist (see detailed plan)
+
+#### Success Criteria
 - [ ] bcrypt hashing takes ~200-300ms (cost factor 12)
 - [ ] Password never stored in plaintext
 - [ ] Email uniqueness enforced
+- [ ] All auth methods functional
 - [ ] Existing users migrated to no-auth status
 
 ---
@@ -171,111 +293,217 @@ MVP 16 implements full email/password authentication while maintaining the no-au
 - **Estimated Duration**: 2-3 days
 - **Priority**: 🔴 CRITICAL PATH
 
-**Tasks**:
-- [ ] Create noreply@hiddenwalnuts.com mailbox (via NameCheap dashboard)
-- [ ] Store mailbox password securely (password manager)
+#### Overview
+Integrate NameCheap Private Email SMTP for sending transactional emails (verification, password reset, welcome). Uses nodemailer library with mail.privateemail.com as the SMTP server.
 
-- [ ] Install nodemailer
-  ```bash
-  cd workers
-  npm install nodemailer @types/nodemailer
-  ```
+#### Files to Create
+1. **`/workers/services/EmailService.ts`** - Email sending service with templates
+2. Email templates (inline HTML in EmailService)
 
-- [ ] Store SMTP credentials as secrets
-  ```bash
-  wrangler secret put SMTP_USER --name hidden-walnuts-api-preview
-  wrangler secret put SMTP_PASSWORD --name hidden-walnuts-api-preview
-  wrangler secret put SMTP_USER --name hidden-walnuts-api
-  wrangler secret put SMTP_PASSWORD --name hidden-walnuts-api
-  ```
+#### Files to Modify
+1. **`/workers/package.json`** - Add nodemailer dependency
+2. **`/workers/objects/PlayerIdentity.ts`** - Call EmailService from auth methods
 
-- [ ] Create `/workers/services/EmailService.ts`
-  - [ ] SMTP transport configuration (mail.privateemail.com, port 465)
-  - [ ] `sendVerificationEmail(email, username, token)`
-  - [ ] `sendPasswordResetEmail(email, username, token)`
-  - [ ] `sendWelcomeEmail(email, username)`
-  - [ ] Error handling and logging
+#### Detailed Tasks
 
-- [ ] Test email deliverability
-  - [ ] Send test verification email to Gmail
-  - [ ] Send test verification email to Outlook
-  - [ ] Verify emails land in inbox (not spam)
-  - [ ] Check SPF/DKIM/DMARC headers
+**Task 1B.1: Create noreply@hiddenwalnuts.com Mailbox** (15 minutes)
+- Log in to NameCheap dashboard
+- Create new mailbox with strong password
+- Enable SMTP access
+- Note: mail.privateemail.com, port 465 (SSL) or 587 (TLS)
 
-**Success Criteria**:
+**Task 1B.2: Store SMTP Credentials as Secrets** (15 minutes)
+```bash
+wrangler secret put SMTP_USER --name hidden-walnuts-api-preview
+wrangler secret put SMTP_PASSWORD --name hidden-walnuts-api-preview
+wrangler secret put SMTP_USER --name hidden-walnuts-api
+wrangler secret put SMTP_PASSWORD --name hidden-walnuts-api
+```
+
+**Task 1B.3: Install nodemailer Dependency** (15 minutes)
+```bash
+cd workers
+npm install nodemailer
+npm install --save-dev @types/nodemailer
+```
+
+**Task 1B.4: Create EmailService Module** (4 hours)
+File: `/workers/services/EmailService.ts`
+- SMTP transport configuration
+- `sendVerificationEmail(email, username, token)` - HTML email with verification link
+- `sendPasswordResetEmail(email, username, token)` - HTML email with reset link (1h expiry warning)
+- `sendWelcomeEmail(email, username)` - HTML email after verification
+- Error handling and logging
+
+**Task 1B.5: Integrate Email Service with PlayerIdentity** (2 hours)
+- Update constructor to accept env
+- Call sendVerificationEmail after signup
+- Call sendWelcomeEmail after email verification
+- Call sendPasswordResetEmail after reset request
+
+**Task 1B.6: Test Email Deliverability** (2 hours)
+- Send test emails to Gmail, Outlook
+- Verify inbox placement (not spam)
+- Verify links work
+- Check SPF/DKIM/DMARC headers (mail-tester.com)
+
+#### Dependencies
+- **Part 1A**: Email sending triggered by signup, verification, password reset
+
+#### Integration Points
+- **Part 1A (PlayerIdentity)**: Called from signup, verify email, password reset handlers
+
+#### Testing Strategy
+- Unit tests (mock transporter)
+- Integration tests with real SMTP (staging)
+- Manual testing with major email providers
+
+#### Success Criteria
 - [ ] Verification emails received within 30 seconds
 - [ ] Password reset emails received within 30 seconds
 - [ ] Welcome emails received within 30 seconds
 - [ ] Emails land in inbox (not spam) for Gmail, Outlook
 - [ ] Email links clickable and functional
+- [ ] SPF/DKIM/DMARC pass (10/10 score)
 
 ---
 
 ### Part 1C: Character Gating System ⏳
 - **Status**: ⏳ PENDING
-- **Estimated Duration**: 2 days
+- **Estimated Duration**: 1.5 days
 - **Priority**: 🟡 MEDIUM
 
-**Tasks**:
-- [ ] Enhance CharacterRegistry.ts
-  - [ ] Add `NO_AUTH_CHARACTERS = ['squirrel']`
-  - [ ] Add `FREE_AUTH_CHARACTERS = ['squirrel', 'hare', 'goat', 'chipmunk', 'turkey', 'mallard']`
-  - [ ] Add `PREMIUM_CHARACTERS = ['lynx', 'bear', 'moose', 'badger']`
-  - [ ] Implement `isCharacterAvailable(characterId, isAuthenticated, unlockedCharacters)`
-  - [ ] Implement `getAvailableCharacters(isAuthenticated, unlockedCharacters)`
-  - [ ] Implement `getCharacterTier(characterId)` → 'no-auth' | 'free' | 'premium'
-  - [ ] Implement `getCharacterPrice(characterId)` → number | null
+#### Overview
+Implement character tier logic to restrict character selection based on authentication status. No-auth users get 1 character (Squirrel), authenticated users get 6 characters, and premium characters are locked for all users (MVP 17).
 
-- [ ] Update character selection logic in main.ts
-  - [ ] Filter characters based on user authentication status
-  - [ ] Show locked characters with visual indicators (🔒 or 💎)
-  - [ ] Disable selection of locked characters
+#### Files to Create
+1. **`/workers/constants/CharacterTiers.ts`** - Character tier definitions (server-side validation)
 
-**Success Criteria**:
+#### Files to Modify
+1. **`/client/src/services/CharacterRegistry.ts`** - Add character gating logic
+2. **`/client/public/characters.json`** - Add tier metadata to each character
+
+#### Detailed Tasks
+
+**Task 1C.1: Define Character Tiers (Server-Side)** (1 hour)
+File: `/workers/constants/CharacterTiers.ts`
+```typescript
+export const NO_AUTH_CHARACTERS = ['squirrel'];
+export const FREE_AUTH_CHARACTERS = ['squirrel', 'hare', 'goat', 'chipmunk', 'turkey', 'mallard'];
+export const PREMIUM_CHARACTERS = ['lynx', 'bear', 'moose', 'badger'];
+
+export function isCharacterAvailable(characterId, isAuthenticated, unlockedCharacters): boolean
+export function getAvailableCharacters(isAuthenticated, unlockedCharacters): string[]
+```
+
+**Task 1C.2: Update characters.json with Tier Metadata** (30 minutes)
+Add `tier` field to each character:
+```json
+{ "id": "squirrel", "tier": "no-auth", ... }
+{ "id": "hare", "tier": "free", ... }
+{ "id": "lynx", "tier": "premium", "price": 1.99, ... }
+```
+
+**Task 1C.3: Enhance CharacterRegistry (Client-Side)** (2 hours)
+File: `/client/src/services/CharacterRegistry.ts`
+- Add character tier constants
+- `isCharacterAvailable(characterId, isAuthenticated, unlockedCharacters)`
+- `getAvailableCharacters(isAuthenticated, unlockedCharacters)`
+- `getCharacterTier(characterId)`
+- `getCharacterPrice(characterId)`
+- `getLockedCharacters(isAuthenticated, unlockedCharacters)`
+
+**Task 1C.4: Add Server-Side Character Validation** (1 hour)
+Update ForestManager or character selection handler:
+- Validate character availability before allowing selection
+- Return 403 error if character not available
+
+#### Dependencies
+- **Part 1A**: Needs isAuthenticated and unlockedCharacters fields
+
+#### Integration Points
+- **Part 2B (Character Selection UX)**: Client UI uses CharacterRegistry methods
+- **ForestManager/SquirrelSession**: Server validates character selection
+
+#### Testing Strategy
+- Unit tests for CharacterTiers module
+- Integration tests for character selection
+- Manual testing checklist
+
+#### Success Criteria
 - [ ] No-auth users can only select Squirrel
 - [ ] Authenticated users can select 6 free characters
 - [ ] Premium characters show locked (💎) for all users
-- [ ] Character tier correctly identified for all 11 characters
+- [ ] Server rejects invalid character selection attempts
 
 ---
 
-### Part 1D: Session Management & Cross-Device Sync ⏳
+### Part 1D: Session Management & JWT Tokens ⏳
 - **Status**: ⏳ PENDING
-- **Estimated Duration**: 2-3 days
+- **Estimated Duration**: 3 days
 - **Priority**: 🔴 CRITICAL PATH
 
-**Tasks**:
-- [ ] Install jsonwebtoken
-  ```bash
-  cd workers
-  npm install jsonwebtoken @types/jsonwebtoken
-  ```
+#### Overview
+Implement JWT-based session management for cross-device authentication. Uses access tokens (30-day) and refresh tokens (90-day) to support multiple devices while maintaining security.
 
-- [ ] Generate JWT secret
-  ```bash
-  openssl rand -base64 32
-  wrangler secret put JWT_SECRET --name hidden-walnuts-api-preview
-  wrangler secret put JWT_SECRET --name hidden-walnuts-api
-  ```
+#### Files to Create
+1. **`/workers/services/AuthService.ts`** - JWT token generation and validation
+2. **`/workers/middleware/AuthMiddleware.ts`** - Authentication middleware for API routes
 
-- [ ] Create `/workers/services/AuthService.ts`
-  - [ ] `generateAccessToken(userData)` - 30-day expiration
-  - [ ] `generateRefreshToken(userData)` - 90-day expiration
-  - [ ] `verifyAccessToken(token)` - Validate and decode
-  - [ ] `verifyRefreshToken(token)` - Validate and decode
-  - [ ] `refreshAccessToken(refreshToken, getPlayerData)` - Get new access token
+#### Files to Modify
+1. **`/workers/package.json`** - Add jsonwebtoken dependency
+2. **`/workers/objects/PlayerIdentity.ts`** - Add token management methods
 
-- [ ] Implement token storage in PlayerIdentity DO
-  - [ ] Store authTokens[] array (track multiple devices)
-  - [ ] Add deviceInfo (user agent) to each token
-  - [ ] Implement token revocation (remove from array)
+#### Detailed Tasks
 
-- [ ] Add authentication middleware to API endpoints
-  - [ ] Extract Bearer token from Authorization header
-  - [ ] Verify token signature and expiration
-  - [ ] Attach user data to request context
+**Task 1D.1: Generate and Store JWT Secret** (15 minutes)
+```bash
+openssl rand -base64 32
+wrangler secret put JWT_SECRET --name hidden-walnuts-api-preview
+wrangler secret put JWT_SECRET --name hidden-walnuts-api
+```
 
-**Success Criteria**:
+**Task 1D.2: Install jsonwebtoken Dependency** (15 minutes)
+```bash
+cd workers
+npm install jsonwebtoken
+npm install --save-dev @types/jsonwebtoken
+```
+
+**Task 1D.3: Create AuthService Module** (3 hours)
+File: `/workers/services/AuthService.ts`
+- `generateAccessToken(userData)` - 30-day expiration
+- `generateRefreshToken(username, tokenId)` - 90-day expiration
+- `verifyAccessToken(token)` - Validate and decode
+- `verifyRefreshToken(token)` - Validate and decode
+- `extractTokenFromHeader(authHeader)` - Parse Bearer token
+
+**Task 1D.4: Update PlayerIdentity with Token Management** (3 hours)
+- `generateAuthTokens(userData, deviceInfo)` - Generate access + refresh tokens
+- Update login to return tokens
+- `handleRefreshToken(request)` - Get new access token
+- `handleLogout(request)` - Invalidate single device token
+- `handleLogoutAll(request)` - Invalidate all tokens
+
+**Task 1D.5: Create Authentication Middleware** (2 hours)
+File: `/workers/middleware/AuthMiddleware.ts`
+- `authenticateRequest(request, env)` - Extract and verify token
+- `requireAuth(request, env)` - Middleware that returns 401 if not authenticated
+
+#### Dependencies
+- **Part 1A**: Login/signup methods need token generation
+
+#### Integration Points
+- **Worker API**: Authentication middleware used on protected routes
+- **WebSocket**: Will need token validation for WebSocket upgrades
+- **Client**: Stores tokens in localStorage
+
+#### Testing Strategy
+- Unit tests for AuthService (token generation, verification)
+- Integration tests (login, refresh, logout)
+- Manual testing checklist (cross-device sync)
+
+#### Success Criteria
 - [ ] Access token valid for 30 days
 - [ ] Refresh token valid for 90 days
 - [ ] Multiple devices can be logged in simultaneously
@@ -287,27 +515,63 @@ MVP 16 implements full email/password authentication while maintaining the no-au
 
 ### Part 1E: Leaderboard Integration ⏳
 - **Status**: ⏳ PENDING
-- **Estimated Duration**: 1-2 days
+- **Estimated Duration**: 1.5 days
 - **Priority**: 🟡 MEDIUM
 
-**Tasks**:
-- [ ] Enhance LeaderboardEntry interface in Leaderboard.ts
-  - [ ] Add `isAuthenticated: boolean`
-  - [ ] Add `emailVerified: boolean`
-  - [ ] Add `characterId: string`
+#### Overview
+Update the Leaderboard Durable Object to track authentication status and implement leaderboard filtering (daily: all users, weekly top 10: authenticated only, hall of fame: authenticated only).
 
-- [ ] Implement leaderboard filtering logic
-  - [ ] `getDailyLeaderboard()` - All players
-  - [ ] `getWeeklyLeaderboard()` - All players, but filter top 10
-  - [ ] `getWeeklyTop10()` - Only authenticated players in top 10
-  - [ ] `getHallOfFame()` - Only authenticated players
+#### Files to Modify
+1. **`/workers/objects/Leaderboard.ts`** - Add authentication fields and filtering logic
 
-- [ ] Update leaderboard submission
-  - [ ] Include isAuthenticated flag when submitting score
-  - [ ] Include emailVerified flag
-  - [ ] Include characterId
+#### Detailed Tasks
 
-**Success Criteria**:
+**Task 1E.1: Update LeaderboardEntry Interface** (30 minutes)
+```typescript
+interface ScoreRecord {
+  playerId: string;
+  score: number;
+  walnuts: { hidden: number; found: number };
+  updatedAt: number;
+  lastScoreIncrease?: number;
+
+  // NEW: MVP 16
+  isAuthenticated: boolean;
+  emailVerified: boolean;
+  characterId: string;
+}
+```
+
+**Task 1E.2: Update Score Submission Handler** (1 hour)
+- Accept authentication fields in score submission
+- Validate authentication fields
+- Set defaults for backward compatibility
+
+**Task 1E.3: Implement Leaderboard Filtering Logic** (2 hours)
+- Update `/top` endpoint with type parameter (weekly, daily, alltime)
+- Daily leaderboard: All players (no filtering)
+- Weekly leaderboard: All players, but top 10 filtered to authenticated
+- Hall of Fame: Authenticated players ONLY
+- Update `getTopPlayers()` with filtering options
+
+**Task 1E.4: Add Player Rank Endpoint with Auth Info** (1 hour)
+- Update `/player` endpoint to return authentication-aware rank
+- Calculate rank considering authentication filter for weekly top 10
+- Return isAuthenticated, emailVerified, characterId
+
+#### Dependencies
+- **Part 1A**: isAuthenticated and emailVerified fields
+
+#### Integration Points
+- **Client Leaderboard UI**: Display verified badge (🔒)
+- **Score Submission**: ForestManager passes authentication info
+
+#### Testing Strategy
+- Unit tests for leaderboard filtering
+- Integration tests for score submission with auth fields
+- Manual testing checklist
+
+#### Success Criteria
 - [ ] Daily leaderboard shows all players
 - [ ] Weekly leaderboard top 10 restricted to authenticated players
 - [ ] Hall of Fame only shows authenticated players
