@@ -239,8 +239,11 @@ async function main() {
     // Initialize audio manager (don't load sounds yet - will load when game starts)
     const audioManager = new AudioManager();
 
-    // Initialize settings manager (callbacks will be set later after Game instance is created)
-    const settingsManager = new SettingsManager(audioManager);
+    // MVP 16: Initialize settings manager with auth modal callbacks
+    const settingsManager = new SettingsManager(audioManager, {
+      onSignUpClick: () => authModal.open('signup'),
+      onLoginClick: () => authModal.open('login')
+    });
 
     let selectedCharacterId: string;
 
