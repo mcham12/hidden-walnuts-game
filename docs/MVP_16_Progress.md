@@ -960,10 +960,15 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 - ✅ Responsive across all platforms
 
 **Task 2C.4: Add Character Preview on Hover/Tap** ✅ COMPLETE (4 hours)
-- ✅ Click locked character triggers appropriate action
-- ✅ [Sign Up to Unlock] modal for locked free characters
-- ✅ [Coming Soon!] alert for premium characters
-- ✅ Preview handler integrated with CharacterCard component
+- ✅ 3D character preview modal with rotating model and idle animation
+- ✅ Character description from characters.json displayed
+- ✅ Status-based CTA buttons:
+  - Available characters: [Select Character]
+  - Locked free characters: [Sign Up to Unlock Free!]
+  - Locked premium characters: [Coming Soon in MVP 17! ($X.XX)]
+- ✅ Full responsive support across all 6 breakpoints
+- ✅ ESC key and backdrop click to close
+- ✅ Proper Three.js resource cleanup on close
 
 **Task 2C.5: Persist Last Selected Character** ✅ COMPLETE (2 hours)
 - ✅ Store in localStorage: `last_character_id`
@@ -974,6 +979,7 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 **Files Created**:
 - ✅ `/client/src/components/CharacterCard.ts` - Individual character card component
 - ✅ `/client/src/components/CharacterGrid.ts` - Responsive character selection grid
+- ✅ `/client/src/components/CharacterPreviewModal.ts` - 3D character preview modal
 
 **What Was Built**:
 
@@ -1003,6 +1009,26 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
    - Character selection and preview handlers
    - localStorage persistence for last selected character
    - Horizontal scrolling with custom scrollbar styling (iPhone landscape)
+
+3. **CharacterPreviewModal Component** (`/client/src/components/CharacterPreviewModal.ts`)
+   - Full 3D character preview using Three.js
+   - Animated character model with idle animation
+   - Slow rotation animation for 360° view
+   - Character name and description from characters.json
+   - Tier information display with pricing
+   - Status-based CTA buttons:
+     - Available: [Select Character] button
+     - Locked free: [Sign Up to Unlock Free!] button
+     - Locked premium: [Coming Soon in MVP 17! ($X.XX)] disabled button
+   - Responsive across all 6 breakpoints:
+     - Desktop/iPad: 600px modal, 300px preview height
+     - Tablets: 95vw width, 250px preview height
+     - iPhone Portrait: Full screen, 200px preview height
+   - Proper Three.js resource cleanup (geometry, materials, renderer disposal)
+   - Fade in/out animations
+   - Close on ESC key, backdrop click, or X button
+   - Scene lighting with ambient and directional lights
+   - Automatic canvas resize on window resize
 
 **Success Criteria**:
 - ✅ Character selection shows visual grid on all platforms

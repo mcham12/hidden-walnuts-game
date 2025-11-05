@@ -19,6 +19,7 @@
 import { CharacterCard, type CharacterCardData } from './CharacterCard';
 import { getCurrentUser, isAuthenticated } from '../services/AuthService';
 import { CharacterRegistry } from '../services/CharacterRegistry';
+import { CharacterPreviewModal } from './CharacterPreviewModal';
 
 export interface CharacterGridOptions {
   onCharacterSelect?: (characterId: string) => void;
@@ -372,14 +373,24 @@ export class CharacterGrid {
     const character = CharacterRegistry.getCharacterById(characterId);
     if (!character) return;
 
-    // Check if user is authenticated
-    if (!isAuthenticated()) {
-      // Show signup modal
-      this.options.onSignUpClick?.();
-    } else {
-      // Show "Coming Soon" for premium characters
-      alert(`${character.name} is a premium character! Coming soon in MVP 17.`);
-    }
+    // Get user authentication status
+    const user = getCurrentUser();
+    const userIsAuthenticated = isAuthenticated();
+    const unlockedCharacters = user?.unlockedCharacters || [];
+    const availableCharacters = CharacterRegistry.getAvailableCharacters(
+      userIsAuthenticated,
+      unlockedCharacters
+    );
+
+    const isAvailable = availableCharacters.some(c => c.id === characterId);
+
+    // Show character preview modal
+    new CharacterPreviewModal({
+      characterId,
+      isAvailable,
+      onSelect: (id) => this.handleCharacterSelect(id),
+      onSignUp: () => this.options.onSignUpClick?.()
+    });
   }
 
   /**
