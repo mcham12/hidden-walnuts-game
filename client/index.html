@@ -2166,6 +2166,7 @@
         <button class="settings-tab active" data-tab="audio">🔊 Audio</button>
         <button class="settings-tab" data-tab="controls">🎮 Controls</button>
         <button class="settings-tab" data-tab="tips">💡 Tips</button>
+        <button class="settings-tab" data-tab="account">👤 Account</button>
       </div>
       <div id="audio-tab" class="settings-content active">
         <div class="setting-group">
@@ -2243,6 +2244,12 @@
         </div>
         <div class="setting-group">
           <button id="reset-tips-btn" class="settings-button secondary" style="width: 100%;">Reset Seen Tips</button>
+        </div>
+      </div>
+      <!-- MVP 16: Account Tab -->
+      <div id="account-tab" class="settings-content">
+        <div id="account-container" style="display: flex; flex-direction: column; gap: 16px; max-height: 400px; overflow-y: auto;">
+          <!-- Account info will be populated by SettingsManager -->
         </div>
       </div>
       <div class="settings-buttons">
