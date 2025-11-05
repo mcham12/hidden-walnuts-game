@@ -15,6 +15,7 @@ import { RankOverlay } from './RankOverlay.js';
 import { SkyManager } from './SkyManager.js';
 import { EnticementService } from './services/EnticementService.js'; // MVP 16: Signup reminders
 import { AuthModal } from './components/AuthModal.js'; // MVP 16: Authentication modal
+import { SessionExpiredBanner } from './components/SessionExpiredBanner.js'; // MVP 16: Session expiry
 import { TutorialOverlay } from './TutorialOverlay.js';
 import { getPlayerTitle } from '@shared/PlayerRanks';
 import { TipsManager } from './TipsManager.js'; // MVP 14: Contextual tips
@@ -291,6 +292,9 @@ export class Game {
   // MVP 16: Authentication modal
   private authModal: AuthModal | null = null;
 
+  // MVP 16: Session expired banner
+  private sessionExpiredBanner: SessionExpiredBanner | null = null;
+
   // MVP 14: Contextual tips system
   private tipsManager: TipsManager = new TipsManager();
 
@@ -477,6 +481,16 @@ export class Game {
         },
         onClose: () => {
           console.log('🚪 Auth modal closed');
+        }
+      });
+
+      // MVP 16: Initialize session expired banner
+      this.sessionExpiredBanner = new SessionExpiredBanner({
+        onLoginClick: () => {
+          this.openLoginModal();
+        },
+        onDismiss: () => {
+          console.log('🚪 Session expired banner dismissed');
         }
       });
 
@@ -7827,6 +7841,16 @@ export class Game {
       this.authModal.open('login');
     } else {
       console.error('❌ AuthModal not initialized');
+    }
+  }
+
+  /**
+   * MVP 16: Show session expired banner
+   * Called when API returns 401 (token expired mid-game)
+   */
+  public showSessionExpiredBanner(): void {
+    if (this.sessionExpiredBanner && !this.sessionExpiredBanner.isVisible()) {
+      this.sessionExpiredBanner.show();
     }
   }
 

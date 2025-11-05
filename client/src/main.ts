@@ -7,6 +7,7 @@ import { WelcomeScreen } from './WelcomeScreen';
 import { SettingsManager } from './SettingsManager';
 import { TouchControls } from './TouchControls';
 import { SessionManager } from './SessionManager'; // MVP 6: Player identity
+import { restoreSession, startTokenRefreshTimer } from './services/AuthService'; // MVP 16: Session persistence
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
@@ -351,7 +352,15 @@ async function updateCharacterSelection(username: string, characterId: string): 
 
 async function main() {
   try {
-    // MVP 6: STEP 0 - Initialize session management
+    // MVP 16: STEP 0A - Restore authentication session if exists
+    // This checks if user has valid tokens and refreshes if needed
+    await restoreSession();
+
+    // MVP 16: STEP 0B - Start automatic token refresh timer
+    // Refreshes access token 5 days before expiration (every 25 days)
+    startTokenRefreshTimer();
+
+    // MVP 6: STEP 0C - Initialize session management
     const sessionManager = new SessionManager();
     const sessionToken = sessionManager.getToken();
 
