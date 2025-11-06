@@ -8,6 +8,7 @@
 
 import { CharacterPreview3D } from './components/CharacterPreview3D';
 import { CharacterRegistry } from './services/CharacterRegistry';
+import { AuthModal } from './components/AuthModal';
 
 export class WelcomeScreen {
   private container: HTMLDivElement | null = null;
@@ -18,8 +19,16 @@ export class WelcomeScreen {
   private carouselPreview: CharacterPreview3D | null = null;
   private carouselInterval: number | null = null;
 
+  // Authentication modal
+  private authModal: AuthModal | null = null;
+
   constructor() {
     this.createHTML();
+
+    // Initialize AuthModal
+    this.authModal = new AuthModal({
+      onAuthSuccess: (userData) => this.handleAuthSuccess(userData)
+    });
   }
 
   /**
@@ -34,7 +43,7 @@ export class WelcomeScreen {
       <div class="welcome-content">
         <!-- Title and Tagline at Top -->
         <div class="welcome-header">
-          <h1 class="welcome-title">🌲🌳 Hidden Walnuts 🌰🌲</h1>
+          <h1 class="welcome-title">Hidden Walnuts</h1>
           <p class="welcome-tagline">Welcome to the Forest</p>
         </div>
 
@@ -46,7 +55,6 @@ export class WelcomeScreen {
             <p class="column-subtitle">No login needed!</p>
 
             <div class="welcome-form">
-              <label for="welcome-username" class="welcome-label">👤 Enter your name:</label>
               <input
                 type="text"
                 id="welcome-username"
@@ -59,12 +67,12 @@ export class WelcomeScreen {
 
               <!-- 3D Character Preview -->
               <div class="character-preview-mini">
-                <div id="squirrel-preview-container" style="width: 100%; height: 200px;"></div>
-                <p class="character-label">Squirrel with idle animation</p>
+                <div id="squirrel-preview-container" style="width: 100%; height: 300px;"></div>
+                <p class="character-label">Squirrel</p>
               </div>
 
               <button id="welcome-quick-play-button" class="welcome-button quick-play-button">
-                🟢 QUICK PLAY!
+                QUICK PLAY!
               </button>
             </div>
           </div>
@@ -74,26 +82,33 @@ export class WelcomeScreen {
             <h2 class="column-title">SIGN UP FREE</h2>
             <p class="column-subtitle">Unlock 6 FREE characters!</p>
 
-            <!-- Rotating Character Carousel -->
-            <div class="character-carousel">
-              <div id="carousel-preview-container" style="width: 100%; height: 250px;"></div>
-              <p class="carousel-label" id="carousel-character-name">Free characters - rotating every 3 seconds</p>
-            </div>
+            <div class="welcome-form">
+              <input
+                type="text"
+                id="welcome-signup-username"
+                class="welcome-input"
+                placeholder="Enter your name"
+                maxlength="20"
+                autocomplete="off"
+                spellcheck="false"
+              />
 
-            <button id="welcome-signup-button" class="welcome-button signup-button">
-              🟠 SIGN UP
-            </button>
+              <!-- Rotating Character Carousel -->
+              <div class="character-preview-mini">
+                <div id="carousel-preview-container" style="width: 100%; height: 300px;"></div>
+                <p class="character-label" id="carousel-character-name">Hare</p>
+              </div>
+
+              <button id="welcome-signup-button" class="welcome-button signup-button">
+                SIGN UP
+              </button>
+            </div>
           </div>
         </div>
 
         <!-- Sign In Link Below -->
         <div class="welcome-footer">
           <button id="welcome-signin-link" class="signin-link">🔒 Sign In</button>
-        </div>
-
-        <!-- Tagline at Bottom -->
-        <div class="welcome-bottom-tagline">
-          Start collecting walnuts now! 🌰🎮
         </div>
       </div>
 
@@ -151,11 +166,11 @@ export class WelcomeScreen {
       // Ensure CharacterRegistry is loaded first
       await CharacterRegistry.loadCharacters();
 
-      // Initialize squirrel preview (left column)
+      // Initialize squirrel preview (left column) - closer camera for bigger character
       this.squirrelPreview = new CharacterPreview3D(
         'squirrel-preview-container',
         'squirrel',
-        { rotationSpeed: 0.005, autoRotate: true, showAnimation: true }
+        { rotationSpeed: 0.005, autoRotate: true, showAnimation: true, cameraDistance: 2 }
       );
       await this.squirrelPreview.init();
 
@@ -175,14 +190,14 @@ export class WelcomeScreen {
       this.carouselPreview = new CharacterPreview3D(
         'carousel-preview-container',
         freeCharacters[0].id,
-        { rotationSpeed: 0.005, autoRotate: true, showAnimation: true }
+        { rotationSpeed: 0.005, autoRotate: true, showAnimation: true, cameraDistance: 2 }
       );
       await this.carouselPreview.init();
 
       // Update character name label
       const nameLabel = document.getElementById('carousel-character-name');
       if (nameLabel) {
-        nameLabel.textContent = `${freeCharacters[0].name} - Rotating every 3 seconds`;
+        nameLabel.textContent = freeCharacters[0].name;
       }
 
       // Rotate carousel every 3 seconds
@@ -194,7 +209,7 @@ export class WelcomeScreen {
 
         // Update name label
         if (nameLabel) {
-          nameLabel.textContent = `${nextChar.name} - Rotating every 3 seconds`;
+          nameLabel.textContent = nextChar.name;
         }
       }, 3000);
     } catch (error) {
@@ -220,21 +235,33 @@ export class WelcomeScreen {
   }
 
   /**
-   * Handle Sign Up click
-   * TODO: Wire to AuthModal
+   * Handle Sign Up click - Open AuthModal in signup mode
    */
   private onSignUpClick(): void {
-    console.log('Sign Up clicked - TODO: Open AuthModal in signup mode');
-    // Will be wired to AuthModal in next step
+    if (this.authModal) {
+      this.authModal.open('signup');
+    }
   }
 
   /**
-   * Handle Sign In click
-   * TODO: Wire to AuthModal
+   * Handle Sign In click - Open AuthModal in login mode
    */
   private onSignInClick(): void {
-    console.log('Sign In clicked - TODO: Open AuthModal in signin mode');
-    // Will be wired to AuthModal in next step
+    if (this.authModal) {
+      this.authModal.open('login');
+    }
+  }
+
+  /**
+   * Handle successful authentication - proceed to character selection
+   */
+  private handleAuthSuccess(userData: any): void {
+    console.log('Authentication successful:', userData);
+    // TODO: Show character selection screen
+    // For now, just close welcome screen and start game with authenticated user
+    if (this.resolvePromise && userData.username) {
+      this.resolvePromise(userData.username);
+    }
   }
 
 

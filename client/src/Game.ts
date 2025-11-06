@@ -4208,10 +4208,8 @@ export class Game {
         skipButton.onclick = () => this.skipRespawn();
       }
 
-      // MVP 16: Show appropriate overlay after 2 second delay
-      setTimeout(() => {
-        this.showDeathOverlay();
-      }, 2000);
+      // MVP 16: Show appropriate overlay content immediately (no delay)
+      this.showDeathOverlay();
     }
 
     // Drop all walnuts at death location
@@ -4258,62 +4256,73 @@ export class Game {
   }
 
   /**
-   * MVP 16: Show appropriate death overlay based on authentication status
+   * MVP 16: Show appropriate death overlay content based on authentication status
+   * New unified design: show appropriate content panel within single overlay
    */
   private showDeathOverlay(): void {
     // Check if user is authenticated
     const isAuth = localStorage.getItem('auth_token') !== null;
 
     if (isAuth) {
-      // Show signed-in overlay
-      const signedInOverlay = document.getElementById('death-overlay-signedin');
-      if (signedInOverlay) {
-        signedInOverlay.classList.remove('hidden');
+      // Show signed-in content panel
+      const signedInContent = document.getElementById('death-content-signedin');
+      const anonymousContent = document.getElementById('death-content-anonymous');
 
-        // TODO: Fetch and update player rank from leaderboard
-        const playerRank = document.getElementById('player-rank');
-        if (playerRank) {
-          playerRank.textContent = '42'; // Placeholder
-        }
+      if (signedInContent) {
+        signedInContent.classList.remove('hidden');
+      }
+      if (anonymousContent) {
+        anonymousContent.classList.add('hidden');
+      }
 
-        // Wire up buttons
-        const buyPremiumBtn = document.getElementById('death-buy-premium-btn');
-        if (buyPremiumBtn) {
-          buyPremiumBtn.onclick = () => this.handleBuyPremiumCharacter();
-        }
+      // TODO: Fetch and update player rank from leaderboard
+      const playerRank = document.getElementById('player-rank');
+      if (playerRank) {
+        playerRank.textContent = '42'; // Placeholder
+      }
 
-        const watchAdLink = document.getElementById('death-watch-ad-link-signedin');
-        if (watchAdLink) {
-          watchAdLink.onclick = (e) => {
-            e.preventDefault();
-            this.handleWatchAd();
-          };
-        }
+      // Wire up buttons
+      const buyPremiumBtn = document.getElementById('death-buy-premium-btn');
+      if (buyPremiumBtn) {
+        buyPremiumBtn.onclick = () => this.handleBuyPremiumCharacter();
+      }
+
+      const watchAdLink = document.getElementById('death-watch-ad-link-signedin');
+      if (watchAdLink) {
+        watchAdLink.onclick = (e) => {
+          e.preventDefault();
+          this.handleWatchAd();
+        };
       }
     } else {
-      // Show anonymous overlay
-      const anonymousOverlay = document.getElementById('death-overlay-anonymous');
-      if (anonymousOverlay) {
-        anonymousOverlay.classList.remove('hidden');
+      // Show anonymous content panel
+      const anonymousContent = document.getElementById('death-content-anonymous');
+      const signedInContent = document.getElementById('death-content-signedin');
 
-        // Wire up buttons
-        const signinBtn = document.getElementById('death-signin-btn');
-        if (signinBtn) {
-          signinBtn.onclick = () => this.handleDeathSignIn();
-        }
+      if (anonymousContent) {
+        anonymousContent.classList.remove('hidden');
+      }
+      if (signedInContent) {
+        signedInContent.classList.add('hidden');
+      }
 
-        const buyCharBtn = document.getElementById('death-buy-char-btn');
-        if (buyCharBtn) {
-          buyCharBtn.onclick = () => this.handleBuyCharacter();
-        }
+      // Wire up buttons
+      const signinBtn = document.getElementById('death-signin-btn');
+      if (signinBtn) {
+        signinBtn.onclick = () => this.handleDeathSignIn();
+      }
 
-        const watchAdLink = document.getElementById('death-watch-ad-link');
-        if (watchAdLink) {
-          watchAdLink.onclick = (e) => {
-            e.preventDefault();
-            this.handleWatchAd();
-          };
-        }
+      const buyCharBtn = document.getElementById('death-buy-char-btn');
+      if (buyCharBtn) {
+        buyCharBtn.onclick = () => this.handleBuyCharacter();
+      }
+
+      const watchAdLink = document.getElementById('death-watch-ad-link');
+      if (watchAdLink) {
+        watchAdLink.onclick = (e) => {
+          e.preventDefault();
+          this.handleWatchAd();
+        };
       }
     }
   }
@@ -4397,19 +4406,20 @@ export class Game {
       } : undefined
     });
 
-    // MVP 16: Hide death overlays
+    // MVP 16: Hide death overlay (unified design)
     const deathOverlay = document.getElementById('death-overlay');
-    const anonymousOverlay = document.getElementById('death-overlay-anonymous');
-    const signedInOverlay = document.getElementById('death-overlay-signedin');
-
     if (deathOverlay) {
       deathOverlay.classList.add('hidden');
     }
-    if (anonymousOverlay) {
-      anonymousOverlay.classList.add('hidden');
+
+    // Also hide content panels
+    const anonymousContent = document.getElementById('death-content-anonymous');
+    const signedInContent = document.getElementById('death-content-signedin');
+    if (anonymousContent) {
+      anonymousContent.classList.add('hidden');
     }
-    if (signedInOverlay) {
-      signedInOverlay.classList.add('hidden');
+    if (signedInContent) {
+      signedInContent.classList.add('hidden');
     }
 
     // MVP 8: Enable spawn protection (3 seconds invulnerability)
