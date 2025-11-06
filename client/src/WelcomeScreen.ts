@@ -7,6 +7,7 @@
  */
 
 import { CharacterPreview3D } from './components/CharacterPreview3D';
+import { CharacterRegistry } from './services/CharacterRegistry';
 
 export class WelcomeScreen {
   private container: HTMLDivElement | null = null;
@@ -147,6 +148,9 @@ export class WelcomeScreen {
    */
   private async init3DPreviews(): Promise<void> {
     try {
+      // Ensure CharacterRegistry is loaded first
+      await CharacterRegistry.loadCharacters();
+
       // Initialize squirrel preview (left column)
       this.squirrelPreview = new CharacterPreview3D(
         'squirrel-preview-container',
