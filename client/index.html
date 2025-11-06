@@ -1342,6 +1342,311 @@
         }
       }
 
+      /* MVP 16: Death Screen Overlay Styles */
+      #death-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 5000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: auto;
+        opacity: 0;
+        transition: opacity 0.5s ease;
+      }
+      #death-overlay:not(.hidden) {
+        opacity: 1;
+      }
+      .death-content {
+        background: linear-gradient(135deg, rgba(139, 69, 19, 0.95), rgba(101, 67, 33, 0.95));
+        border-radius: 20px;
+        padding: 40px;
+        max-width: 600px;
+        width: 90%;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        border: 3px solid rgba(255, 215, 0, 0.3);
+      }
+      .death-header {
+        margin-bottom: 30px;
+      }
+      .death-title {
+        font-size: 48px;
+        font-weight: 800;
+        color: #FFD700;
+        margin: 0 0 10px 0;
+        text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
+        font-family: 'Arial', sans-serif;
+      }
+      .death-score {
+        font-size: 24px;
+        color: #FFE4B5;
+        margin: 0;
+        font-weight: 600;
+      }
+      #death-score-value {
+        color: #FFD700;
+        font-weight: bold;
+      }
+      .death-animation {
+        margin: 30px 0;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 12px;
+      }
+      .death-char-emoji {
+        font-size: 80px;
+        animation: deathPulse 1.5s ease-in-out infinite;
+      }
+      @keyframes deathPulse {
+        0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        50% { transform: scale(1.2) rotate(5deg); opacity: 0.7; }
+      }
+      .death-animation-label {
+        font-size: 14px;
+        color: rgba(255, 228, 181, 0.7);
+        margin: 10px 0 0 0;
+        font-style: italic;
+      }
+      .respawn-timer {
+        margin-top: 30px;
+      }
+      .respawn-label {
+        font-size: 20px;
+        color: #FFE4B5;
+        font-weight: bold;
+        margin: 0 0 15px 0;
+      }
+      .respawn-progress-container {
+        width: 100%;
+        height: 30px;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 15px;
+        overflow: hidden;
+        margin-bottom: 10px;
+        border: 2px solid rgba(255, 215, 0, 0.3);
+      }
+      .respawn-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+        width: 100%;
+        transition: width 0.1s linear;
+        box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+      }
+      .respawn-countdown-text {
+        font-size: 18px;
+        color: #FFD700;
+        font-weight: bold;
+        margin: 0;
+      }
+
+      /* MVP 16: Death Overlay (Anonymous & Signed-In) */
+      #death-overlay-anonymous,
+      #death-overlay-signedin {
+        position: fixed;
+        bottom: 50%;
+        left: 50%;
+        transform: translate(-50%, 50%);
+        width: 90%;
+        max-width: 700px;
+        background: linear-gradient(135deg, rgba(33, 150, 243, 0.98), rgba(21, 101, 192, 0.98));
+        border-radius: 16px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+        z-index: 5500;
+        pointer-events: auto;
+        opacity: 0;
+        transition: opacity 0.5s ease, transform 0.5s ease;
+        border: 3px solid rgba(255, 215, 0, 0.4);
+      }
+      #death-overlay-anonymous:not(.hidden),
+      #death-overlay-signedin:not(.hidden) {
+        opacity: 1;
+      }
+      .death-overlay-content {
+        padding: 30px;
+        color: white;
+        font-family: 'Arial', sans-serif;
+      }
+      .overlay-header h2 {
+        font-size: 22px;
+        margin: 0 0 25px 0;
+        color: #FFD700;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        font-weight: bold;
+      }
+      .overlay-section {
+        margin-bottom: 25px;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 20px;
+        border-radius: 12px;
+      }
+      .section-label {
+        font-size: 16px;
+        margin: 0 0 15px 0;
+        color: #FFE4B5;
+        font-weight: 600;
+      }
+      .characters-preview {
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        align-items: center;
+      }
+      .char-preview-item {
+        text-align: center;
+      }
+      .char-emoji {
+        font-size: 50px;
+        display: block;
+        animation: charBob 2s ease-in-out infinite;
+      }
+      @keyframes charBob {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
+      }
+      .char-name {
+        font-size: 13px;
+        color: #FFE4B5;
+        margin: 8px 0 0 0;
+        font-style: italic;
+      }
+      .mini-leaderboard {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 15px;
+        border-radius: 8px;
+      }
+      .lb-entry {
+        font-size: 16px;
+        padding: 8px;
+        margin: 5px 0;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+      }
+      .lb-entry.your-spot {
+        background: rgba(255, 215, 0, 0.2);
+        border: 1px solid rgba(255, 215, 0, 0.5);
+        font-weight: bold;
+        color: #FFD700;
+      }
+      .premium-preview {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+      .premium-char-item {
+        text-align: center;
+      }
+      .char-emoji-large {
+        font-size: 80px;
+        display: block;
+        animation: charBob 2s ease-in-out infinite;
+      }
+      .char-ability {
+        font-size: 16px;
+        color: #FFD700;
+        margin: 10px 0 0 0;
+        font-weight: bold;
+      }
+      .overlay-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-top: 25px;
+      }
+      .death-overlay-btn {
+        width: 100%;
+        padding: 16px 20px;
+        border: none;
+        border-radius: 12px;
+        font-size: 18px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-family: 'Arial', sans-serif;
+        text-align: center;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+      }
+      .signin-btn {
+        background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+        color: white;
+      }
+      .signin-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.5);
+      }
+      .buy-btn {
+        background: linear-gradient(135deg, #ff8c00 0%, #ff6b00 100%);
+        color: white;
+      }
+      .buy-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(255, 140, 0, 0.5);
+      }
+      .btn-subtext {
+        font-size: 13px;
+        font-weight: normal;
+        opacity: 0.9;
+      }
+      .watch-ad-link {
+        text-align: center;
+        color: rgba(255, 228, 181, 0.7);
+        font-size: 14px;
+        text-decoration: underline;
+        cursor: pointer;
+        transition: color 0.2s;
+      }
+      .watch-ad-link:hover {
+        color: #FFE4B5;
+        text-decoration: none;
+      }
+
+      /* Responsive: Death Overlays - Mobile */
+      @media (max-width: 768px) {
+        .death-content {
+          padding: 30px 20px;
+          max-width: 95%;
+        }
+        .death-title {
+          font-size: 36px;
+        }
+        .death-score {
+          font-size: 20px;
+        }
+        .death-char-emoji {
+          font-size: 60px;
+        }
+        #death-overlay-anonymous,
+        #death-overlay-signedin {
+          max-width: 95%;
+          bottom: 40%;
+        }
+        .death-overlay-content {
+          padding: 20px;
+        }
+        .overlay-header h2 {
+          font-size: 18px;
+        }
+        .char-emoji {
+          font-size: 40px;
+        }
+        .char-emoji-large {
+          font-size: 60px;
+        }
+        .death-overlay-btn {
+          font-size: 16px;
+          padding: 14px 16px;
+        }
+      }
+
       /* MVP 5: Toast Notification System */
       #toast-container {
         position: fixed;
@@ -2322,17 +2627,108 @@
         </li>
       </ul>
     </div>
-    <!-- MVP 8 Phase 3: Death Screen Overlay (hidden until player dies in-game) -->
-    <div id="death-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(to bottom, rgba(139, 0, 0, 0) 0%, rgba(139, 0, 0, 0.7) 100%); z-index: 3000; pointer-events: none; opacity: 0; display: none; transition: opacity 0.5s ease;">
-      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
-        <div style="font-size: 72px; font-weight: bold; color: #ff4444; text-shadow: 0 0 20px rgba(255, 68, 68, 0.8), 0 0 40px rgba(0, 0, 0, 0.8); font-family: Arial, sans-serif; margin-bottom: 20px;">
-          DEFEATED
+    <!-- MVP 16: Death Screen Overlay (new design) -->
+    <div id="death-overlay" class="hidden">
+      <div class="death-content">
+        <!-- Header with score -->
+        <div class="death-header">
+          <h1 class="death-title">💀 OH NUTS!</h1>
+          <p class="death-score">Your score is <span id="death-score-value">0</span></p>
         </div>
-        <div id="death-message" style="font-size: 24px; color: #ffcccc; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8); margin-bottom: 30px; font-family: Arial, sans-serif;">
-          You were killed!
+
+        <!-- Death Animation Area -->
+        <div class="death-animation">
+          <div id="death-character" class="death-char-emoji">🐿️</div>
+          <p class="death-animation-label">(Explode → Rag doll → Reset loop)</p>
         </div>
-        <div id="respawn-countdown" style="font-size: 48px; font-weight: bold; color: #ffffff; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5), 0 2px 8px rgba(0, 0, 0, 0.8); font-family: Arial, sans-serif;">
-          Respawning in 3...
+
+        <!-- Respawn Timer -->
+        <div class="respawn-timer">
+          <p class="respawn-label">🔄 RESPAWNING IN:</p>
+          <div class="respawn-progress-container">
+            <div id="respawn-progress-bar" class="respawn-progress-bar"></div>
+          </div>
+          <p class="respawn-countdown-text"><span id="respawn-countdown">3</span>s left</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- MVP 16: Death Overlay for Anonymous Users (appears after 2s delay) -->
+    <div id="death-overlay-anonymous" class="hidden">
+      <div class="death-overlay-content">
+        <div class="overlay-header">
+          <h2>👤 Sign in to get 6 Free characters and your spot on the Leaderboard!</h2>
+        </div>
+
+        <!-- Free Characters Carousel -->
+        <div class="overlay-section">
+          <p class="section-label">🔄 Free Characters Carousel: 3D Idling Previews</p>
+          <div class="characters-preview">
+            <div class="char-preview-item">
+              <span class="char-emoji">🦊</span>
+              <p class="char-name">(Sneaky!)</p>
+            </div>
+            <div class="char-preview-item">
+              <span class="char-emoji">🐻</span>
+              <p class="char-name">(Tough!)</p>
+            </div>
+            <div class="char-preview-item">
+              <span class="char-emoji">🐰</span>
+              <p class="char-name">(Fast!)</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leaderboard Tease -->
+        <div class="overlay-section">
+          <p class="section-label">🏆 Leaderboard Tease:</p>
+          <div class="mini-leaderboard">
+            <div class="lb-entry">1. NutMaster: 15000</div>
+            <div class="lb-entry">2. Squirrely: 12000</div>
+            <div class="lb-entry">3. AcornAce: 11000</div>
+            <div class="lb-entry your-spot">Your spot: #42? Sign in!</div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="overlay-actions">
+          <button id="death-signin-btn" class="death-overlay-btn signin-btn">
+            🟢 SIGN IN (Unlock chars + leaderboard spot)
+          </button>
+          <button id="death-buy-char-btn" class="death-overlay-btn buy-btn">
+            🟠 BUY <span id="random-char-name">OWL</span> ($0.99)
+            <span class="btn-subtext">(Night vision! Unlock and Respawn)</span>
+          </button>
+          <a href="#" id="death-watch-ad-link" class="watch-ad-link">📺 Or watch ad for + nuts...</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- MVP 16: Death Overlay for Signed-In Users (appears after 2s delay) -->
+    <div id="death-overlay-signedin" class="hidden">
+      <div class="death-overlay-content">
+        <div class="overlay-header">
+          <h2>🏆 Your Leaderboard Spot: #<span id="player-rank">42</span> - Climb higher!</h2>
+        </div>
+
+        <!-- Next Premium Character Tease -->
+        <div class="overlay-section">
+          <p class="section-label">🔄 Next Premium Tease: 3D Idling Preview</p>
+          <div class="premium-preview">
+            <div class="premium-char-item">
+              <span class="char-emoji-large">🦉</span>
+              <p class="char-ability">(Night Vision!)</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="overlay-actions">
+          <button id="death-buy-premium-btn" class="death-overlay-btn buy-btn">
+            🟠 BUY OWL ($0.99)
+            <span class="btn-subtext">(Unlock and Respawn as Owl)</span>
+          </button>
+          <a href="#" id="death-watch-ad-link-signedin" class="watch-ad-link">📺 Or watch ad for + nuts...</a>
         </div>
       </div>
     </div>

@@ -4137,12 +4137,18 @@ export class Game {
   }
 
   /**
-   * MVP 8 Phase 3: Handle player death
-   * MVP 8 UX: Enhanced with death screen overlay and countdown
+   * Track death count for progressive respawn timer
+   */
+  private deathCount: number = 0;
+
+  /**
+   * MVP 16: Handle player death with new death screen
+   * Progressive respawn timer: 2s → 5s based on consecutive deaths
    */
   private onDeath(killerId: string): void {
     console.log(`💀 Player died! Killed by ${killerId}`);
     this.isDead = true;
+    this.deathCount++;
 
     // MVP 11: Play death sound
     this.audioManager.playSound('player', 'player_death');
@@ -4153,58 +4159,58 @@ export class Game {
     // MIGRATION PHASE 2.3: Use state machine for death animation (DEAD priority, blocks everything)
     if (this.actions && this.actions['death']) {
       this.requestAnimation('death', this.ANIM_PRIORITY_DEAD, 3000, true);
-      // No need for isStunned flag - state machine blocks movement via priority + blocksMovement!
     }
 
-    // MVP 8 UX: Show death overlay with countdown
+    // MVP 16: Progressive respawn timer (2s minimum, 5s maximum)
+    const respawnTime = Math.min(2000 + (this.deathCount * 500), 5000);
+
+    // MVP 16: Show new death overlay
     const deathOverlay = document.getElementById('death-overlay');
-    const deathMessage = document.getElementById('death-message');
+    const deathScoreValue = document.getElementById('death-score-value');
     const respawnCountdown = document.getElementById('respawn-countdown');
+    const respawnProgressBar = document.getElementById('respawn-progress-bar');
 
     if (deathOverlay) {
-      // Show killer name in death message
-      if (deathMessage) {
-        if (killerId.startsWith('npc-')) {
-          deathMessage.textContent = `You were killed by an NPC!`;
-        } else if (killerId.startsWith('player_')) {
-          deathMessage.textContent = `You were killed by another player!`;
-        } else {
-          deathMessage.textContent = 'You were defeated!';
-        }
+      // Remove hidden class to show overlay
+      deathOverlay.classList.remove('hidden');
+
+      // Update score
+      if (deathScoreValue) {
+        deathScoreValue.textContent = this.playerScore.toString();
       }
 
-      // MVP 8 FIX: Use display + opacity for proper visibility control
-      deathOverlay.style.display = 'block';
-      deathOverlay.style.opacity = '0';
-      // Fade in death screen
-      setTimeout(() => {
-        if (deathOverlay) deathOverlay.style.opacity = '1';
-      }, 50);
+      // Countdown with progress bar
+      let timeRemaining = respawnTime;
+      const updateInterval = 100; // Update every 100ms for smooth progress bar
 
-      // Countdown 3... 2... 1...
-      let countdown = 3;
       const countdownInterval = setInterval(() => {
+        timeRemaining -= updateInterval;
+        const secondsLeft = Math.ceil(timeRemaining / 1000);
+        const progress = (timeRemaining / respawnTime) * 100;
+
         if (respawnCountdown) {
-          respawnCountdown.textContent = `Respawning in ${countdown}...`;
+          respawnCountdown.textContent = secondsLeft.toString();
         }
-        countdown--;
-        if (countdown < 0) {
+
+        if (respawnProgressBar) {
+          respawnProgressBar.style.width = `${progress}%`;
+        }
+
+        if (timeRemaining <= 0) {
           clearInterval(countdownInterval);
         }
-      }, 1000);
+      }, updateInterval);
 
-      // MVP 16: Show signup enticement after death (safe timing, player is waiting)
-      // Only shows once per session to avoid annoyance
-      if (this.enticementService) {
-        this.enticementService.showAfterDeathEnticement();
-      }
+      // MVP 16: Show appropriate overlay after 2 second delay
+      setTimeout(() => {
+        this.showDeathOverlay();
+      }, 2000);
     }
 
     // Drop all walnuts at death location
     if (this.walnutInventory > 0 && this.character) {
       const dropPosition = this.character.position.clone();
 
-      // Send death event to server (server will spawn dropped walnuts)
       this.sendMessage({
         type: 'player_died',
         killerId: killerId,
@@ -4220,10 +4226,38 @@ export class Game {
       this.updateWalnutHUD();
     }
 
-    // Start respawn timer (3 seconds)
+    // Start respawn timer (progressive)
     setTimeout(() => {
       this.respawn();
-    }, 3000);
+    }, respawnTime);
+  }
+
+  /**
+   * MVP 16: Show appropriate death overlay based on authentication status
+   */
+  private showDeathOverlay(): void {
+    // Check if user is authenticated
+    const isAuth = localStorage.getItem('auth_token') !== null;
+
+    if (isAuth) {
+      // Show signed-in overlay
+      const signedInOverlay = document.getElementById('death-overlay-signedin');
+      if (signedInOverlay) {
+        signedInOverlay.classList.remove('hidden');
+
+        // TODO: Fetch and update player rank from leaderboard
+        const playerRank = document.getElementById('player-rank');
+        if (playerRank) {
+          playerRank.textContent = '42'; // Placeholder
+        }
+      }
+    } else {
+      // Show anonymous overlay
+      const anonymousOverlay = document.getElementById('death-overlay-anonymous');
+      if (anonymousOverlay) {
+        anonymousOverlay.classList.remove('hidden');
+      }
+    }
   }
 
   /**
@@ -4264,13 +4298,19 @@ export class Game {
       } : undefined
     });
 
-    // MVP 8 UX: Hide death overlay with fade out
+    // MVP 16: Hide death overlays
     const deathOverlay = document.getElementById('death-overlay');
+    const anonymousOverlay = document.getElementById('death-overlay-anonymous');
+    const signedInOverlay = document.getElementById('death-overlay-signedin');
+
     if (deathOverlay) {
-      deathOverlay.style.opacity = '0';
-      setTimeout(() => {
-        deathOverlay.style.display = 'none';
-      }, 500); // Match transition duration
+      deathOverlay.classList.add('hidden');
+    }
+    if (anonymousOverlay) {
+      anonymousOverlay.classList.add('hidden');
+    }
+    if (signedInOverlay) {
+      signedInOverlay.classList.add('hidden');
     }
 
     // MVP 8: Enable spawn protection (3 seconds invulnerability)
