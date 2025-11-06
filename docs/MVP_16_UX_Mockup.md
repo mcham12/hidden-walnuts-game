@@ -62,97 +62,463 @@
 
 ---
 
-## SCREEN 1: Welcome Screen (Landing) - NEW DESIGN
+## SCREEN 1: Welcome Screen (Landing) - TWO-COLUMN DESIGN
 
 ### Visual Layout
 
 ```
-╔═══════════════════════════════════════════════════════════════════╗
-║                    WELCOME SCREEN (NEW)                           ║
-║                                                                   ║
-║   ┌─────────────────────────────────────────────────────────┐   ║
-║   │                                                         │   ║
-║   │     [3D SQUIRREL]    [3D BEAR]      [3D LYNX]         │   ║
-║   │         🐿️              🐻            🐱               │   ║
-║   │    (rotating)      (rotating)     (rotating)          │   ║
-║   │   Idle animation   Idle animation  Idle animation     │   ║
-║   │                                                         │   ║
-║   │         FREE          FREE           FREE              │   ║
-║   │     (No Account)   (With Account) (With Account)      │   ║
-║   │                                                         │   ║
-║   └─────────────────────────────────────────────────────────┘   ║
-║                                                                   ║
-║                    🌰 Hidden Walnuts 🌰                          ║
-║              A Multiplayer Forest Adventure                       ║
-║                                                                   ║
-║   ┌─────────────────────────────────────────────────────────┐   ║
-║   │                                                         │   ║
-║   │      🐿️  PLAY AS SQUIRREL (No Sign Up)                │   ║
-║   │                                                         │   ║
-║   │          ↳ Jump in and play right now!                 │   ║
-║   │                                                         │   ║
-║   └─────────────────────────────────────────────────────────┘   ║
-║                                                                   ║
-║   ┌─────────────────────────────────────────────────────────┐   ║
-║   │                                                         │   ║
-║   │      ✨  SIGN UP FREE - Unlock 6 Characters            │   ║
-║   │                                                         │   ║
-║   │          ↳ Plus cross-device sync & leaderboard        │   ║
-║   │                                                         │   ║
-║   └─────────────────────────────────────────────────────────┘   ║
-║                                                                   ║
-║   ┌─────────────────────────────────────────────────────────┐   ║
-║   │                                                         │   ║
-║   │      🔑  LOG IN                                         │   ║
-║   │                                                         │   ║
-║   │          ↳ Already have an account?                    │   ║
-║   │                                                         │   ║
-║   └─────────────────────────────────────────────────────────┘   ║
-║                                                                   ║
-║              Free accounts unlock 5 more characters!              ║
-║                                                                   ║
-╚═══════════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║  🌲🌳 HIDDEN WALNUTS 🌰🌲                                                     ║
+║             Welcome to the Forest                                            ║
+║                                                                              ║
+╟──────────────────────────────────┬───────────────────────────────────────────╢
+║        QUICK PLAY                │              SIGN UP FREE                 ║
+║       No login needed!           │           Unlock 6 FREE characters!       ║
+║                                  │                                           ║
+║  👤 Enter your name:             │  🔄 Rotating 3D Character Carousel        ║
+║  ┌────────────────────────────┐ │  ┌─────────────────────────────────────┐ ║
+║  │___________________________│ │  │ 🦊  🐻  🐰  🐦  🐸  🦡               │ ║
+║  └────────────────────────────┘ │  │ Fox Bear Rabbit Bird Frog Badger     │ ║
+║                                  │  │                                       │ ║
+║  [3D SQUIRREL IDLING]           │  │  [3D MODELS - IDLING & ROTATING]     │ ║
+║         🐿️                       │  │  Auto-rotate carousel every 3s        │ ║
+║       Bobbing, tail flick        │  │  All 6 characters cycle through      │ ║
+║    Idle animation looping        │  │  Current: Bear (showing 3 at once)   │ ║
+║                                  │  └─────────────────────────────────────┘ ║
+║                                  │                                           ║
+║        🟢 QUICK PLAY!            │           🟠 SIGN UP                      ║
+║      (Big green button)          │         (Big orange button)               ║
+║                                  │                                           ║
+║                                  │   🔒 Sign In (subtle link below)          ║
+║                                  │                                           ║
+╚──────────────────────────────────┴───────────────────────────────────────────╝
+║                                                                              ║
+║                      Start collecting walnuts now! 🌰🎮                      ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
 ```
 
 ### Key Design Elements
 
-**3D Character Preview Section:**
-- Three.js scene with 3 character models
-- Each character rotates slowly (360° every 10 seconds)
-- Idle animations playing
-- Labels: "FREE (No Account)", "FREE (With Account)", "FREE (With Account)"
-- Subtle glow/highlight on characters
-- Background: Soft forest green gradient
+**Overall Layout:**
+- **Two-column split**: 50/50 width (left = Quick Play, right = Sign Up)
+- **Header**: Centered title "HIDDEN WALNUTS" with tree/walnut emojis
+- **Footer**: Single call-to-action tagline
+- **Vertical divider**: Subtle line separating columns
+- **Background**: Forest gradient (darker at edges, lighter in center)
 
-**Three Action Buttons:**
-1. **"Play as Squirrel"** - Large, green, primary button
-   - Icon: 🐿️
-   - Subtext: "Jump in and play right now!"
-   - Visual hierarchy: LARGEST button
-   - Color: Forest green (#2d5f2e to #4a8f4d gradient)
+**LEFT COLUMN - Quick Play:**
+1. **Header**: "QUICK PLAY" (bold, 24px)
+2. **Subtext**: "No login needed!" (italic, 16px)
+3. **Name Input**:
+   - Label: "👤 Enter your name:"
+   - Text field with placeholder "Type your nickname..."
+   - Max 20 characters, validation on blur
+4. **3D Squirrel Preview**:
+   - Single squirrel model in idle animation
+   - Bobbing motion, tail flicking
+   - Nut juggling animation (optional)
+   - Rotates slowly (360° in 15 seconds)
+5. **Quick Play Button**:
+   - Large green button (🟢 QUICK PLAY!)
+   - 300px wide, 60px tall
+   - Forest green gradient (#28a745 to #1e7e34)
+   - Hover: Scales to 1.05x, brighter glow
+   - Disabled until name is entered
 
-2. **"Sign Up Free"** - Medium, gold accent, call-to-action
-   - Icon: ✨
-   - Subtext: "Plus cross-device sync & leaderboard"
-   - Badge: "RECOMMENDED" in corner
-   - Color: Gold gradient with green border
-
-3. **"Log In"** - Small, subtle, secondary button
-   - Icon: 🔑
-   - Subtext: "Already have an account?"
-   - Color: Muted gray-green
+**RIGHT COLUMN - Sign Up:**
+1. **Header**: "SIGN UP FREE" (bold, 24px)
+2. **Subtext**: "Unlock 6 FREE characters!" (italic, 16px)
+3. **3D Character Carousel**:
+   - Shows 3 characters at once (visible)
+   - 6 total characters cycle through
+   - Auto-rotate every 3 seconds
+   - Order: Fox → Bear → Rabbit → Bird → Frog → Badger → (repeat)
+   - Each character has idle animation
+   - Smooth transition (fade + slide)
+   - Emojis above each: 🦊 🐻 🐰 🐦 🐸 🦡
+4. **Sign Up Button**:
+   - Large orange button (🟠 SIGN UP)
+   - 300px wide, 60px tall
+   - Orange gradient (#ff8c00 to #ff6b00)
+   - Hover: Scales to 1.05x, golden glow
+5. **Sign In Link**:
+   - Small text link below button
+   - "🔒 Sign In" (14px, muted color)
+   - Click opens login modal
 
 **Typography:**
-- Title: 48px, bold, shadow effect
-- Tagline: 24px, light weight
-- Button text: 20px, semi-bold
-- Subtext: 14px, italic
+- Title: 48px, bold, #2d4a2e (dark forest green)
+- Section headers: 24px, bold, #333
+- Body text: 16px, regular, #555
+- Links: 14px, underline on hover
+
+**Colors:**
+- Primary green: #28a745 (Quick Play)
+- Primary orange: #ff8c00 (Sign Up)
+- Background: Linear gradient from #e8f5e9 (light green) to #c8e6c9
+- Text: #2d4a2e (dark forest green)
+- Divider: rgba(0,0,0,0.1)
 
 **Animations:**
-- Fade in on page load (0.5s)
-- 3D models rotate continuously
-- Buttons have hover scale (1.05x) and glow effect
-- Subtle parallax on mouse movement (optional)
+- Page load: Fade in (0.5s)
+- Squirrel: Continuous idle animation
+- Carousel: Slide + fade transition (0.8s ease-in-out)
+- Buttons: Hover scale + glow (0.2s)
+- Name input: Focus highlights with green border
+
+---
+
+## SCREEN 1: RESPONSIVE LAYOUTS
+
+### Desktop (1025px+) - Side-by-Side
+```
+╔════════════════════════════════════════════════════════════════════╗
+║  🌲🌳 HIDDEN WALNUTS 🌰🌲    Welcome to the Forest                 ║
+╟──────────────────────────────┬─────────────────────────────────────╢
+║   QUICK PLAY                 │   SIGN UP FREE                      ║
+║   No login needed!           │   Unlock 6 FREE characters!         ║
+║                              │                                     ║
+║   👤 Enter name:             │   🔄 Carousel                       ║
+║   [_________________]        │   [🦊  🐻  🐰]                      ║
+║                              │   3D models rotating                ║
+║   [3D SQUIRREL]              │   Auto-cycle every 3s               ║
+║   Idle animation             │                                     ║
+║                              │                                     ║
+║   🟢 QUICK PLAY!             │   🟠 SIGN UP                        ║
+║                              │   🔒 Sign In                        ║
+╚──────────────────────────────┴─────────────────────────────────────╝
+║              Start collecting walnuts now! 🌰🎮                    ║
+╚════════════════════════════════════════════════════════════════════╝
+```
+**Dimensions**: 1920x1080 typical
+**Layout**: Two equal columns (50/50)
+**3D Models**: Full size, high detail
+
+---
+
+### iPad Landscape (768px - 1024px, landscape)
+```
+╔══════════════════════════════════════════════════════════════════╗
+║  🌲 HIDDEN WALNUTS 🌰    Welcome to the Forest                   ║
+╟─────────────────────────────┬────────────────────────────────────╢
+║   QUICK PLAY                │   SIGN UP FREE                     ║
+║   No login needed!          │   Unlock 6 FREE characters!        ║
+║                             │                                    ║
+║   👤 Name:                  │   🔄 [🦊 🐻 🐰]                    ║
+║   [______________]          │   (Slightly smaller)               ║
+║                             │                                    ║
+║   [3D SQUIRREL]             │                                    ║
+║   (Smaller)                 │                                    ║
+║                             │                                    ║
+║   🟢 QUICK PLAY             │   🟠 SIGN UP                       ║
+║                             │   🔒 Sign In                       ║
+╚─────────────────────────────┴────────────────────────────────────╝
+║          Start collecting walnuts! 🌰                            ║
+╚══════════════════════════════════════════════════════════════════╝
+```
+**Dimensions**: 1024x768 typical
+**Layout**: Two columns (50/50)
+**3D Models**: Scaled down 80%
+**Buttons**: 250px wide
+
+---
+
+### iPad Portrait (768px - 1024px, portrait) - STACKED
+```
+╔════════════════════════════════════╗
+║  🌲 HIDDEN WALNUTS 🌰              ║
+║    Welcome to the Forest           ║
+╟────────────────────────────────────╢
+║       QUICK PLAY                   ║
+║     No login needed!               ║
+║                                    ║
+║   👤 Enter your name:              ║
+║   [___________________]            ║
+║                                    ║
+║        [3D SQUIRREL]               ║
+║      Idle animation                ║
+║                                    ║
+║      🟢 QUICK PLAY!                ║
+╟────────────────────────────────────╢
+║      SIGN UP FREE                  ║
+║   Unlock 6 FREE characters!        ║
+║                                    ║
+║     🔄 Character Carousel          ║
+║      [🦊  🐻  🐰]                  ║
+║      Rotating 3D models            ║
+║                                    ║
+║       🟠 SIGN UP                   ║
+║       🔒 Sign In                   ║
+╚════════════════════════════════════╝
+║  Start collecting walnuts! 🌰      ║
+╚════════════════════════════════════╝
+```
+**Dimensions**: 768x1024 typical
+**Layout**: STACKED (vertical)
+**Order**: Quick Play on top, Sign Up below
+**3D Models**: Scaled down 70%
+**Buttons**: Full width (90% of container)
+
+---
+
+### iPhone Portrait (≤430px) - STACKED + COMPACT
+```
+┌────────────────────────┐
+│  🌲 HIDDEN WALNUTS 🌰  │
+│  Welcome to Forest     │
+├────────────────────────┤
+│   QUICK PLAY           │
+│   No login needed      │
+│                        │
+│ 👤 Your name:          │
+│ [________________]     │
+│                        │
+│  [3D SQUIRREL]         │
+│  (Small, animated)     │
+│                        │
+│  🟢 QUICK PLAY!        │
+├────────────────────────┤
+│   SIGN UP FREE         │
+│   6 FREE characters    │
+│                        │
+│ 🔄 [🦊 🐻 🐰]          │
+│ (Horizontal scroll)    │
+│                        │
+│  🟠 SIGN UP            │
+│  🔒 Sign In            │
+└────────────────────────┘
+│ Start collecting! 🌰   │
+└────────────────────────┘
+```
+**Dimensions**: 375x812 (iPhone 12/13/14)
+**Layout**: STACKED (vertical)
+**3D Models**: Scaled down 50%
+**Carousel**: Horizontal scroll instead of auto-rotate
+**Buttons**: Full width, 50px tall
+**Font sizes**: Reduced 20%
+
+---
+
+### iPhone Landscape (≤932px width, ≤500px height) - SIDE-BY-SIDE COMPACT
+```
+┌─────────────────────────────────────────────────────────┐
+│  🌲 HIDDEN WALNUTS 🌰                                   │
+├────────────────────────┬────────────────────────────────┤
+│  QUICK PLAY            │  SIGN UP FREE                  │
+│                        │                                │
+│ 👤 [________]          │ 🔄 [🦊🐻]                      │
+│                        │                                │
+│ [SQUIRREL]             │ (Mini carousel)                │
+│ (Tiny)                 │                                │
+│                        │                                │
+│ 🟢 PLAY                │ 🟠 SIGN UP                     │
+│                        │ 🔒 Sign In                     │
+└────────────────────────┴────────────────────────────────┘
+```
+**Dimensions**: 844x390 (iPhone 14 Pro landscape)
+**Layout**: Two columns (50/50)
+**3D Models**: Minimal size (30%)
+**Text**: Extremely compact
+**Carousel**: Shows 2 characters instead of 3
+**Buttons**: 150px wide, 40px tall
+
+---
+
+### Small Tablets (600px - 767px) - STACKED
+```
+┌──────────────────────────────┐
+│  🌲 HIDDEN WALNUTS 🌰        │
+│    Welcome to Forest         │
+├──────────────────────────────┤
+│     QUICK PLAY               │
+│   No login needed            │
+│                              │
+│ 👤 Name: [___________]       │
+│                              │
+│    [3D SQUIRREL]             │
+│    (Medium size)             │
+│                              │
+│    🟢 QUICK PLAY!            │
+├──────────────────────────────┤
+│    SIGN UP FREE              │
+│  Unlock 6 FREE characters    │
+│                              │
+│   🔄 [🦊 🐻 🐰]              │
+│   (Medium carousel)          │
+│                              │
+│    🟠 SIGN UP                │
+│    🔒 Sign In                │
+└──────────────────────────────┘
+│ Start collecting! 🌰         │
+└──────────────────────────────┘
+```
+**Dimensions**: 600-767px wide
+**Layout**: STACKED (vertical)
+**3D Models**: Scaled down 60%
+**Buttons**: 80% width
+
+---
+
+## RESPONSIVE BREAKPOINTS
+
+### CSS Media Queries
+
+```css
+/* Desktop - Side by side */
+@media (min-width: 1025px) {
+  .welcome-container {
+    display: flex;
+    flex-direction: row;
+    max-width: 1400px;
+  }
+  .column {
+    width: 50%;
+  }
+  .character-3d {
+    height: 400px;
+  }
+  .carousel-item {
+    width: 200px;
+  }
+}
+
+/* iPad Landscape - Side by side, smaller */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+  .welcome-container {
+    display: flex;
+    flex-direction: row;
+  }
+  .column {
+    width: 50%;
+  }
+  .character-3d {
+    height: 300px;
+  }
+  .carousel-item {
+    width: 150px;
+  }
+  button {
+    font-size: 18px;
+    padding: 12px 24px;
+  }
+}
+
+/* iPad Portrait - Stacked */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+  .welcome-container {
+    display: flex;
+    flex-direction: column;
+  }
+  .column {
+    width: 100%;
+    padding: 30px;
+  }
+  .character-3d {
+    height: 300px;
+  }
+  .carousel-item {
+    width: 150px;
+  }
+  button {
+    width: 90%;
+    max-width: 400px;
+  }
+}
+
+/* Small Tablets - Stacked */
+@media (min-width: 600px) and (max-width: 767px) {
+  .welcome-container {
+    display: flex;
+    flex-direction: column;
+  }
+  .column {
+    width: 100%;
+    padding: 25px;
+  }
+  .character-3d {
+    height: 250px;
+  }
+  .carousel-item {
+    width: 120px;
+  }
+}
+
+/* iPhone Portrait - Stacked, compact */
+@media (max-width: 599px) and (orientation: portrait) {
+  .welcome-container {
+    display: flex;
+    flex-direction: column;
+  }
+  .column {
+    width: 100%;
+    padding: 20px 15px;
+  }
+  .character-3d {
+    height: 180px;
+  }
+  .carousel-item {
+    width: 80px;
+  }
+  h1 {
+    font-size: 28px;
+  }
+  h2 {
+    font-size: 18px;
+  }
+  button {
+    width: 100%;
+    font-size: 16px;
+    padding: 12px;
+  }
+}
+
+/* iPhone Landscape - Side by side, very compact */
+@media (max-width: 932px) and (max-height: 500px) and (orientation: landscape) {
+  .welcome-container {
+    display: flex;
+    flex-direction: row;
+  }
+  .column {
+    width: 50%;
+    padding: 10px;
+  }
+  .character-3d {
+    height: 120px;
+  }
+  .carousel-item {
+    width: 60px;
+  }
+  h1 {
+    font-size: 20px;
+  }
+  h2 {
+    font-size: 14px;
+  }
+  button {
+    font-size: 14px;
+    padding: 8px 16px;
+  }
+  .carousel {
+    /* Show only 2 characters in landscape */
+    max-width: 150px;
+  }
+}
+```
+
+---
+
+## RESPONSIVE BEHAVIOR SUMMARY
+
+| Screen Type | Layout | Squirrel Size | Carousel | Button Width |
+|-------------|--------|---------------|----------|--------------|
+| Desktop 1025+ | Side-by-side | 400px | 3 visible, auto-rotate | 300px |
+| iPad Landscape | Side-by-side | 300px | 3 visible, auto-rotate | 250px |
+| iPad Portrait | Stacked | 300px | 3 visible, auto-rotate | 90% width |
+| Small Tablet | Stacked | 250px | 3 visible, auto-rotate | 90% width |
+| iPhone Portrait | Stacked | 180px | Horizontal scroll | 100% width |
+| iPhone Landscape | Side-by-side | 120px | 2 visible, manual scroll | 150px |
 
 ---
 
