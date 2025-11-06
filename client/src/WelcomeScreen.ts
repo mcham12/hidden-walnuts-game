@@ -1,13 +1,21 @@
 /**
- * WelcomeScreen - MVP 5.8: Startup Experience
+ * WelcomeScreen - MVP 16: Two-column layout with 3D character previews
  *
- * Simple forest entrance with animated walnut emoji
+ * Left: Quick Play with 3D squirrel preview
+ * Right: Sign Up with rotating 3D character carousel
  * Responsive design for iPhone, iPad, and Desktop
  */
+
+import { CharacterPreview3D } from './components/CharacterPreview3D';
 
 export class WelcomeScreen {
   private container: HTMLDivElement | null = null;
   private resolvePromise: ((username: string) => void) | null = null;
+
+  // 3D preview components
+  private squirrelPreview: CharacterPreview3D | null = null;
+  private carouselPreview: CharacterPreview3D | null = null;
+  private carouselInterval: number | null = null;
 
   constructor() {
     this.createHTML();
@@ -50,8 +58,8 @@ export class WelcomeScreen {
 
               <!-- 3D Character Preview -->
               <div class="character-preview-mini">
-                <div class="character-emoji">🐿️</div>
-                <p class="character-label">(Bobbing, nut juggling)</p>
+                <div id="squirrel-preview-container" style="width: 100%; height: 200px;"></div>
+                <p class="character-label">Squirrel with idle animation</p>
               </div>
 
               <button id="welcome-quick-play-button" class="welcome-button quick-play-button">
@@ -67,15 +75,8 @@ export class WelcomeScreen {
 
             <!-- Rotating Character Carousel -->
             <div class="character-carousel">
-              <div class="carousel-characters">
-                <span class="carousel-char" title="Fox">🦊</span>
-                <span class="carousel-char" title="Bear">🐻</span>
-                <span class="carousel-char" title="Rabbit">🐰</span>
-                <span class="carousel-char" title="Bird">🐦</span>
-                <span class="carousel-char" title="Frog">🐸</span>
-                <span class="carousel-char" title="Badger">🦡</span>
-              </div>
-              <p class="carousel-label">Idling animations rotate every 3 seconds</p>
+              <div id="carousel-preview-container" style="width: 100%; height: 250px;"></div>
+              <p class="carousel-label" id="carousel-character-name">Free characters - rotating every 3 seconds</p>
             </div>
 
             <button id="welcome-signup-button" class="welcome-button signup-button">
@@ -107,9 +108,6 @@ export class WelcomeScreen {
 
     // Setup event handlers
     this.setupEventHandlers();
-
-    // Start character carousel rotation
-    this.startCarouselAnimation();
   }
 
   /**
@@ -145,29 +143,59 @@ export class WelcomeScreen {
   }
 
   /**
-   * Animate character carousel
+   * Initialize 3D character previews
    */
-  private startCarouselAnimation(): void {
-    const carousel = document.querySelector('.carousel-characters') as HTMLElement;
-    if (!carousel) return;
+  private async init3DPreviews(): Promise<void> {
+    try {
+      // Initialize squirrel preview (left column)
+      this.squirrelPreview = new CharacterPreview3D(
+        'squirrel-preview-container',
+        'squirrel',
+        { rotationSpeed: 0.005, autoRotate: true, showAnimation: true }
+      );
+      await this.squirrelPreview.init();
 
-    let currentIndex = 0;
-    const chars = carousel.querySelectorAll('.carousel-char');
+      // Initialize carousel preview (right column)
+      // Free characters: hare, goat, chipmunk, turkey, mallard, squirrel
+      const freeCharacters = [
+        { id: 'hare', name: 'Hare' },
+        { id: 'goat', name: 'Goat' },
+        { id: 'chipmunk', name: 'Chipmunk' },
+        { id: 'turkey', name: 'Turkey' },
+        { id: 'mallard', name: 'Mallard' },
+        { id: 'squirrel', name: 'Squirrel' }
+      ];
 
-    setInterval(() => {
-      // Reset all
-      chars.forEach(char => {
-        (char as HTMLElement).style.transform = 'scale(1)';
-        (char as HTMLElement).style.opacity = '0.6';
-      });
+      let currentIndex = 0;
 
-      // Highlight current
-      const current = chars[currentIndex] as HTMLElement;
-      current.style.transform = 'scale(1.5)';
-      current.style.opacity = '1';
+      this.carouselPreview = new CharacterPreview3D(
+        'carousel-preview-container',
+        freeCharacters[0].id,
+        { rotationSpeed: 0.005, autoRotate: true, showAnimation: true }
+      );
+      await this.carouselPreview.init();
 
-      currentIndex = (currentIndex + 1) % chars.length;
-    }, 3000);
+      // Update character name label
+      const nameLabel = document.getElementById('carousel-character-name');
+      if (nameLabel) {
+        nameLabel.textContent = `${freeCharacters[0].name} - Rotating every 3 seconds`;
+      }
+
+      // Rotate carousel every 3 seconds
+      this.carouselInterval = window.setInterval(async () => {
+        currentIndex = (currentIndex + 1) % freeCharacters.length;
+        const nextChar = freeCharacters[currentIndex];
+
+        await this.carouselPreview?.switchCharacter(nextChar.id);
+
+        // Update name label
+        if (nameLabel) {
+          nameLabel.textContent = `${nextChar.name} - Rotating every 3 seconds`;
+        }
+      }, 3000);
+    } catch (error) {
+      console.error('Error initializing 3D previews:', error);
+    }
   }
 
   /**
@@ -211,7 +239,7 @@ export class WelcomeScreen {
    * Returns the username entered by the user
    */
   async show(): Promise<string> {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
       this.resolvePromise = resolve;
 
       if (this.container) {
@@ -231,6 +259,11 @@ export class WelcomeScreen {
             setTimeout(() => input.focus(), 100);
           }
         });
+
+        // Initialize 3D previews after DOM is ready
+        setTimeout(async () => {
+          await this.init3DPreviews();
+        }, 100);
       }
     });
   }
@@ -307,6 +340,22 @@ export class WelcomeScreen {
    * Cleanup resources
    */
   destroy(): void {
+    // Cleanup 3D previews
+    if (this.squirrelPreview) {
+      this.squirrelPreview.destroy();
+      this.squirrelPreview = null;
+    }
+
+    if (this.carouselPreview) {
+      this.carouselPreview.destroy();
+      this.carouselPreview = null;
+    }
+
+    if (this.carouselInterval !== null) {
+      clearInterval(this.carouselInterval);
+      this.carouselInterval = null;
+    }
+
     // Remove from DOM
     if (this.container) {
       this.container.remove();

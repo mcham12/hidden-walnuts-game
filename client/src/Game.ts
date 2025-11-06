@@ -4137,18 +4137,18 @@ export class Game {
   }
 
   /**
-   * Track death count for progressive respawn timer
+   * Track respawn timer for cleanup
    */
-  private deathCount: number = 0;
+  private respawnTimerId: number | null = null;
+  private respawnCountdownInterval: number | null = null;
 
   /**
    * MVP 16: Handle player death with new death screen
-   * Progressive respawn timer: 2s → 5s based on consecutive deaths
+   * Fixed 10-second respawn timer with skip button
    */
   private onDeath(killerId: string): void {
     console.log(`💀 Player died! Killed by ${killerId}`);
     this.isDead = true;
-    this.deathCount++;
 
     // MVP 11: Play death sound
     this.audioManager.playSound('player', 'player_death');
@@ -4161,8 +4161,8 @@ export class Game {
       this.requestAnimation('death', this.ANIM_PRIORITY_DEAD, 3000, true);
     }
 
-    // MVP 16: Progressive respawn timer (2s minimum, 5s maximum)
-    const respawnTime = Math.min(2000 + (this.deathCount * 500), 5000);
+    // MVP 16: Fixed 10-second respawn timer (gives 8s to interact with overlay after 2s delay)
+    const respawnTime = 10000;
 
     // MVP 16: Show new death overlay
     const deathOverlay = document.getElementById('death-overlay');
@@ -4183,7 +4183,7 @@ export class Game {
       let timeRemaining = respawnTime;
       const updateInterval = 100; // Update every 100ms for smooth progress bar
 
-      const countdownInterval = setInterval(() => {
+      this.respawnCountdownInterval = window.setInterval(() => {
         timeRemaining -= updateInterval;
         const secondsLeft = Math.ceil(timeRemaining / 1000);
         const progress = (timeRemaining / respawnTime) * 100;
@@ -4196,10 +4196,17 @@ export class Game {
           respawnProgressBar.style.width = `${progress}%`;
         }
 
-        if (timeRemaining <= 0) {
-          clearInterval(countdownInterval);
+        if (timeRemaining <= 0 && this.respawnCountdownInterval) {
+          clearInterval(this.respawnCountdownInterval);
+          this.respawnCountdownInterval = null;
         }
       }, updateInterval);
+
+      // MVP 16: Wire skip button
+      const skipButton = document.getElementById('death-skip-button');
+      if (skipButton) {
+        skipButton.onclick = () => this.skipRespawn();
+      }
 
       // MVP 16: Show appropriate overlay after 2 second delay
       setTimeout(() => {
@@ -4226,10 +4233,28 @@ export class Game {
       this.updateWalnutHUD();
     }
 
-    // Start respawn timer (progressive)
-    setTimeout(() => {
+    // Start respawn timer (10 seconds)
+    this.respawnTimerId = window.setTimeout(() => {
       this.respawn();
     }, respawnTime);
+  }
+
+  /**
+   * MVP 16: Skip respawn countdown and respawn immediately
+   */
+  private skipRespawn(): void {
+    // Clear timers
+    if (this.respawnTimerId) {
+      clearTimeout(this.respawnTimerId);
+      this.respawnTimerId = null;
+    }
+    if (this.respawnCountdownInterval) {
+      clearInterval(this.respawnCountdownInterval);
+      this.respawnCountdownInterval = null;
+    }
+
+    // Respawn immediately
+    this.respawn();
   }
 
   /**
@@ -4250,25 +4275,99 @@ export class Game {
         if (playerRank) {
           playerRank.textContent = '42'; // Placeholder
         }
+
+        // Wire up buttons
+        const buyPremiumBtn = document.getElementById('death-buy-premium-btn');
+        if (buyPremiumBtn) {
+          buyPremiumBtn.onclick = () => this.handleBuyPremiumCharacter();
+        }
+
+        const watchAdLink = document.getElementById('death-watch-ad-link-signedin');
+        if (watchAdLink) {
+          watchAdLink.onclick = (e) => {
+            e.preventDefault();
+            this.handleWatchAd();
+          };
+        }
       }
     } else {
       // Show anonymous overlay
       const anonymousOverlay = document.getElementById('death-overlay-anonymous');
       if (anonymousOverlay) {
         anonymousOverlay.classList.remove('hidden');
+
+        // Wire up buttons
+        const signinBtn = document.getElementById('death-signin-btn');
+        if (signinBtn) {
+          signinBtn.onclick = () => this.handleDeathSignIn();
+        }
+
+        const buyCharBtn = document.getElementById('death-buy-char-btn');
+        if (buyCharBtn) {
+          buyCharBtn.onclick = () => this.handleBuyCharacter();
+        }
+
+        const watchAdLink = document.getElementById('death-watch-ad-link');
+        if (watchAdLink) {
+          watchAdLink.onclick = (e) => {
+            e.preventDefault();
+            this.handleWatchAd();
+          };
+        }
       }
     }
   }
 
   /**
-   * MVP 8 Phase 3: Respawn player after death
-   * MVP 8 UX: Enhanced with random teleport and fade effects
+   * MVP 16: Handle Sign In from death screen
+   */
+  private handleDeathSignIn(): void {
+    console.log('TODO: Open AuthModal in sign-in mode');
+    // Will be wired to AuthModal
+  }
+
+  /**
+   * MVP 16: Handle Buy Character from death screen
+   */
+  private handleBuyCharacter(): void {
+    console.log('TODO: Open character purchase flow');
+    // Will be wired to payment system
+  }
+
+  /**
+   * MVP 16: Handle Buy Premium Character (signed-in users)
+   */
+  private handleBuyPremiumCharacter(): void {
+    console.log('TODO: Open premium character purchase flow');
+    // Will be wired to payment system
+  }
+
+  /**
+   * MVP 16: Handle Watch Ad
+   */
+  private handleWatchAd(): void {
+    console.log('TODO: Show ad and reward player');
+    // Will be wired to ad network
+  }
+
+  /**
+   * MVP 16: Respawn player after death
+   * Enhanced with random teleport and fade effects
    */
   private respawn(): void {
+    // Clear any remaining timers
+    if (this.respawnTimerId) {
+      clearTimeout(this.respawnTimerId);
+      this.respawnTimerId = null;
+    }
+    if (this.respawnCountdownInterval) {
+      clearInterval(this.respawnCountdownInterval);
+      this.respawnCountdownInterval = null;
+    }
+
     // Reset health
     this.health = this.MAX_HEALTH;
     this.isDead = false;
-    // MIGRATION PHASE 2.3: No need to clear isStunned - state machine auto-clears on respawn
 
     // MVP 8 UX: Teleport to random location (avoid spawn camping)
     if (this.character) {

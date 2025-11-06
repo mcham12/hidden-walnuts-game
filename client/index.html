@@ -1370,6 +1370,31 @@
         text-align: center;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
         border: 3px solid rgba(255, 215, 0, 0.3);
+        position: relative;
+      }
+      .death-skip-btn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 30px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        transition: all 0.3s ease;
+        font-family: 'Arial', sans-serif;
+        z-index: 10;
+      }
+      .death-skip-btn:hover {
+        transform: translateY(-2px) scale(1.05);
+        box-shadow: 0 6px 16px rgba(40, 167, 69, 0.6);
+      }
+      .death-skip-btn:active {
+        transform: translateY(0) scale(1.02);
       }
       .death-header {
         margin-bottom: 30px;
@@ -2630,6 +2655,11 @@
     <!-- MVP 16: Death Screen Overlay (new design) -->
     <div id="death-overlay" class="hidden">
       <div class="death-content">
+        <!-- Skip Button at Top -->
+        <button id="death-skip-button" class="death-skip-btn">
+          ⏩ RESPAWN NOW
+        </button>
+
         <!-- Header with score -->
         <div class="death-header">
           <h1 class="death-title">💀 OH NUTS!</h1>
@@ -2648,7 +2678,7 @@
           <div class="respawn-progress-container">
             <div id="respawn-progress-bar" class="respawn-progress-bar"></div>
           </div>
-          <p class="respawn-countdown-text"><span id="respawn-countdown">3</span>s left</p>
+          <p class="respawn-countdown-text"><span id="respawn-countdown">10</span>s left</p>
         </div>
       </div>
     </div>
