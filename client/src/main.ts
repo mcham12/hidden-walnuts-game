@@ -10,6 +10,7 @@ import { SessionManager } from './SessionManager'; // MVP 6: Player identity
 import { restoreSession, startTokenRefreshTimer } from './services/AuthService'; // MVP 16: Session persistence
 import { AuthModal } from './components/AuthModal'; // MVP 16: Authentication modals
 import { CharacterGrid } from './components/CharacterGrid'; // MVP 16: Character selection
+import { CharacterRegistry } from './services/CharacterRegistry'; // MVP 16: Character data
 
 // MVP 6: API URL from environment (for worker communication)
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -130,6 +131,9 @@ async function updateCharacterSelection(username: string, characterId: string): 
 
 async function main() {
   try {
+    // MVP 16: STEP 0 - Load character registry (required for character selection and game)
+    await CharacterRegistry.loadCharacters();
+
     // MVP 16: STEP 0A - Restore authentication session if exists
     // This checks if user has valid tokens and refreshes if needed
     await restoreSession();

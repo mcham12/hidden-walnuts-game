@@ -299,8 +299,15 @@ export class CharacterGrid {
     // Filter out 'future' tier characters (not shown yet)
     const visibleCharacters = characterCards.filter(c => c.tier !== 'future');
 
+    // Sort: unlocked characters first, then locked characters
+    const sortedCharacters = visibleCharacters.sort((a, b) => {
+      if (a.isAvailable && !b.isAvailable) return -1;
+      if (!a.isAvailable && b.isAvailable) return 1;
+      return 0; // Keep original order within each group
+    });
+
     // Render character cards
-    visibleCharacters.forEach(cardData => {
+    sortedCharacters.forEach(cardData => {
       const card = new CharacterCard(this.gridContainer!, cardData, {
         onClick: (id) => this.handleCharacterSelect(id),
         onPreview: (id) => this.handleCharacterPreview(id)
