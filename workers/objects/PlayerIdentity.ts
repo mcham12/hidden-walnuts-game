@@ -352,7 +352,9 @@ export class PlayerIdentity extends DurableObject {
 
       // Check if user already exists
       const existing = await this.ctx.storage.get<PlayerIdentityData>('player');
-      if (existing && existing.email) {
+      // Only block signup if existing account is already authenticated
+      // Quick Play accounts (no email or not authenticated) can be upgraded
+      if (existing && existing.email && existing.isAuthenticated) {
         return Response.json({
           error: 'This username already has an account'
         }, { status: 409 });
@@ -406,6 +408,15 @@ export class PlayerIdentity extends DurableObject {
         'turkey',
         'mallard'
       ];
+
+      // If upgrading from Quick Play with a valid character, keep it.
+      // Otherwise, default to 'squirrel' for new authenticated users.
+      if (data.lastCharacterId && data.unlockedCharacters.includes(data.lastCharacterId)) {
+        // Keep existing character if it's now unlocked
+      } else {
+        // Default to squirrel for new users or if previous character not in unlocked list
+        data.lastCharacterId = 'squirrel';
+      }
 
       // MVP 16: Generate JWT tokens for immediate session
       const tokenId = generateTokenId();

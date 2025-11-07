@@ -495,6 +495,14 @@ function storeAuthData(data: SignupResponse | LoginResponse): void {
   };
 
   localStorage.setItem('auth_user', JSON.stringify(userData));
+
+  // Also store username in legacy format for main.ts compatibility
+  localStorage.setItem('hw_username', data.username);
+
+  // Store last character ID if available
+  if (data.lastCharacterId) {
+    localStorage.setItem('last_character_id', data.lastCharacterId);
+  }
 }
 
 /**

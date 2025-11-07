@@ -228,7 +228,7 @@ export class AuthModal {
   /**
    * Open the modal with the specified screen and optional prefill data
    */
-  public open(screen?: AuthScreen, prefillData?: { username?: string }): void {
+  public async open(screen?: AuthScreen, prefillData?: { username?: string }): Promise<void> {
     if (screen) {
       this.currentScreen = screen;
     }
@@ -255,32 +255,28 @@ export class AuthModal {
       this.modalElement.style.opacity = '1';
     }
 
-    // Render the current screen
-    this.renderScreen();
+    // Render the current screen and wait for it to complete
+    await this.renderScreen();
 
-    // Prefill form data if provided (use longer delay for form components to initialize)
+    // Prefill form data if provided - now we can do it immediately since form is ready
     if (this.prefillData.username) {
-      setTimeout(() => {
-        const usernameInput = this.modalElement?.querySelector('input[name="username"]') as HTMLInputElement;
-        if (usernameInput) {
-          usernameInput.value = this.prefillData.username || '';
-          console.log('Prefilled username:', this.prefillData.username);
-        } else {
-          console.warn('Username input not found for prefill');
-        }
-        // Focus first empty input
-        const firstEmptyInput = Array.from(this.modalElement?.querySelectorAll('input') || [])
-          .find((input: any) => !input.value) as HTMLElement;
-        if (firstEmptyInput) {
-          firstEmptyInput.focus();
-        }
-      }, 300); // Increased delay for form component initialization
+      const usernameInput = this.modalElement?.querySelector('input[name="username"]') as HTMLInputElement;
+      if (usernameInput) {
+        usernameInput.value = this.prefillData.username || '';
+        console.log('Prefilled username:', this.prefillData.username);
+      } else {
+        console.warn('Username input not found for prefill');
+      }
+      // Focus first empty input
+      const firstEmptyInput = Array.from(this.modalElement?.querySelectorAll('input') || [])
+        .find((input: any) => !input.value) as HTMLElement;
+      if (firstEmptyInput) {
+        firstEmptyInput.focus();
+      }
     } else {
       // Focus first input
-      setTimeout(() => {
-        const firstInput = this.modalElement?.querySelector('input') as HTMLElement;
-        firstInput?.focus();
-      }, 100);
+      const firstInput = this.modalElement?.querySelector('input') as HTMLElement;
+      firstInput?.focus();
     }
   }
 
@@ -316,27 +312,24 @@ export class AuthModal {
   /**
    * Navigate to a different screen
    */
-  public navigateTo(screen: AuthScreen): void {
+  public async navigateTo(screen: AuthScreen): Promise<void> {
     this.currentScreen = screen;
-    this.renderScreen();
+    await this.renderScreen();
   }
 
   /**
    * Render the current screen content
    */
-  private renderScreen(): void {
+  private async renderScreen(): Promise<void> {
     if (!this.modalElement) return;
 
     // Import form components dynamically
-    import('./SignupForm').then(({ SignupForm }) => {
-      import('./LoginForm').then(({ LoginForm }) => {
-        import('./ForgotPasswordForm').then(({ ForgotPasswordForm }) => {
-          import('./ResetPasswordForm').then(({ ResetPasswordForm }) => {
-            this.renderScreenWithForms(SignupForm, LoginForm, ForgotPasswordForm, ResetPasswordForm);
-          });
-        });
-      });
-    });
+    const { SignupForm } = await import('./SignupForm');
+    const { LoginForm } = await import('./LoginForm');
+    const { ForgotPasswordForm } = await import('./ForgotPasswordForm');
+    const { ResetPasswordForm } = await import('./ResetPasswordForm');
+
+    this.renderScreenWithForms(SignupForm, LoginForm, ForgotPasswordForm, ResetPasswordForm);
   }
 
   /**
