@@ -411,6 +411,15 @@ export class PlayerIdentity extends DurableObject {
       const tokenId = generateTokenId();
       const deviceInfo = request.headers.get('User-Agent') || 'Unknown';
 
+      // Debug: Check if JWT_SECRET is available
+      if (!this.env.JWT_SECRET) {
+        console.error('JWT_SECRET is undefined in PlayerIdentity environment');
+        return Response.json({
+          error: 'Server configuration error',
+          message: 'JWT_SECRET not configured'
+        }, { status: 500 });
+      }
+
       const tokens = generateTokenPair(
         {
           username: data.username,
