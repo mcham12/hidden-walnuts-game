@@ -1251,18 +1251,22 @@
 
       /* Responsive: iPhone Portrait - STACKED, Compact */
       @media (max-width: 599px) and (orientation: portrait) {
+        .welcome-content {
+          padding: 10px;
+          gap: 10px;
+        }
         .welcome-title {
-          font-size: 32px;
+          font-size: 24px;
         }
         .welcome-tagline {
-          font-size: 14px;
+          font-size: 12px;
         }
         .welcome-columns {
           flex-direction: column;
-          gap: 20px;
+          gap: 12px;
         }
         .welcome-column {
-          padding: 25px 20px;
+          padding: 15px 12px;
           margin: 0 !important; /* Remove negative margins on mobile */
           min-width: 0 !important; /* Remove min-width constraint */
           max-width: 100% !important; /* Full width on mobile */
@@ -1271,20 +1275,24 @@
           transform: none !important; /* No lift effect on mobile */
         }
         .column-title {
-          font-size: 22px;
+          font-size: 18px;
         }
         .column-subtitle {
-          font-size: 14px;
+          font-size: 12px;
         }
         .welcome-label {
-          font-size: 16px;
+          font-size: 14px;
         }
         .welcome-input {
-          padding: 12px 16px;
-          font-size: 16px;
+          padding: 10px 14px;
+          font-size: 14px;
         }
         .character-preview-mini {
-          min-height: 120px;
+          min-height: 100px;
+        }
+        #squirrel-preview-container,
+        #carousel-preview-container {
+          height: 150px !important;
         }
         .character-emoji {
           font-size: 60px;
@@ -1310,20 +1318,20 @@
       /* Responsive: iPhone Landscape - Side by Side, Very Compact */
       @media (max-width: 932px) and (max-height: 500px) and (orientation: landscape) {
         .welcome-content {
-          padding: 15px;
-          gap: 15px;
+          padding: 8px;
+          gap: 8px;
         }
         .welcome-title {
-          font-size: 24px;
+          font-size: 18px;
         }
         .welcome-tagline {
-          font-size: 12px;
+          font-size: 10px;
         }
         .welcome-columns {
-          gap: 15px;
+          gap: 8px;
         }
         .welcome-column {
-          padding: 15px;
+          padding: 10px 8px;
           margin: 0 !important; /* Remove negative margins on mobile landscape */
           min-width: 0 !important; /* Remove min-width constraint */
           max-width: 48% !important; /* Fit two columns side by side */
@@ -1332,13 +1340,13 @@
           transform: none !important; /* No lift effect on mobile landscape */
         }
         .column-title {
-          font-size: 18px;
+          font-size: 14px;
         }
         .column-subtitle {
-          font-size: 12px;
+          font-size: 10px;
         }
         .welcome-label {
-          font-size: 13px;
+          font-size: 11px;
         }
         .welcome-input {
           padding: 10px 14px;

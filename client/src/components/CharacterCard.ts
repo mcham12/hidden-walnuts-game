@@ -3,13 +3,15 @@
  * MVP 16: Individual character card for selection grid
  *
  * Features:
- * - Card design: Emoji/3D preview, name, status icon (✅/🔒/💎)
+ * - Card design: 3D preview with idle animation, name, status icon (✅/🔒/💎)
  * - Visual states:
  *   - Available: Full color, ✅ checkmark, clickable, hover scale 1.05
  *   - Locked Free: 80% opacity, 🔒 icon, tooltip "Sign Up to Unlock"
  *   - Locked Premium: Full color, gold border, 💎 icon + "$1.99"
  * - Click handlers for selection and unlock prompts
  */
+
+import { CharacterPreview3D } from './CharacterPreview3D';
 
 export interface CharacterCardData {
   id: string;
@@ -32,11 +34,14 @@ export class CharacterCard {
   private data: CharacterCardData;
   private options: CharacterCardOptions;
   private card: HTMLElement | null = null;
+  private preview3D: CharacterPreview3D | null = null;
+  private previewContainerId: string;
 
   constructor(container: HTMLElement, data: CharacterCardData, options: CharacterCardOptions = {}) {
     this.container = container;
     this.data = data;
     this.options = options;
+    this.previewContainerId = `char-preview-${data.id}-${Date.now()}`;
     this.render();
   }
 
@@ -73,13 +78,17 @@ export class CharacterCard {
       this.card.style.boxShadow = '0 8px 24px rgba(255, 215, 0, 0.6)';
     }
 
-    // Character emoji/icon
-    const icon = document.createElement('div');
-    icon.style.cssText = `
-      font-size: 48px;
+    // 3D Character preview container
+    const previewContainer = document.createElement('div');
+    previewContainer.id = this.previewContainerId;
+    previewContainer.style.cssText = `
+      width: 100%;
+      height: 120px;
       margin-bottom: 4px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(0, 0, 0, 0.2);
     `;
-    icon.textContent = this.getCharacterEmoji();
 
     // Character name
     const name = document.createElement('div');
@@ -120,7 +129,7 @@ export class CharacterCard {
     }
 
     // Assemble card
-    this.card.appendChild(icon);
+    this.card.appendChild(previewContainer);
     this.card.appendChild(name);
     this.card.appendChild(status);
 
@@ -134,26 +143,44 @@ export class CharacterCard {
 
     // Append to container
     this.container.appendChild(this.card);
+
+    // Initialize 3D preview after DOM is ready
+    setTimeout(() => this.init3DPreview(), 100);
   }
 
   /**
-   * Get character emoji based on ID
+   * Initialize 3D character preview
    */
-  private getCharacterEmoji(): string {
-    const emojiMap: Record<string, string> = {
-      'squirrel': '🐿️',
-      'hare': '🐇',
-      'goat': '🐐',
-      'chipmunk': '🐿️',
-      'turkey': '🦃',
-      'mallard': '🦆',
-      'lynx': '🐱',
-      'bear': '🐻',
-      'moose': '🦌',
-      'badger': '🦡',
-      'skunk': '🦨'
-    };
-    return emojiMap[this.data.id] || '🦊';
+  private async init3DPreview(): Promise<void> {
+    try {
+      this.preview3D = new CharacterPreview3D(
+        this.previewContainerId,
+        this.data.id,
+        {
+          rotationSpeed: 0.003,
+          autoRotate: true,
+          showAnimation: true,
+          cameraDistance: 2
+        }
+      );
+      await this.preview3D.init();
+    } catch (error) {
+      console.error(`Failed to initialize 3D preview for ${this.data.id}:`, error);
+    }
+  }
+
+  /**
+   * Cleanup and destroy the card
+   */
+  public destroy(): void {
+    if (this.preview3D) {
+      this.preview3D.destroy();
+      this.preview3D = null;
+    }
+    if (this.card) {
+      this.card.remove();
+      this.card = null;
+    }
   }
 
   /**
@@ -258,12 +285,5 @@ export class CharacterCard {
         this.card.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
       }
     }
-  }
-
-  /**
-   * Destroy the card
-   */
-  public destroy(): void {
-    this.card?.remove();
   }
 }

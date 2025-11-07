@@ -258,12 +258,15 @@ export class AuthModal {
     // Render the current screen
     this.renderScreen();
 
-    // Prefill form data if provided
+    // Prefill form data if provided (use longer delay for form components to initialize)
     if (this.prefillData.username) {
       setTimeout(() => {
         const usernameInput = this.modalElement?.querySelector('input[name="username"]') as HTMLInputElement;
         if (usernameInput) {
           usernameInput.value = this.prefillData.username || '';
+          console.log('Prefilled username:', this.prefillData.username);
+        } else {
+          console.warn('Username input not found for prefill');
         }
         // Focus first empty input
         const firstEmptyInput = Array.from(this.modalElement?.querySelectorAll('input') || [])
@@ -271,7 +274,7 @@ export class AuthModal {
         if (firstEmptyInput) {
           firstEmptyInput.focus();
         }
-      }, 100);
+      }, 300); // Increased delay for form component initialization
     } else {
       // Focus first input
       setTimeout(() => {
