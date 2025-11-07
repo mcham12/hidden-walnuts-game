@@ -32,6 +32,7 @@ export class AuthModal {
   private currentScreen: AuthScreen = 'signup';
   private options: AuthModalOptions;
   private isOpen: boolean = false;
+  private prefillData: { username?: string } = {};
 
   constructor(options: AuthModalOptions = {}) {
     this.options = options;
@@ -225,11 +226,15 @@ export class AuthModal {
   }
 
   /**
-   * Open the modal with the specified screen
+   * Open the modal with the specified screen and optional prefill data
    */
-  public open(screen?: AuthScreen): void {
+  public open(screen?: AuthScreen, prefillData?: { username?: string }): void {
     if (screen) {
       this.currentScreen = screen;
+    }
+
+    if (prefillData) {
+      this.prefillData = prefillData;
     }
 
     this.isOpen = true;
@@ -253,11 +258,25 @@ export class AuthModal {
     // Render the current screen
     this.renderScreen();
 
-    // Focus first input
-    setTimeout(() => {
-      const firstInput = this.modalElement?.querySelector('input') as HTMLElement;
-      firstInput?.focus();
-    }, 100);
+    // Prefill form data if provided
+    if (this.prefillData.username) {
+      setTimeout(() => {
+        const usernameInput = this.modalElement?.querySelector('#username') as HTMLInputElement;
+        if (usernameInput) {
+          usernameInput.value = this.prefillData.username || '';
+        }
+        // Focus first empty input
+        const firstEmptyInput = Array.from(this.modalElement?.querySelectorAll('input') || [])
+          .find((input: any) => !input.value) as HTMLElement;
+        firstEmptyInput?.focus();
+      }, 100);
+    } else {
+      // Focus first input
+      setTimeout(() => {
+        const firstInput = this.modalElement?.querySelector('input') as HTMLElement;
+        firstInput?.focus();
+      }, 100);
+    }
   }
 
   /**

@@ -127,7 +127,7 @@ export class WelcomeScreen {
   }
 
   /**
-   * Setup event handlers for buttons
+   * Setup event handlers for buttons and pane interactions
    */
   private setupEventHandlers(): void {
     const quickPlayButton = document.getElementById('welcome-quick-play-button');
@@ -147,14 +147,41 @@ export class WelcomeScreen {
       });
     }
 
-    // Sign Up button (will be wired to AuthModal in next step)
+    // Sign Up button
     if (signupButton) {
       signupButton.addEventListener('click', () => this.onSignUpClick());
     }
 
-    // Sign In link (will be wired to AuthModal in next step)
+    // Sign In link
     if (signinLink) {
       signinLink.addEventListener('click', () => this.onSignInClick());
+    }
+
+    // MVP 16: Overlapping pane interaction
+    const leftPane = this.container?.querySelector('.welcome-column-left');
+    const rightPane = this.container?.querySelector('.welcome-column-right');
+
+    if (leftPane && rightPane) {
+      // Bring pane to front on hover/click
+      const bringToFront = (pane: Element, otherPane: Element) => {
+        pane.classList.add('active');
+        otherPane.classList.remove('active');
+      };
+
+      // Left pane interactions
+      leftPane.addEventListener('mouseenter', () => bringToFront(leftPane, rightPane));
+      leftPane.addEventListener('click', () => bringToFront(leftPane, rightPane));
+
+      // Right pane interactions
+      rightPane.addEventListener('mouseenter', () => bringToFront(rightPane, leftPane));
+      rightPane.addEventListener('click', () => bringToFront(rightPane, leftPane));
+
+      // Touch support for mobile
+      leftPane.addEventListener('touchstart', () => bringToFront(leftPane, rightPane));
+      rightPane.addEventListener('touchstart', () => bringToFront(rightPane, leftPane));
+
+      // Start with left pane active
+      leftPane.classList.add('active');
     }
   }
 
@@ -235,11 +262,16 @@ export class WelcomeScreen {
   }
 
   /**
-   * Handle Sign Up click - Open AuthModal in signup mode
+   * Handle Sign Up click - Open AuthModal in signup mode with prefilled username
    */
   private onSignUpClick(): void {
     if (this.authModal) {
-      this.authModal.open('signup');
+      // Get username from sign up pane input field
+      const signupUsernameInput = document.getElementById('welcome-signup-username') as HTMLInputElement;
+      const username = signupUsernameInput?.value.trim() || '';
+
+      // Open AuthModal with prefilled username if provided
+      this.authModal.open('signup', username ? { username } : undefined);
     }
   }
 
