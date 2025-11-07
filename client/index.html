@@ -1263,6 +1263,12 @@
         }
         .welcome-column {
           padding: 25px 20px;
+          margin: 0 !important; /* Remove negative margins on mobile */
+          min-width: 0 !important; /* Remove min-width constraint */
+          max-width: 100% !important; /* Full width on mobile */
+        }
+        .welcome-column.active {
+          transform: none !important; /* No lift effect on mobile */
         }
         .column-title {
           font-size: 22px;
@@ -1318,6 +1324,12 @@
         }
         .welcome-column {
           padding: 15px;
+          margin: 0 !important; /* Remove negative margins on mobile landscape */
+          min-width: 0 !important; /* Remove min-width constraint */
+          max-width: 48% !important; /* Fit two columns side by side */
+        }
+        .welcome-column.active {
+          transform: none !important; /* No lift effect on mobile landscape */
         }
         .column-title {
           font-size: 18px;
