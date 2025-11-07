@@ -261,14 +261,16 @@ export class AuthModal {
     // Prefill form data if provided
     if (this.prefillData.username) {
       setTimeout(() => {
-        const usernameInput = this.modalElement?.querySelector('#username') as HTMLInputElement;
+        const usernameInput = this.modalElement?.querySelector('input[name="username"]') as HTMLInputElement;
         if (usernameInput) {
           usernameInput.value = this.prefillData.username || '';
         }
         // Focus first empty input
         const firstEmptyInput = Array.from(this.modalElement?.querySelectorAll('input') || [])
           .find((input: any) => !input.value) as HTMLElement;
-        firstEmptyInput?.focus();
+        if (firstEmptyInput) {
+          firstEmptyInput.focus();
+        }
       }, 100);
     } else {
       // Focus first input

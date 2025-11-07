@@ -469,8 +469,10 @@ export class PlayerIdentity extends DurableObject {
         success: true,
         username: data.username,
         email: data.email,
+        emailVerified: data.emailVerified,
         verificationToken, // Return token for debugging (remove in production)
         unlockedCharacters: data.unlockedCharacters,
+        lastCharacterId: data.lastCharacterId,
         // JWT tokens
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
