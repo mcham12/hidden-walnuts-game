@@ -178,7 +178,10 @@ export class PlayerIdentity extends DurableObject {
         exists: true,
         username: data.username,
         created: data.created,
-        lastCharacterId: data.lastCharacterId || null // FIXED: Explicitly return null if undefined
+        lastCharacterId: data.lastCharacterId || null, // FIXED: Explicitly return null if undefined
+        // MVP 16: Return auth status and unlocked characters for WebSocket validation
+        isAuthenticated: data.isAuthenticated || false,
+        unlockedCharacters: data.unlockedCharacters || ['squirrel']
       });
     }
 

@@ -117,4 +117,8 @@ export interface Env {
   TURNSTILE_SECRET: string; // Cloudflare Turnstile secret key
   RATE_LIMITER?: RateLimitBinding; // Rate limiting binding (optional for local dev)
   ADMIN_SECRET?: string; // MVP 13: Admin API authentication
+  JWT_SECRET: string; // MVP 16: JWT token generation/verification
+  EMAIL_INDEX: KVNamespace; // MVP 16: Email uniqueness index
+  SMTP_USER?: string; // MVP 16: Email service SMTP user
+  SMTP_PASSWORD?: string; // MVP 16: Email service SMTP password
 }

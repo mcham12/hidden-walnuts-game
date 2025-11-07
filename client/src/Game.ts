@@ -1612,9 +1612,14 @@ export class Game {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:50569';
     // MVP 7.1: Include Turnstile token for bot protection (optional parameter - null if not verified)
     const turnstileParam = this.turnstileToken ? `&turnstileToken=${this.turnstileToken}` : '';
+
+    // MVP 16: Include JWT access token for authenticated users (character gating validation)
+    const accessToken = localStorage.getItem('auth_access_token');
+    const accessTokenParam = accessToken ? `&accessToken=${accessToken}` : '';
+
     // MVP 6: Include sessionToken and username in WebSocket URL
     const wsUrl = apiUrl.replace('http:', 'ws:').replace('https:', 'wss:') +
-                  `/ws?squirrelId=${this.playerId}&characterId=${this.selectedCharacterId}&sessionToken=${this.sessionToken}&username=${encodeURIComponent(this.username)}${turnstileParam}`;
+                  `/ws?squirrelId=${this.playerId}&characterId=${this.selectedCharacterId}&sessionToken=${this.sessionToken}&username=${encodeURIComponent(this.username)}${accessTokenParam}${turnstileParam}`;
     
     try {
       this.websocket = new WebSocket(wsUrl);

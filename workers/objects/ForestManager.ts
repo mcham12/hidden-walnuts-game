@@ -514,35 +514,54 @@ export default class ForestManager extends DurableObject {
       let isAuthenticated = false;
       let unlockedCharacters: string[] = [];
 
-      if (sessionToken) {
-        // Fetch player data from PlayerIdentity DO to check auth status and unlocked characters
+      // MVP 16 FIX: Check for JWT access token in URL parameter (WebSocket doesn't support Authorization headers)
+      const accessToken = url.searchParams.get('accessToken');
+      if (accessToken) {
         try {
-          const playerIdentityId = this.env.PLAYER_IDENTITY.idFromName(username);
-          const playerIdentityStub = this.env.PLAYER_IDENTITY.get(playerIdentityId);
+          // Verify JWT access token directly (can't use AuthMiddleware with URL params)
+          const { verifyAccessToken } = await import('../services/AuthService');
+          const payload = verifyAccessToken(accessToken, this.env.JWT_SECRET);
 
-          // Create internal request to get player data
-          const playerDataRequest = new Request('https://internal/player-data', {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${sessionToken}`
-            }
-          });
-
-          const playerDataResponse = await playerIdentityStub.fetch(playerDataRequest);
-
-          if (playerDataResponse.ok) {
-            const playerData = await playerDataResponse.json() as {
-              username: string;
-              isAuthenticated: boolean;
-              unlockedCharacters: string[];
-            };
-
-            isAuthenticated = playerData.isAuthenticated;
-            unlockedCharacters = playerData.unlockedCharacters || [];
+          if (payload) {
+            isAuthenticated = payload.isAuthenticated;
+            unlockedCharacters = payload.unlockedCharacters || [];
+            console.log(`✅ Authenticated WebSocket: ${username} (${unlockedCharacters.length} characters)`);
           }
         } catch (error) {
-          console.error(`Failed to fetch player data for ${username}:`, error);
-          // Default to unauthenticated if fetch fails
+          console.error(`Failed to verify access token for ${username}:`, error);
+          // Fall through to sessionToken lookup
+        }
+      }
+
+      // Fallback: Look up auth status from PlayerIdentity DO using sessionToken (backward compatibility)
+      if (!isAuthenticated && sessionToken) {
+        try {
+          const playerIdentityId = this.env.PLAYER_IDENTITY.idFromName(username);
+          const playerIdentity = this.env.PLAYER_IDENTITY.get(playerIdentityId);
+
+          // Call the 'check' action to get player data
+          const checkUrl = new URL('http://internal/api/identity?action=check&username=' + encodeURIComponent(username));
+          const checkRequest = new Request(checkUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionToken })
+          });
+
+          const checkResponse = await playerIdentity.fetch(checkRequest);
+          if (checkResponse.ok) {
+            const playerData = await checkResponse.json() as {
+              exists: boolean;
+              isAuthenticated?: boolean;
+              unlockedCharacters?: string[];
+            };
+            // Check if this sessionToken is linked to an authenticated account
+            isAuthenticated = playerData.isAuthenticated || false;
+            unlockedCharacters = playerData.unlockedCharacters || [];
+            console.log(`📋 SessionToken lookup: ${username} (auth: ${isAuthenticated}, ${unlockedCharacters.length} characters)`);
+          }
+        } catch (error) {
+          console.error(`Failed to lookup player data for ${username}:`, error);
+          // Default to no-auth if both methods fail
         }
       }
 
