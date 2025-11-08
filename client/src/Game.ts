@@ -296,6 +296,11 @@ export class Game {
   // MVP 16: Session expired banner
   private sessionExpiredBanner: SessionExpiredBanner | null = null;
 
+  // MVP 16: Initialization guards to prevent double-initialization
+  private leaderboardInitialized = false;
+  private chatEmotesInitialized = false;
+  private settingsInitialized = false;
+
   // MVP 14: Contextual tips system
   private tipsManager: TipsManager = new TipsManager();
 
@@ -7144,6 +7149,12 @@ export class Game {
    * Initialize the leaderboard system
    */
   private initLeaderboard(): void {
+    // MVP 16: Guard against double-initialization (prevents duplicate event listeners)
+    if (this.leaderboardInitialized) {
+      console.log('⚠️ [initLeaderboard] Already initialized, skipping to prevent duplicate listeners');
+      return;
+    }
+
     const toggleButton = document.getElementById('leaderboard-toggle');
     const leaderboardDiv = document.getElementById('leaderboard');
 
@@ -7234,6 +7245,9 @@ export class Game {
 
     // Initial update
     this.updateLeaderboard();
+
+    // MVP 16: Mark as initialized to prevent duplicate calls
+    this.leaderboardInitialized = true;
   }
 
   /**
@@ -7436,6 +7450,12 @@ export class Game {
    * Initialize quick chat and emote systems
    */
   private initChatAndEmotes(): void {
+    // MVP 16: Guard against double-initialization (prevents duplicate event listeners)
+    if (this.chatEmotesInitialized) {
+      console.log('⚠️ [initChatAndEmotes] Already initialized, skipping to prevent duplicate listeners');
+      return;
+    }
+
     const quickChatDiv = document.getElementById('quick-chat');
     const emotesDiv = document.getElementById('emotes');
 
@@ -7480,6 +7500,9 @@ export class Game {
         }
       });
     });
+
+    // MVP 16: Mark as initialized to prevent duplicate calls
+    this.chatEmotesInitialized = true;
   }
 
   /**
@@ -7712,6 +7735,12 @@ export class Game {
    * Initialize the settings menu system
    */
   private initSettingsMenu(): void {
+    // MVP 16: Guard against double-initialization (prevents duplicate event listeners)
+    if (this.settingsInitialized) {
+      console.log('⚠️ [initSettingsMenu] Already initialized, skipping to prevent duplicate listeners');
+      return;
+    }
+
     const settingsToggle = document.getElementById('settings-toggle') as HTMLButtonElement;
     const settingsOverlay = document.getElementById('settings-overlay') as HTMLDivElement;
     const settingsApply = document.getElementById('settings-apply') as HTMLButtonElement;
@@ -7866,6 +7895,9 @@ export class Game {
 
     document.addEventListener('click', dismissSettings);
     document.addEventListener('touchend', dismissSettings); // Mobile support
+
+    // MVP 16: Mark as initialized to prevent duplicate calls
+    this.settingsInitialized = true;
   }
 
   /**
