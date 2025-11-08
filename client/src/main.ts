@@ -334,6 +334,27 @@ async function main() {
       walnutHud.classList.remove('hidden');
     }
 
+    // MVP 16: Ensure DOM fully ready before UI initialization (P0 fix)
+    // Double requestAnimationFrame ensures all layout/rendering is complete
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    console.log('✅ [main.ts] DOM fully ready, re-initializing UI components...');
+
+    // Re-initialize UI components to ensure event listeners are properly attached
+    // This fixes the issue where buttons weren't clickable after WebSocket auth changes
+    if (typeof (game as any).initLeaderboard === 'function') {
+      console.log('🔧 [main.ts] Re-initializing leaderboard...');
+      (game as any).initLeaderboard();
+    }
+    if (typeof (game as any).initChatAndEmotes === 'function') {
+      console.log('🔧 [main.ts] Re-initializing chat and emotes...');
+      (game as any).initChatAndEmotes();
+    }
+    if (typeof (game as any).initSettingsMenu === 'function') {
+      console.log('🔧 [main.ts] Re-initializing settings menu...');
+      (game as any).initSettingsMenu();
+    }
+    console.log('✅ [main.ts] UI components re-initialized successfully');
+
     // MVP 11: Start background audio (ambient forest sounds + music)
     audioManager.startBackgroundAudio();
 

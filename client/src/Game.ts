@@ -7137,77 +7137,93 @@ export class Game {
     const toggleButton = document.getElementById('leaderboard-toggle');
     const leaderboardDiv = document.getElementById('leaderboard');
 
-    if (toggleButton && leaderboardDiv) {
-      // Show toggle button when game starts
-      toggleButton.classList.remove('hidden');
+    // MVP 16: Defensive null checks with logging
+    if (!toggleButton) {
+      console.error('❌ [initLeaderboard] Leaderboard toggle button not found in DOM');
+      return;
+    }
+    if (!leaderboardDiv) {
+      console.error('❌ [initLeaderboard] Leaderboard div not found in DOM');
+      return;
+    }
 
-      // Toggle leaderboard visibility
-      toggleButton.addEventListener('click', () => {
-        this.leaderboardVisible = !this.leaderboardVisible;
-        if (this.leaderboardVisible) {
-          leaderboardDiv.classList.remove('hidden');
-          this.updateLeaderboard(); // Update immediately when shown
-        } else {
-          leaderboardDiv.classList.add('hidden');
+    console.log('✅ [initLeaderboard] Leaderboard elements found, attaching listeners');
+
+    // Show toggle button when game starts
+    toggleButton.classList.remove('hidden');
+
+    // Toggle leaderboard visibility
+    toggleButton.addEventListener('click', () => {
+      console.log('🎯 [initLeaderboard] Toggle button clicked');
+      this.leaderboardVisible = !this.leaderboardVisible;
+      if (this.leaderboardVisible) {
+        leaderboardDiv.classList.remove('hidden');
+        this.updateLeaderboard(); // Update immediately when shown
+      } else {
+        leaderboardDiv.classList.add('hidden');
+      }
+    });
+
+    // MVP 9: Tab switching for All-Time vs Weekly
+    const weeklyTab = leaderboardDiv.querySelector('[data-tab="weekly"]') as HTMLElement;
+    const alltimeTab = leaderboardDiv.querySelector('[data-tab="alltime"]') as HTMLElement;
+
+    if (weeklyTab && alltimeTab) {
+      console.log('✅ [initLeaderboard] Tab elements found, attaching tab listeners');
+      // Set weekly as default active tab
+      weeklyTab.classList.add('active');
+
+      // Weekly tab click handler
+      weeklyTab.addEventListener('click', () => {
+        console.log('🎯 [initLeaderboard] Weekly tab clicked');
+        if (this.currentLeaderboardTab !== 'weekly') {
+          this.currentLeaderboardTab = 'weekly';
+          weeklyTab.classList.add('active');
+          alltimeTab.classList.remove('active');
+          this.updateLeaderboard();
         }
       });
 
-      // MVP 9: Tab switching for All-Time vs Weekly
-      const weeklyTab = leaderboardDiv.querySelector('[data-tab="weekly"]') as HTMLElement;
-      const alltimeTab = leaderboardDiv.querySelector('[data-tab="alltime"]') as HTMLElement;
-
-      if (weeklyTab && alltimeTab) {
-        // Set weekly as default active tab
-        weeklyTab.classList.add('active');
-
-        // Weekly tab click handler
-        weeklyTab.addEventListener('click', () => {
-          if (this.currentLeaderboardTab !== 'weekly') {
-            this.currentLeaderboardTab = 'weekly';
-            weeklyTab.classList.add('active');
-            alltimeTab.classList.remove('active');
-            this.updateLeaderboard();
-          }
-        });
-
-        // All-time tab click handler
-        alltimeTab.addEventListener('click', () => {
-          if (this.currentLeaderboardTab !== 'alltime') {
-            this.currentLeaderboardTab = 'alltime';
-            alltimeTab.classList.add('active');
-            weeklyTab.classList.remove('active');
-            this.updateLeaderboard();
-          }
-        });
-      }
-
-      // Click/tap outside to dismiss leaderboard (user-requested feature)
-      const dismissLeaderboard = (event: Event) => {
-        const target = event.target as HTMLElement;
-
-        // Check if click/tap is outside leaderboard AND outside toggle button
-        if (this.leaderboardVisible &&
-            !leaderboardDiv.contains(target) &&
-            !toggleButton.contains(target)) {
-          this.leaderboardVisible = false;
-          leaderboardDiv.classList.add('hidden');
-        }
-      };
-
-      // Listen for both click (desktop) and touchend (mobile/tablet)
-      document.addEventListener('click', dismissLeaderboard);
-      document.addEventListener('touchend', dismissLeaderboard);
-
-      // Start periodic leaderboard updates (every 5 seconds)
-      this.leaderboardUpdateInterval = window.setInterval(() => {
-        if (this.leaderboardVisible) {
+      // All-time tab click handler
+      alltimeTab.addEventListener('click', () => {
+        console.log('🎯 [initLeaderboard] All-time tab clicked');
+        if (this.currentLeaderboardTab !== 'alltime') {
+          this.currentLeaderboardTab = 'alltime';
+          alltimeTab.classList.add('active');
+          weeklyTab.classList.remove('active');
           this.updateLeaderboard();
         }
-      }, 5000);
-
-      // Initial update
-      this.updateLeaderboard();
+      });
+    } else {
+      console.error('❌ [initLeaderboard] Tab elements not found');
     }
+
+    // Click/tap outside to dismiss leaderboard (user-requested feature)
+    const dismissLeaderboard = (event: Event) => {
+      const target = event.target as HTMLElement;
+
+      // Check if click/tap is outside leaderboard AND outside toggle button
+      if (this.leaderboardVisible &&
+          !leaderboardDiv.contains(target) &&
+          !toggleButton.contains(target)) {
+        this.leaderboardVisible = false;
+        leaderboardDiv.classList.add('hidden');
+      }
+    };
+
+    // Listen for both click (desktop) and touchend (mobile/tablet)
+    document.addEventListener('click', dismissLeaderboard);
+    document.addEventListener('touchend', dismissLeaderboard);
+
+    // Start periodic leaderboard updates (every 5 seconds)
+    this.leaderboardUpdateInterval = window.setInterval(() => {
+      if (this.leaderboardVisible) {
+        this.updateLeaderboard();
+      }
+    }, 5000);
+
+    // Initial update
+    this.updateLeaderboard();
   }
 
   /**
@@ -7413,23 +7429,28 @@ export class Game {
     const quickChatDiv = document.getElementById('quick-chat');
     const emotesDiv = document.getElementById('emotes');
 
-    // Show UI elements
-    if (quickChatDiv) {
-      quickChatDiv.classList.remove('hidden');
-    } else {
-      console.error('❌ Quick chat div not found!');
+    // MVP 16: Defensive null checks with logging
+    if (!quickChatDiv) {
+      console.error('❌ [initChatAndEmotes] Quick chat div not found in DOM');
+      return;
+    }
+    if (!emotesDiv) {
+      console.error('❌ [initChatAndEmotes] Emotes div not found in DOM');
+      return;
     }
 
-    if (emotesDiv) {
-      emotesDiv.classList.remove('hidden');
-    } else {
-      console.error('❌ Emotes div not found!');
-    }
+    console.log('✅ [initChatAndEmotes] Chat and emote elements found');
+
+    // Show UI elements
+    quickChatDiv.classList.remove('hidden');
+    emotesDiv.classList.remove('hidden');
 
     // Setup quick chat buttons
     const chatButtons = document.querySelectorAll('.chat-button');
+    console.log(`✅ [initChatAndEmotes] Found ${chatButtons.length} chat buttons`);
     chatButtons.forEach((button) => {
       button.addEventListener('click', () => {
+        console.log('🎯 [initChatAndEmotes] Chat button clicked');
         const message = (button as HTMLElement).getAttribute('data-message');
         if (message) {
           this.sendChatMessage(message);
@@ -7439,8 +7460,10 @@ export class Game {
 
     // Setup emote buttons
     const emoteButtons = document.querySelectorAll('.emote-button');
+    console.log(`✅ [initChatAndEmotes] Found ${emoteButtons.length} emote buttons`);
     emoteButtons.forEach((button) => {
       button.addEventListener('click', () => {
+        console.log('🎯 [initChatAndEmotes] Emote button clicked');
         const emote = (button as HTMLElement).getAttribute('data-emote');
         if (emote) {
           this.sendEmote(emote);
@@ -7684,10 +7707,28 @@ export class Game {
     const settingsApply = document.getElementById('settings-apply') as HTMLButtonElement;
     const settingsCancel = document.getElementById('settings-cancel') as HTMLButtonElement;
 
-    // Show settings toggle button when game starts
-    if (settingsToggle) {
-      settingsToggle.classList.remove('hidden');
+    // MVP 16: Defensive null checks with logging
+    if (!settingsToggle) {
+      console.error('❌ [initSettingsMenu] Settings toggle button not found in DOM');
+      return;
     }
+    if (!settingsOverlay) {
+      console.error('❌ [initSettingsMenu] Settings overlay not found in DOM');
+      return;
+    }
+    if (!settingsApply) {
+      console.error('❌ [initSettingsMenu] Settings apply button not found in DOM');
+      return;
+    }
+    if (!settingsCancel) {
+      console.error('❌ [initSettingsMenu] Settings cancel button not found in DOM');
+      return;
+    }
+
+    console.log('✅ [initSettingsMenu] Settings elements found, attaching listeners');
+
+    // Show settings toggle button when game starts
+    settingsToggle.classList.remove('hidden');
 
     // Tab switching
     const tabs = document.querySelectorAll('.settings-tab');
@@ -7770,33 +7811,25 @@ export class Game {
 
     // Show/hide settings menu
     const showSettings = () => {
-      if (settingsOverlay) {
-        settingsOverlay.classList.remove('hidden');
-        this.audioManager.playSound('ui', 'button_click');
-      }
+      console.log('🎯 [initSettingsMenu] Opening settings menu');
+      settingsOverlay.classList.remove('hidden');
+      this.audioManager.playSound('ui', 'button_click');
     };
 
     const hideSettings = () => {
-      if (settingsOverlay) {
-        settingsOverlay.classList.add('hidden');
-        this.audioManager.playSound('ui', 'button_click');
-      }
+      console.log('🎯 [initSettingsMenu] Closing settings menu');
+      settingsOverlay.classList.add('hidden');
+      this.audioManager.playSound('ui', 'button_click');
     };
 
     // Settings toggle button click
-    if (settingsToggle) {
-      settingsToggle.addEventListener('click', showSettings);
-    }
+    settingsToggle.addEventListener('click', showSettings);
 
     // Apply button
-    if (settingsApply) {
-      settingsApply.addEventListener('click', hideSettings);
-    }
+    settingsApply.addEventListener('click', hideSettings);
 
     // Cancel button
-    if (settingsCancel) {
-      settingsCancel.addEventListener('click', hideSettings);
-    }
+    settingsCancel.addEventListener('click', hideSettings);
 
     // ESC key to toggle settings
     document.addEventListener('keydown', (e) => {
