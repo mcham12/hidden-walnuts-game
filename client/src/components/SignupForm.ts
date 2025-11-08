@@ -482,12 +482,21 @@ export class SignupForm {
         // Success callback
         this.options.onSuccess?.(response);
       } else {
-        // Show error from server
-        this.showError(response.message || response.error || 'Signup failed. Please try again.');
+        // MVP 16: Show user-friendly error message
+        const friendlyError = this.getUserFriendlyError(response.error, response.message);
+        this.showError(friendlyError);
+
+        // MVP 16: If email already registered, highlight the "Log In" link
+        if (response.error === 'Email already registered' ||
+            (response.message && response.message.includes('already registered'))) {
+          this.highlightLoginLink();
+        }
       }
     } catch (error) {
       console.error('Signup error:', error);
-      this.showError('An unexpected error occurred. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      const friendlyError = this.getUserFriendlyError(undefined, errorMessage);
+      this.showError(friendlyError);
     } finally {
       this.setLoading(false);
     }
@@ -523,12 +532,99 @@ export class SignupForm {
   }
 
   /**
+   * MVP 16: Map server error codes to user-friendly messages
+   */
+  private getUserFriendlyError(errorCode?: string, serverMessage?: string): string {
+    // Normalize the error identifier
+    const errorKey = errorCode || serverMessage || '';
+
+    // Map of error codes to user-friendly messages with actionable guidance
+    const errorMap: Record<string, string> = {
+      'Email already registered':
+        '📧 This email is already registered.\n\nLooks like you already have an account! Click "Log In" below to access your account.\n\nForgot your password? Use the "Forgot Password" link on the login page.',
+
+      'This username already has an account':
+        '👤 This username is already taken.\n\nPlease choose a different username. Try adding numbers or your favorite animal!',
+
+      'Username already taken':
+        '👤 This username is already taken.\n\nPlease choose a different username. Try adding numbers or your favorite animal!',
+
+      'Invalid email format':
+        '✉️ Invalid email address.\n\nPlease enter a valid email address (e.g., squirrel@example.com).',
+
+      'Password too weak':
+        '🔒 Password is too weak.\n\nYour password must be at least 8 characters long and include a mix of letters, numbers, and symbols.',
+
+      'Turnstile verification failed':
+        '🤖 Bot verification failed.\n\nPlease refresh the page and try again. Make sure you\'re not using a VPN or ad blocker that might interfere with verification.',
+
+      'Rate limit exceeded':
+        '⏱️ Too many attempts.\n\nPlease wait a few minutes before trying again. This helps us protect your account.',
+    };
+
+    // Check for exact match first
+    if (errorMap[errorKey]) {
+      return errorMap[errorKey];
+    }
+
+    // Check for partial matches (case-insensitive)
+    const lowerKey = errorKey.toLowerCase();
+    for (const [key, message] of Object.entries(errorMap)) {
+      if (lowerKey.includes(key.toLowerCase())) {
+        return message;
+      }
+    }
+
+    // Fallback for unknown errors
+    return `❌ ${serverMessage || errorCode || 'Signup failed'}\n\nPlease try again or contact support if the problem persists.`;
+  }
+
+  /**
    * Show error message
    */
   private showError(message: string): void {
     if (this.errorMessage) {
       this.errorMessage.textContent = message;
       this.errorMessage.style.display = 'block';
+
+      // MVP 16: Style multi-line error messages
+      this.errorMessage.style.whiteSpace = 'pre-line';
+      this.errorMessage.style.lineHeight = '1.5';
+    }
+  }
+
+  /**
+   * MVP 16: Highlight the "Log In" link when user tries to register with existing email
+   */
+  private highlightLoginLink(): void {
+    const loginLink = this.container.querySelector('.switch-to-login') as HTMLAnchorElement;
+    if (loginLink) {
+      // Add pulsing animation
+      loginLink.style.animation = 'pulse 1s ease-in-out 3';
+      loginLink.style.backgroundColor = '#fff3cd';
+      loginLink.style.padding = '4px 8px';
+      loginLink.style.borderRadius = '4px';
+      loginLink.style.transition = 'all 0.3s ease';
+
+      // Add keyframe animation if not already present
+      if (!document.getElementById('pulse-animation')) {
+        const style = document.createElement('style');
+        style.id = 'pulse-animation';
+        style.textContent = `
+          @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      // Remove highlight after animation completes
+      setTimeout(() => {
+        loginLink.style.animation = '';
+        loginLink.style.backgroundColor = '';
+        loginLink.style.padding = '';
+      }, 3000);
     }
   }
 
