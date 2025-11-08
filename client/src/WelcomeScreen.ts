@@ -441,6 +441,7 @@ export class WelcomeScreen {
         // Fade in
         this.container.style.opacity = '0';
         this.container.style.display = 'flex';
+        this.container.style.pointerEvents = 'auto'; // Re-enable pointer events when showing
 
         requestAnimationFrame(() => {
           if (this.container) {
@@ -487,6 +488,7 @@ export class WelcomeScreen {
     // Show with fade in
     this.container.style.opacity = '0';
     this.container.style.display = 'flex';
+    this.container.style.pointerEvents = 'auto'; // Re-enable pointer events when showing
 
     requestAnimationFrame(() => {
       if (this.container) {
@@ -512,6 +514,7 @@ export class WelcomeScreen {
 
   /**
    * Hide welcome screen with fade out
+   * MVP 16 FIX: Add pointer-events: none to prevent Safari click blocking
    */
   async hide(): Promise<void> {
     return new Promise((resolve) => {
@@ -522,6 +525,10 @@ export class WelcomeScreen {
         setTimeout(() => {
           if (this.container) {
             this.container.style.display = 'none';
+            // MVP 16 FIX: Disable pointer events to prevent Safari from blocking clicks
+            // Even with display:none, Safari can sometimes treat high z-index elements
+            // as blocking. This ensures clicks pass through to game UI.
+            this.container.style.pointerEvents = 'none';
           }
           resolve();
         }, 500);

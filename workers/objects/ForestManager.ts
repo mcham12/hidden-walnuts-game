@@ -2861,6 +2861,8 @@ export default class ForestManager extends DurableObject {
         continue;
       }
 
+      // MVP 16: Skip Rock_02 (variant 2) due to floating/positioning issues
+      const availableRockVariants = [1, 3, 4, 5]; // Exclude Rock_02
       objects.push({
         id: `rock-${Date.now()}-${i}`,
         type: "rock",
@@ -2868,7 +2870,7 @@ export default class ForestManager extends DurableObject {
         y: 0,
         z,
         scale: 0.8 + Math.random() * 0.4,
-        modelVariant: Math.floor(Math.random() * 5) + 1 // Random rock 1-5
+        modelVariant: availableRockVariants[Math.floor(Math.random() * availableRockVariants.length)]
       });
       i++;
     }

@@ -17,6 +17,7 @@ import { EnticementService } from './services/EnticementService.js'; // MVP 16: 
 import { AuthModal } from './components/AuthModal.js'; // MVP 16: Authentication modal
 import { SessionExpiredBanner } from './components/SessionExpiredBanner.js'; // MVP 16: Session expiry
 import { isAuthenticated, getCurrentUser } from './services/AuthService.js'; // MVP 16: Auth state checking
+import { CharacterRegistry } from './services/CharacterRegistry.js'; // MVP 16: Character availability
 import { TutorialOverlay } from './TutorialOverlay.js';
 import { getPlayerTitle } from '@shared/PlayerRanks';
 import { TipsManager } from './TipsManager.js'; // MVP 14: Contextual tips
@@ -4152,6 +4153,9 @@ export class Game {
    */
   private respawnTimerId: number | null = null;
   private respawnCountdownInterval: number | null = null;
+  // MVP 16: Pause control for death screen
+  private respawnPaused: boolean = false;
+  private respawnTimeRemaining: number = 0;
 
   /**
    * MVP 16: Handle player death with new death screen
@@ -4195,21 +4199,25 @@ export class Game {
       const updateInterval = 100; // Update every 100ms for smooth progress bar
 
       this.respawnCountdownInterval = window.setInterval(() => {
-        timeRemaining -= updateInterval;
-        const secondsLeft = Math.ceil(timeRemaining / 1000);
-        const progress = (timeRemaining / respawnTime) * 100;
+        // MVP 16: Skip countdown update if paused
+        if (!this.respawnPaused) {
+          timeRemaining -= updateInterval;
+          this.respawnTimeRemaining = timeRemaining; // Track for pause/resume
+          const secondsLeft = Math.ceil(timeRemaining / 1000);
+          const progress = (timeRemaining / respawnTime) * 100;
 
-        if (respawnCountdown) {
-          respawnCountdown.textContent = secondsLeft.toString();
-        }
+          if (respawnCountdown) {
+            respawnCountdown.textContent = secondsLeft.toString();
+          }
 
-        if (respawnProgressBar) {
-          respawnProgressBar.style.width = `${progress}%`;
-        }
+          if (respawnProgressBar) {
+            respawnProgressBar.style.width = `${progress}%`;
+          }
 
-        if (timeRemaining <= 0 && this.respawnCountdownInterval) {
-          clearInterval(this.respawnCountdownInterval);
-          this.respawnCountdownInterval = null;
+          if (timeRemaining <= 0 && this.respawnCountdownInterval) {
+            clearInterval(this.respawnCountdownInterval);
+            this.respawnCountdownInterval = null;
+          }
         }
       }, updateInterval);
 
@@ -4218,6 +4226,15 @@ export class Game {
       if (skipButton) {
         skipButton.onclick = () => this.skipRespawn();
       }
+
+      // MVP 16: Wire pause button
+      const pauseButton = document.getElementById('death-pause-button');
+      if (pauseButton) {
+        pauseButton.onclick = () => this.toggleRespawnPause();
+      }
+      // Reset pause state
+      this.respawnPaused = false;
+      this.respawnTimeRemaining = respawnTime;
 
       // MVP 16: Show appropriate overlay content immediately (no delay)
       this.showDeathOverlay();
@@ -4267,6 +4284,35 @@ export class Game {
   }
 
   /**
+   * MVP 16: Toggle pause/resume for respawn countdown
+   */
+  private toggleRespawnPause(): void {
+    const pauseButton = document.getElementById('death-pause-button');
+    if (!pauseButton) return;
+
+    this.respawnPaused = !this.respawnPaused;
+
+    if (this.respawnPaused) {
+      // PAUSE: Stop auto-respawn timer
+      if (this.respawnTimerId) {
+        clearTimeout(this.respawnTimerId);
+        this.respawnTimerId = null;
+      }
+      // Update button text
+      pauseButton.innerHTML = '▶️ RESUME';
+      console.log('⏸️ Respawn paused with', this.respawnTimeRemaining, 'ms remaining');
+    } else {
+      // RESUME: Restart auto-respawn timer with remaining time
+      this.respawnTimerId = window.setTimeout(() => {
+        this.respawn();
+      }, this.respawnTimeRemaining);
+      // Update button text
+      pauseButton.innerHTML = '⏸️ PAUSE';
+      console.log('▶️ Respawn resumed, will respawn in', this.respawnTimeRemaining, 'ms');
+    }
+  }
+
+  /**
    * MVP 16: Show appropriate death overlay content based on authentication status
    * New unified design: show appropriate content panel within single overlay
    */
@@ -4296,10 +4342,75 @@ export class Game {
         playerRank.textContent = '42'; // Placeholder
       }
 
-      // Wire up buttons
-      const buyPremiumBtn = document.getElementById('death-buy-premium-btn');
-      if (buyPremiumBtn) {
-        buyPremiumBtn.onclick = () => this.handleBuyPremiumCharacter();
+      // MVP 16: Populate grid with locked premium characters
+      const lockedCharsGrid = document.getElementById('death-locked-chars-grid');
+      if (lockedCharsGrid) {
+        // Get locked characters (premium characters not yet unlocked by this user)
+        // TODO: Get actual unlocked characters from server/localStorage
+        const unlockedCharacters: string[] = []; // Placeholder
+        const lockedChars = CharacterRegistry.getLockedCharacters(true, unlockedCharacters);
+
+        // Clear existing content
+        lockedCharsGrid.innerHTML = '';
+
+        // Create a card for each locked character
+        lockedChars.forEach(char => {
+          const card = document.createElement('div');
+          card.style.cssText = `
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 165, 0, 0.5);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+          `;
+          card.onmouseover = () => {
+            card.style.background = 'rgba(255, 165, 0, 0.2)';
+            card.style.borderColor = 'rgba(255, 165, 0, 0.8)';
+          };
+          card.onmouseout = () => {
+            card.style.background = 'rgba(255, 255, 255, 0.1)';
+            card.style.borderColor = 'rgba(255, 165, 0, 0.5)';
+          };
+
+          // Character emoji (map from character data)
+          const emojiMap: Record<string, string> = {
+            'lynx': '🐱',
+            'bear': '🐻',
+            'moose': '🦌',
+            'badger': '🦡'
+          };
+          const emoji = emojiMap[char.id] || '🐾';
+
+          card.innerHTML = `
+            <div style="font-size: 32px; margin-bottom: 5px;">${emoji}</div>
+            <div style="font-size: 13px; font-weight: bold; margin-bottom: 3px;">${char.name}</div>
+            <div style="font-size: 11px; color: #ffa500; font-weight: bold; margin-bottom: 8px;">$${char.price?.toFixed(2)}</div>
+            <button class="death-buy-char-btn" data-char-id="${char.id}" style="
+              background: linear-gradient(135deg, #ff6b00 0%, #ff8800 100%);
+              color: white;
+              border: none;
+              padding: 6px 12px;
+              border-radius: 4px;
+              font-size: 11px;
+              font-weight: bold;
+              cursor: pointer;
+              width: 100%;
+            ">BUY NOW</button>
+          `;
+
+          // Wire up buy button
+          const buyBtn = card.querySelector('.death-buy-char-btn') as HTMLButtonElement;
+          if (buyBtn) {
+            buyBtn.onclick = (e) => {
+              e.stopPropagation();
+              this.handleBuyPremiumCharacter(char.id, char.name, char.price || 0);
+            };
+          }
+
+          lockedCharsGrid.appendChild(card);
+        });
       }
 
       const watchAdLink = document.getElementById('death-watch-ad-link-signedin');
@@ -4366,9 +4477,14 @@ export class Game {
   /**
    * MVP 16: Handle Buy Premium Character (signed-in users)
    */
-  private handleBuyPremiumCharacter(): void {
-    console.log('TODO: Open premium character purchase flow');
-    // Will be wired to payment system
+  private handleBuyPremiumCharacter(characterId?: string, characterName?: string, price?: number): void {
+    const charInfo = characterId ? `${characterName} ($${price})` : 'premium character';
+    console.log(`TODO: Open premium character purchase flow for ${charInfo}`);
+    // Will be wired to payment system - Stripe/PayPal integration
+    // For now, just log the purchase intent
+    if (characterId) {
+      console.log(`🛒 Purchase intent: Character=${characterId}, Price=$${price}`);
+    }
   }
 
   /**

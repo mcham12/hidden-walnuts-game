@@ -243,6 +243,7 @@ export class AuthModal {
     // Show elements
     if (this.backdrop) {
       this.backdrop.style.display = 'block';
+      this.backdrop.style.pointerEvents = 'auto'; // Re-enable pointer events when opening
       // Force reflow for animation
       void this.backdrop.offsetWidth;
       this.backdrop.style.opacity = '1';
@@ -250,6 +251,7 @@ export class AuthModal {
 
     if (this.modalElement) {
       this.modalElement.style.display = 'block';
+      this.modalElement.style.pointerEvents = 'auto'; // Re-enable pointer events when opening
       // Force reflow for animation
       void this.modalElement.offsetWidth;
       this.modalElement.style.opacity = '1';
@@ -282,6 +284,7 @@ export class AuthModal {
 
   /**
    * Close the modal
+   * MVP 16 FIX: Add pointer-events: none to prevent Safari click blocking
    */
   public close(): void {
     this.isOpen = false;
@@ -299,9 +302,13 @@ export class AuthModal {
     setTimeout(() => {
       if (this.backdrop) {
         this.backdrop.style.display = 'none';
+        // MVP 16 FIX: Disable pointer events to prevent Safari from blocking clicks
+        this.backdrop.style.pointerEvents = 'none';
       }
       if (this.modalElement) {
         this.modalElement.style.display = 'none';
+        // MVP 16 FIX: Disable pointer events to prevent Safari from blocking clicks
+        this.modalElement.style.pointerEvents = 'none';
       }
     }, 300);
 

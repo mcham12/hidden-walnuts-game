@@ -130,7 +130,9 @@ export class CharacterRegistry {
       return tier === 'no-auth';
     }
 
-    // Authenticated users: free characters + unlocked premium
+    // Authenticated users: no-auth + free characters + unlocked premium
+    // MVP 16 FIX: Allow no-auth characters (squirrel) for authenticated users too
+    if (tier === 'no-auth') return true;
     if (tier === 'free') return true;
     if (tier === 'premium' && unlockedCharacters.includes(characterId)) return true;
 

@@ -2631,9 +2631,14 @@
             <h1 class="death-title">💀 OH NUTS!</h1>
             <p class="death-score">Your score: <span id="death-score-value">0</span></p>
           </div>
-          <button id="death-skip-button" class="death-skip-btn-unified">
-            ⏩ RESPAWN NOW
-          </button>
+          <div style="display: flex; gap: 10px;">
+            <button id="death-pause-button" class="death-skip-btn-unified" style="flex: 1;">
+              ⏸️ PAUSE
+            </button>
+            <button id="death-skip-button" class="death-skip-btn-unified" style="flex: 1;">
+              ⏩ RESPAWN NOW
+            </button>
+          </div>
         </div>
 
         <!-- Middle Section: Timer + Animation -->
@@ -2678,17 +2683,13 @@
           <!-- Signed-In Users Content -->
           <div id="death-content-signedin" class="death-enticement-panel hidden">
             <h3 class="enticement-title">🏆 Your Leaderboard Spot: #<span id="player-rank">42</span></h3>
+            <p style="font-size: 14px; margin: 8px 0; color: #888;">💎 Unlock Premium Characters:</p>
 
-            <div class="premium-char-showcase">
-              <span class="premium-char-large">🦉</span>
-              <p class="premium-char-name">Owl - Night Vision!</p>
+            <!-- MVP 16: Dynamic grid of locked premium characters -->
+            <div id="death-locked-chars-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 15px 0;">
+              <!-- Will be populated by showDeathOverlay() -->
             </div>
 
-            <div class="enticement-buttons">
-              <button id="death-buy-premium-btn" class="death-action-btn buy-btn">
-                🟠 BUY OWL ($0.99)
-              </button>
-            </div>
             <a href="#" id="death-watch-ad-link-signedin" class="watch-ad-link-small">📺 Watch ad for bonus nuts</a>
           </div>
         </div>
