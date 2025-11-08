@@ -4389,8 +4389,13 @@ export class Game {
       const lockedCharsGrid = document.getElementById('death-locked-chars-grid');
       if (lockedCharsGrid) {
         // Get locked characters (premium characters not yet unlocked by this user)
-        // TODO: Get actual unlocked characters from server/localStorage
-        const unlockedCharacters: string[] = []; // Placeholder
+        // TODO(MONETIZATION): When payment system is implemented:
+        //   1. Fetch user's purchased characters from server (e.g., /api/user/purchases)
+        //   2. Pass purchased character IDs to getLockedCharacters() as unlockedCharacters param
+        //   3. This will filter out already-purchased characters from the grid
+        //   4. Only show characters the user HASN'T purchased yet
+        // For now: Empty array means all premium characters show as locked/purchasable
+        const unlockedCharacters: string[] = []; // Placeholder - will be populated from server
         const lockedChars = CharacterRegistry.getLockedCharacters(true, unlockedCharacters);
 
         // Clear existing content
@@ -4519,10 +4524,16 @@ export class Game {
 
   /**
    * MVP 16: Handle Buy Premium Character (signed-in users)
+   * TODO(MONETIZATION): Implement payment flow
+   *   1. Open payment modal (Stripe/PayPal)
+   *   2. On success: POST /api/purchases { characterId, transactionId }
+   *   3. Server validates payment and adds character to user's purchased characters
+   *   4. Update local state (reload character grid or update directly)
+   *   5. Show success message and unlock character immediately
    */
   private handleBuyPremiumCharacter(characterId?: string, characterName?: string, price?: number): void {
     const charInfo = characterId ? `${characterName} ($${price})` : 'premium character';
-    console.log(`TODO: Open premium character purchase flow for ${charInfo}`);
+    console.log(`TODO(MONETIZATION): Open premium character purchase flow for ${charInfo}`);
     // Will be wired to payment system - Stripe/PayPal integration
     // For now, just log the purchase intent
     if (characterId) {
