@@ -174,6 +174,8 @@ async function main() {
 
     let username: string;
     let savedCharacterId: string | undefined;
+    // MVP 16: Keep reference to welcomeScreen to retrieve Turnstile token later
+    let welcomeScreen: WelcomeScreen;
 
     if (storedUsername) {
       // Found username in localStorage - check if it still exists on server
@@ -181,15 +183,14 @@ async function main() {
 
       if (result.exists) {
         // Username exists on server - show welcome back and link sessionToken
-        const welcomeScreen = new WelcomeScreen();
+        welcomeScreen = new WelcomeScreen();
         await welcomeScreen.showWelcomeBack(storedUsername);
         await welcomeScreen.hide();
-        welcomeScreen.destroy();
         username = storedUsername;
         savedCharacterId = result.characterId;
       } else {
         // Username doesn't exist on server anymore - prompt for new username
-        const welcomeScreen = new WelcomeScreen();
+        welcomeScreen = new WelcomeScreen();
         username = await welcomeScreen.show();
 
         // Check if this new username exists or create it
@@ -203,11 +204,10 @@ async function main() {
         storeUsername(username);
 
         await welcomeScreen.hide();
-        welcomeScreen.destroy();
       }
     } else {
       // No stored username (new user or private browsing) - prompt for username
-      const welcomeScreen = new WelcomeScreen();
+      welcomeScreen = new WelcomeScreen();
       username = await welcomeScreen.show();
 
       // Check if username exists on server (private browsing case!)
@@ -226,7 +226,6 @@ async function main() {
       storeUsername(username);
 
       await welcomeScreen.hide();
-      welcomeScreen.destroy();
     }
 
     // MVP 6: STEP 2 - Character selection (skip if returning user with saved character)
@@ -305,7 +304,9 @@ async function main() {
     game.selectedCharacterId = selectedCharacterId;
     game.sessionToken = sessionToken; // MVP 6: Pass session token
     game.username = username; // MVP 6: Pass username
-    game.turnstileToken = loadingScreen.getTurnstileToken(); // MVP 7.1: Pass Turnstile token for bot protection
+    // MVP 16: Get Turnstile token from WelcomeScreen (verified before user interaction)
+    game.turnstileToken = welcomeScreen.getTurnstileToken();
+    console.log('🤖 [main.ts] Turnstile token:', game.turnstileToken ? 'Present' : 'Missing');
 
     // Run game.init() - this loads character model, connects to server, etc.
     loadingScreen.updateProgress(0.5, 'Connecting to server...');

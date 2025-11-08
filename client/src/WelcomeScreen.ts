@@ -22,6 +22,9 @@ export class WelcomeScreen {
   // Authentication modal
   private authModal: AuthModal | null = null;
 
+  // MVP 16: Turnstile bot protection
+  private turnstileToken: string | null = null;
+
   constructor() {
     this.createHTML();
 
@@ -110,6 +113,20 @@ export class WelcomeScreen {
         <div class="welcome-footer">
           <button id="welcome-signin-link" class="signin-link">🔒 Sign In</button>
         </div>
+
+        <!-- MVP 16: Turnstile Bot Protection -->
+        <div id="welcome-turnstile-container" style="
+          display: flex;
+          justify-content: center;
+          margin-top: 20px;
+          margin-bottom: 10px;
+        "></div>
+        <div id="welcome-turnstile-status" style="
+          text-align: center;
+          color: #888;
+          font-size: 14px;
+          margin-bottom: 20px;
+        ">🤖 Verifying you're human...</div>
       </div>
 
       <!-- Decorative elements -->
@@ -122,6 +139,9 @@ export class WelcomeScreen {
 
     document.body.appendChild(this.container);
 
+    // MVP 16: Initialize Turnstile first (buttons will be enabled after verification)
+    this.initTurnstile();
+
     // Setup event handlers
     this.setupEventHandlers();
   }
@@ -130,10 +150,22 @@ export class WelcomeScreen {
    * Setup event handlers for buttons and pane interactions
    */
   private setupEventHandlers(): void {
-    const quickPlayButton = document.getElementById('welcome-quick-play-button');
-    const signupButton = document.getElementById('welcome-signup-button');
+    const quickPlayButton = document.getElementById('welcome-quick-play-button') as HTMLButtonElement;
+    const signupButton = document.getElementById('welcome-signup-button') as HTMLButtonElement;
     const signinLink = document.getElementById('welcome-signin-link');
     const input = document.getElementById('welcome-username') as HTMLInputElement;
+
+    // MVP 16: Disable buttons until Turnstile verification complete
+    if (quickPlayButton) {
+      quickPlayButton.disabled = true;
+      quickPlayButton.style.opacity = '0.5';
+      quickPlayButton.style.cursor = 'not-allowed';
+    }
+    if (signupButton) {
+      signupButton.disabled = true;
+      signupButton.style.opacity = '0.5';
+      signupButton.style.cursor = 'not-allowed';
+    }
 
     // Quick Play button
     if (quickPlayButton && input) {
@@ -296,6 +328,106 @@ export class WelcomeScreen {
     }
   }
 
+  /**
+   * MVP 16: Initialize Cloudflare Turnstile bot protection
+   * Buttons are disabled until verification completes
+   */
+  private async initTurnstile(): Promise<void> {
+    const container = document.getElementById('welcome-turnstile-container');
+    const statusDiv = document.getElementById('welcome-turnstile-status');
+
+    if (!container) {
+      console.error('❌ Turnstile container not found');
+      return;
+    }
+
+    // Wait for Turnstile script to load
+    const waitForTurnstile = (): Promise<void> => {
+      return new Promise((resolve) => {
+        const checkTurnstile = () => {
+          if (typeof (window as any).turnstile !== 'undefined') {
+            resolve();
+          } else {
+            setTimeout(checkTurnstile, 100);
+          }
+        };
+        checkTurnstile();
+      });
+    };
+
+    await waitForTurnstile();
+
+    // Determine site key based on hostname
+    const hostname = window.location.hostname;
+    const isProduction = hostname === 'game.hiddenwalnuts.com';
+    const TURNSTILE_SITE_KEY = isProduction
+      ? '0x4AAAAAAB7S9YhTOdtQjCTu' // Production key
+      : '1x00000000000000000000AA'; // Testing key (always passes)
+
+    console.log(`🤖 [Turnstile] Initializing on ${hostname} (${isProduction ? 'production' : 'preview'})`);
+
+    try {
+      const turnstile = (window as any).turnstile;
+      turnstile.render(container, {
+        sitekey: TURNSTILE_SITE_KEY,
+        callback: (token: string) => {
+          console.log('✅ [Turnstile] Verification successful');
+          this.turnstileToken = token;
+          this.onTurnstileComplete();
+        },
+        'error-callback': () => {
+          console.error('❌ [Turnstile] Verification failed');
+          if (statusDiv) {
+            statusDiv.textContent = '❌ Verification failed. Please refresh the page.';
+            statusDiv.style.color = '#c33';
+          }
+        },
+        theme: 'dark',
+      });
+    } catch (error) {
+      console.error('❌ [Turnstile] Failed to render:', error);
+      // Enable buttons anyway in development
+      this.onTurnstileComplete();
+    }
+  }
+
+  /**
+   * MVP 16: Called when Turnstile verification completes
+   * Enables buttons and updates UI
+   */
+  private onTurnstileComplete(): void {
+    console.log('🎯 [Turnstile] Enabling buttons');
+
+    // Enable buttons
+    const quickPlayButton = document.getElementById('welcome-quick-play-button') as HTMLButtonElement;
+    const signupButton = document.getElementById('welcome-signup-button') as HTMLButtonElement;
+
+    if (quickPlayButton) {
+      quickPlayButton.disabled = false;
+      quickPlayButton.style.opacity = '1';
+      quickPlayButton.style.cursor = 'pointer';
+    }
+
+    if (signupButton) {
+      signupButton.disabled = false;
+      signupButton.style.opacity = '1';
+      signupButton.style.cursor = 'pointer';
+    }
+
+    // Update status message
+    const statusDiv = document.getElementById('welcome-turnstile-status');
+    if (statusDiv) {
+      statusDiv.textContent = '✅ Verified! Choose an option below';
+      statusDiv.style.color = '#4CAF50';
+    }
+  }
+
+  /**
+   * MVP 16: Get Turnstile token for WebSocket authentication
+   */
+  getTurnstileToken(): string | null {
+    return this.turnstileToken;
+  }
 
   /**
    * Show welcome screen and wait for user interaction
