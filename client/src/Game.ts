@@ -16,6 +16,7 @@ import { SkyManager } from './SkyManager.js';
 import { EnticementService } from './services/EnticementService.js'; // MVP 16: Signup reminders
 import { AuthModal } from './components/AuthModal.js'; // MVP 16: Authentication modal
 import { SessionExpiredBanner } from './components/SessionExpiredBanner.js'; // MVP 16: Session expiry
+import { isAuthenticated, getCurrentUser } from './services/AuthService.js'; // MVP 16: Auth state checking
 import { TutorialOverlay } from './TutorialOverlay.js';
 import { getPlayerTitle } from '@shared/PlayerRanks';
 import { TipsManager } from './TipsManager.js'; // MVP 14: Contextual tips
@@ -4265,8 +4266,12 @@ export class Game {
    * New unified design: show appropriate content panel within single overlay
    */
   private showDeathOverlay(): void {
-    // Check if user is authenticated
-    const isAuth = localStorage.getItem('auth_token') !== null;
+    // MVP 16: Check if user is authenticated using official AuthService
+    // FIXED: Previously used wrong localStorage key 'auth_token', now uses isAuthenticated()
+    const isAuth = isAuthenticated();
+    const currentUser = getCurrentUser();
+
+    console.log(`🎯 [showDeathOverlay] Auth status: ${isAuth}, User:`, currentUser);
 
     if (isAuth) {
       // Show signed-in content panel
@@ -4336,8 +4341,13 @@ export class Game {
    * MVP 16: Handle Sign In from death screen
    */
   private handleDeathSignIn(): void {
-    console.log('TODO: Open AuthModal in sign-in mode');
-    // Will be wired to AuthModal
+    console.log('🎯 Opening login modal from death screen');
+    // Open AuthModal in login mode
+    if (this.authModal) {
+      this.authModal.open('login');
+    } else {
+      console.error('❌ AuthModal not initialized');
+    }
   }
 
   /**
