@@ -2842,6 +2842,49 @@ export class Game {
       if (this.collisionSystem) {
         this.collisionSystem.updateColliderPosition(predatorId, predator.position);
       }
+
+      // MVP 16 FIX: Update predator animation based on movement (like NPCs/players)
+      // Only for GROUND predators (wildebeest), aerial predators always fly
+      if (!isAerial) {
+        // Calculate movement speed to determine animation (idle/walk/run)
+        const distanceMoved = fromState.position.distanceTo(toState.position);
+        const timeDeltaSeconds = timeDelta / 1000; // Convert ms to seconds
+        const speed = timeDeltaSeconds > 0 ? distanceMoved / timeDeltaSeconds : 0;
+
+        // Determine animation based on speed (same thresholds as NPCs)
+        let animationName = 'idle';
+        if (speed > 3.0) {
+          animationName = 'run';
+        } else if (speed > 0.5) {
+          animationName = 'walk';
+        }
+
+        // Only switch animation if it changed (prevent unnecessary resets)
+        const currentAnimation = this.predatorCurrentAnimations.get(predatorId);
+        if (currentAnimation !== animationName) {
+          const mixer = this.predatorMixers.get(predatorId);
+          const actions = this.predatorActions.get(predatorId);
+
+          if (mixer && actions) {
+            const newAction = actions[animationName];
+            const oldAction = currentAnimation ? actions[currentAnimation] : null;
+
+            if (newAction) {
+              newAction.reset();
+              newAction.setLoop(THREE.LoopRepeat, Infinity);
+              newAction.clampWhenFinished = false;
+              newAction.play();
+
+              // Crossfade from old animation
+              if (oldAction && oldAction !== newAction) {
+                newAction.crossFadeFrom(oldAction, 0.2, true);
+              }
+
+              this.predatorCurrentAnimations.set(predatorId, animationName);
+            }
+          }
+        }
+      }
     }
   }
 
