@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 // Test comment for IDE integration
+// Additional test comment for IDE integration
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { createTerrain, setTerrainMesh } from './terrain.js';
 import { createForestFromServer, bushPositions } from './forest.js';
