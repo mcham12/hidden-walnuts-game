@@ -1,4 +1,5 @@
 // Simplified ForestManager - Basic WebSocket and world state management
+// Test comment for IDE integration
 // Updated for MVP 3.5 - Multiple character support
 // MVP 7: NPC System integration
 // MVP 7.1: Turnstile bot protection and rate limiting
