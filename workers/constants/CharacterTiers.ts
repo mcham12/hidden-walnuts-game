@@ -58,7 +58,7 @@ export function isCharacterAvailable(
   }
 
   // Authenticated users: free characters + unlocked premium
-  if (tier === 'free') return true;
+  if (tier === 'free' || tier === 'no-auth') return true;
   if (tier === 'premium' && unlockedCharacters.includes(characterId)) return true;
 
   return false;
