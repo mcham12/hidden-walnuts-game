@@ -8258,4 +8258,5 @@ export class Game {
     }
   }
 
-}
+}// MVP 16 Test: Innocuous client comment for workflow verification (post-branch switch)
+// MVP 16 Test: Innocuous client comment for workflow verification (re-append post-branch switch)
