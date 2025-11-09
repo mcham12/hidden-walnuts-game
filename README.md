@@ -173,4 +173,4 @@ Instead of enterprise complexity, you get:
 
 ---
 
-**The focus is now on making a fun, playable game rather than showcasing enterprise architecture patterns!** 🎮
+**The focus is now on making a fun, playable game rather than showcasing enterprise architecture patterns!** 🎮// Manual test comment for GitHub Actions verification (terminal - remove later)
