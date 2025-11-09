@@ -981,7 +981,8 @@ export class Game {
     // Hide button - COPY EMOTE BUTTON PATTERN: Simple, always clickable
     const hideButton = document.getElementById('mobile-hide-btn');
     if (hideButton) {
-      hideButton.addEventListener('click', () => {
+      hideButton.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
         // Haptic feedback on mobile
         if (navigator.vibrate) {
           navigator.vibrate(50);
@@ -993,12 +994,12 @@ export class Game {
       const hasSeenHideButton = localStorage.getItem('hideButtonSeen');
       if (!hasSeenHideButton) {
         hideButton.classList.add('pulse');
-        // Remove pulse after 10 seconds or first click
+        // Remove pulse after 10 seconds or first pointerdown
         setTimeout(() => {
           hideButton.classList.remove('pulse');
           localStorage.setItem('hideButtonSeen', 'true');
         }, 10000);
-        hideButton.addEventListener('click', () => {
+        hideButton.addEventListener('pointerdown', () => {
           hideButton.classList.remove('pulse');
           localStorage.setItem('hideButtonSeen', 'true');
         }, { once: true });
@@ -1008,7 +1009,8 @@ export class Game {
     // MVP 8: Wire up throw button - COPY EMOTE BUTTON PATTERN: Simple, always clickable
     const throwButton = document.getElementById('mobile-throw-btn');
     if (throwButton) {
-      throwButton.addEventListener('click', () => {
+      throwButton.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
         // Haptic feedback on mobile
         if (navigator.vibrate) {
           navigator.vibrate(50);
@@ -1020,7 +1022,8 @@ export class Game {
     // MVP 8 Phase 3: Wire up eat button - COPY EMOTE BUTTON PATTERN: Simple, always clickable
     const eatButton = document.getElementById('mobile-eat-btn');
     if (eatButton) {
-      eatButton.addEventListener('click', () => {
+      eatButton.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
         // Haptic feedback on mobile
         if (navigator.vibrate) {
           navigator.vibrate(50);
@@ -7351,8 +7354,9 @@ export class Game {
     toggleButton.classList.remove('hidden');
 
     // Toggle leaderboard visibility
-    toggleButton.addEventListener('click', () => {
-      console.log('🎯 [initLeaderboard] Toggle button clicked');
+    toggleButton.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      console.log('🎯 [initLeaderboard] Toggle button pointerdown');
       this.leaderboardVisible = !this.leaderboardVisible;
       if (this.leaderboardVisible) {
         leaderboardDiv.classList.remove('hidden');
@@ -7371,9 +7375,10 @@ export class Game {
       // Set weekly as default active tab
       weeklyTab.classList.add('active');
 
-      // Weekly tab click handler
-      weeklyTab.addEventListener('click', () => {
-        console.log('🎯 [initLeaderboard] Weekly tab clicked');
+      // Weekly tab pointerdown handler
+      weeklyTab.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        console.log('🎯 [initLeaderboard] Weekly tab pointerdown');
         if (this.currentLeaderboardTab !== 'weekly') {
           this.currentLeaderboardTab = 'weekly';
           weeklyTab.classList.add('active');
@@ -7382,9 +7387,10 @@ export class Game {
         }
       });
 
-      // All-time tab click handler
-      alltimeTab.addEventListener('click', () => {
-        console.log('🎯 [initLeaderboard] All-time tab clicked');
+      // All-time tab pointerdown handler
+      alltimeTab.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        console.log('🎯 [initLeaderboard] All-time tab pointerdown');
         if (this.currentLeaderboardTab !== 'alltime') {
           this.currentLeaderboardTab = 'alltime';
           alltimeTab.classList.add('active');
@@ -7656,8 +7662,9 @@ export class Game {
     const chatButtons = document.querySelectorAll('.chat-button');
     console.log(`✅ [initChatAndEmotes] Found ${chatButtons.length} chat buttons`);
     chatButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        console.log('🎯 [initChatAndEmotes] Chat button clicked');
+      button.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        console.log('🎯 [initChatAndEmotes] Chat button pointerdown');
         const message = (button as HTMLElement).getAttribute('data-message');
         if (message) {
           this.sendChatMessage(message);
@@ -7669,8 +7676,9 @@ export class Game {
     const emoteButtons = document.querySelectorAll('.emote-button');
     console.log(`✅ [initChatAndEmotes] Found ${emoteButtons.length} emote buttons`);
     emoteButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        console.log('🎯 [initChatAndEmotes] Emote button clicked');
+      button.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        console.log('🎯 [initChatAndEmotes] Emote button pointerdown');
         const emote = (button as HTMLElement).getAttribute('data-emote');
         if (emote) {
           this.sendEmote(emote);
@@ -8038,14 +8046,23 @@ export class Game {
       this.audioManager.playSound('ui', 'button_click');
     };
 
-    // Settings toggle button click
-    settingsToggle.addEventListener('click', showSettings);
+    // Settings toggle button pointerdown
+    settingsToggle.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      showSettings();
+    });
 
-    // Apply button
-    settingsApply.addEventListener('click', hideSettings);
+    // Apply button pointerdown
+    settingsApply.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      hideSettings();
+    });
 
-    // Cancel button
-    settingsCancel.addEventListener('click', hideSettings);
+    // Cancel button pointerdown
+    settingsCancel.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      hideSettings();
+    });
 
     // ESC key to toggle settings
     document.addEventListener('keydown', (e) => {

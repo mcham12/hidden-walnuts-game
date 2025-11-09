@@ -32,20 +32,20 @@
         overscroll-behavior: none;
       }
       /* CRITICAL: Only style the GAME canvas, not preview canvas */
-      #gameCanvas {
-        display: block;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: var(--app-height);
-        z-index: 0; /* Behind all UI */
-        pointer-events: auto;
-        touch-action: pan-y;
-        /* Prevent iOS white space */
-        -webkit-transform: translate3d(0, 0, 0);
-        transform: translate3d(0, 0, 0);
-      }
+#gameCanvas {
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: var(--app-height);
+  z-index: 0; /* Behind all UI */
+  pointer-events: auto;
+  touch-action: none;
+  /* Prevent iOS white space */
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+}
       #gameCanvas.hidden {
         display: none;
       }
