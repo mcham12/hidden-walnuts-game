@@ -117,7 +117,7 @@ export class TouchControls {
 
     // Prevent iOS Safari bounce and double-tap zoom
     document.body.style.overscrollBehavior = 'none';
-    document.body.style.touchAction = 'none';
+    this.canvas.style.touchAction = 'none';
 
     console.log('✅ Touch controls enabled (drag-to-move)');
   }
