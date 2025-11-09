@@ -688,3 +688,12 @@ DEFERRED UNTIL LATER: **Audit Logging:**
 ---
 
 **Next Step**: Begin MVP 12 (World Polish and Predators & Threats) ⚔️
+
+## 🔧 Shell Append Test (Via run_terminal_command - 2025-11-05)
+
+**Purpose**: Bypassing edit tool to test direct FS write + git integration.
+
+**Added By**: AI Agent via zsh
+**Branch**: mvp-16-simple
+
+This confirms terminal commands can modify files.
