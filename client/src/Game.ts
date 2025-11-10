@@ -970,6 +970,20 @@ export class Game {
 
     // MVP 5.7: Initialize mobile action buttons (Hide, future: Throw)
     this.initMobileActionButtons();
+
+    // Add orientation change listener
+    window.addEventListener('orientationchange', () => {
+      // Call onResize to update camera and renderer
+      this.onResize();
+      
+      // Reset touch controls if active
+      if (this.touchControls) {
+        this.touchControls.onOrientationChange();
+      }
+      
+      // Clear movement keys to prevent stuck input
+      this.keys.clear();
+    });
   }
 
   /**
@@ -1037,6 +1051,11 @@ export class Game {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    
+    // Additional reset for touch controls
+    if (this.touchControls) {
+      this.touchControls.onOrientationChange();
+    }
   }
 
   start() {

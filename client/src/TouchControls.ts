@@ -64,6 +64,21 @@ export class TouchControls {
     if (TouchControls.isMobile()) {
       this.enable();
     }
+
+    // Add orientation change listener to reset states
+    window.addEventListener('orientationchange', this.onOrientationChange.bind(this));
+  }
+
+  public onOrientationChange(): void {
+    // Reset touch states on rotation
+    this.touches.clear();
+    this.dragStartPos = null;
+    this.currentDragPos = null;
+    this.isDragging = false;
+    this.cameraDragStart = null;
+    this.lastTapTime = 0;
+    this.lastTapPos = null;
+    this.clearMovementInput();
   }
 
   /**
