@@ -981,8 +981,7 @@ export class Game {
     // Hide button - COPY EMOTE BUTTON PATTERN: Simple, always clickable
     const hideButton = document.getElementById('mobile-hide-btn');
     if (hideButton) {
-      hideButton.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+      hideButton.addEventListener('click', () => {
         // Haptic feedback on mobile
         if (navigator.vibrate) {
           navigator.vibrate(50);
@@ -1009,8 +1008,7 @@ export class Game {
     // MVP 8: Wire up throw button - COPY EMOTE BUTTON PATTERN: Simple, always clickable
     const throwButton = document.getElementById('mobile-throw-btn');
     if (throwButton) {
-      throwButton.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+      throwButton.addEventListener('click', () => {
         // Haptic feedback on mobile
         if (navigator.vibrate) {
           navigator.vibrate(50);
@@ -1022,8 +1020,7 @@ export class Game {
     // MVP 8 Phase 3: Wire up eat button - COPY EMOTE BUTTON PATTERN: Simple, always clickable
     const eatButton = document.getElementById('mobile-eat-btn');
     if (eatButton) {
-      eatButton.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+      eatButton.addEventListener('click', () => {
         // Haptic feedback on mobile
         if (navigator.vibrate) {
           navigator.vibrate(50);
@@ -7375,8 +7372,7 @@ export class Game {
       weeklyTab.classList.add('active');
 
       // Weekly tab pointerdown handler
-      weeklyTab.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+      weeklyTab.addEventListener('click', () => {
         console.log('🎯 [initLeaderboard] Weekly tab pointerdown');
         if (this.currentLeaderboardTab !== 'weekly') {
           this.currentLeaderboardTab = 'weekly';
@@ -7387,8 +7383,7 @@ export class Game {
       });
 
       // All-time tab pointerdown handler
-      alltimeTab.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+      alltimeTab.addEventListener('click', () => {
         console.log('🎯 [initLeaderboard] All-time tab pointerdown');
         if (this.currentLeaderboardTab !== 'alltime') {
           this.currentLeaderboardTab = 'alltime';
