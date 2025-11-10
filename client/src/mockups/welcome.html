@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Hidden Walnuts</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0f3d0f;
+      font-family: 'Comic Sans MS', cursive, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      color: white;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      perspective: 1200px;
+    }
+    .scene {
+      position: relative;
+      width: 320px;
+      height: 480px;
+      transform-style: preserve-3d;
+      animation: float 6s infinite ease-in-out;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-20px); }
+    }
+    .card {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.9s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+      cursor: pointer;
+    }
+    .card.flipped {
+      transform: rotateY(180deg);
+    }
+    .face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 24px;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    }
+    .front {
+      background: linear-gradient(135deg, #8B4513, #D2691E);
+    }
+    .back {
+      background: linear-gradient(135deg, #1b5e20, #2e7d32);
+      transform: rotateY(180deg);
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    .tagline {
+      font-size: 16px;
+      margin-bottom: 20px;
+      opacity: 0.9;
+    }
+    input {
+      width: 85%;
+      padding: 14px;
+      margin: 15px 0;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      text-align: center;
+      background: rgba(255,255,255,0.9);
+      color: #333;
+    }
+    button {
+      padding: 16px 36px;
+      background: #32CD32;
+      color: white;
+      border: none;
+      border-radius: 30px;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: #228B22;
+      transform: scale(1.05);
+    }
+    .squirrel {
+      font-size: 60px;
+      margin-bottom: 10px;
+      animation: peek 3s infinite;
+    }
+    @keyframes peek {
+      0%, 100% { transform: translateX(-20px) rotate(-10deg); }
+      50% { transform: translateX(0) rotate(0); }
+    }
+    .carousel {
+      position: relative;
+      width: 100%;
+      height: 60px;
+      margin: 20px 0;
+      overflow: hidden;
+    }
+    .carousel .char {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 42px;
+      opacity: 0;
+      transition: opacity 0.5s;
+      animation: bounce 1.5s infinite ease-in-out;
+    }
+    .carousel .char.active {
+      opacity: 1;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0) translateX(-50%); }
+      50% { transform: translateY(-15px) translateX(-50%); }
+    }
+    .progress-container {
+      width: 80%;
+      height: 16px;
+      background: rgba(0,0,0,0.4);
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 20px 0;
+      display: none;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #32CD32, #90EE90);
+      transition: width 0.1s;
+      border-radius: 8px;
+    }
+    .match-text {
+      font-size: 18px;
+      margin-top: 10px;
+      display: none;
+    }
+    .signin-tease {
+      position: absolute;
+      bottom: 20px;
+      font-size: 14px;
+      color: #ffeb3b;
+    }
+    .signin-tease a {
+      color: #ffd700;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .crack {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 80px;
+      color: gold;
+      opacity: 0;
+      pointer-events: none;
+      animation: crackBurst 0.6s forwards;
+    }
+    @keyframes crackBurst {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="scene">
+    <div class="card" id="card">
+      <!-- FRONT -->
+      <div class="face front">
+        <div class="squirrel">🐿️</div>
+        <h1>HIDDEN WALNUTS</h1>
+        <p class="tagline">Welcome to the Forest</p>
+        <input type="text" id="nameInput" placeholder="Your name..." maxlength="16" />
+        <button id="playBtn">PLAY NOW!</button>
+      </div>
+
+      <!-- BACK -->
+      <div class="face back">
+        <h1>🌲🌰🌲</h1>
+        <div class="carousel" id="carousel">
+          <div class="char" data-index="0">🦊</div>
+          <div class="char" data-index="1">🐻</div>
+          <div class="char" data-index="2">🐰</div>
+          <div class="char" data-index="3">🐦</div>
+          <div class="char" data-index="4">🐸</div>
+          <div class="char" data-index="5">🦡</div>
+        </div>
+        <div class="progress-container" id="progressContainer">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="match-text" id="matchText">Getting forest ready...</div>
+      </div>
+    </div>
+
+    <div class="signin-tease">
+      Want 6 FREE characters? <a onclick="alert('Sign in with Google/Email → Unlock 6 characters + leaderboard!')">Sign In!</a>
+    </div>
+  </div>
+
+  <div class="crack" id="crack">CRACK!</div>
+
+  <script>
+    const card = document.getElementById('card');
+    const playBtn = document.getElementById('playBtn');
+    const nameInput = document.getElementById('nameInput');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const matchText = document.getElementById('matchText');
+    const crack = document.getElementById('crack');
+    const carousel = document.getElementById('carousel');
+    const chars = carousel.querySelectorAll('.char');
+
+    let isFlipped = false;
+    let currentChar = 0;
+    let carouselInterval;
+
+    function rotateCarousel() {
+      chars.forEach(char => char.classList.remove('active'));
+      chars[currentChar].classList.add('active');
+      currentChar = (currentChar + 1) % chars.length;
+    }
+
+    playBtn.addEventListener('click', () => {
+      if (isFlipped) return;
+      isFlipped = true;
+
+      const name = nameInput.value.trim() || 'Squirrel';
+      console.log('Player:', name);
+
+      // CRACK!
+      crack.style.opacity = 1;
+      setTimeout(() => crack.style.opacity = 0, 600);
+
+      // Flip card
+      card.classList.add('flipped');
+
+      // Start loading and carousel
+      setTimeout(() => {
+        progressContainer.style.display = 'block';
+        matchText.style.display = 'block';
+        matchText.innerHTML = 'Getting forest ready...';
+
+        // Start auto-carousel
+        rotateCarousel(); // Show first
+        carouselInterval = setInterval(rotateCarousel, 1500); // Rotate every 1.5s
+
+        let width = 0;
+        const interval = setInterval(() => {
+          width += 5;
+          progressBar.style.width = width + '%';
+          if (width >= 100) {
+            clearInterval(interval);
+            clearInterval(carouselInterval);
+            matchText.innerHTML = 'Forest ready! 🌰';
+            setTimeout(() => {
+              document.body.style.transition = 'opacity 1s';
+              document.body.style.opacity = '0';
+              setTimeout(() => {
+                alert('GAME STARTED!\nYou are now hunting walnuts as ' + name + '!');
+                // window.location = 'game.html';
+              }, 1000);
+            }, 800);
+          }
+        }, 150);
+      }, 400);
+    });
+
+    // Auto-focus input
+    nameInput.focus();
+  </script>
+</body>
+</html>

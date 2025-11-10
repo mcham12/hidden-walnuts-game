@@ -500,17 +500,20 @@ export default class ForestManager extends DurableObject {
         });
       }
 
-      // MVP 7.1: Validate Turnstile token (if provided)
-      if (turnstileToken) {
-        const isValidTurnstile = await this.validateTurnstileToken(turnstileToken);
-        if (!isValidTurnstile) {
-          console.warn(`❌ Turnstile validation failed for ${squirrelId}, rejecting connection`);
-          return new Response('Turnstile verification failed. Please refresh the page.', { status: 403 });
-        }
-      } else {
-        // No token provided - log but allow (for backwards compatibility during rollout)
-        console.warn(`⚠️ No Turnstile token provided for ${squirrelId} (${username})`);
+      // MVP 7.1: ENFORCE Turnstile token (REQUIRED for all connections)
+      // SECURITY FIX: Tokens are now mandatory to prevent bot bypass
+      if (!turnstileToken) {
+        console.warn(`❌ No Turnstile token provided for ${squirrelId} (${username}), rejecting connection`);
+        return new Response('Bot verification required. Please refresh the page.', { status: 403 });
       }
+
+      const isValidTurnstile = await this.validateTurnstileToken(turnstileToken);
+      if (!isValidTurnstile) {
+        console.warn(`❌ Turnstile validation failed for ${squirrelId}, rejecting connection`);
+        return new Response('Bot verification failed. Please refresh the page.', { status: 403 });
+      }
+
+      console.log(`✅ Turnstile validation successful for ${username}`);
 
       // MVP 16: Validate character selection based on authentication and unlocked characters
       let isAuthenticated = false;
