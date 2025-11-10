@@ -340,6 +340,20 @@ async function main() {
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     console.log('✅ [main.ts] DOM fully ready, re-initializing UI components...');
 
+    // CRITICAL FIX: Reset initialization guards before re-initializing
+    // The init methods have guards that prevent duplicate initialization, but we NEED
+    // to re-initialize after overlays (WelcomeScreen, AuthModal) hide because:
+    // 1. Event listeners may be lost when DOM is manipulated
+    // 2. High z-index overlays may have interfered with initial attachment
+    // 3. WebSocket auth changes may have reset UI state
+    //
+    // Without resetting guards, the second call is completely blocked and NO event
+    // listeners are attached, breaking ALL UI controls.
+    console.log('🔧 [main.ts] Resetting initialization guards to allow re-init...');
+    (game as any).leaderboardInitialized = false;
+    (game as any).chatEmotesInitialized = false;
+    (game as any).settingsInitialized = false;
+
     // Re-initialize UI components to ensure event listeners are properly attached
     // This fixes the issue where buttons weren't clickable after WebSocket auth changes
     if (typeof (game as any).initLeaderboard === 'function') {
@@ -360,6 +374,9 @@ async function main() {
     audioManager.startBackgroundAudio();
 
     // MVP 5: Show persistent control guide (desktop only)
+    // Note: control-guide and touch-controls-hint elements were removed from HTML
+    // in a previous refactor. This code is kept for reference but will be skipped
+    // due to null checks. Tutorial system now uses the contextual tips system instead.
     const controlGuide = document.getElementById('control-guide');
     const controlGuideClose = document.getElementById('control-guide-close');
 
@@ -368,7 +385,7 @@ async function main() {
     const isMobile = TouchControls.isMobile();
 
     if (isMobile) {
-      // Show touch controls hint on mobile
+      // Show touch controls hint on mobile (if element exists)
       const touchHint = document.getElementById('touch-controls-hint');
       if (touchHint) {
         const touchHintDismissed = localStorage.getItem('touchHintDismissed');
@@ -382,15 +399,19 @@ async function main() {
             audioManager.playSound('ui', 'button_click');
           });
         }
+      } else {
+        console.log('ℹ️ [main.ts] touch-controls-hint element not found (expected - using contextual tips instead)');
       }
 
       // MVP 5.7: Show mobile action buttons on mobile
       const mobileActions = document.getElementById('mobile-actions');
       if (mobileActions) {
         mobileActions.classList.add('visible');
+      } else {
+        console.warn('⚠️ [main.ts] mobile-actions element not found');
       }
     } else {
-      // Show desktop control guide
+      // Show desktop control guide (if element exists)
       if (controlGuide) {
         const dismissed = localStorage.getItem('controlGuideDismissed');
         if (!dismissed) {
@@ -405,6 +426,8 @@ async function main() {
             audioManager.playSound('ui', 'button_click');
           });
         }
+      } else {
+        console.log('ℹ️ [main.ts] control-guide element not found (expected - using contextual tips instead)');
       }
     }
 
