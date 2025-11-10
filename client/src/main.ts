@@ -335,40 +335,17 @@ async function main() {
       walnutHud.classList.remove('hidden');
     }
 
-    // MVP 16: Ensure DOM fully ready before UI initialization (P0 fix)
-    // Double requestAnimationFrame ensures all layout/rendering is complete
+    // MVP 16: Ensure DOM fully ready before showing UI
+    // Double requestAnimationFrame ensures all layout/rendering is complete after overlays hide
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    console.log('✅ [main.ts] DOM fully ready, re-initializing UI components...');
+    console.log('✅ [main.ts] DOM fully ready, UI should be interactive now');
 
-    // CRITICAL FIX: Reset initialization guards before re-initializing
-    // The init methods have guards that prevent duplicate initialization, but we NEED
-    // to re-initialize after overlays (WelcomeScreen, AuthModal) hide because:
-    // 1. Event listeners may be lost when DOM is manipulated
-    // 2. High z-index overlays may have interfered with initial attachment
-    // 3. WebSocket auth changes may have reset UI state
+    // REMOVED: Problematic re-initialization code that was causing issues
+    // The UI components are already initialized in game.init() and should work correctly.
+    // Re-initializing was causing race conditions, duplicate listeners, and timing issues.
     //
-    // Without resetting guards, the second call is completely blocked and NO event
-    // listeners are attached, breaking ALL UI controls.
-    console.log('🔧 [main.ts] Resetting initialization guards to allow re-init...');
-    (game as any).leaderboardInitialized = false;
-    (game as any).chatEmotesInitialized = false;
-    (game as any).settingsInitialized = false;
-
-    // Re-initialize UI components to ensure event listeners are properly attached
-    // This fixes the issue where buttons weren't clickable after WebSocket auth changes
-    if (typeof (game as any).initLeaderboard === 'function') {
-      console.log('🔧 [main.ts] Re-initializing leaderboard...');
-      (game as any).initLeaderboard();
-    }
-    if (typeof (game as any).initChatAndEmotes === 'function') {
-      console.log('🔧 [main.ts] Re-initializing chat and emotes...');
-      (game as any).initChatAndEmotes();
-    }
-    if (typeof (game as any).initSettingsMenu === 'function') {
-      console.log('🔧 [main.ts] Re-initializing settings menu...');
-      (game as any).initSettingsMenu();
-    }
-    console.log('✅ [main.ts] UI components re-initialized successfully');
+    // If controls still don't work, the issue is elsewhere (blocking elements, CSS, etc.)
+    // not in the initialization sequence.
 
     // MVP 11: Start background audio (ambient forest sounds + music)
     audioManager.startBackgroundAudio();
