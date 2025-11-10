@@ -1402,12 +1402,13 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        pointer-events: auto;
+        pointer-events: none; /* CRITICAL: Disabled by default to prevent blocking UI controls */
         opacity: 0;
         transition: opacity 0.5s ease;
       }
       #death-overlay:not(.hidden) {
         opacity: 1;
+        pointer-events: auto; /* CRITICAL: Only enable when actually visible */
       }
       .death-unified-content {
         background: linear-gradient(135deg, rgba(139, 69, 19, 0.95), rgba(101, 67, 33, 0.95));
