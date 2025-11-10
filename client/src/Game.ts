@@ -7354,8 +7354,7 @@ export class Game {
     toggleButton.classList.remove('hidden');
 
     // Toggle leaderboard visibility
-    toggleButton.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
+    toggleButton.addEventListener('click', () => {
       console.log('🎯 [initLeaderboard] Toggle button pointerdown');
       this.leaderboardVisible = !this.leaderboardVisible;
       if (this.leaderboardVisible) {
@@ -7661,9 +7660,8 @@ export class Game {
     // Setup quick chat buttons
     const chatButtons = document.querySelectorAll('.chat-button');
     console.log(`✅ [initChatAndEmotes] Found ${chatButtons.length} chat buttons`);
-    chatButtons.forEach((button) => {
-      button.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+      chatButtons.forEach((button) => {
+        button.addEventListener('click', () => {
         console.log('🎯 [initChatAndEmotes] Chat button pointerdown');
         const message = (button as HTMLElement).getAttribute('data-message');
         if (message) {
@@ -7675,9 +7673,8 @@ export class Game {
     // Setup emote buttons
     const emoteButtons = document.querySelectorAll('.emote-button');
     console.log(`✅ [initChatAndEmotes] Found ${emoteButtons.length} emote buttons`);
-    emoteButtons.forEach((button) => {
-      button.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+      emoteButtons.forEach((button) => {
+        button.addEventListener('click', () => {
         console.log('🎯 [initChatAndEmotes] Emote button pointerdown');
         const emote = (button as HTMLElement).getAttribute('data-emote');
         if (emote) {
@@ -8047,20 +8044,17 @@ export class Game {
     };
 
     // Settings toggle button pointerdown
-    settingsToggle.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
+    settingsToggle.addEventListener('click', () => {
       showSettings();
     });
 
     // Apply button pointerdown
-    settingsApply.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
+    settingsApply.addEventListener('click', () => {
       hideSettings();
     });
 
     // Cancel button pointerdown
-    settingsCancel.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
+    settingsCancel.addEventListener('click', () => {
       hideSettings();
     });
 
