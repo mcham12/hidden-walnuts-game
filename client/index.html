@@ -2519,6 +2519,13 @@
           min-height: 44px;
         }
       }
+
+      /* Ensure hidden guides do not block events */
+      #control-guide.hidden,
+      #touch-controls-hint.hidden {
+        display: none !important;
+        pointer-events: none !important;
+      }
     </style>
   </head>
   <body>
