@@ -284,31 +284,34 @@ export class AuthModal {
 
   /**
    * Close the modal
-   * MVP 16 FIX: Add pointer-events: none to prevent Safari click blocking
+   * MVP 16 FIX: Set pointer-events:none IMMEDIATELY to prevent click blocking
+   *
+   * Critical: Must disable pointer events BEFORE starting fade animation.
+   * If we wait until after the 300ms timeout, the invisible overlay blocks
+   * all clicks during the fade, breaking all UI controls.
    */
   public close(): void {
     this.isOpen = false;
     document.body.classList.remove('auth-modal-open');
 
-    // Fade out
+    // CRITICAL: Disable pointer events IMMEDIATELY (before fade starts)
+    // This ensures clicks pass through even during the fade animation
     if (this.backdrop) {
+      this.backdrop.style.pointerEvents = 'none';
       this.backdrop.style.opacity = '0';
     }
     if (this.modalElement) {
+      this.modalElement.style.pointerEvents = 'none';
       this.modalElement.style.opacity = '0';
     }
 
-    // Hide after animation
+    // Hide completely after animation
     setTimeout(() => {
       if (this.backdrop) {
         this.backdrop.style.display = 'none';
-        // MVP 16 FIX: Disable pointer events to prevent Safari from blocking clicks
-        this.backdrop.style.pointerEvents = 'none';
       }
       if (this.modalElement) {
         this.modalElement.style.display = 'none';
-        // MVP 16 FIX: Disable pointer events to prevent Safari from blocking clicks
-        this.modalElement.style.pointerEvents = 'none';
       }
     }, 300);
 

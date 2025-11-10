@@ -514,21 +514,27 @@ export class WelcomeScreen {
 
   /**
    * Hide welcome screen with fade out
-   * MVP 16 FIX: Add pointer-events: none to prevent Safari click blocking
+   * MVP 16 FIX: Set pointer-events:none IMMEDIATELY to prevent click blocking
+   *
+   * Critical: Must disable pointer events BEFORE starting fade animation.
+   * If we wait until after the 500ms timeout, the invisible overlay blocks
+   * all clicks during the fade, breaking all UI controls.
    */
   async hide(): Promise<void> {
     return new Promise((resolve) => {
       if (this.container) {
+        // CRITICAL: Disable pointer events IMMEDIATELY (before fade starts)
+        // This ensures clicks pass through even during the fade animation
+        this.container.style.pointerEvents = 'none';
+
+        // Start fade out animation
         this.container.style.transition = 'opacity 0.5s ease-out';
         this.container.style.opacity = '0';
 
+        // Hide completely after animation
         setTimeout(() => {
           if (this.container) {
             this.container.style.display = 'none';
-            // MVP 16 FIX: Disable pointer events to prevent Safari from blocking clicks
-            // Even with display:none, Safari can sometimes treat high z-index elements
-            // as blocking. This ensures clicks pass through to game UI.
-            this.container.style.pointerEvents = 'none';
           }
           resolve();
         }, 500);

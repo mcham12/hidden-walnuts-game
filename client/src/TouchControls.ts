@@ -65,8 +65,8 @@ export class TouchControls {
       this.enable();
     }
 
-    // Add orientation change listener to reset states
-    window.addEventListener('orientationchange', this.onOrientationChange.bind(this));
+    // Note: Orientation change is handled by Game.ts to avoid duplicate listeners.
+    // Game.ts registers the orientationchange event and calls this.onOrientationChange()
   }
 
   public onOrientationChange(): void {
