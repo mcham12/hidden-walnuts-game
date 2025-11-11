@@ -36,7 +36,7 @@ export class WelcomeScreen {
 
   /**
    * Create HTML structure for welcome screen
-   * MVP 16: Two-column layout with Quick Play (left) and Sign Up Free (right)
+   * Flip-card layout with front (welcome) and back (loading) states
    */
   private createHTML(): void {
     // Create container
@@ -44,89 +44,86 @@ export class WelcomeScreen {
     this.container.id = 'welcome-screen';
     this.container.innerHTML = `
       <div class="welcome-content">
-        <!-- Title and Tagline at Top -->
-        <div class="welcome-header">
-          <h1 class="welcome-title">Hidden Walnuts</h1>
-          <p class="welcome-tagline">Welcome to the Forest</p>
-        </div>
+        <!-- Flip Card Scene -->
+        <div class="welcome-scene">
+          <div class="welcome-card" id="welcome-card">
 
-        <!-- Two Column Layout -->
-        <div class="welcome-columns">
-          <!-- Left Column: Quick Play -->
-          <div class="welcome-column welcome-column-left">
-            <h2 class="column-title">QUICK PLAY</h2>
-            <p class="column-subtitle">No login needed!</p>
+            <!-- FRONT FACE -->
+            <div class="card-face card-face-front">
+              <div class="card-top">
+                <h1 class="card-title">HIDDEN WALNUTS</h1>
+                <p class="card-tagline">Welcome to the Forest</p>
 
-            <div class="welcome-form">
-              <input
-                type="text"
-                id="welcome-username"
-                class="welcome-input"
-                placeholder="Enter your name"
-                maxlength="20"
-                autocomplete="off"
-                spellcheck="false"
-              />
-
-              <!-- 3D Character Preview -->
-              <div class="character-preview-mini">
-                <div id="squirrel-preview-container" style="width: 100%; height: 300px;"></div>
-                <p class="character-label">Squirrel</p>
+                <!-- 3D Character (Squirrel) -->
+                <div class="card-character-3d" id="front-character-container"></div>
               </div>
 
-              <button id="welcome-quick-play-button" class="welcome-button quick-play-button">
-                QUICK PLAY!
-              </button>
+              <div class="card-bottom">
+                <!-- Turnstile Bot Protection -->
+                <div class="card-turnstile" id="welcome-turnstile-container"></div>
+
+                <!-- Username Input -->
+                <input
+                  type="text"
+                  id="welcome-username-input"
+                  class="card-input"
+                  placeholder="Your name..."
+                  maxlength="20"
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+
+                <!-- Primary Action Button -->
+                <button id="welcome-play-button" class="card-button-primary" disabled>
+                  🎮 PLAY AS GUEST
+                </button>
+
+                <!-- Auth Links -->
+                <div class="card-auth-links">
+                  <p class="card-auth-cta">🌟 Sign up for 6 FREE characters!</p>
+                  <div class="card-auth-buttons">
+                    <button id="welcome-signup-link" class="card-auth-link card-auth-link-signup">
+                      Sign Up Free
+                    </button>
+                    <button id="welcome-login-link" class="card-auth-link card-auth-link-login">
+                      Log In
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <!-- Right Column: Sign Up Free -->
-          <div class="welcome-column welcome-column-right">
-            <h2 class="column-title">SIGN UP FREE</h2>
-            <p class="column-subtitle">Unlock 6 FREE characters!</p>
-
-            <div class="welcome-form">
-              <input
-                type="text"
-                id="welcome-signup-username"
-                class="welcome-input"
-                placeholder="Enter your name"
-                maxlength="20"
-                autocomplete="off"
-                spellcheck="false"
-              />
-
-              <!-- Rotating Character Carousel -->
-              <div class="character-preview-mini">
-                <div id="carousel-preview-container" style="width: 100%; height: 300px;"></div>
-                <p class="character-label" id="carousel-character-name">Hare</p>
+            <!-- BACK FACE (Loading State) -->
+            <div class="card-face card-face-back">
+              <div class="card-top">
+                <h2 class="card-loading-title">🌲 🌰 🌲</h2>
+                <div class="card-progress-container">
+                  <div class="card-progress-bar" id="card-progress-bar"></div>
+                </div>
+                <p class="card-loading-text" id="card-loading-text">Preparing your adventure...</p>
               </div>
 
-              <button id="welcome-signup-button" class="welcome-button signup-button">
-                SIGN UP
-              </button>
+              <div class="card-bottom">
+                <!-- 3D Character (Random Free Character) -->
+                <div class="card-character-3d" id="back-character-container"></div>
+
+                <!-- Auth Links (Same as front) -->
+                <div class="card-auth-links">
+                  <p class="card-auth-cta">🌟 Sign up for 6 FREE characters!</p>
+                  <div class="card-auth-buttons">
+                    <button id="welcome-signup-link-back" class="card-auth-link card-auth-link-signup">
+                      Sign Up Free
+                    </button>
+                    <button id="welcome-login-link-back" class="card-auth-link card-auth-link-login">
+                      Log In
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
+
           </div>
         </div>
-
-        <!-- Sign In Link Below -->
-        <div class="welcome-footer">
-          <button id="welcome-signin-link" class="signin-link">🔒 Sign In</button>
-        </div>
-
-        <!-- MVP 16: Turnstile Bot Protection -->
-        <div id="welcome-turnstile-container" style="
-          display: flex;
-          justify-content: center;
-          margin-top: 20px;
-          margin-bottom: 10px;
-        "></div>
-        <div id="welcome-turnstile-status" style="
-          text-align: center;
-          color: #888;
-          font-size: 14px;
-          margin-bottom: 20px;
-        ">🤖 Verifying you're human...</div>
       </div>
 
       <!-- Decorative elements -->
@@ -139,7 +136,7 @@ export class WelcomeScreen {
 
     document.body.appendChild(this.container);
 
-    // MVP 16: Initialize Turnstile first (buttons will be enabled after verification)
+    // Initialize Turnstile first (button will be enabled after verification)
     this.initTurnstile();
 
     // Setup event handlers
@@ -147,140 +144,76 @@ export class WelcomeScreen {
   }
 
   /**
-   * Setup event handlers for buttons and pane interactions
+   * Setup event handlers for flip card buttons
    */
   private setupEventHandlers(): void {
-    const quickPlayButton = document.getElementById('welcome-quick-play-button') as HTMLButtonElement;
-    const signupButton = document.getElementById('welcome-signup-button') as HTMLButtonElement;
-    const signinLink = document.getElementById('welcome-signin-link');
-    const input = document.getElementById('welcome-username') as HTMLInputElement;
+    const playButton = document.getElementById('welcome-play-button') as HTMLButtonElement;
+    const signupLink = document.getElementById('welcome-signup-link');
+    const loginLink = document.getElementById('welcome-login-link');
+    const signupLinkBack = document.getElementById('welcome-signup-link-back');
+    const loginLinkBack = document.getElementById('welcome-login-link-back');
+    const input = document.getElementById('welcome-username-input') as HTMLInputElement;
 
-    // MVP 16: Disable buttons until Turnstile verification complete
-    if (quickPlayButton) {
-      quickPlayButton.disabled = true;
-      quickPlayButton.style.opacity = '0.5';
-      quickPlayButton.style.cursor = 'not-allowed';
-    }
-    if (signupButton) {
-      signupButton.disabled = true;
-      signupButton.style.opacity = '0.5';
-      signupButton.style.cursor = 'not-allowed';
-    }
-
-    // Quick Play button
-    if (quickPlayButton && input) {
-      quickPlayButton.addEventListener('click', () => this.onQuickPlayClick());
+    // Play as Guest button (already disabled, will be enabled by Turnstile)
+    if (playButton && input) {
+      playButton.addEventListener('click', () => this.onPlayAsGuestClick());
 
       // Allow Enter key to submit
       input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          this.onQuickPlayClick();
+        if (e.key === 'Enter' && !playButton.disabled) {
+          this.onPlayAsGuestClick();
         }
       });
     }
 
-    // Sign Up button
-    if (signupButton) {
-      signupButton.addEventListener('click', () => this.onSignUpClick());
+    // Sign Up links (front and back)
+    if (signupLink) {
+      signupLink.addEventListener('click', () => this.onSignUpClick());
+    }
+    if (signupLinkBack) {
+      signupLinkBack.addEventListener('click', () => this.onSignUpClick());
     }
 
-    // Sign In link
-    if (signinLink) {
-      signinLink.addEventListener('click', () => this.onSignInClick());
+    // Log In links (front and back)
+    if (loginLink) {
+      loginLink.addEventListener('click', () => this.onSignInClick());
+    }
+    if (loginLinkBack) {
+      loginLinkBack.addEventListener('click', () => this.onSignInClick());
     }
 
-    // MVP 16: Overlapping pane interaction
-    const leftPane = this.container?.querySelector('.welcome-column-left');
-    const rightPane = this.container?.querySelector('.welcome-column-right');
-
-    if (leftPane && rightPane) {
-      // Bring pane to front on hover/click
-      const bringToFront = (pane: Element, otherPane: Element) => {
-        pane.classList.add('active');
-        otherPane.classList.remove('active');
-      };
-
-      // Left pane interactions
-      leftPane.addEventListener('mouseenter', () => bringToFront(leftPane, rightPane));
-      leftPane.addEventListener('click', () => bringToFront(leftPane, rightPane));
-
-      // Right pane interactions
-      rightPane.addEventListener('mouseenter', () => bringToFront(rightPane, leftPane));
-      rightPane.addEventListener('click', () => bringToFront(rightPane, leftPane));
-
-      // Touch support for mobile
-      leftPane.addEventListener('touchstart', () => bringToFront(leftPane, rightPane));
-      rightPane.addEventListener('touchstart', () => bringToFront(rightPane, leftPane));
-
-      // Start with left pane active
-      leftPane.classList.add('active');
-    }
+    // Removed old pane interaction code (no longer needed for flip card)
   }
 
   /**
    * Initialize 3D character previews
+   * Front card: Squirrel
+   * Back card: Random free character (initialized when card flips)
    */
   private async init3DPreviews(): Promise<void> {
     try {
       // Ensure CharacterRegistry is loaded first
       await CharacterRegistry.loadCharacters();
 
-      // Initialize squirrel preview (left column) - closer camera for bigger character
+      // Initialize squirrel preview for front card
       this.squirrelPreview = new CharacterPreview3D(
-        'squirrel-preview-container',
+        'front-character-container',
         'squirrel',
         { rotationSpeed: 0.005, autoRotate: true, showAnimation: true, cameraDistance: 2 }
       );
       await this.squirrelPreview.init();
 
-      // Initialize carousel preview (right column)
-      // Free characters: hare, goat, chipmunk, turkey, mallard, squirrel
-      const freeCharacters = [
-        { id: 'hare', name: 'Hare' },
-        { id: 'goat', name: 'Goat' },
-        { id: 'chipmunk', name: 'Chipmunk' },
-        { id: 'turkey', name: 'Turkey' },
-        { id: 'mallard', name: 'Mallard' },
-        { id: 'squirrel', name: 'Squirrel' }
-      ];
-
-      let currentIndex = 0;
-
-      this.carouselPreview = new CharacterPreview3D(
-        'carousel-preview-container',
-        freeCharacters[0].id,
-        { rotationSpeed: 0.005, autoRotate: true, showAnimation: true, cameraDistance: 2 }
-      );
-      await this.carouselPreview.init();
-
-      // Update character name label
-      const nameLabel = document.getElementById('carousel-character-name');
-      if (nameLabel) {
-        nameLabel.textContent = freeCharacters[0].name;
-      }
-
-      // Rotate carousel every 3 seconds
-      this.carouselInterval = window.setInterval(async () => {
-        currentIndex = (currentIndex + 1) % freeCharacters.length;
-        const nextChar = freeCharacters[currentIndex];
-
-        await this.carouselPreview?.switchCharacter(nextChar.id);
-
-        // Update name label
-        if (nameLabel) {
-          nameLabel.textContent = nextChar.name;
-        }
-      }, 3000);
+      // Back card character will be initialized when card flips (see onPlayAsGuestClick)
     } catch (error) {
       console.error('Error initializing 3D previews:', error);
     }
   }
 
   /**
-   * Handle Quick Play click
+   * Handle Play as Guest click - flips card and shows loading
    */
-  private onQuickPlayClick(): void {
-    const input = document.getElementById('welcome-username') as HTMLInputElement;
+  private async onPlayAsGuestClick(): Promise<void> {
+    const input = document.getElementById('welcome-username-input') as HTMLInputElement;
     const username = input?.value.trim() || '';
 
     if (!username) {
@@ -288,6 +221,20 @@ export class WelcomeScreen {
       return;
     }
 
+    // Disable button to prevent double-click
+    const playButton = document.getElementById('welcome-play-button') as HTMLButtonElement;
+    if (playButton) {
+      playButton.disabled = true;
+      playButton.style.opacity = '0.5';
+    }
+
+    // Flip card to back (loading state)
+    await this.flipCardToBack();
+
+    // Show loading progress
+    await this.showLoadingProgress();
+
+    // Resolve with username to start game
     if (this.resolvePromise) {
       this.resolvePromise(username);
     }
@@ -298,9 +245,9 @@ export class WelcomeScreen {
    */
   private onSignUpClick(): void {
     if (this.authModal) {
-      // Get username from sign up pane input field
-      const signupUsernameInput = document.getElementById('welcome-signup-username') as HTMLInputElement;
-      const username = signupUsernameInput?.value.trim() || '';
+      // Get username from card input field
+      const usernameInput = document.getElementById('welcome-username-input') as HTMLInputElement;
+      const username = usernameInput?.value.trim() || '';
 
       // Open AuthModal with prefilled username if provided
       this.authModal.open('signup', username ? { username } : undefined);
@@ -326,6 +273,85 @@ export class WelcomeScreen {
     if (this.resolvePromise && userData.username) {
       this.resolvePromise(userData.username);
     }
+  }
+
+  /**
+   * Flip card to back (loading state)
+   */
+  private async flipCardToBack(): Promise<void> {
+    const card = document.getElementById('welcome-card');
+    if (!card) return;
+
+    // Add flipped class to trigger CSS animation
+    card.classList.add('flipped');
+
+    // Wait for flip animation to complete (0.9s)
+    await new Promise(resolve => setTimeout(resolve, 900));
+
+    // Initialize random character on back card
+    await this.initBackCharacter();
+  }
+
+  /**
+   * Initialize random 3D character on back of card
+   */
+  private async initBackCharacter(): Promise<void> {
+    try {
+      // Free characters (excluding squirrel since it's on the front)
+      const freeCharacters = ['hare', 'goat', 'chipmunk', 'turkey', 'mallard'];
+
+      // Pick a random character
+      const randomChar = freeCharacters[Math.floor(Math.random() * freeCharacters.length)];
+
+      // Initialize 3D preview on back card
+      this.carouselPreview = new CharacterPreview3D(
+        'back-character-container',
+        randomChar,
+        { rotationSpeed: 0.008, autoRotate: true, showAnimation: true, cameraDistance: 2 }
+      );
+      await this.carouselPreview.init();
+
+      console.log(`✅ Initialized random character on back: ${randomChar}`);
+    } catch (error) {
+      console.error('Error initializing back character:', error);
+    }
+  }
+
+  /**
+   * Show loading progress bar animation
+   */
+  private async showLoadingProgress(): Promise<void> {
+    const progressBar = document.getElementById('card-progress-bar');
+    const loadingText = document.getElementById('card-loading-text');
+
+    let progress = 0;
+
+    return new Promise((resolve) => {
+      const interval = setInterval(() => {
+        progress += 5;
+
+        if (progressBar) {
+          progressBar.style.width = `${progress}%`;
+        }
+
+        if (loadingText) {
+          if (progress < 30) {
+            loadingText.textContent = 'Preparing your adventure...';
+          } else if (progress < 70) {
+            loadingText.textContent = 'Loading forest assets...';
+          } else if (progress < 100) {
+            loadingText.textContent = 'Almost there...';
+          } else {
+            loadingText.textContent = 'Forest ready! 🌰';
+          }
+        }
+
+        if (progress >= 100) {
+          clearInterval(interval);
+          setTimeout(resolve, 800); // Pause on "Forest ready"
+        }
+      }, 120); // Total loading time: 20 steps * 120ms = 2.4 seconds
+    });
   }
 
   /**
@@ -393,32 +419,19 @@ export class WelcomeScreen {
 
   /**
    * MVP 16: Called when Turnstile verification completes
-   * Enables buttons and updates UI
+   * Enables play button and updates UI
    */
   private onTurnstileComplete(): void {
-    console.log('🎯 [Turnstile] Enabling buttons');
+    console.log('🎯 [Turnstile] Enabling play button');
 
-    // Enable buttons
-    const quickPlayButton = document.getElementById('welcome-quick-play-button') as HTMLButtonElement;
-    const signupButton = document.getElementById('welcome-signup-button') as HTMLButtonElement;
+    // Enable play button
+    const playButton = document.getElementById('welcome-play-button') as HTMLButtonElement;
 
-    if (quickPlayButton) {
-      quickPlayButton.disabled = false;
-      quickPlayButton.style.opacity = '1';
-      quickPlayButton.style.cursor = 'pointer';
-    }
-
-    if (signupButton) {
-      signupButton.disabled = false;
-      signupButton.style.opacity = '1';
-      signupButton.style.cursor = 'pointer';
-    }
-
-    // Update status message
-    const statusDiv = document.getElementById('welcome-turnstile-status');
-    if (statusDiv) {
-      statusDiv.textContent = '✅ Verified! Choose an option below';
-      statusDiv.style.color = '#4CAF50';
+    if (playButton) {
+      playButton.disabled = false;
+      playButton.textContent = '🎮 PLAY AS GUEST';
+      playButton.style.opacity = '1';
+      playButton.style.cursor = 'pointer';
     }
   }
 
