@@ -79,7 +79,7 @@ export class AuthModal {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: white;
+      background: linear-gradient(135deg, #8B4513 0%, #D2691E 100%);
       border-radius: 16px;
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
       z-index: 10001;
@@ -90,6 +90,7 @@ export class AuthModal {
       overflow-y: auto;
       width: 600px;
       max-width: 90vw;
+      border: 2px solid rgba(255, 215, 0, 0.3);
     `;
 
     // Add responsive sizing
@@ -370,8 +371,9 @@ export class AuthModal {
     title.style.cssText = `
       margin: 0;
       font-size: 24px;
-      color: #333;
+      color: #FFD700;
       font-weight: 600;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
     `;
     title.textContent = this.getScreenTitle();
 

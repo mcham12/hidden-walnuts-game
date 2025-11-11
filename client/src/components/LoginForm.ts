@@ -54,16 +54,16 @@ export class LoginForm {
       <div class="login-form">
         <!-- Welcome Message -->
         <div style="text-align: center; margin-bottom: 24px;">
-          <h3 style="margin: 0 0 8px 0; font-size: 24px; color: #333;">Welcome Back!</h3>
-          <p style="margin: 0; color: #666; font-size: 14px;">Log in to continue your adventure</p>
+          <h3 style="margin: 0 0 8px 0; font-size: 24px; color: #FFD700; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Welcome Back!</h3>
+          <p style="margin: 0; color: #FFE4B5; font-size: 14px;">Log in to continue your adventure</p>
         </div>
 
         <!-- Error Message -->
-        <div class="error-message" style="display: none; background: #fee; border: 1px solid #fcc; color: #c33; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 14px;"></div>
+        <div class="error-message" style="display: none; background: rgba(255,99,71,0.2); border: 1px solid rgba(255,99,71,0.5); color: #FFE4B5; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 14px;"></div>
 
         <!-- Email Field -->
         <div class="form-group" style="margin-bottom: 20px;">
-          <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 14px;">
+          <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #FFD700; font-size: 14px;">
             Email
           </label>
           <div style="position: relative;">
@@ -97,7 +97,7 @@ export class LoginForm {
 
         <!-- Password Field -->
         <div class="form-group" style="margin-bottom: 12px;">
-          <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 14px;">
+          <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #FFD700; font-size: 14px;">
             Password
           </label>
           <div style="position: relative;">
@@ -146,7 +146,7 @@ export class LoginForm {
 
         <!-- Forgot Password Link -->
         <div style="text-align: right; margin-bottom: 24px;">
-          <a href="#" class="forgot-password-link" style="color: #667eea; font-size: 14px; text-decoration: none; font-weight: 500;">
+          <a href="#" class="forgot-password-link" style="color: #FFD700; font-size: 14px; text-decoration: none; font-weight: 500;">
             Forgot Password?
           </a>
         </div>
@@ -158,7 +158,7 @@ export class LoginForm {
           style="
             width: 100%;
             height: 60px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
             color: white;
             border: none;
             border-radius: 8px;
@@ -167,15 +167,16 @@ export class LoginForm {
             cursor: pointer;
             transition: transform 0.2s, opacity 0.2s;
             margin-bottom: 16px;
+            box-shadow: 0 8px 24px rgba(50, 205, 50, 0.4);
           "
         >
           Log In
         </button>
 
         <!-- Switch to Signup -->
-        <div style="text-align: center; font-size: 14px; color: #666;">
+        <div style="text-align: center; font-size: 14px; color: #FFE4B5;">
           Don't have an account?
-          <a href="#" class="switch-to-signup" style="color: #667eea; font-weight: 600; text-decoration: none;">Sign Up</a>
+          <a href="#" class="switch-to-signup" style="color: #FFD700; font-weight: 600; text-decoration: none;">Sign Up</a>
         </div>
       </div>
     `;

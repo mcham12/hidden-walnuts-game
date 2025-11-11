@@ -288,8 +288,21 @@ export class WelcomeScreen {
       const usernameInput = document.getElementById('welcome-username-input') as HTMLInputElement;
       const username = usernameInput?.value.trim() || '';
 
-      // Open AuthModal with prefilled username if provided
-      this.authModal.open('signup', username ? { username } : undefined);
+      // Check if we're on the back face (loading state)
+      const card = document.getElementById('welcome-card');
+      const isLoading = card?.classList.contains('flipped');
+
+      if (isLoading) {
+        // User is interrupting loading - flip back to front and show auth modal
+        this.flipCardToFront();
+        // Wait for flip animation before opening modal
+        setTimeout(() => {
+          this.authModal?.open('signup', username ? { username } : undefined);
+        }, 900);
+      } else {
+        // Normal signup flow from front face
+        this.authModal.open('signup', username ? { username } : undefined);
+      }
     }
   }
 
@@ -298,17 +311,37 @@ export class WelcomeScreen {
    */
   private onSignInClick(): void {
     if (this.authModal) {
-      this.authModal.open('login');
+      // Check if we're on the back face (loading state)
+      const card = document.getElementById('welcome-card');
+      const isLoading = card?.classList.contains('flipped');
+
+      if (isLoading) {
+        // User is interrupting loading - flip back to front and show auth modal
+        this.flipCardToFront();
+        // Wait for flip animation before opening modal
+        setTimeout(() => {
+          this.authModal?.open('login');
+        }, 900);
+      } else {
+        // Normal login flow from front face
+        this.authModal.open('login');
+      }
     }
   }
 
   /**
-   * Handle successful authentication - proceed to character selection
+   * Handle successful authentication - flip to loading side and start game
    */
-  private handleAuthSuccess(userData: any): void {
+  private async handleAuthSuccess(userData: any): Promise<void> {
     console.log('Authentication successful:', userData);
-    // TODO: Show character selection screen
-    // For now, just close welcome screen and start game with authenticated user
+
+    // Flip to back face (loading state) if not already flipped
+    const card = document.getElementById('welcome-card');
+    if (card && !card.classList.contains('flipped')) {
+      await this.flipCardToBack();
+    }
+
+    // Resolve with username to start game loading
     if (this.resolvePromise && userData.username) {
       this.resolvePromise(userData.username);
     }
@@ -329,6 +362,38 @@ export class WelcomeScreen {
 
     // Initialize random character on back card
     await this.initBackCharacter();
+  }
+
+  /**
+   * Flip card to front (canceling loading state)
+   */
+  private flipCardToFront(): void {
+    const card = document.getElementById('welcome-card');
+    if (card) {
+      card.classList.remove('flipped');
+    }
+  }
+
+  /**
+   * Cancel current loading and reset to initial state
+   * Used when user interrupts guest loading to sign up/log in
+   */
+  public cancelLoading(): void {
+    // Flip back to front
+    this.flipCardToFront();
+
+    // Reset progress bar
+    const progressBar = document.getElementById('card-progress-bar');
+    if (progressBar) {
+      progressBar.style.width = '0%';
+    }
+
+    // Re-enable play button
+    const playButton = document.getElementById('welcome-play-button') as HTMLButtonElement;
+    if (playButton) {
+      playButton.disabled = false;
+      playButton.style.opacity = '1';
+    }
   }
 
   /**

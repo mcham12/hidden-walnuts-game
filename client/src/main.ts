@@ -319,23 +319,31 @@ async function main() {
     welcomeScreen.updateLoadingProgress(0.8, 'Preparing scene...');
     game.start();
 
-    // Wait 2 render frames to ensure scene is actually rendered
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    // Wait 3 render frames to ensure scene is actually rendered
+    await new Promise(resolve => requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        requestAnimationFrame(resolve)
+      )
+    ));
 
     // NOW everything is ready!
     welcomeScreen.updateLoadingProgress(1.0, '');
     await welcomeScreen.finishLoading(); // Show "Forest ready!" and pause
 
-    // Hide welcome screen (includes back face with loading progress)
-    await welcomeScreen.hide();
-
-    // Show game canvas (now guaranteed to have content)
+    // CRITICAL FIX: Show canvas BEFORE hiding welcome screen to prevent white flash
+    // This ensures there's always something visible (either welcome screen OR canvas)
     canvas.classList.remove('hidden');
 
     // Show walnut HUD
     if (walnutHud) {
       walnutHud.classList.remove('hidden');
     }
+
+    // Wait one more frame to ensure canvas is painted
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
+    // NOW hide welcome screen - canvas is already visible underneath
+    await welcomeScreen.hide();
 
     // MVP 16: Ensure DOM fully ready before showing UI
     // Double requestAnimationFrame ensures all layout/rendering is complete after overlays hide

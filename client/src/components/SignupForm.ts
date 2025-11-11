@@ -60,7 +60,7 @@ export class SignupForm {
       <div class="signup-form">
         <!-- Benefits Section -->
         <div class="signup-benefits" style="
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
           color: white;
           padding: 20px;
           border-radius: 8px;
@@ -80,7 +80,7 @@ export class SignupForm {
 
         <!-- Username Field -->
         <div class="form-group" style="margin-bottom: 20px;">
-          <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 14px;">
+          <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #FFD700; font-size: 14px;">
             Username
           </label>
           <div style="position: relative;">
@@ -114,7 +114,7 @@ export class SignupForm {
 
         <!-- Email Field -->
         <div class="form-group" style="margin-bottom: 20px;">
-          <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 14px;">
+          <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #FFD700; font-size: 14px;">
             Email
           </label>
           <div style="position: relative;">
@@ -148,7 +148,7 @@ export class SignupForm {
 
         <!-- Password Field -->
         <div class="form-group" style="margin-bottom: 20px;">
-          <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 14px;">
+          <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #FFD700; font-size: 14px;">
             Password
           </label>
           <div style="position: relative;">
@@ -197,7 +197,7 @@ export class SignupForm {
           <!-- Password Strength Meter -->
           <div class="password-strength" style="margin-top: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-              <span style="font-size: 12px; color: #666;">Password strength:</span>
+              <span style="font-size: 12px; color: #FFE4B5;">Password strength:</span>
               <span class="strength-label" style="font-size: 12px; font-weight: 600;"></span>
             </div>
             <div style="height: 4px; background: #e0e0e0; border-radius: 2px; overflow: hidden;">
@@ -208,7 +208,7 @@ export class SignupForm {
 
         <!-- Confirm Password Field -->
         <div class="form-group" style="margin-bottom: 24px;">
-          <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 14px;">
+          <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #FFD700; font-size: 14px;">
             Confirm Password
           </label>
           <div style="position: relative;">
@@ -247,7 +247,7 @@ export class SignupForm {
           style="
             width: 100%;
             height: 60px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
             color: white;
             border: none;
             border-radius: 8px;
@@ -262,9 +262,9 @@ export class SignupForm {
         </button>
 
         <!-- Switch to Login -->
-        <div style="text-align: center; font-size: 14px; color: #666;">
+        <div style="text-align: center; font-size: 14px; color: #FFE4B5;">
           Already have an account?
-          <a href="#" class="switch-to-login" style="color: #667eea; font-weight: 600; text-decoration: none;">Log In</a>
+          <a href="#" class="switch-to-login" style="color: #FFD700; font-weight: 600; text-decoration: none;">Log In</a>
         </div>
       </div>
     `;
