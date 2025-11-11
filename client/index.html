@@ -892,7 +892,7 @@
         height: 100%;
         backface-visibility: hidden;
         border-radius: 24px;
-        padding: 30px;
+        padding: 30px 30px 40px 30px; /* Issue 4: Increased bottom padding for gap */
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -915,7 +915,7 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 15px;
+        gap: 8px; /* Issue 1: Reduced from 15px to bring tagline closer to title */
       }
 
       .card-bottom {
@@ -923,7 +923,7 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 12px;
+        gap: 16px; /* Issue 3: Increased from 12px for more space above turnstile */
       }
 
       /* Card Title and Tagline */
@@ -953,22 +953,28 @@
         position: relative;
         border-radius: 12px;
         background: rgba(0, 0, 0, 0.2);
+        /* Issue 2: Center squirrel vertically */
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
       /* Turnstile Container */
       .card-turnstile {
         width: 100%;
+        max-width: 320px; /* Issue 6: Constrain width to match input/button */
         min-height: 65px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 10px;
+        background: transparent; /* Issue 5: Remove background to match card */
+        border-radius: 0; /* Issue 5: Remove border-radius */
       }
 
       /* Card Input */
       .card-input {
         width: 100%;
+        max-width: 320px; /* Issue 6: Constrain width to match button/turnstile */
         padding: 14px 18px;
         font-size: clamp(14px, 3.5vw, 16px);
         border: 3px solid rgba(255, 215, 0, 0.4);
@@ -997,6 +1003,7 @@
       /* Card Button (Primary - Play as Guest) */
       .card-button-primary {
         width: 100%;
+        max-width: 320px; /* Issue 6: Constrain width to match input/turnstile */
         padding: 16px 24px;
         font-size: clamp(16px, 4vw, 20px);
         font-weight: 800;

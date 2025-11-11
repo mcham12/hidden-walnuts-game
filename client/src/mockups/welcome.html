@@ -152,32 +152,72 @@
       margin-top: 10px;
       display: none;
     }
-    .signin-tease {
+    .auth-options {
       position: absolute;
       bottom: 20px;
       font-size: 14px;
       color: #ffeb3b;
+      display: flex;
+      gap: 10px;
     }
-    .signin-tease a {
+    .auth-options a {
       color: #ffd700;
       text-decoration: underline;
       cursor: pointer;
     }
-    .crack {
+    .logout-link {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 80px;
-      color: gold;
-      opacity: 0;
-      pointer-events: none;
-      animation: crackBurst 0.6s forwards;
+      bottom: 50px;
+      font-size: 14px;
+      color: #ffeb3b;
+      text-decoration: underline;
+      cursor: pointer;
     }
-    @keyframes crackBurst {
-      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
-      100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+    .hidden { display: none; }
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    .modal-content {
+      background: #2e7d32;
+      padding: 20px;
+      border-radius: 20px;
+      text-align: center;
+    }
+    .modal input {
+      margin: 10px 0;
+    }
+    .modal button {
+      margin: 10px 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+    .toggle-link {
+      font-size: 14px;
+      color: #ffd700;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .turnstile-mock {
+      width: 300px;
+      height: 65px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #333;
+      font-size: 14px;
+      margin-bottom: 10px;
     }
   </style>
 </head>
@@ -187,16 +227,21 @@
     <div class="card" id="card">
       <!-- FRONT -->
       <div class="face front">
-        <div class="squirrel">🐿️</div>
-        <h1>HIDDEN WALNUTS</h1>
+        <div class="squirrel" id="frontChar">🐿️</div>
+        <h1 id="welcomeTitle">HIDDEN WALNUTS</h1>
         <p class="tagline">Welcome to the Forest</p>
+        <div class="turnstile-mock">Cloudflare Turnstile Widget</div>
         <input type="text" id="nameInput" placeholder="Your name..." maxlength="16" />
-        <button id="playBtn">PLAY NOW!</button>
+        <button id="playBtn">PLAY AS GUEST</button>
       </div>
 
       <!-- BACK -->
       <div class="face back">
         <h1>🌲🌰🌲</h1>
+        <div class="progress-container" id="progressContainer">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="match-text" id="matchText">Getting forest ready...</div>
         <div class="carousel" id="carousel">
           <div class="char" data-index="0">🦊</div>
           <div class="char" data-index="1">🐻</div>
@@ -205,19 +250,28 @@
           <div class="char" data-index="4">🐸</div>
           <div class="char" data-index="5">🦡</div>
         </div>
-        <div class="progress-container" id="progressContainer">
-          <div class="progress-bar" id="progressBar"></div>
-        </div>
-        <div class="match-text" id="matchText">Getting forest ready...</div>
       </div>
     </div>
 
-    <div class="signin-tease">
-      Want 6 FREE characters? <a onclick="alert('Sign in with Google/Email → Unlock 6 characters + leaderboard!')">Sign In!</a>
+    <div class="auth-options" id="authOptions">
+      <a id="signupLink">Sign Up for 6 Free Characters!</a>
+      <a id="loginLink">Log In</a>
     </div>
+    <div class="logout-link hidden" id="logoutLink">Logout</div>
   </div>
 
-  <div class="crack" id="crack">CRACK!</div>
+  <!-- Auth Modal -->
+  <div class="modal" id="authModal">
+    <div class="modal-content">
+      <h2 id="modalTitle">Log In</h2>
+      <input type="email" id="emailInput" placeholder="Email" />
+      <input type="password" id="passwordInput" placeholder="Password" />
+      <button id="authSubmit">Submit</button>
+      <button id="authGoogle">Google</button>
+      <button id="authApple">Apple</button>
+      <p class="toggle-link" id="toggleAuth">Don't have an account? Sign Up</p>
+    </div>
+  </div>
 
   <script>
     const card = document.getElementById('card');
@@ -226,13 +280,27 @@
     const progressContainer = document.getElementById('progressContainer');
     const progressBar = document.getElementById('progressBar');
     const matchText = document.getElementById('matchText');
-    const crack = document.getElementById('crack');
     const carousel = document.getElementById('carousel');
     const chars = carousel.querySelectorAll('.char');
+    const welcomeTitle = document.getElementById('welcomeTitle');
+    const authOptions = document.getElementById('authOptions');
+    const logoutLink = document.getElementById('logoutLink');
+    const frontChar = document.getElementById('frontChar');
+    const authModal = document.getElementById('authModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const toggleAuth = document.getElementById('toggleAuth');
+    const authSubmit = document.getElementById('authSubmit');
+    const authGoogle = document.getElementById('authGoogle');
+    const authApple = document.getElementById('authApple');
+    const emailInput = document.getElementById('emailInput');
+    const passwordInput = document.getElementById('passwordInput');
 
     let isFlipped = false;
     let currentChar = 0;
     let carouselInterval;
+    let isAuthenticated = localStorage.getItem('auth') === 'true';
+    let userName = localStorage.getItem('userName') || 'Player';
+    let isSignupMode = false;
 
     function rotateCarousel() {
       chars.forEach(char => char.classList.remove('active'));
@@ -240,16 +308,49 @@
       currentChar = (currentChar + 1) % chars.length;
     }
 
+    function initUI() {
+      if (isAuthenticated) {
+        welcomeTitle.innerHTML = `Welcome back, ${userName}!`;
+        nameInput.classList.add('hidden');
+        authOptions.classList.add('hidden');
+        logoutLink.classList.remove('hidden');
+        frontChar.innerHTML = '🦊'; // Example unlocked char
+      } else {
+        nameInput.focus();
+        authOptions.classList.remove('hidden');
+        logoutLink.classList.add('hidden');
+      }
+    }
+
+    function openAuthModal(mode) {
+      isSignupMode = mode === 'signup';
+      modalTitle.innerHTML = isSignupMode ? 'Sign Up' : 'Log In';
+      toggleAuth.innerHTML = isSignupMode ? 'Already have an account? Log In' : 'Don\'t have an account? Sign Up';
+      authModal.style.display = 'flex';
+    }
+
+    function closeAuthModal() {
+      authModal.style.display = 'none';
+      emailInput.value = '';
+      passwordInput.value = '';
+    }
+
+    function simulateAuth() {
+      // Simulate success
+      localStorage.setItem('auth', 'true');
+      localStorage.setItem('userName', emailInput.value.split('@')[0] || 'User');
+      closeAuthModal();
+      location.reload();
+    }
+
     playBtn.addEventListener('click', () => {
       if (isFlipped) return;
       isFlipped = true;
 
-      const name = nameInput.value.trim() || 'Squirrel';
-      console.log('Player:', name);
-
-      // CRACK!
-      crack.style.opacity = 1;
-      setTimeout(() => crack.style.opacity = 0, 600);
+      if (!isAuthenticated) {
+        userName = nameInput.value.trim() || 'Squirrel';
+      }
+      console.log('Player:', userName);
 
       // Flip card
       card.classList.add('flipped');
@@ -276,7 +377,7 @@
               document.body.style.transition = 'opacity 1s';
               document.body.style.opacity = '0';
               setTimeout(() => {
-                alert('GAME STARTED!\nYou are now hunting walnuts as ' + name + '!');
+                alert('GAME STARTED!\nYou are now hunting walnuts as ' + userName + '!');
                 // window.location = 'game.html';
               }, 1000);
             }, 800);
@@ -285,8 +386,31 @@
       }, 400);
     });
 
-    // Auto-focus input
-    nameInput.focus();
+    document.getElementById('signupLink').addEventListener('click', () => openAuthModal('signup'));
+    document.getElementById('loginLink').addEventListener('click', () => openAuthModal('login'));
+
+    toggleAuth.addEventListener('click', () => {
+      isSignupMode = !isSignupMode;
+      modalTitle.innerHTML = isSignupMode ? 'Sign Up' : 'Log In';
+      toggleAuth.innerHTML = isSignupMode ? 'Already have an account? Log In' : 'Don\'t have an account? Sign Up';
+    });
+
+    authSubmit.addEventListener('click', simulateAuth);
+    authGoogle.addEventListener('click', simulateAuth);
+    authApple.addEventListener('click', simulateAuth);
+
+    authModal.addEventListener('click', (e) => {
+      if (e.target === authModal) closeAuthModal();
+    });
+
+    logoutLink.addEventListener('click', () => {
+      localStorage.removeItem('auth');
+      localStorage.removeItem('userName');
+      location.reload();
+    });
+
+    // Init on load
+    initUI();
   </script>
 </body>
 </html>

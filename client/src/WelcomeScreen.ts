@@ -273,10 +273,7 @@ export class WelcomeScreen {
     // Flip card to back (loading state)
     await this.flipCardToBack();
 
-    // Show loading progress
-    await this.showLoadingProgress();
-
-    // Resolve with username to start game
+    // Resolve immediately with username - main.ts will handle loading progress
     if (this.resolvePromise) {
       this.resolvePromise(username);
     }
@@ -357,40 +354,33 @@ export class WelcomeScreen {
   }
 
   /**
-   * Show loading progress bar animation
+   * Update loading progress bar (called externally from main.ts)
+   * @param progress - Progress value from 0 to 1
+   * @param message - Optional message to display
    */
-  private async showLoadingProgress(): Promise<void> {
+  public updateLoadingProgress(progress: number, message: string = ''): void {
     const progressBar = document.getElementById('card-progress-bar');
     const loadingText = document.getElementById('card-loading-text');
 
-    let progress = 0;
+    if (progressBar) {
+      const percentage = Math.round(progress * 100);
+      progressBar.style.width = `${percentage}%`;
+    }
 
-    return new Promise((resolve) => {
-      const interval = setInterval(() => {
-        progress += 5;
+    if (loadingText && message) {
+      loadingText.textContent = message;
+    }
+  }
 
-        if (progressBar) {
-          progressBar.style.width = `${progress}%`;
-        }
-
-        if (loadingText) {
-          if (progress < 30) {
-            loadingText.textContent = 'Preparing your adventure...';
-          } else if (progress < 70) {
-            loadingText.textContent = 'Loading forest assets...';
-          } else if (progress < 100) {
-            loadingText.textContent = 'Almost there...';
-          } else {
-            loadingText.textContent = 'Forest ready! 🌰';
-          }
-        }
-
-        if (progress >= 100) {
-          clearInterval(interval);
-          setTimeout(resolve, 800); // Pause on "Forest ready"
-        }
-      }, 120); // Total loading time: 20 steps * 120ms = 2.4 seconds
-    });
+  /**
+   * Wait for loading to complete (called after progress reaches 100%)
+   */
+  public async finishLoading(): Promise<void> {
+    const loadingText = document.getElementById('card-loading-text');
+    if (loadingText) {
+      loadingText.textContent = 'Forest ready! 🌰';
+    }
+    await new Promise(resolve => setTimeout(resolve, 800));
   }
 
   /**

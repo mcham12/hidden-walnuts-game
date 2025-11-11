@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Hidden Walnuts - Engaging Welcome</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0a2f0a 0%, #1a4d1a 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      min-height: 100vh;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Animated forest background */
+    .forest-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .tree {
+      position: absolute;
+      font-size: 40px;
+      opacity: 0.3;
+      animation: sway 4s infinite ease-in-out;
+    }
+
+    .tree:nth-child(1) { left: 5%; bottom: 20%; animation-delay: 0s; font-size: 50px; }
+    .tree:nth-child(2) { left: 15%; bottom: 10%; animation-delay: 0.5s; }
+    .tree:nth-child(3) { right: 10%; bottom: 15%; animation-delay: 1s; font-size: 45px; }
+    .tree:nth-child(4) { right: 25%; bottom: 5%; animation-delay: 1.5s; }
+    .tree:nth-child(5) { left: 40%; bottom: 25%; animation-delay: 2s; opacity: 0.2; }
+
+    @keyframes sway {
+      0%, 100% { transform: rotate(-2deg); }
+      50% { transform: rotate(2deg); }
+    }
+
+    /* Floating walnuts */
+    .floating-walnut {
+      position: absolute;
+      font-size: 24px;
+      animation: float-up 8s infinite ease-in-out;
+      opacity: 0.6;
+    }
+
+    .floating-walnut:nth-child(6) { left: 20%; top: 60%; animation-delay: 0s; }
+    .floating-walnut:nth-child(7) { right: 15%; top: 50%; animation-delay: 2s; }
+    .floating-walnut:nth-child(8) { left: 70%; top: 40%; animation-delay: 4s; }
+
+    @keyframes float-up {
+      0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.6; }
+      50% { transform: translateY(-30px) rotate(180deg); opacity: 0.3; }
+    }
+
+    /* Main container */
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 440px;
+      background: linear-gradient(135deg, rgba(139, 69, 19, 0.98), rgba(101, 67, 33, 0.98));
+      border-radius: 28px;
+      padding: 35px 30px 30px;
+      box-shadow:
+        0 25px 70px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+        0 0 80px rgba(255, 215, 0, 0.15);
+      transition: all 0.3s ease;
+    }
+
+    /* State management */
+    .state {
+      display: none;
+      animation: fadeSlideIn 0.5s ease;
+    }
+
+    .state.active {
+      display: block;
+    }
+
+    @keyframes fadeSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ========================================
+       WELCOME STATE - HIGH ENTICEMENT
+       ======================================== */
+
+    .welcome-content {
+      text-align: center;
+    }
+
+    /* Hero Section - Multiple animated characters */
+    .hero-characters {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 15px;
+      margin-bottom: 20px;
+      min-height: 100px;
+      position: relative;
+    }
+
+    .hero-char {
+      font-size: 60px;
+      animation: character-enter 0.6s ease-out backwards;
+      cursor: pointer;
+      transition: transform 0.2s;
+      position: relative;
+    }
+
+    .hero-char:hover {
+      transform: scale(1.15) translateY(-5px);
+    }
+
+    .hero-char:nth-child(1) {
+      animation-delay: 0.1s;
+      animation-name: character-enter, bounce-char;
+      animation-duration: 0.6s, 2s;
+      animation-timing-function: ease-out, ease-in-out;
+      animation-iteration-count: 1, infinite;
+    }
+
+    .hero-char:nth-child(2) {
+      font-size: 70px; /* Main character - bigger */
+      animation-delay: 0.2s;
+      animation-name: character-enter, bounce-main;
+      animation-duration: 0.6s, 2.5s;
+      animation-timing-function: ease-out, ease-in-out;
+      animation-iteration-count: 1, infinite;
+    }
+
+    .hero-char:nth-child(3) {
+      animation-delay: 0.3s;
+      animation-name: character-enter, bounce-char;
+      animation-duration: 0.6s, 2s;
+      animation-timing-function: ease-out, ease-in-out;
+      animation-iteration-count: 1, infinite;
+    }
+
+    @keyframes character-enter {
+      from {
+        opacity: 0;
+        transform: scale(0) rotate(-180deg);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+      }
+    }
+
+    @keyframes bounce-char {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    @keyframes bounce-main {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-12px) scale(1.05); }
+    }
+
+    /* Sparkle effect around characters */
+    .sparkle {
+      position: absolute;
+      font-size: 20px;
+      animation: sparkle 3s infinite ease-in-out;
+      opacity: 0;
+    }
+
+    .sparkle:nth-child(4) { top: 10%; left: 10%; animation-delay: 0s; }
+    .sparkle:nth-child(5) { top: 20%; right: 15%; animation-delay: 1s; }
+    .sparkle:nth-child(6) { bottom: 15%; left: 20%; animation-delay: 2s; }
+
+    @keyframes sparkle {
+      0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+      50% { opacity: 1; transform: scale(1.2) rotate(180deg); }
+    }
+
+    /* Title with gradient and animation */
+    h1 {
+      font-size: clamp(26px, 7vw, 36px);
+      font-weight: 900;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #FFD700, #FFA500, #FFD700);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 2px 20px rgba(255, 215, 0, 0.5);
+      letter-spacing: 2px;
+      animation: title-shimmer 3s infinite;
+    }
+
+    @keyframes title-shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    /* Tagline with pulsing effect */
+    .tagline {
+      font-size: clamp(15px, 4vw, 18px);
+      margin-bottom: 20px;
+      color: #FFE4B5;
+      font-weight: 600;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      animation: pulse-glow 2s infinite;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.9; }
+      50% { opacity: 1; text-shadow: 0 2px 15px rgba(255, 215, 0, 0.6); }
+    }
+
+    /* Feature highlights - visual enticement */
+    .features {
+      display: flex;
+      justify-content: space-around;
+      margin: 20px 0;
+      gap: 10px;
+    }
+
+    .feature {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 12px;
+      padding: 12px 8px;
+      border: 1px solid rgba(255, 215, 0, 0.2);
+      transition: all 0.3s;
+      animation: feature-pop 0.6s ease-out backwards;
+    }
+
+    .feature:nth-child(1) { animation-delay: 0.4s; }
+    .feature:nth-child(2) { animation-delay: 0.5s; }
+    .feature:nth-child(3) { animation-delay: 0.6s; }
+
+    @keyframes feature-pop {
+      from {
+        opacity: 0;
+        transform: scale(0.8) translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .feature:hover {
+      transform: translateY(-3px) scale(1.05);
+      border-color: rgba(255, 215, 0, 0.5);
+      box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+    }
+
+    .feature-icon {
+      font-size: 28px;
+      margin-bottom: 5px;
+    }
+
+    .feature-text {
+      font-size: 11px;
+      color: #FFE4B5;
+      font-weight: 600;
+    }
+
+    /* Player count / social proof */
+    .social-proof {
+      background: linear-gradient(135deg, rgba(50, 205, 50, 0.2), rgba(34, 139, 34, 0.2));
+      border: 1px solid rgba(50, 205, 50, 0.4);
+      border-radius: 20px;
+      padding: 8px 16px;
+      margin: 20px auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #90EE90;
+      font-weight: 600;
+      animation: fade-in 0.8s ease-out 0.7s backwards;
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .social-proof-icon {
+      font-size: 16px;
+      animation: player-pulse 2s infinite;
+    }
+
+    @keyframes player-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+
+    /* Turnstile container */
+    .turnstile-container {
+      min-height: 65px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 20px 0 15px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 10px;
+      border: 1px dashed rgba(255, 255, 255, 0.2);
+    }
+
+    .turnstile-placeholder {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 13px;
+      font-style: italic;
+    }
+
+    /* Input field - more playful */
+    input[type="text"] {
+      width: 100%;
+      padding: 16px 20px;
+      margin: 12px 0;
+      border: 3px solid rgba(255, 215, 0, 0.3);
+      border-radius: 16px;
+      font-size: 16px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.95);
+      color: #333;
+      transition: all 0.3s;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #FFD700;
+      background: white;
+      box-shadow:
+        0 0 0 4px rgba(255, 215, 0, 0.2),
+        0 6px 20px rgba(255, 215, 0, 0.3);
+      transform: translateY(-2px);
+    }
+
+    input[type="text"]::placeholder {
+      color: #999;
+      font-weight: 500;
+    }
+
+    /* Play button - eye-catching */
+    .btn-play {
+      width: 100%;
+      padding: 20px;
+      background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-size: 20px;
+      font-weight: 900;
+      cursor: pointer;
+      margin: 12px 0;
+      box-shadow:
+        0 8px 25px rgba(50, 205, 50, 0.4),
+        0 0 0 3px rgba(255, 255, 255, 0.1) inset;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .btn-play::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      animation: btn-shine 3s infinite;
+    }
+
+    @keyframes btn-shine {
+      0%, 100% { left: -100%; }
+      50% { left: 100%; }
+    }
+
+    .btn-play:hover:not(:disabled) {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow:
+        0 12px 35px rgba(50, 205, 50, 0.5),
+        0 0 0 3px rgba(255, 255, 255, 0.2) inset;
+    }
+
+    .btn-play:active:not(:disabled) {
+      transform: translateY(-1px) scale(0.98);
+    }
+
+    .btn-play:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background: #666;
+    }
+
+    /* Auth links - subtle but accessible */
+    .auth-links {
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+      text-align: center;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .auth-links a {
+      color: #FFD700;
+      text-decoration: none;
+      padding: 10px 15px;
+      display: inline-block;
+      min-height: 44px;
+      border-radius: 8px;
+      transition: all 0.2s;
+      font-weight: 600;
+    }
+
+    .auth-links a:hover {
+      background: rgba(255, 215, 0, 0.15);
+      transform: scale(1.05);
+    }
+
+    .auth-separator {
+      display: inline-block;
+      margin: 0 8px;
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    /* ========================================
+       LOADING STATE
+       ======================================== */
+
+    .loading-content {
+      text-align: center;
+    }
+
+    .loading-title {
+      font-size: 26px;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    /* Character carousel */
+    .carousel {
+      position: relative;
+      height: 90px;
+      margin: 30px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .carousel-char {
+      font-size: 70px;
+      position: absolute;
+      opacity: 0;
+      transform: scale(0.8);
+      transition: all 0.5s ease;
+      animation: carousel-bounce 1.5s infinite ease-in-out;
+    }
+
+    .carousel-char.active {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    @keyframes carousel-bounce {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-20px) scale(1.1); }
+    }
+
+    /* Progress bar */
+    .progress-wrapper {
+      margin: 30px 0 20px;
+    }
+
+    .progress-label {
+      font-size: 15px;
+      margin-bottom: 12px;
+      color: #FFE4B5;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .progress-container {
+      width: 100%;
+      height: 24px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) inset;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #32CD32 0%, #90EE90 50%, #32CD32 100%);
+      background-size: 200% 100%;
+      transition: width 0.3s ease;
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+      animation: progress-shimmer 2s infinite;
+    }
+
+    @keyframes progress-shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .progress-bar::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.4),
+        transparent
+      );
+      animation: shimmer 1.5s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .progress-percentage {
+      text-align: center;
+      margin-top: 12px;
+      font-size: 15px;
+      color: #90EE90;
+      font-weight: 700;
+    }
+
+    /* Crack burst animation */
+    .crack-burst {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 120px;
+      color: #FFD700;
+      text-shadow:
+        0 0 30px rgba(255, 215, 0, 0.8),
+        0 0 60px rgba(255, 165, 0, 0.6);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1000;
+      animation: crack-pop 1s ease-out forwards;
+    }
+
+    @keyframes crack-pop {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.3) rotate(-30deg);
+      }
+      40% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.4) rotate(15deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1) rotate(0deg);
+      }
+    }
+
+    /* Hidden class */
+    .hidden {
+      display: none !important;
+    }
+
+    /* Welcome back banner */
+    .welcome-back {
+      background: linear-gradient(135deg, rgba(50, 205, 50, 0.25), rgba(34, 139, 34, 0.25));
+      border: 2px solid rgba(50, 205, 50, 0.6);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 20px;
+      text-align: center;
+      animation: welcome-pulse 2s infinite;
+    }
+
+    @keyframes welcome-pulse {
+      0%, 100% { box-shadow: 0 0 10px rgba(50, 205, 50, 0.3); }
+      50% { box-shadow: 0 0 20px rgba(50, 205, 50, 0.5); }
+    }
+
+    .welcome-back-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #90EE90;
+      margin-bottom: 6px;
+    }
+
+    .welcome-back-name {
+      font-size: 26px;
+      font-weight: 900;
+      color: #FFD700;
+    }
+
+    .logout-link {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .logout-link a {
+      color: #FF6B6B;
+      text-decoration: none;
+      font-size: 14px;
+      padding: 8px 15px;
+      border-radius: 8px;
+      transition: all 0.2s;
+      display: inline-block;
+      font-weight: 600;
+    }
+
+    .logout-link a:hover {
+      background: rgba(255, 107, 107, 0.2);
+    }
+
+    /* ========================================
+       RESPONSIVE DESIGN
+       ======================================== */
+
+    @media (max-width: 428px) {
+      .container {
+        padding: 25px 20px 20px;
+        border-radius: 24px;
+      }
+
+      .hero-char {
+        font-size: 50px;
+      }
+
+      .hero-char:nth-child(2) {
+        font-size: 60px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .features {
+        gap: 8px;
+      }
+
+      .feature {
+        padding: 10px 6px;
+      }
+
+      .feature-icon {
+        font-size: 24px;
+      }
+
+      .feature-text {
+        font-size: 10px;
+      }
+
+      .btn-play {
+        padding: 18px;
+        font-size: 18px;
+      }
+    }
+
+    /* Mobile landscape */
+    @media (max-height: 650px) and (orientation: landscape) {
+      body {
+        padding: 10px;
+        align-items: flex-start;
+      }
+
+      .container {
+        padding: 20px;
+        max-width: 550px;
+        margin-top: 10px;
+      }
+
+      .hero-characters {
+        margin-bottom: 15px;
+        min-height: 70px;
+      }
+
+      .hero-char {
+        font-size: 45px;
+      }
+
+      .hero-char:nth-child(2) {
+        font-size: 55px;
+      }
+
+      h1 {
+        font-size: 22px;
+        margin-bottom: 8px;
+      }
+
+      .tagline {
+        font-size: 14px;
+        margin-bottom: 12px;
+      }
+
+      .features {
+        margin: 12px 0;
+      }
+
+      .social-proof {
+        padding: 6px 12px;
+        font-size: 12px;
+        margin: 12px auto;
+      }
+
+      input[type="text"] {
+        padding: 12px 16px;
+        margin: 8px 0;
+      }
+
+      .btn-play {
+        padding: 14px;
+        font-size: 16px;
+        margin: 8px 0;
+      }
+
+      .turnstile-container {
+        min-height: 55px;
+        margin: 12px 0 10px;
+      }
+
+      .auth-links {
+        margin-top: 12px;
+        padding-top: 12px;
+      }
+
+      .carousel {
+        height: 70px;
+        margin: 20px 0;
+      }
+
+      .carousel-char {
+        font-size: 60px;
+      }
+
+      .progress-wrapper {
+        margin: 20px 0 15px;
+      }
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Animated forest background -->
+  <div class="forest-bg">
+    <div class="tree">🌲</div>
+    <div class="tree">🌲</div>
+    <div class="tree">🌲</div>
+    <div class="tree">🌲</div>
+    <div class="tree">🌲</div>
+    <div class="floating-walnut">🌰</div>
+    <div class="floating-walnut">🌰</div>
+    <div class="floating-walnut">🌰</div>
+  </div>
+
+  <!-- Main container -->
+  <div class="container">
+
+    <!-- STATE 1: Welcome Screen with HIGH ENTICEMENT -->
+    <div class="state active" id="welcomeState">
+      <div class="welcome-content">
+
+        <!-- Welcome back banner (shown if authenticated) -->
+        <div class="welcome-back hidden" id="welcomeBack">
+          <div class="welcome-back-title">Welcome back,</div>
+          <div class="welcome-back-name" id="userName">Player</div>
+        </div>
+
+        <!-- Hero section with multiple animated characters -->
+        <div class="hero-characters">
+          <div class="hero-char">🦊</div>
+          <div class="hero-char">🐿️</div>
+          <div class="hero-char">🐻</div>
+          <div class="sparkle">✨</div>
+          <div class="sparkle">✨</div>
+          <div class="sparkle">✨</div>
+        </div>
+
+        <h1>HIDDEN WALNUTS</h1>
+        <p class="tagline">🌲 Hunt, Hide & Dominate the Forest 🌰</p>
+
+        <!-- Feature highlights for enticement -->
+        <div class="features">
+          <div class="feature">
+            <div class="feature-icon">🌍</div>
+            <div class="feature-text">Multiplayer</div>
+          </div>
+          <div class="feature">
+            <div class="feature-icon">🎮</div>
+            <div class="feature-text">Real-Time</div>
+          </div>
+          <div class="feature">
+            <div class="feature-icon">🏆</div>
+            <div class="feature-text">Leaderboard</div>
+          </div>
+        </div>
+
+        <!-- Social proof - player count -->
+        <div class="social-proof">
+          <span class="social-proof-icon">👥</span>
+          <span>127 players hunting now</span>
+        </div>
+
+        <!-- Turnstile widget placeholder -->
+        <div class="turnstile-container">
+          <div id="turnstile-widget">
+            <div class="turnstile-placeholder">🤖 Verifying you're human...</div>
+          </div>
+        </div>
+
+        <!-- Username input (hidden if authenticated) -->
+        <input
+          type="text"
+          id="nameInput"
+          placeholder="Enter your name..."
+          maxlength="16"
+          autocomplete="off"
+          spellcheck="false"
+        />
+
+        <!-- Play button with eye-catching design -->
+        <button class="btn-play" id="playBtn" disabled>
+          <span id="playBtnText">🎮 Verifying...</span>
+        </button>
+
+        <!-- Logout link (shown if authenticated) -->
+        <div class="logout-link hidden" id="logoutSection">
+          <a href="#" id="logoutLink">Logout</a>
+        </div>
+
+        <!-- Auth links (hidden if authenticated) -->
+        <div class="auth-links" id="authLinks">
+          <a href="#" id="loginLink">Log In</a>
+          <span class="auth-separator">•</span>
+          <a href="#" id="signupLink">Sign Up</a>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- STATE 2: Loading Screen -->
+    <div class="state" id="loadingState">
+      <div class="loading-content">
+
+        <div class="loading-title">
+          <span>🌲</span>
+          <span>🌰</span>
+          <span>🌲</span>
+        </div>
+
+        <!-- Character carousel -->
+        <div class="carousel" id="carousel">
+          <div class="carousel-char" data-index="0">🦊</div>
+          <div class="carousel-char" data-index="1">🐻</div>
+          <div class="carousel-char" data-index="2">🐰</div>
+          <div class="carousel-char" data-index="3">🐦</div>
+          <div class="carousel-char" data-index="4">🐸</div>
+          <div class="carousel-char" data-index="5">🦡</div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="progress-wrapper">
+          <div class="progress-label" id="progressLabel">Preparing your adventure...</div>
+          <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+          <div class="progress-percentage" id="progressPercentage">0%</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Crack burst animation -->
+  <div class="crack-burst hidden" id="crackBurst">💥 CRACK!</div>
+
+  <script>
+    // ===== STATE MANAGEMENT =====
+    const states = {
+      welcome: document.getElementById('welcomeState'),
+      loading: document.getElementById('loadingState')
+    };
+
+    function switchState(stateName) {
+      Object.values(states).forEach(state => state.classList.remove('active'));
+      states[stateName].classList.add('active');
+    }
+
+    // ===== ELEMENTS =====
+    const elements = {
+      nameInput: document.getElementById('nameInput'),
+      playBtn: document.getElementById('playBtn'),
+      playBtnText: document.getElementById('playBtnText'),
+      welcomeBack: document.getElementById('welcomeBack'),
+      userName: document.getElementById('userName'),
+      authLinks: document.getElementById('authLinks'),
+      logoutSection: document.getElementById('logoutSection'),
+      logoutLink: document.getElementById('logoutLink'),
+      loginLink: document.getElementById('loginLink'),
+      signupLink: document.getElementById('signupLink'),
+      crackBurst: document.getElementById('crackBurst'),
+      carousel: document.getElementById('carousel'),
+      progressBar: document.getElementById('progressBar'),
+      progressPercentage: document.getElementById('progressPercentage'),
+      progressLabel: document.getElementById('progressLabel')
+    };
+
+    // ===== AUTH STATE =====
+    let isAuthenticated = localStorage.getItem('auth') === 'true';
+    let userDisplayName = localStorage.getItem('userName') || 'Player';
+    let turnstileVerified = false;
+
+    // ===== INITIALIZE UI =====
+    function initUI() {
+      if (isAuthenticated) {
+        elements.welcomeBack.classList.remove('hidden');
+        elements.userName.textContent = userDisplayName;
+        elements.nameInput.classList.add('hidden');
+        elements.authLinks.classList.add('hidden');
+        elements.logoutSection.classList.remove('hidden');
+      } else {
+        elements.nameInput.focus();
+      }
+
+      simulateTurnstile();
+    }
+
+    // ===== SIMULATE TURNSTILE =====
+    function simulateTurnstile() {
+      setTimeout(() => {
+        turnstileVerified = true;
+        elements.playBtn.disabled = false;
+        elements.playBtnText.innerHTML = isAuthenticated
+          ? '🚀 CONTINUE ADVENTURE'
+          : '🎮 START PLAYING';
+
+        document.querySelector('.turnstile-placeholder').innerHTML = '✅ Verified!';
+      }, 2000);
+    }
+
+    // ===== PLAY BUTTON =====
+    elements.playBtn.addEventListener('click', () => {
+      if (!turnstileVerified) return;
+
+      let playerName = userDisplayName;
+      if (!isAuthenticated) {
+        playerName = elements.nameInput.value.trim() || 'Squirrel';
+      }
+
+      console.log('🎮 Starting game as:', playerName);
+
+      // Show crack burst
+      elements.crackBurst.classList.remove('hidden');
+      setTimeout(() => {
+        elements.crackBurst.classList.add('hidden');
+      }, 1000);
+
+      // Switch to loading state
+      switchState('loading');
+      startLoadingSequence(playerName);
+    });
+
+    // ===== LOADING SEQUENCE =====
+    function startLoadingSequence(playerName) {
+      const loadingMessages = [
+        '🌲 Planting trees...',
+        '🌰 Hiding walnuts...',
+        '🐿️ Waking up squirrels...',
+        '✨ Adding magic...',
+        '🎮 Almost ready...'
+      ];
+
+      let messageIndex = 0;
+      let progress = 0;
+
+      startCarousel();
+
+      const interval = setInterval(() => {
+        progress += 5;
+        elements.progressBar.style.width = progress + '%';
+        elements.progressPercentage.textContent = progress + '%';
+
+        if (progress % 20 === 0 && messageIndex < loadingMessages.length) {
+          elements.progressLabel.textContent = loadingMessages[messageIndex];
+          messageIndex++;
+        }
+
+        if (progress >= 100) {
+          clearInterval(interval);
+          stopCarousel();
+          elements.progressLabel.textContent = '🌰 Forest ready!';
+
+          setTimeout(() => {
+            document.querySelector('.container').style.transition = 'opacity 0.8s';
+            document.querySelector('.container').style.opacity = '0';
+
+            setTimeout(() => {
+              alert('🎮 GAME STARTED!\n\nYou are now ' + playerName + ' hunting walnuts!');
+            }, 800);
+          }, 800);
+        }
+      }, 150);
+    }
+
+    // ===== CHARACTER CAROUSEL =====
+    let carouselInterval;
+    let currentCharIndex = 0;
+    const carouselChars = elements.carousel.querySelectorAll('.carousel-char');
+
+    function startCarousel() {
+      carouselChars[currentCharIndex].classList.add('active');
+      carouselInterval = setInterval(() => {
+        carouselChars[currentCharIndex].classList.remove('active');
+        currentCharIndex = (currentCharIndex + 1) % carouselChars.length;
+        carouselChars[currentCharIndex].classList.add('active');
+      }, 1500);
+    }
+
+    function stopCarousel() {
+      if (carouselInterval) clearInterval(carouselInterval);
+    }
+
+    // ===== AUTH ACTIONS =====
+    elements.loginLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      alert('🔐 Log In\n\nOpens AuthModal component');
+    });
+
+    elements.signupLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      alert('📝 Sign Up\n\nOpens AuthModal component');
+    });
+
+    elements.logoutLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (confirm('Logout?')) {
+        localStorage.removeItem('auth');
+        localStorage.removeItem('userName');
+        location.reload();
+      }
+    });
+
+    // ===== KEYBOARD SHORTCUTS =====
+    elements.nameInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !elements.playBtn.disabled) {
+        elements.playBtn.click();
+      }
+    });
+
+    // ===== INIT =====
+    initUI();
+  </script>
+</body>
+</html>

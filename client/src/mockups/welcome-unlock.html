@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Hidden Walnuts - Unlock Characters</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0a2f0a 0%, #1a4d1a 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      min-height: 100vh;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Animated forest background */
+    .forest-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .tree {
+      position: absolute;
+      font-size: 40px;
+      opacity: 0.3;
+      animation: sway 4s infinite ease-in-out;
+    }
+
+    .tree:nth-child(1) { left: 5%; bottom: 20%; animation-delay: 0s; font-size: 50px; }
+    .tree:nth-child(2) { left: 15%; bottom: 10%; animation-delay: 0.5s; }
+    .tree:nth-child(3) { right: 10%; bottom: 15%; animation-delay: 1s; font-size: 45px; }
+    .tree:nth-child(4) { right: 25%; bottom: 5%; animation-delay: 1.5s; }
+    .tree:nth-child(5) { left: 40%; bottom: 25%; animation-delay: 2s; opacity: 0.2; }
+
+    @keyframes sway {
+      0%, 100% { transform: rotate(-2deg); }
+      50% { transform: rotate(2deg); }
+    }
+
+    /* Floating walnuts */
+    .floating-walnut {
+      position: absolute;
+      font-size: 24px;
+      animation: float-up 8s infinite ease-in-out;
+      opacity: 0.6;
+    }
+
+    .floating-walnut:nth-child(6) { left: 20%; top: 60%; animation-delay: 0s; }
+    .floating-walnut:nth-child(7) { right: 15%; top: 50%; animation-delay: 2s; }
+    .floating-walnut:nth-child(8) { left: 70%; top: 40%; animation-delay: 4s; }
+
+    @keyframes float-up {
+      0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.6; }
+      50% { transform: translateY(-30px) rotate(180deg); opacity: 0.3; }
+    }
+
+    /* Main container */
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 440px;
+      background: linear-gradient(135deg, rgba(139, 69, 19, 0.98), rgba(101, 67, 33, 0.98));
+      border-radius: 28px;
+      padding: 35px 30px 30px;
+      box-shadow:
+        0 25px 70px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+        0 0 80px rgba(255, 215, 0, 0.15);
+      transition: all 0.3s ease;
+    }
+
+    /* State management */
+    .state {
+      display: none;
+      animation: fadeSlideIn 0.5s ease;
+    }
+
+    .state.active {
+      display: block;
+    }
+
+    @keyframes fadeSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ========================================
+       WELCOME STATE - CHARACTER UNLOCK FOCUS
+       ======================================== */
+
+    .welcome-content {
+      text-align: center;
+    }
+
+    /* Title with gradient and animation */
+    h1 {
+      font-size: clamp(26px, 7vw, 36px);
+      font-weight: 900;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #FFD700, #FFA500, #FFD700);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 2px 20px rgba(255, 215, 0, 0.5);
+      letter-spacing: 2px;
+      animation: title-shimmer 3s infinite;
+    }
+
+    @keyframes title-shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    /* Tagline with pulsing effect */
+    .tagline {
+      font-size: clamp(15px, 4vw, 18px);
+      margin-bottom: 25px;
+      color: #FFE4B5;
+      font-weight: 600;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    /* ========================================
+       CHARACTER SHOWCASE - THE KEY ENTICEMENT
+       ======================================== */
+
+    .character-showcase {
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.3));
+      border-radius: 20px;
+      padding: 20px 15px;
+      margin: 20px 0;
+      border: 2px solid rgba(255, 215, 0, 0.3);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Premium badge */
+    .premium-badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: linear-gradient(135deg, #FFD700, #FFA500);
+      color: #8B4513;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+      animation: badge-pulse 2s infinite;
+    }
+
+    @keyframes badge-pulse {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+      }
+      50% {
+        transform: scale(1.05);
+        box-shadow: 0 6px 20px rgba(255, 215, 0, 0.6);
+      }
+    }
+
+    .showcase-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #FFD700;
+      margin-bottom: 15px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Character grid - shows locked vs unlocked */
+    .character-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+
+    .char-slot {
+      aspect-ratio: 1;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      position: relative;
+      border: 2px solid transparent;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+
+    /* Default character (squirrel) - always available */
+    .char-slot.default {
+      border-color: rgba(50, 205, 50, 0.6);
+      background: rgba(34, 139, 34, 0.2);
+      animation: char-available 0.6s ease-out 0.1s backwards;
+    }
+
+    @keyframes char-available {
+      from {
+        opacity: 0;
+        transform: scale(0.8) rotate(-10deg);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+      }
+    }
+
+    /* Locked characters - grayed out with lock */
+    .char-slot.locked {
+      opacity: 0.5;
+      filter: grayscale(100%);
+      animation: char-locked 0.6s ease-out backwards;
+    }
+
+    .char-slot.locked:nth-child(2) { animation-delay: 0.2s; }
+    .char-slot.locked:nth-child(3) { animation-delay: 0.3s; }
+    .char-slot.locked:nth-child(4) { animation-delay: 0.4s; }
+    .char-slot.locked:nth-child(5) { animation-delay: 0.5s; }
+    .char-slot.locked:nth-child(6) { animation-delay: 0.6s; }
+
+    @keyframes char-locked {
+      from {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+      to {
+        opacity: 0.5;
+        transform: scale(1);
+      }
+    }
+
+    .char-slot.locked::after {
+      content: '🔒';
+      position: absolute;
+      font-size: 20px;
+      bottom: 8px;
+      right: 8px;
+      filter: grayscale(0%);
+    }
+
+    .char-slot:hover:not(.locked) {
+      transform: scale(1.1) translateY(-4px);
+      border-color: rgba(50, 205, 50, 0.8);
+      box-shadow: 0 8px 25px rgba(50, 205, 50, 0.3);
+    }
+
+    .char-label {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.7);
+      margin-top: 6px;
+      font-weight: 600;
+    }
+
+    /* Unlock callout - THE MAIN ENTICEMENT */
+    .unlock-callout {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.15));
+      border: 2px solid rgba(255, 215, 0, 0.5);
+      border-radius: 16px;
+      padding: 15px;
+      text-align: center;
+      animation: callout-glow 2s infinite;
+    }
+
+    @keyframes callout-glow {
+      0%, 100% {
+        box-shadow: 0 4px 20px rgba(255, 215, 0, 0.2);
+        border-color: rgba(255, 215, 0, 0.5);
+      }
+      50% {
+        box-shadow: 0 8px 30px rgba(255, 215, 0, 0.4);
+        border-color: rgba(255, 215, 0, 0.8);
+      }
+    }
+
+    .unlock-text {
+      font-size: 14px;
+      font-weight: 700;
+      color: #FFD700;
+      margin-bottom: 8px;
+    }
+
+    .unlock-benefit {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.8);
+      line-height: 1.5;
+    }
+
+    /* Quick visual comparison */
+    .comparison {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      font-size: 11px;
+    }
+
+    .comparison-item {
+      flex: 1;
+      padding: 8px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .comparison-free {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .comparison-premium {
+      background: rgba(255, 215, 0, 0.2);
+      border: 1px solid rgba(255, 215, 0, 0.5);
+    }
+
+    .comparison-label {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .comparison-value {
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    /* Social proof */
+    .social-proof {
+      background: linear-gradient(135deg, rgba(50, 205, 50, 0.2), rgba(34, 139, 34, 0.2));
+      border: 1px solid rgba(50, 205, 50, 0.4);
+      border-radius: 20px;
+      padding: 8px 16px;
+      margin: 20px auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #90EE90;
+      font-weight: 600;
+    }
+
+    .social-proof-icon {
+      font-size: 16px;
+      animation: player-pulse 2s infinite;
+    }
+
+    @keyframes player-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+
+    /* Turnstile container */
+    .turnstile-container {
+      min-height: 65px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 20px 0 15px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 10px;
+      border: 1px dashed rgba(255, 255, 255, 0.2);
+    }
+
+    .turnstile-placeholder {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 13px;
+      font-style: italic;
+    }
+
+    /* Input field */
+    input[type="text"] {
+      width: 100%;
+      padding: 16px 20px;
+      margin: 12px 0;
+      border: 3px solid rgba(255, 215, 0, 0.3);
+      border-radius: 16px;
+      font-size: 16px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.95);
+      color: #333;
+      transition: all 0.3s;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #FFD700;
+      background: white;
+      box-shadow:
+        0 0 0 4px rgba(255, 215, 0, 0.2),
+        0 6px 20px rgba(255, 215, 0, 0.3);
+      transform: translateY(-2px);
+    }
+
+    /* Buttons */
+    .btn-play {
+      width: 100%;
+      padding: 20px;
+      background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-size: 20px;
+      font-weight: 900;
+      cursor: pointer;
+      margin: 12px 0;
+      box-shadow:
+        0 8px 25px rgba(50, 205, 50, 0.4),
+        0 0 0 3px rgba(255, 255, 255, 0.1) inset;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .btn-play::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      animation: btn-shine 3s infinite;
+    }
+
+    @keyframes btn-shine {
+      0%, 100% { left: -100%; }
+      50% { left: 100%; }
+    }
+
+    .btn-play:hover:not(:disabled) {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow:
+        0 12px 35px rgba(50, 205, 50, 0.5),
+        0 0 0 3px rgba(255, 255, 255, 0.2) inset;
+    }
+
+    .btn-play:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background: #666;
+    }
+
+    /* Auth CTA - PROMINENT */
+    .auth-cta {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.2));
+      border: 2px solid rgba(255, 215, 0, 0.6);
+      border-radius: 16px;
+      padding: 16px;
+      margin: 15px 0;
+      text-align: center;
+      animation: cta-pulse 3s infinite;
+    }
+
+    @keyframes cta-pulse {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 4px 20px rgba(255, 215, 0, 0.2);
+      }
+      50% {
+        transform: scale(1.02);
+        box-shadow: 0 8px 30px rgba(255, 215, 0, 0.4);
+      }
+    }
+
+    .auth-cta-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #FFD700;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+
+    .auth-cta-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-auth {
+      flex: 1;
+      padding: 14px;
+      background: linear-gradient(135deg, #FFD700, #FFA500);
+      color: #8B4513;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+      text-transform: uppercase;
+    }
+
+    .btn-auth:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5);
+    }
+
+    .btn-auth-secondary {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.15));
+      color: white;
+    }
+
+    /* Guest play note */
+    .guest-note {
+      margin-top: 12px;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+      text-align: center;
+    }
+
+    /* Hidden class */
+    .hidden {
+      display: none !important;
+    }
+
+    /* Welcome back - authenticated state */
+    .welcome-back {
+      background: linear-gradient(135deg, rgba(50, 205, 50, 0.25), rgba(34, 139, 34, 0.25));
+      border: 2px solid rgba(50, 205, 50, 0.6);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 20px;
+      text-align: center;
+      animation: welcome-pulse 2s infinite;
+    }
+
+    @keyframes welcome-pulse {
+      0%, 100% { box-shadow: 0 0 10px rgba(50, 205, 50, 0.3); }
+      50% { box-shadow: 0 0 20px rgba(50, 205, 50, 0.5); }
+    }
+
+    .welcome-back-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #90EE90;
+      margin-bottom: 6px;
+    }
+
+    .welcome-back-name {
+      font-size: 26px;
+      font-weight: 900;
+      color: #FFD700;
+    }
+
+    .logout-link {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .logout-link a {
+      color: #FF6B6B;
+      text-decoration: none;
+      font-size: 14px;
+      padding: 8px 15px;
+      border-radius: 8px;
+      transition: all 0.2s;
+      display: inline-block;
+      font-weight: 600;
+    }
+
+    .logout-link a:hover {
+      background: rgba(255, 107, 107, 0.2);
+    }
+
+    /* ========================================
+       LOADING STATE
+       ======================================== */
+
+    .loading-content {
+      text-align: center;
+    }
+
+    .loading-title {
+      font-size: 26px;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .carousel {
+      position: relative;
+      height: 90px;
+      margin: 30px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .carousel-char {
+      font-size: 70px;
+      position: absolute;
+      opacity: 0;
+      transform: scale(0.8);
+      transition: all 0.5s ease;
+      animation: carousel-bounce 1.5s infinite ease-in-out;
+    }
+
+    .carousel-char.active {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    @keyframes carousel-bounce {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-20px) scale(1.1); }
+    }
+
+    .progress-wrapper {
+      margin: 30px 0 20px;
+    }
+
+    .progress-label {
+      font-size: 15px;
+      margin-bottom: 12px;
+      color: #FFE4B5;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .progress-container {
+      width: 100%;
+      height: 24px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) inset;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #32CD32 0%, #90EE90 50%, #32CD32 100%);
+      background-size: 200% 100%;
+      transition: width 0.3s ease;
+      border-radius: 10px;
+      animation: progress-shimmer 2s infinite;
+    }
+
+    @keyframes progress-shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .progress-percentage {
+      text-align: center;
+      margin-top: 12px;
+      font-size: 15px;
+      color: #90EE90;
+      font-weight: 700;
+    }
+
+    /* Crack burst */
+    .crack-burst {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 120px;
+      color: #FFD700;
+      text-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1000;
+      animation: crack-pop 1s ease-out forwards;
+    }
+
+    @keyframes crack-pop {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.3) rotate(-30deg);
+      }
+      40% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.4) rotate(15deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1) rotate(0deg);
+      }
+    }
+
+    /* ========================================
+       RESPONSIVE
+       ======================================== */
+
+    @media (max-width: 428px) {
+      .container {
+        padding: 25px 20px 20px;
+      }
+
+      .character-grid {
+        gap: 10px;
+      }
+
+      .char-slot {
+        font-size: 35px;
+      }
+
+      .auth-cta-buttons {
+        flex-direction: column;
+      }
+    }
+
+    @media (max-height: 700px) and (orientation: landscape) {
+      body {
+        padding: 10px;
+        align-items: flex-start;
+      }
+
+      .container {
+        padding: 20px;
+        max-width: 550px;
+      }
+
+      .character-showcase {
+        padding: 15px 12px;
+        margin: 15px 0;
+      }
+
+      .character-grid {
+        gap: 8px;
+      }
+
+      .char-slot {
+        font-size: 32px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Animated forest background -->
+  <div class="forest-bg">
+    <div class="tree">🌲</div>
+    <div class="tree">🌲</div>
+    <div class="tree">🌲</div>
+    <div class="tree">🌲</div>
+    <div class="tree">🌲</div>
+    <div class="floating-walnut">🌰</div>
+    <div class="floating-walnut">🌰</div>
+    <div class="floating-walnut">🌰</div>
+  </div>
+
+  <!-- Main container -->
+  <div class="container">
+
+    <!-- STATE 1: Welcome Screen with CHARACTER UNLOCK ENTICEMENT -->
+    <div class="state active" id="welcomeState">
+      <div class="welcome-content">
+
+        <!-- Welcome back banner (authenticated) -->
+        <div class="welcome-back hidden" id="welcomeBack">
+          <div class="welcome-back-title">Welcome back,</div>
+          <div class="welcome-back-name" id="userName">Player</div>
+        </div>
+
+        <h1>HIDDEN WALNUTS</h1>
+        <p class="tagline">🌲 Hunt, Hide & Dominate the Forest 🌰</p>
+
+        <!-- CHARACTER SHOWCASE - THE MAIN ENTICEMENT -->
+        <div class="character-showcase">
+          <div class="premium-badge">🌟 Free w/ Sign Up</div>
+          <div class="showcase-title">🎭 Choose Your Character</div>
+
+          <div class="character-grid">
+            <!-- Default character - always available -->
+            <div class="char-slot default" title="Squirrel - Free">
+              <div>🐿️</div>
+            </div>
+
+            <!-- Locked characters - sign up to unlock -->
+            <div class="char-slot locked" title="Fox - Sign up to unlock">
+              <div>🦊</div>
+            </div>
+            <div class="char-slot locked" title="Bear - Sign up to unlock">
+              <div>🐻</div>
+            </div>
+            <div class="char-slot locked" title="Rabbit - Sign up to unlock">
+              <div>🐰</div>
+            </div>
+            <div class="char-slot locked" title="Bird - Sign up to unlock">
+              <div>🐦</div>
+            </div>
+            <div class="char-slot locked" title="Frog - Sign up to unlock">
+              <div>🐸</div>
+            </div>
+          </div>
+
+          <div class="unlock-callout">
+            <div class="unlock-text">🔓 Unlock 6 FREE Characters!</div>
+            <div class="unlock-benefit">
+              Sign up now to play as Fox, Bear, Rabbit, Bird, Frog & more!
+            </div>
+
+            <!-- Visual comparison -->
+            <div class="comparison">
+              <div class="comparison-item comparison-free">
+                <div class="comparison-label">Guest</div>
+                <div class="comparison-value">1</div>
+              </div>
+              <div class="comparison-item comparison-premium">
+                <div class="comparison-label">Free Account</div>
+                <div class="comparison-value">7</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Social proof -->
+        <div class="social-proof">
+          <span class="social-proof-icon">👥</span>
+          <span>1,247 players online now</span>
+        </div>
+
+        <!-- Turnstile widget -->
+        <div class="turnstile-container">
+          <div id="turnstile-widget">
+            <div class="turnstile-placeholder">🤖 Verifying you're human...</div>
+          </div>
+        </div>
+
+        <!-- Username input (hidden if authenticated) -->
+        <input
+          type="text"
+          id="nameInput"
+          placeholder="Enter your name..."
+          maxlength="16"
+          autocomplete="off"
+          spellcheck="false"
+        />
+
+        <!-- Play as guest button -->
+        <button class="btn-play" id="playBtn" disabled>
+          <span id="playBtnText">🎮 Verifying...</span>
+        </button>
+
+        <!-- AUTH CTA - PROMINENT (hidden if authenticated) -->
+        <div class="auth-cta" id="authCTA">
+          <div class="auth-cta-title">🌟 Unlock All Characters</div>
+          <div class="auth-cta-buttons">
+            <button class="btn-auth" id="signupBtn">Sign Up Free</button>
+            <button class="btn-auth btn-auth-secondary" id="loginBtn">Log In</button>
+          </div>
+          <div class="guest-note">
+            Or continue as guest with 1 character 🐿️
+          </div>
+        </div>
+
+        <!-- Logout link (authenticated) -->
+        <div class="logout-link hidden" id="logoutSection">
+          <a href="#" id="logoutLink">Logout</a>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- STATE 2: Loading Screen -->
+    <div class="state" id="loadingState">
+      <div class="loading-content">
+        <div class="loading-title">
+          <span>🌲</span>
+          <span>🌰</span>
+          <span>🌲</span>
+        </div>
+
+        <div class="carousel" id="carousel">
+          <div class="carousel-char">🦊</div>
+          <div class="carousel-char">🐻</div>
+          <div class="carousel-char">🐰</div>
+          <div class="carousel-char">🐦</div>
+          <div class="carousel-char">🐸</div>
+          <div class="carousel-char">🦡</div>
+        </div>
+
+        <div class="progress-wrapper">
+          <div class="progress-label" id="progressLabel">Preparing your adventure...</div>
+          <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+          <div class="progress-percentage" id="progressPercentage">0%</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Crack burst -->
+  <div class="crack-burst hidden" id="crackBurst">💥 CRACK!</div>
+
+  <script>
+    // State management
+    const states = {
+      welcome: document.getElementById('welcomeState'),
+      loading: document.getElementById('loadingState')
+    };
+
+    function switchState(stateName) {
+      Object.values(states).forEach(state => state.classList.remove('active'));
+      states[stateName].classList.add('active');
+    }
+
+    // Elements
+    const elements = {
+      nameInput: document.getElementById('nameInput'),
+      playBtn: document.getElementById('playBtn'),
+      playBtnText: document.getElementById('playBtnText'),
+      welcomeBack: document.getElementById('welcomeBack'),
+      userName: document.getElementById('userName'),
+      authCTA: document.getElementById('authCTA'),
+      signupBtn: document.getElementById('signupBtn'),
+      loginBtn: document.getElementById('loginBtn'),
+      logoutSection: document.getElementById('logoutSection'),
+      logoutLink: document.getElementById('logoutLink'),
+      crackBurst: document.getElementById('crackBurst'),
+      progressBar: document.getElementById('progressBar'),
+      progressPercentage: document.getElementById('progressPercentage'),
+      progressLabel: document.getElementById('progressLabel')
+    };
+
+    // Auth state
+    let isAuthenticated = localStorage.getItem('auth') === 'true';
+    let userDisplayName = localStorage.getItem('userName') || 'Player';
+    let turnstileVerified = false;
+
+    // Initialize
+    function initUI() {
+      if (isAuthenticated) {
+        elements.welcomeBack.classList.remove('hidden');
+        elements.userName.textContent = userDisplayName;
+        elements.nameInput.classList.add('hidden');
+        elements.authCTA.classList.add('hidden');
+        elements.logoutSection.classList.remove('hidden');
+
+        // Show all characters as unlocked
+        document.querySelectorAll('.char-slot.locked').forEach(slot => {
+          slot.classList.remove('locked');
+          slot.classList.add('default');
+        });
+
+        // Update showcase title
+        document.querySelector('.showcase-title').textContent = '🎭 All Characters Unlocked!';
+        document.querySelector('.unlock-callout').style.display = 'none';
+      } else {
+        elements.nameInput.focus();
+      }
+
+      simulateTurnstile();
+    }
+
+    // Simulate Turnstile
+    function simulateTurnstile() {
+      setTimeout(() => {
+        turnstileVerified = true;
+        elements.playBtn.disabled = false;
+        elements.playBtnText.innerHTML = isAuthenticated
+          ? '🚀 Start Adventure'
+          : '🎮 Play as Guest (🐿️)';
+
+        document.querySelector('.turnstile-placeholder').innerHTML = '✅ Verified!';
+      }, 2000);
+    }
+
+    // Play button
+    elements.playBtn.addEventListener('click', () => {
+      if (!turnstileVerified) return;
+
+      let playerName = userDisplayName;
+      if (!isAuthenticated) {
+        playerName = elements.nameInput.value.trim() || 'Squirrel';
+      }
+
+      elements.crackBurst.classList.remove('hidden');
+      setTimeout(() => elements.crackBurst.classList.add('hidden'), 1000);
+
+      switchState('loading');
+      startLoadingSequence(playerName);
+    });
+
+    // Loading sequence
+    function startLoadingSequence(playerName) {
+      let progress = 0;
+      const carousel = document.querySelectorAll('.carousel-char');
+      let currentChar = 0;
+
+      carousel[0].classList.add('active');
+      const carouselInt = setInterval(() => {
+        carousel[currentChar].classList.remove('active');
+        currentChar = (currentChar + 1) % carousel.length;
+        carousel[currentChar].classList.add('active');
+      }, 1500);
+
+      const interval = setInterval(() => {
+        progress += 5;
+        elements.progressBar.style.width = progress + '%';
+        elements.progressPercentage.textContent = progress + '%';
+
+        if (progress >= 100) {
+          clearInterval(interval);
+          clearInterval(carouselInt);
+          elements.progressLabel.textContent = '🌰 Forest ready!';
+
+          setTimeout(() => {
+            document.querySelector('.container').style.transition = 'opacity 0.8s';
+            document.querySelector('.container').style.opacity = '0';
+
+            setTimeout(() => {
+              alert('🎮 GAME STARTED!\n\nYou are ' + playerName + '!');
+            }, 800);
+          }, 800);
+        }
+      }, 150);
+    }
+
+    // Auth buttons
+    elements.signupBtn.addEventListener('click', () => {
+      alert('📝 SIGN UP\n\nUnlock 6 FREE characters:\n🦊 Fox\n🐻 Bear\n🐰 Rabbit\n🐦 Bird\n🐸 Frog\n🦡 Badger\n\nOpens AuthModal component.');
+    });
+
+    elements.loginBtn.addEventListener('click', () => {
+      alert('🔐 LOG IN\n\nWelcome back! Access your unlocked characters.\n\nOpens AuthModal component.');
+    });
+
+    elements.logoutLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (confirm('Logout?')) {
+        localStorage.removeItem('auth');
+        localStorage.removeItem('userName');
+        location.reload();
+      }
+    });
+
+    // Keyboard
+    elements.nameInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !elements.playBtn.disabled) {
+        elements.playBtn.click();
+      }
+    });
+
+    initUI();
+  </script>
+</body>
+</html>

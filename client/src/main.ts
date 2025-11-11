@@ -2,7 +2,7 @@
 // Deployment test: 2025-10-21 - Verifying Cloudflare preview deployment
 import { Game } from './Game';
 import { AudioManager } from './AudioManager';
-import { LoadingScreen } from './LoadingScreen';
+// LoadingScreen removed - using WelcomeScreen back face for loading progress
 import { WelcomeScreen } from './WelcomeScreen';
 import { SettingsManager } from './SettingsManager';
 import { TouchControls } from './TouchControls';
@@ -294,16 +294,15 @@ async function main() {
       });
     }
 
-    // MVP 6: STEP 3 - Show SINGLE loading screen and load ALL game assets
-    const loadingScreen = new LoadingScreen();
-    await loadingScreen.show(); // Sets to 0% immediately
+    // MVP 16: STEP 3 - Load game assets while showing progress on Welcome Screen back face
+    // NOTE: welcomeScreen is still visible, showing back face with progress bar
 
     // Start loading audio
-    loadingScreen.updateProgress(0.1, 'Loading audio...');
+    welcomeScreen.updateLoadingProgress(0.1, 'Loading audio...');
     await audioManager.waitForLoad();
 
     // Initialize game instance (this loads character models, sets up scene, etc.)
-    loadingScreen.updateProgress(0.3, 'Loading game world...');
+    welcomeScreen.updateLoadingProgress(0.3, 'Loading game world...');
     const game = new Game();
     game.selectedCharacterId = selectedCharacterId;
     game.sessionToken = sessionToken; // MVP 6: Pass session token
@@ -313,23 +312,22 @@ async function main() {
     console.log('🤖 [main.ts] Turnstile token:', game.turnstileToken ? 'Present' : 'Missing');
 
     // Run game.init() - this loads character model, connects to server, etc.
-    loadingScreen.updateProgress(0.5, 'Connecting to server...');
+    welcomeScreen.updateLoadingProgress(0.5, 'Connecting to server...');
     await game.init(canvas, audioManager, settingsManager);
 
     // Start render loop (but canvas still hidden)
-    loadingScreen.updateProgress(0.8, 'Preparing scene...');
+    welcomeScreen.updateLoadingProgress(0.8, 'Preparing scene...');
     game.start();
 
     // Wait 2 render frames to ensure scene is actually rendered
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-    // NOW everything is ready - show the game!
-    loadingScreen.updateProgress(1.0, 'Ready!');
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // NOW everything is ready!
+    welcomeScreen.updateLoadingProgress(1.0, '');
+    await welcomeScreen.finishLoading(); // Show "Forest ready!" and pause
 
-    // Hide loading screen
-    loadingScreen.hide();
-    loadingScreen.destroy();
+    // Hide welcome screen (includes back face with loading progress)
+    await welcomeScreen.hide();
 
     // Show game canvas (now guaranteed to have content)
     canvas.classList.remove('hidden');

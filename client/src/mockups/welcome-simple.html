@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Hidden Walnuts - Simple Welcome</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0a2f0a 0%, #1a4d1a 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      min-height: 100vh;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    /* Decorative background elements */
+    .bg-leaves {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+
+    .leaf {
+      position: absolute;
+      font-size: 24px;
+      opacity: 0.2;
+      animation: float-leaf 20s infinite ease-in-out;
+    }
+
+    .leaf:nth-child(1) { left: 10%; top: 20%; animation-delay: 0s; }
+    .leaf:nth-child(2) { left: 80%; top: 30%; animation-delay: 3s; }
+    .leaf:nth-child(3) { left: 50%; top: 60%; animation-delay: 6s; }
+    .leaf:nth-child(4) { left: 20%; top: 70%; animation-delay: 9s; }
+    .leaf:nth-child(5) { left: 70%; top: 80%; animation-delay: 12s; }
+
+    @keyframes float-leaf {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-30px) rotate(180deg); }
+    }
+
+    /* Main container - responsive sizing */
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 420px;
+      background: linear-gradient(135deg, rgba(139, 69, 19, 0.95), rgba(101, 67, 33, 0.95));
+      border-radius: 24px;
+      padding: 40px 30px 30px;
+      box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+      transition: all 0.3s ease;
+    }
+
+    /* States: welcome, loading */
+    .state {
+      display: none;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .state.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Welcome State */
+    .welcome-content {
+      text-align: center;
+    }
+
+    .character-main {
+      font-size: 80px;
+      margin-bottom: 15px;
+      animation: gentle-bounce 3s infinite ease-in-out;
+      display: inline-block;
+    }
+
+    @keyframes gentle-bounce {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-10px) scale(1.05); }
+    }
+
+    h1 {
+      font-size: clamp(24px, 6vw, 32px);
+      font-weight: 800;
+      margin-bottom: 8px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      letter-spacing: 1px;
+    }
+
+    .tagline {
+      font-size: clamp(14px, 3.5vw, 16px);
+      opacity: 0.9;
+      margin-bottom: 25px;
+      color: #FFE4B5;
+    }
+
+    /* Turnstile widget placeholder */
+    .turnstile-container {
+      min-height: 65px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 20px 0;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .turnstile-placeholder {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 14px;
+      font-style: italic;
+    }
+
+    /* Form inputs */
+    input[type="text"] {
+      width: 100%;
+      padding: 16px;
+      margin: 15px 0;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      font-size: 16px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.95);
+      color: #333;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #32CD32;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(50, 205, 50, 0.2);
+    }
+
+    input[type="text"]::placeholder {
+      color: #999;
+      font-weight: 400;
+    }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 18px;
+      background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
+      color: white;
+      border: none;
+      border-radius: 16px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 10px 0;
+      box-shadow: 0 6px 20px rgba(50, 205, 50, 0.3);
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(50, 205, 50, 0.4);
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: #666;
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.1));
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      font-size: 16px;
+      padding: 14px;
+    }
+
+    /* Auth links */
+    .auth-links {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .auth-links a {
+      color: #FFD700;
+      text-decoration: none;
+      padding: 10px 15px;
+      display: inline-block;
+      min-height: 44px;
+      min-width: 44px;
+      border-radius: 8px;
+      transition: all 0.2s;
+      font-weight: 600;
+    }
+
+    .auth-links a:hover {
+      background: rgba(255, 215, 0, 0.2);
+      transform: scale(1.05);
+    }
+
+    .auth-separator {
+      display: inline-block;
+      margin: 0 5px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Loading State */
+    .loading-content {
+      text-align: center;
+    }
+
+    .loading-title {
+      font-size: 24px;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    /* Character carousel */
+    .carousel {
+      position: relative;
+      height: 80px;
+      margin: 30px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .carousel-char {
+      font-size: 60px;
+      position: absolute;
+      opacity: 0;
+      transform: scale(0.8);
+      transition: all 0.5s ease;
+      animation: carousel-bounce 1.5s infinite ease-in-out;
+    }
+
+    .carousel-char.active {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    @keyframes carousel-bounce {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-15px) scale(1.1); }
+    }
+
+    /* Progress bar */
+    .progress-wrapper {
+      margin: 30px 0 20px;
+    }
+
+    .progress-label {
+      font-size: 14px;
+      margin-bottom: 10px;
+      color: #FFE4B5;
+      text-align: center;
+    }
+
+    .progress-container {
+      width: 100%;
+      height: 20px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) inset;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #32CD32 0%, #90EE90 100%);
+      transition: width 0.3s ease;
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .progress-bar::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.3),
+        transparent
+      );
+      animation: shimmer 1.5s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .progress-percentage {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 14px;
+      color: #90EE90;
+      font-weight: 600;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 428px) {
+      .container {
+        padding: 30px 20px 20px;
+        border-radius: 20px;
+      }
+
+      .character-main {
+        font-size: 60px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .btn {
+        padding: 16px;
+        font-size: 16px;
+      }
+
+      .auth-links {
+        font-size: 13px;
+      }
+    }
+
+    /* Mobile landscape */
+    @media (max-height: 600px) and (orientation: landscape) {
+      body {
+        padding: 10px;
+        align-items: flex-start;
+      }
+
+      .container {
+        padding: 20px;
+        max-width: 500px;
+      }
+
+      .character-main {
+        font-size: 50px;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        font-size: 20px;
+        margin-bottom: 5px;
+      }
+
+      .tagline {
+        font-size: 13px;
+        margin-bottom: 15px;
+      }
+
+      input[type="text"] {
+        padding: 12px;
+        margin: 10px 0;
+      }
+
+      .btn {
+        padding: 12px;
+        font-size: 15px;
+        margin: 5px 0;
+      }
+
+      .turnstile-container {
+        min-height: 50px;
+        margin: 10px 0;
+      }
+
+      .auth-links {
+        margin-top: 15px;
+        padding-top: 15px;
+      }
+
+      .carousel {
+        height: 60px;
+        margin: 20px 0;
+      }
+
+      .carousel-char {
+        font-size: 50px;
+      }
+
+      .progress-wrapper {
+        margin: 20px 0 15px;
+      }
+    }
+
+    /* Reduce motion for accessibility */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+
+      .character-main,
+      .carousel-char,
+      .leaf {
+        animation: none;
+      }
+    }
+
+    /* Welcome back banner for authenticated users */
+    .welcome-back {
+      background: linear-gradient(135deg, rgba(50, 205, 50, 0.2), rgba(34, 139, 34, 0.2));
+      border: 2px solid rgba(50, 205, 50, 0.5);
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .welcome-back-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #90EE90;
+      margin-bottom: 5px;
+    }
+
+    .welcome-back-name {
+      font-size: 24px;
+      font-weight: 800;
+      color: #FFD700;
+    }
+
+    .logout-link {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .logout-link a {
+      color: #FF6B6B;
+      text-decoration: none;
+      font-size: 14px;
+      padding: 8px 15px;
+      border-radius: 8px;
+      transition: all 0.2s;
+      display: inline-block;
+    }
+
+    .logout-link a:hover {
+      background: rgba(255, 107, 107, 0.2);
+    }
+
+    /* Hidden class */
+    .hidden {
+      display: none !important;
+    }
+
+    /* Crack animation */
+    .crack-burst {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 100px;
+      color: #FFD700;
+      text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1000;
+      animation: crack-pop 0.8s ease-out forwards;
+    }
+
+    @keyframes crack-pop {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5) rotate(0deg);
+      }
+      50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.3) rotate(15deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1) rotate(0deg);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Decorative background -->
+  <div class="bg-leaves">
+    <div class="leaf">🍂</div>
+    <div class="leaf">🍃</div>
+    <div class="leaf">🍂</div>
+    <div class="leaf">🍃</div>
+    <div class="leaf">🍂</div>
+  </div>
+
+  <!-- Main container -->
+  <div class="container">
+
+    <!-- STATE 1: Welcome Screen -->
+    <div class="state active" id="welcomeState">
+      <div class="welcome-content">
+
+        <!-- Welcome back banner (shown if authenticated) -->
+        <div class="welcome-back hidden" id="welcomeBack">
+          <div class="welcome-back-title">Welcome back,</div>
+          <div class="welcome-back-name" id="userName">Player</div>
+        </div>
+
+        <!-- Character display -->
+        <div class="character-main" id="mainCharacter">🐿️</div>
+
+        <h1>HIDDEN WALNUTS</h1>
+        <p class="tagline">🌲 Welcome to the Forest 🌰</p>
+
+        <!-- Turnstile widget placeholder -->
+        <div class="turnstile-container">
+          <div id="turnstile-widget">
+            <div class="turnstile-placeholder">🤖 Verifying you're human...</div>
+          </div>
+        </div>
+
+        <!-- Username input (hidden if authenticated) -->
+        <input
+          type="text"
+          id="nameInput"
+          placeholder="Enter your name..."
+          maxlength="16"
+          autocomplete="off"
+          spellcheck="false"
+        />
+
+        <!-- Play button -->
+        <button class="btn" id="playBtn" disabled>
+          <span id="playBtnText">Verifying...</span>
+        </button>
+
+        <!-- Logout link (shown if authenticated) -->
+        <div class="logout-link hidden" id="logoutSection">
+          <a href="#" id="logoutLink">Logout</a>
+        </div>
+
+        <!-- Auth links (hidden if authenticated) -->
+        <div class="auth-links" id="authLinks">
+          <a href="#" id="loginLink">Log In</a>
+          <span class="auth-separator">•</span>
+          <a href="#" id="signupLink">Sign Up</a>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- STATE 2: Loading Screen -->
+    <div class="state" id="loadingState">
+      <div class="loading-content">
+
+        <div class="loading-title">
+          <span>🌲</span>
+          <span>🌰</span>
+          <span>🌲</span>
+        </div>
+
+        <!-- Character carousel -->
+        <div class="carousel" id="carousel">
+          <div class="carousel-char" data-index="0">🦊</div>
+          <div class="carousel-char" data-index="1">🐻</div>
+          <div class="carousel-char" data-index="2">🐰</div>
+          <div class="carousel-char" data-index="3">🐦</div>
+          <div class="carousel-char" data-index="4">🐸</div>
+          <div class="carousel-char" data-index="5">🦡</div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="progress-wrapper">
+          <div class="progress-label" id="progressLabel">Preparing your adventure...</div>
+          <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+          <div class="progress-percentage" id="progressPercentage">0%</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Crack burst animation -->
+  <div class="crack-burst hidden" id="crackBurst">CRACK!</div>
+
+  <script>
+    // ===== STATE MANAGEMENT =====
+    const states = {
+      welcome: document.getElementById('welcomeState'),
+      loading: document.getElementById('loadingState')
+    };
+
+    function switchState(stateName) {
+      Object.values(states).forEach(state => state.classList.remove('active'));
+      states[stateName].classList.add('active');
+    }
+
+    // ===== ELEMENTS =====
+    const elements = {
+      nameInput: document.getElementById('nameInput'),
+      playBtn: document.getElementById('playBtn'),
+      playBtnText: document.getElementById('playBtnText'),
+      mainCharacter: document.getElementById('mainCharacter'),
+      welcomeBack: document.getElementById('welcomeBack'),
+      userName: document.getElementById('userName'),
+      authLinks: document.getElementById('authLinks'),
+      logoutSection: document.getElementById('logoutSection'),
+      logoutLink: document.getElementById('logoutLink'),
+      loginLink: document.getElementById('loginLink'),
+      signupLink: document.getElementById('signupLink'),
+      crackBurst: document.getElementById('crackBurst'),
+      carousel: document.getElementById('carousel'),
+      progressBar: document.getElementById('progressBar'),
+      progressPercentage: document.getElementById('progressPercentage'),
+      progressLabel: document.getElementById('progressLabel')
+    };
+
+    // ===== AUTH STATE =====
+    let isAuthenticated = localStorage.getItem('auth') === 'true';
+    let userDisplayName = localStorage.getItem('userName') || 'Player';
+    let turnstileVerified = false; // Will be set by Turnstile callback
+
+    // ===== INITIALIZE UI =====
+    function initUI() {
+      if (isAuthenticated) {
+        // Show welcome back banner
+        elements.welcomeBack.classList.remove('hidden');
+        elements.userName.textContent = userDisplayName;
+
+        // Hide name input and auth links
+        elements.nameInput.classList.add('hidden');
+        elements.authLinks.classList.add('hidden');
+
+        // Show logout link
+        elements.logoutSection.classList.remove('hidden');
+
+        // Show unlocked character (example: fox for authenticated users)
+        elements.mainCharacter.textContent = '🦊';
+      } else {
+        // Guest mode: focus name input
+        elements.nameInput.focus();
+      }
+
+      // Simulate Turnstile loading (in real implementation, this would be Turnstile callback)
+      simulateTurnstile();
+    }
+
+    // ===== SIMULATE TURNSTILE =====
+    function simulateTurnstile() {
+      // In real implementation, replace this with actual Turnstile widget
+      setTimeout(() => {
+        turnstileVerified = true;
+        elements.playBtn.disabled = false;
+        elements.playBtnText.textContent = isAuthenticated
+          ? 'CONTINUE'
+          : 'PLAY AS GUEST';
+
+        // Replace placeholder with checkmark
+        document.querySelector('.turnstile-placeholder').innerHTML =
+          '✅ Verified!';
+      }, 2000);
+    }
+
+    // ===== PLAY BUTTON =====
+    elements.playBtn.addEventListener('click', () => {
+      if (!turnstileVerified) return;
+
+      let playerName = userDisplayName;
+
+      if (!isAuthenticated) {
+        playerName = elements.nameInput.value.trim() || 'Squirrel';
+      }
+
+      console.log('🎮 Starting game as:', playerName);
+
+      // Show crack burst
+      elements.crackBurst.classList.remove('hidden');
+      setTimeout(() => {
+        elements.crackBurst.classList.add('hidden');
+      }, 800);
+
+      // Switch to loading state
+      switchState('loading');
+
+      // Start loading sequence
+      startLoadingSequence(playerName);
+    });
+
+    // ===== LOADING SEQUENCE =====
+    function startLoadingSequence(playerName) {
+      const loadingMessages = [
+        'Planting trees...',
+        'Hiding walnuts...',
+        'Waking up squirrels...',
+        'Preparing your adventure...',
+        'Almost ready...'
+      ];
+
+      let messageIndex = 0;
+      let progress = 0;
+
+      // Start character carousel
+      startCarousel();
+
+      // Progress animation
+      const interval = setInterval(() => {
+        progress += 5;
+        elements.progressBar.style.width = progress + '%';
+        elements.progressPercentage.textContent = progress + '%';
+
+        // Update message every 20%
+        if (progress % 20 === 0 && messageIndex < loadingMessages.length) {
+          elements.progressLabel.textContent = loadingMessages[messageIndex];
+          messageIndex++;
+        }
+
+        if (progress >= 100) {
+          clearInterval(interval);
+          stopCarousel();
+
+          elements.progressLabel.textContent = '🌰 Forest ready!';
+
+          // Fade out and start game
+          setTimeout(() => {
+            document.querySelector('.container').style.transition = 'opacity 0.8s';
+            document.querySelector('.container').style.opacity = '0';
+
+            setTimeout(() => {
+              alert('🎮 GAME STARTED!\n\nYou are now ' + playerName + ' hunting walnuts in the forest!');
+              // In real app: window.location = 'game.html' or start game instance
+            }, 800);
+          }, 800);
+        }
+      }, 150);
+    }
+
+    // ===== CHARACTER CAROUSEL =====
+    let carouselInterval;
+    let currentCharIndex = 0;
+    const carouselChars = elements.carousel.querySelectorAll('.carousel-char');
+
+    function startCarousel() {
+      // Show first character
+      carouselChars[currentCharIndex].classList.add('active');
+
+      carouselInterval = setInterval(() => {
+        carouselChars[currentCharIndex].classList.remove('active');
+        currentCharIndex = (currentCharIndex + 1) % carouselChars.length;
+        carouselChars[currentCharIndex].classList.add('active');
+      }, 1500);
+    }
+
+    function stopCarousel() {
+      if (carouselInterval) {
+        clearInterval(carouselInterval);
+      }
+    }
+
+    // ===== AUTH ACTIONS =====
+    elements.loginLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      alert('🔐 Log In\n\nIn real app, this would open the AuthModal component.');
+      // In real app: openAuthModal('login')
+    });
+
+    elements.signupLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      alert('📝 Sign Up\n\nIn real app, this would open the AuthModal component.');
+      // In real app: openAuthModal('signup')
+    });
+
+    elements.logoutLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (confirm('Are you sure you want to logout?')) {
+        localStorage.removeItem('auth');
+        localStorage.removeItem('userName');
+        location.reload();
+      }
+    });
+
+    // ===== KEYBOARD SHORTCUTS =====
+    elements.nameInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !elements.playBtn.disabled) {
+        elements.playBtn.click();
+      }
+    });
+
+    // ===== INIT ON LOAD =====
+    initUI();
+  </script>
+</body>
+</html>
