@@ -16,6 +16,7 @@ export interface CharacterPreview3DOptions {
   autoRotate?: boolean;         // Enable auto-rotation (default: true)
   cameraDistance?: number;      // Distance from character (default: 3)
   showAnimation?: boolean;      // Play idle animation (default: true)
+  initialRotation?: number;     // Initial rotation in radians (default: 0)
 }
 
 export class CharacterPreview3D {
@@ -39,7 +40,8 @@ export class CharacterPreview3D {
       rotationSpeed: options?.rotationSpeed ?? 0.005,
       autoRotate: options?.autoRotate ?? true,
       cameraDistance: options?.cameraDistance ?? 3,
-      showAnimation: options?.showAnimation ?? true
+      showAnimation: options?.showAnimation ?? true,
+      initialRotation: options?.initialRotation ?? 0
     };
   }
 
@@ -118,6 +120,9 @@ export class CharacterPreview3D {
       // Position and scale
       this.character.position.set(0, 0, 0);
       this.character.scale.set(1, 1, 1);
+
+      // Apply initial rotation
+      this.character.rotation.y = this.options.initialRotation;
 
       if (this.scene) {
         this.scene.add(this.character);

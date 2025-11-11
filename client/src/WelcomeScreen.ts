@@ -9,6 +9,7 @@
 import { CharacterPreview3D } from './components/CharacterPreview3D';
 import { CharacterRegistry } from './services/CharacterRegistry';
 import { AuthModal } from './components/AuthModal';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 export class WelcomeScreen {
   private container: HTMLDivElement | null = null;
@@ -18,6 +19,10 @@ export class WelcomeScreen {
   private squirrelPreview: CharacterPreview3D | null = null;
   private carouselPreview: CharacterPreview3D | null = null;
   private carouselInterval: number | null = null;
+
+  // Preloading
+  private randomBackCharacter: string | null = null;
+  private gltfLoader = new GLTFLoader();
 
   // Authentication modal
   private authModal: AuthModal | null = null;
@@ -75,7 +80,7 @@ export class WelcomeScreen {
 
                 <!-- Primary Action Button -->
                 <button id="welcome-play-button" class="card-button-primary" disabled>
-                  🎮 PLAY AS GUEST
+                  PLAY AS GUEST
                 </button>
 
                 <!-- Auth Links -->
@@ -96,7 +101,7 @@ export class WelcomeScreen {
             <!-- BACK FACE (Loading State) -->
             <div class="card-face card-face-back">
               <div class="card-top">
-                <h2 class="card-loading-title">🌲 🌰 🌲</h2>
+                <h2 class="card-loading-title">🌰</h2>
                 <div class="card-progress-container">
                   <div class="card-progress-bar" id="card-progress-bar"></div>
                 </div>
@@ -199,13 +204,50 @@ export class WelcomeScreen {
       this.squirrelPreview = new CharacterPreview3D(
         'front-character-container',
         'squirrel',
-        { rotationSpeed: 0.005, autoRotate: true, showAnimation: true, cameraDistance: 2 }
+        { rotationSpeed: 0.005, autoRotate: true, showAnimation: true, cameraDistance: 1.5 }
       );
       await this.squirrelPreview.init();
 
-      // Back card character will be initialized when card flips (see onPlayAsGuestClick)
+      // Preload back card character for faster flip
+      await this.preloadBackCharacter();
     } catch (error) {
       console.error('Error initializing 3D previews:', error);
+    }
+  }
+
+  /**
+   * Preload the back character model during idle time on front card
+   */
+  private async preloadBackCharacter(): Promise<void> {
+    try {
+      // Pick a random free character (excluding squirrel)
+      const freeCharacters = ['hare', 'goat', 'chipmunk', 'turkey', 'mallard'];
+      this.randomBackCharacter = freeCharacters[Math.floor(Math.random() * freeCharacters.length)];
+
+      // Get character data
+      const characterData = CharacterRegistry.getCharacterById(this.randomBackCharacter);
+      if (!characterData?.modelPath) {
+        console.warn('⚠️ Character model path not found for preloading');
+        return;
+      }
+
+      // Preload the GLTF model
+      await new Promise((resolve, reject) => {
+        this.gltfLoader.load(
+          characterData.modelPath,
+          () => {
+            console.log(`✅ Preloaded back character: ${this.randomBackCharacter}`);
+            resolve(true);
+          },
+          undefined,
+          (error) => {
+            console.warn('⚠️ Failed to preload back character:', error);
+            reject(error);
+          }
+        );
+      });
+    } catch (error) {
+      console.warn('⚠️ Error preloading back character:', error);
     }
   }
 
@@ -297,11 +339,8 @@ export class WelcomeScreen {
    */
   private async initBackCharacter(): Promise<void> {
     try {
-      // Free characters (excluding squirrel since it's on the front)
-      const freeCharacters = ['hare', 'goat', 'chipmunk', 'turkey', 'mallard'];
-
-      // Pick a random character
-      const randomChar = freeCharacters[Math.floor(Math.random() * freeCharacters.length)];
+      // Use preloaded character if available, otherwise pick a random one
+      const randomChar = this.randomBackCharacter || 'hare';
 
       // Initialize 3D preview on back card
       this.carouselPreview = new CharacterPreview3D(
@@ -429,7 +468,7 @@ export class WelcomeScreen {
 
     if (playButton) {
       playButton.disabled = false;
-      playButton.textContent = '🎮 PLAY AS GUEST';
+      playButton.textContent = 'PLAY AS GUEST';
       playButton.style.opacity = '1';
       playButton.style.cursor = 'pointer';
     }
@@ -463,7 +502,7 @@ export class WelcomeScreen {
           }
 
           // Auto-focus the username input
-          const input = document.getElementById('welcome-username') as HTMLInputElement;
+          const input = document.getElementById('welcome-username-input') as HTMLInputElement;
           if (input) {
             setTimeout(() => input.focus(), 100);
           }

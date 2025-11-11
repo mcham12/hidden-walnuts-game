@@ -299,10 +299,18 @@ export class CharacterGrid {
     // Filter out 'future' tier characters (not shown yet)
     const visibleCharacters = characterCards.filter(c => c.tier !== 'future');
 
-    // Sort: unlocked characters first, then locked characters
+    // Sort: no-auth tier (Squirrel) first, then free tier, then premium tier
+    const tierOrder = { 'no-auth': 0, 'free': 1, 'premium': 2, 'future': 3 };
     const sortedCharacters = visibleCharacters.sort((a, b) => {
+      const tierA = tierOrder[a.tier as keyof typeof tierOrder] ?? 999;
+      const tierB = tierOrder[b.tier as keyof typeof tierOrder] ?? 999;
+
+      if (tierA !== tierB) return tierA - tierB;
+
+      // Within same tier, sort by availability (unlocked first)
       if (a.isAvailable && !b.isAvailable) return -1;
       if (!a.isAvailable && b.isAvailable) return 1;
+
       return 0; // Keep original order within each group
     });
 
@@ -335,7 +343,7 @@ export class CharacterGrid {
 
     if (!isAuthenticated) {
       // No-auth CTA
-      textElement.textContent = '🔐 Sign Up Free to Unlock 6 Characters!';
+      textElement.textContent = '🌟 Sign up for 6 FREE characters!';
 
       const signupBtn = document.createElement('button');
       signupBtn.className = 'btn-primary';

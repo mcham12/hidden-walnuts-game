@@ -153,6 +153,9 @@ export class CharacterCard {
    */
   private async init3DPreview(): Promise<void> {
     try {
+      // Generate random initial rotation between 0 and 2π radians (0-360 degrees)
+      const randomRotation = Math.random() * Math.PI * 2;
+
       this.preview3D = new CharacterPreview3D(
         this.previewContainerId,
         this.data.id,
@@ -160,7 +163,8 @@ export class CharacterCard {
           rotationSpeed: 0.003,
           autoRotate: true,
           showAnimation: true,
-          cameraDistance: 2
+          cameraDistance: 2,
+          initialRotation: randomRotation
         }
       );
       await this.preview3D.init();

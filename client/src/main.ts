@@ -7,7 +7,7 @@ import { WelcomeScreen } from './WelcomeScreen';
 import { SettingsManager } from './SettingsManager';
 import { TouchControls } from './TouchControls';
 import { SessionManager } from './SessionManager'; // MVP 6: Player identity
-import { restoreSession, startTokenRefreshTimer } from './services/AuthService'; // MVP 16: Session persistence
+import { restoreSession, startTokenRefreshTimer, isAuthenticated } from './services/AuthService'; // MVP 16: Session persistence
 import { AuthModal } from './components/AuthModal'; // MVP 16: Authentication modals
 import { CharacterGrid } from './components/CharacterGrid'; // MVP 16: Character selection
 import { CharacterRegistry } from './services/CharacterRegistry'; // MVP 16: Character data
@@ -254,8 +254,12 @@ async function main() {
     if (savedCharacterId) {
       // Returning user with saved character - skip selection!
       selectedCharacterId = savedCharacterId;
+    } else if (!isAuthenticated()) {
+      // Guest player - auto-assign Squirrel and skip CharacterGrid
+      selectedCharacterId = 'squirrel';
+      console.log('🐿️ Guest player detected - auto-assigned Squirrel character');
     } else {
-      // MVP 16: New user or no saved character - show CharacterGrid
+      // MVP 16: Authenticated user with no saved character - show CharacterGrid
       const selectDiv = document.getElementById('character-select') as HTMLDivElement;
 
       // Show character selection container
