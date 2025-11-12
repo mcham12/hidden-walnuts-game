@@ -901,6 +901,8 @@
         gap: 24px; /* Gap between card-top and card-bottom */
         box-shadow: 0 20px 60px rgba(0,0,0,0.5);
         border: 2px solid rgba(255, 215, 0, 0.3);
+        overflow-y: auto; /* Enable scrolling when content exceeds height */
+        overflow-x: hidden; /* Prevent horizontal scroll */
       }
 
       .card-face-front {
@@ -927,6 +929,7 @@
         align-items: center;
         gap: 20px; /* Increased gap for better spacing between squirrel and turnstile */
         margin-top: auto; /* Push to bottom of card, respecting the gap */
+        flex-shrink: 0; /* Prevent buttons from shrinking when space is tight */
       }
 
       /* Card Title and Tagline */
@@ -1254,7 +1257,7 @@
       /* iPhone Portrait (max-width 430px) */
       @media (max-width: 430px) {
         .welcome-scene {
-          max-width: 90vw;
+          max-width: 85vw; /* Reduced from 90vw to prevent right edge cutoff */
           height: auto;
           min-height: 550px;
         }

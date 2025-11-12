@@ -444,7 +444,8 @@ export class WelcomeScreen {
     if (loadingText) {
       loadingText.textContent = 'Forest ready! 🌰';
     }
-    await new Promise(resolve => setTimeout(resolve, 800));
+    // Increased from 800ms to 1500ms to give more time before transition
+    await new Promise(resolve => setTimeout(resolve, 1500));
   }
 
   /**

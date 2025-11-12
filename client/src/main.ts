@@ -340,12 +340,22 @@ async function main() {
       walnutHud.classList.remove('hidden');
     }
 
+    // Gradual progress steps to show smooth loading (prevent rushing to 100%)
+    welcomeScreen.updateLoadingProgress(0.85, 'Rendering trees...');
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    welcomeScreen.updateLoadingProgress(0.9, 'Placing walnuts...');
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    welcomeScreen.updateLoadingProgress(0.95, 'Final touches...');
+    await new Promise(resolve => setTimeout(resolve, 300));
+
     // NOW everything is ready - scene has been rendered
     welcomeScreen.updateLoadingProgress(1.0, '');
-    await welcomeScreen.finishLoading(); // Show "Forest ready!" and pause (800ms)
+    await welcomeScreen.finishLoading(); // Show "Forest ready!" and pause (1500ms)
 
-    // Wait a bit more to let user see the loading complete
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Wait longer to let user see the loading complete and ensure scene is fully rendered
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     // NOW hide welcome screen - canvas has been rendering underneath and is ready
     await welcomeScreen.hide();
