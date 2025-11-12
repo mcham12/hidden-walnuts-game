@@ -366,6 +366,8 @@ export class Game {
       this.renderer.setSize(window.innerWidth, window.innerHeight);
       this.renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2)); // Lower pixel ratio on mobile
       this.renderer.shadowMap.enabled = !isMobile; // Disable shadows on mobile for performance
+      // CRITICAL: Set clear color to forest green to prevent white screen flash
+      this.renderer.setClearColor(0x1b5e20); // Matches canvas background-color
 
       // Texture Loader
       this.textureLoader = new THREE.TextureLoader();

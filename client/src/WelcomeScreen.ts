@@ -102,7 +102,7 @@ export class WelcomeScreen {
             <div class="card-face card-face-back">
               <div class="card-top">
                 <div class="card-progress-container">
-                  <div class="card-progress-bar" id="card-progress-bar"></div>
+                  <div class="card-progress-bar" id="card-progress-bar" style="width: 0%;"></div>
                 </div>
                 <p class="card-loading-text" id="card-loading-text">Preparing your adventure...</p>
               </div>

@@ -297,6 +297,12 @@ async function main() {
     // MVP 16: STEP 3 - Load game assets while showing progress on Welcome Screen back face
     // NOTE: welcomeScreen is still visible, showing back face with progress bar
 
+    // CRITICAL: Wait for card flip animation to complete (900ms) before updating progress
+    // This ensures the back face is fully visible and elements are accessible
+    console.log('⏳ [main.ts] Waiting for card flip animation (1000ms)...');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log('✅ [main.ts] Card flip complete, starting loading updates');
+
     // Start loading audio
     welcomeScreen.updateLoadingProgress(0.1, 'Loading audio...');
     await audioManager.waitForLoad();
@@ -381,8 +387,11 @@ async function main() {
     // If controls still don't work, the issue is elsewhere (blocking elements, CSS, etc.)
     // not in the initialization sequence.
 
-    // MVP 11: Start background audio (ambient forest sounds + music)
+    // MVP 11: Start background audio AFTER welcome screen hide completes
+    // Delayed start ensures smooth transition without audio stutter
+    console.log('🎵 [main.ts] Starting background audio...');
     audioManager.startBackgroundAudio();
+    console.log('✅ [main.ts] Background audio started');
 
     // MVP 5: Show persistent control guide (desktop only)
     // Note: control-guide and touch-controls-hint elements were removed from HTML

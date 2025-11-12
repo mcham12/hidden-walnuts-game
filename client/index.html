@@ -847,7 +847,8 @@
         display: none;
         opacity: 0;
         transition: opacity 0.5s ease-in-out;
-        overflow: hidden;
+        overflow-x: hidden; /* Prevent horizontal scroll */
+        overflow-y: auto; /* Allow vertical scroll - critical for iPad landscape */
       }
       .welcome-content {
         position: relative;
@@ -858,7 +859,7 @@
         align-items: center;
         justify-content: center;
         padding: 20px;
-        perspective: 1200px;
+        /* Removed perspective from here - causes centering issues */
       }
 
       /* Flip Card Structure */
@@ -868,6 +869,7 @@
         max-width: 400px;
         height: 680px; /* Increased from 600px to fit all content */
         margin: 0 auto; /* Explicitly center the card */
+        perspective: 1200px; /* Moved from parent - localizes 3D effect to card */
         animation: cardFloat 6s ease-in-out infinite;
       }
 
@@ -1239,36 +1241,42 @@
           padding: 10px;
         }
         .welcome-scene {
-          max-width: 80vw;
-          height: auto; /* Changed from fixed 85vh to auto */
-          max-height: 90vh; /* Use max-height instead to allow proper content flow */
+          max-width: 70vw; /* Reduced from 80vw for better fit */
+          height: auto; /* Changed from fixed to auto */
+          max-height: 85vh; /* Reduced from 90vh */
+          min-height: 400px; /* Ensure minimum usable height */
           margin: 0 auto; /* Ensure centering */
-          animation: none; /* Disable float on landscape to save space */
+          animation: none; /* Disable float - prevents transform conflicts */
+          perspective: 800px; /* Reduced perspective for smaller viewport */
         }
         .card-face {
-          padding: 15px;
-          overflow-y: auto; /* Ensure scrolling is enabled */
-          max-height: 90vh; /* Match parent max-height */
+          padding: 12px; /* Reduced from 15px */
+          gap: 12px; /* Reduced gap for tighter layout */
+          overflow-y: auto; /* Enable scrolling */
+          max-height: 85vh; /* Match parent max-height */
         }
         .card-top,
         .card-bottom {
-          gap: 8px;
+          gap: 6px; /* Reduced from 8px */
         }
         .card-character-3d {
-          height: 120px;
+          height: 100px; /* Reduced from 120px */
         }
         .card-turnstile {
           min-height: 50px;
+          transform: scale(0.85); /* Slightly smaller turnstile */
         }
       }
 
       /* iPhone Portrait (max-width 430px) */
       @media (max-width: 430px) {
         .welcome-scene {
-          max-width: 80vw; /* Further reduced from 85vw to prevent cutoff on both sides */
+          max-width: 85vw; /* Increased from 80vw - perspective fix should resolve centering */
           height: auto;
           min-height: 550px;
           margin: 0 auto; /* Ensure centering */
+          animation: none; /* Disable float - prevents transform conflicts */
+          perspective: 900px; /* Reduced perspective for smaller viewport */
         }
         .card-face {
           padding: 20px;
