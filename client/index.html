@@ -866,7 +866,8 @@
         position: relative;
         width: 100%;
         max-width: 400px;
-        height: 600px;
+        height: 680px; /* Increased from 600px to fit all content */
+        margin: 0 auto; /* Explicitly center the card */
         animation: cardFloat 6s ease-in-out infinite;
       }
 
@@ -1208,10 +1209,13 @@
       @media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
         .welcome-scene {
           max-width: 420px;
-          height: 550px;
+          height: auto; /* Changed from fixed 550px to auto */
+          max-height: 85vh; /* Use max-height instead to allow scrolling */
+          margin: 0 auto; /* Ensure centering */
         }
         .card-face {
           padding: 25px;
+          overflow-y: auto; /* Ensure scrolling is enabled */
         }
         .card-character-3d {
           height: 180px;
@@ -1236,11 +1240,15 @@
         }
         .welcome-scene {
           max-width: 80vw;
-          height: 85vh;
+          height: auto; /* Changed from fixed 85vh to auto */
+          max-height: 90vh; /* Use max-height instead to allow proper content flow */
+          margin: 0 auto; /* Ensure centering */
           animation: none; /* Disable float on landscape to save space */
         }
         .card-face {
           padding: 15px;
+          overflow-y: auto; /* Ensure scrolling is enabled */
+          max-height: 90vh; /* Match parent max-height */
         }
         .card-top,
         .card-bottom {
@@ -1257,9 +1265,10 @@
       /* iPhone Portrait (max-width 430px) */
       @media (max-width: 430px) {
         .welcome-scene {
-          max-width: 85vw; /* Reduced from 90vw to prevent right edge cutoff */
+          max-width: 80vw; /* Further reduced from 85vw to prevent cutoff on both sides */
           height: auto;
           min-height: 550px;
+          margin: 0 auto; /* Ensure centering */
         }
         .card-face {
           padding: 20px;

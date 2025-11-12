@@ -423,16 +423,26 @@ export class WelcomeScreen {
    * @param message - Optional message to display
    */
   public updateLoadingProgress(progress: number, message: string = ''): void {
+    console.log(`📊 [WelcomeScreen] updateLoadingProgress(${progress}, "${message}")`);
+
     const progressBar = document.getElementById('card-progress-bar');
     const loadingText = document.getElementById('card-loading-text');
 
     if (progressBar) {
       const percentage = Math.round(progress * 100);
       progressBar.style.width = `${percentage}%`;
+      console.log(`✅ [WelcomeScreen] Progress bar updated to ${percentage}%`);
+    } else {
+      console.error('❌ [WelcomeScreen] card-progress-bar element NOT FOUND');
     }
 
-    if (loadingText && message) {
-      loadingText.textContent = message;
+    if (loadingText) {
+      if (message) {
+        loadingText.textContent = message;
+        console.log(`✅ [WelcomeScreen] Loading text updated: "${message}"`);
+      }
+    } else {
+      console.error('❌ [WelcomeScreen] card-loading-text element NOT FOUND');
     }
   }
 

@@ -322,18 +322,24 @@ async function main() {
     // CRITICAL: Show canvas WHILE hidden to allow rendering to start
     // The canvas needs to be in the DOM and visible (not display:none) for WebGL to render
     canvas.classList.remove('hidden');
+    console.log('🎨 [main.ts] Canvas revealed, starting render...');
     // But keep welcome screen on top (z-index 10000 vs canvas z-index 0)
 
-    // Wait 5 render frames to ensure scene is actually rendered and painted
-    await new Promise(resolve => requestAnimationFrame(() =>
-      requestAnimationFrame(() =>
-        requestAnimationFrame(() =>
-          requestAnimationFrame(() =>
-            requestAnimationFrame(resolve)
-          )
-        )
-      )
-    ));
+    // Wait 10 render frames (increased from 5) to ensure scene is fully rendered and painted
+    console.log('⏳ [main.ts] Waiting for render frames...');
+    await new Promise(resolve => {
+      let count = 0;
+      const frameWait = () => {
+        count++;
+        if (count < 10) {
+          requestAnimationFrame(frameWait);
+        } else {
+          resolve(true);
+        }
+      };
+      requestAnimationFrame(frameWait);
+    });
+    console.log('✅ [main.ts] 10 frames rendered');
 
     // Show walnut HUD
     if (walnutHud) {
@@ -342,22 +348,25 @@ async function main() {
 
     // Gradual progress steps to show smooth loading (prevent rushing to 100%)
     welcomeScreen.updateLoadingProgress(0.85, 'Rendering trees...');
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 400));
 
     welcomeScreen.updateLoadingProgress(0.9, 'Placing walnuts...');
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 400));
 
     welcomeScreen.updateLoadingProgress(0.95, 'Final touches...');
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 400));
 
     // NOW everything is ready - scene has been rendered
     welcomeScreen.updateLoadingProgress(1.0, '');
+    console.log('📊 [main.ts] Loading complete, calling finishLoading()');
     await welcomeScreen.finishLoading(); // Show "Forest ready!" and pause (1500ms)
 
-    // Wait longer to let user see the loading complete and ensure scene is fully rendered
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Wait even longer to ensure scene is FULLY rendered and visible behind welcome screen
+    console.log('⏳ [main.ts] Waiting 1500ms before hide...');
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
     // NOW hide welcome screen - canvas has been rendering underneath and is ready
+    console.log('🎭 [main.ts] Hiding welcome screen...');
     await welcomeScreen.hide();
 
     // MVP 16: Ensure DOM fully ready before showing UI
