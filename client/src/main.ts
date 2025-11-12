@@ -319,30 +319,35 @@ async function main() {
     welcomeScreen.updateLoadingProgress(0.8, 'Preparing scene...');
     game.start();
 
-    // Wait 3 render frames to ensure scene is actually rendered
+    // CRITICAL: Show canvas WHILE hidden to allow rendering to start
+    // The canvas needs to be in the DOM and visible (not display:none) for WebGL to render
+    canvas.classList.remove('hidden');
+    // But keep welcome screen on top (z-index 10000 vs canvas z-index 0)
+
+    // Wait 5 render frames to ensure scene is actually rendered and painted
     await new Promise(resolve => requestAnimationFrame(() =>
       requestAnimationFrame(() =>
-        requestAnimationFrame(resolve)
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() =>
+            requestAnimationFrame(resolve)
+          )
+        )
       )
     ));
-
-    // NOW everything is ready!
-    welcomeScreen.updateLoadingProgress(1.0, '');
-    await welcomeScreen.finishLoading(); // Show "Forest ready!" and pause
-
-    // CRITICAL FIX: Show canvas BEFORE hiding welcome screen to prevent white flash
-    // This ensures there's always something visible (either welcome screen OR canvas)
-    canvas.classList.remove('hidden');
 
     // Show walnut HUD
     if (walnutHud) {
       walnutHud.classList.remove('hidden');
     }
 
-    // Wait one more frame to ensure canvas is painted
-    await new Promise(resolve => requestAnimationFrame(resolve));
+    // NOW everything is ready - scene has been rendered
+    welcomeScreen.updateLoadingProgress(1.0, '');
+    await welcomeScreen.finishLoading(); // Show "Forest ready!" and pause (800ms)
 
-    // NOW hide welcome screen - canvas is already visible underneath
+    // Wait a bit more to let user see the loading complete
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // NOW hide welcome screen - canvas has been rendering underneath and is ready
     await welcomeScreen.hide();
 
     // MVP 16: Ensure DOM fully ready before showing UI

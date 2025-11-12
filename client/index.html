@@ -892,11 +892,12 @@
         height: 100%;
         backface-visibility: hidden;
         border-radius: 24px;
-        padding: 30px 30px 40px 30px; /* Issue 4: Increased bottom padding for gap */
+        padding: 30px 30px 40px 30px; /* Bottom padding for gap below CTA */
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
+        justify-content: flex-start; /* Changed from space-between to allow gap control */
         align-items: center;
+        gap: 24px; /* Gap between card-top and card-bottom */
         box-shadow: 0 20px 60px rgba(0,0,0,0.5);
         border: 2px solid rgba(255, 215, 0, 0.3);
       }
@@ -974,7 +975,7 @@
       /* Card Input */
       .card-input {
         width: 100%;
-        max-width: 320px; /* Issue 6: Constrain width to match button/turnstile */
+        max-width: 320px;
         padding: 14px 18px;
         font-size: clamp(14px, 3.5vw, 16px);
         border: 3px solid rgba(255, 215, 0, 0.4);
@@ -987,6 +988,7 @@
         outline: none;
         transition: all 0.3s ease;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        box-sizing: border-box; /* Ensure border/padding included in width */
       }
 
       .card-input::placeholder {

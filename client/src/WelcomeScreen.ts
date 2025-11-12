@@ -101,7 +101,6 @@ export class WelcomeScreen {
             <!-- BACK FACE (Loading State) -->
             <div class="card-face card-face-back">
               <div class="card-top">
-                <h2 class="card-loading-title">🌰</h2>
                 <div class="card-progress-container">
                   <div class="card-progress-bar" id="card-progress-bar"></div>
                 </div>
