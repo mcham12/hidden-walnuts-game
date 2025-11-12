@@ -42,6 +42,7 @@
   z-index: 0; /* Behind all UI */
   pointer-events: auto;
   touch-action: none;
+  background-color: #1b5e20; /* Forest green to prevent white flash */
   /* Prevent iOS white space */
   -webkit-transform: translate3d(0, 0, 0);
   transform: translate3d(0, 0, 0);
@@ -925,6 +926,7 @@
         flex-direction: column;
         align-items: center;
         gap: 20px; /* Increased gap for better spacing between squirrel and turnstile */
+        margin-top: auto; /* Push to bottom of card, respecting the gap */
       }
 
       /* Card Title and Tagline */
