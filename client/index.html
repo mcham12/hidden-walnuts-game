@@ -2498,13 +2498,23 @@
     <!-- MVP 16: Unified Death Screen (single overlay, all content visible) -->
     <div id="death-overlay" class="hidden">
       <div class="death-unified-content">
-        <!-- Top Section: Score + Skip Button -->
+        <!-- Top Section: Score Only -->
         <div class="death-top-section">
           <div class="death-score-display">
             <h1 class="death-title">💀 OH NUTS!</h1>
             <p class="death-score">Your score: <span id="death-score-value">0</span></p>
           </div>
-          <div style="display: flex; gap: 10px;">
+        </div>
+
+        <!-- Middle Section: Respawn Timer + Control Buttons -->
+        <div class="death-middle-section">
+          <div class="respawn-timer-compact">
+            <p class="respawn-label">RESPAWNING IN: <span id="respawn-countdown">10</span>s</p>
+            <div class="respawn-progress-container">
+              <div id="respawn-progress-bar" class="respawn-progress-bar"></div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 10px; margin-top: 15px;">
             <button id="death-pause-button" class="death-skip-btn-unified" style="flex: 1;">
               ⏸️ PAUSE
             </button>
@@ -2514,32 +2524,14 @@
           </div>
         </div>
 
-        <!-- Middle Section: Timer + Animation -->
-        <div class="death-middle-section">
-          <div class="death-animation-compact">
-            <div id="death-character" class="death-char-emoji">🐿️</div>
-          </div>
-          <div class="respawn-timer-compact">
-            <p class="respawn-label">🔄 RESPAWNING IN: <span id="respawn-countdown">10</span>s</p>
-            <div class="respawn-progress-container">
-              <div id="respawn-progress-bar" class="respawn-progress-bar"></div>
-            </div>
-          </div>
-        </div>
-
         <!-- Bottom Section: Enticement (visible from start) -->
         <div class="death-bottom-section">
           <!-- Anonymous Users Content -->
           <div id="death-content-anonymous" class="death-enticement-panel hidden">
             <h3 class="enticement-title">👤 Sign in to get 6 Free characters + Leaderboard access!</h3>
 
-            <div class="enticement-characters">
-              <span class="enticement-char">🦊</span>
-              <span class="enticement-char">🐻</span>
-              <span class="enticement-char">🐰</span>
-              <span class="enticement-char">🐦</span>
-              <span class="enticement-char">🐸</span>
-              <span class="enticement-char">🦡</span>
+            <div id="death-enticement-character-container" style="height: 150px; margin: 15px 0; display: flex; justify-content: center; align-items: center;">
+              <!-- 3D character will be rendered here by Game.ts -->
             </div>
 
             <div class="enticement-buttons">

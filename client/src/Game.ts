@@ -20,6 +20,7 @@ import { AuthModal } from './components/AuthModal.js'; // MVP 16: Authentication
 import { SessionExpiredBanner } from './components/SessionExpiredBanner.js'; // MVP 16: Session expiry
 import { isAuthenticated, getCurrentUser } from './services/AuthService.js'; // MVP 16: Auth state checking
 import { CharacterRegistry } from './services/CharacterRegistry.js'; // MVP 16: Character availability
+import { CharacterPreview3D } from './components/CharacterPreview3D.js'; // MVP 16: 3D character previews
 import { TutorialOverlay } from './TutorialOverlay.js';
 import { getPlayerTitle } from '@shared/PlayerRanks';
 import { TipsManager } from './TipsManager.js'; // MVP 14: Contextual tips
@@ -295,6 +296,9 @@ export class Game {
 
   // MVP 16: Authentication modal
   private authModal: AuthModal | null = null;
+
+  // MVP 16: Death screen enticement - 3D character preview
+  private deathEnticementPreview: CharacterPreview3D | null = null;
 
   // MVP 16: Session expired banner
   private sessionExpiredBanner: SessionExpiredBanner | null = null;
@@ -4526,19 +4530,70 @@ export class Game {
           this.handleWatchAd();
         };
       }
+
+      // Initialize 3D character enticement (random unpurchased free character)
+      this.initDeathEnticementCharacter();
     }
   }
 
   /**
    * MVP 16: Handle Sign In from death screen
+   * Opens SIGNUP modal (not login) - after signup, page reloads and user sees character grid
    */
   private handleDeathSignIn(): void {
-    console.log('🎯 Opening login modal from death screen');
-    // Open AuthModal in login mode
+    console.log('🎯 Opening signup modal from death screen');
+    // Open AuthModal in signup mode
     if (this.authModal) {
-      this.authModal.open('login');
+      this.authModal.open('signup');
     } else {
       console.error('❌ AuthModal not initialized');
+    }
+  }
+
+  /**
+   * MVP 16: Initialize 3D character enticement on death screen
+   * Shows a random unpurchased free character rotating in 3D
+   */
+  private async initDeathEnticementCharacter(): Promise<void> {
+    // Cleanup any existing preview
+    this.cleanupDeathEnticementCharacter();
+
+    // Get all free tier characters (the 6 characters that unlock when you sign in)
+    const allCharacters = CharacterRegistry.getAllCharacters();
+    const freeCharacters = allCharacters.filter(char => char.tier === 'free');
+
+    if (freeCharacters.length === 0) {
+      console.warn('⚠️ No free characters available for enticement');
+      return;
+    }
+
+    // Select random character
+    const randomChar = freeCharacters[Math.floor(Math.random() * freeCharacters.length)];
+    console.log(`🎲 Death screen enticement: showing ${randomChar.name}`);
+
+    // Initialize 3D preview
+    this.deathEnticementPreview = new CharacterPreview3D(
+      'death-enticement-character-container',
+      randomChar.id,
+      {
+        rotationSpeed: 0.01,
+        autoRotate: true,
+        cameraDistance: 2.5,
+        showAnimation: true
+      }
+    );
+
+    // Initialize the preview
+    await this.deathEnticementPreview.init();
+  }
+
+  /**
+   * MVP 16: Cleanup death screen enticement character
+   */
+  private cleanupDeathEnticementCharacter(): void {
+    if (this.deathEnticementPreview) {
+      this.deathEnticementPreview.destroy();
+      this.deathEnticementPreview = null;
     }
   }
 
@@ -4639,6 +4694,9 @@ export class Game {
     if (signedInContent) {
       signedInContent.classList.add('hidden');
     }
+
+    // MVP 16: Cleanup death screen enticement character
+    this.cleanupDeathEnticementCharacter();
 
     // MVP 8: Enable spawn protection (3 seconds invulnerability)
     this.isInvulnerable = true;

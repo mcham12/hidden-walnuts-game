@@ -97,7 +97,7 @@ export class LoadingOverlay {
     // Create loading text
     this.loadingText = document.createElement('p');
     this.loadingText.className = 'loading-text';
-    this.loadingText.textContent = 'Preparing your adventure...';
+    this.loadingText.textContent = 'Arranging forest';
     this.loadingText.style.cssText = `
       font-size: clamp(16px, 4vw, 20px);
       color: #FFE4B5;

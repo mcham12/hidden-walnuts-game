@@ -306,11 +306,11 @@ async function main() {
 
     // STEP 3C: Load game assets with progress updates
     // Start loading audio
-    loadingOverlay.updateProgress(0.1, 'Loading audio...');
+    loadingOverlay.updateProgress(0.1, 'Arranging forest');
     await audioManager.waitForLoad();
 
     // Initialize game instance (this loads character models, sets up scene, etc.)
-    loadingOverlay.updateProgress(0.3, 'Loading game world...');
+    loadingOverlay.updateProgress(0.3, 'Hiding walnuts');
     const game = new Game();
     game.selectedCharacterId = selectedCharacterId;
     game.sessionToken = sessionToken; // MVP 6: Pass session token
@@ -320,11 +320,11 @@ async function main() {
     console.log('🤖 [main.ts] Turnstile token:', game.turnstileToken ? 'Present' : 'Missing');
 
     // Run game.init() - this loads character model, connects to server, etc.
-    loadingOverlay.updateProgress(0.5, 'Connecting to server...');
+    loadingOverlay.updateProgress(0.5, 'Finding other players');
     await game.init(canvas, audioManager, settingsManager);
 
     // Start render loop
-    loadingOverlay.updateProgress(0.7, 'Preparing scene...');
+    loadingOverlay.updateProgress(0.7, 'Recruiting predators');
     game.start();
 
     // Show canvas to allow rendering
@@ -351,16 +351,6 @@ async function main() {
     if (walnutHud) {
       walnutHud.classList.remove('hidden');
     }
-
-    // Gradual progress steps
-    loadingOverlay.updateProgress(0.85, 'Rendering trees...');
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    loadingOverlay.updateProgress(0.9, 'Placing walnuts...');
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    loadingOverlay.updateProgress(0.95, 'Final touches...');
-    await new Promise(resolve => setTimeout(resolve, 300));
 
     // Complete
     loadingOverlay.updateProgress(1.0, '');
