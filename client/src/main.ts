@@ -2,8 +2,8 @@
 // Deployment test: 2025-10-21 - Verifying Cloudflare preview deployment
 import { Game } from './Game';
 import { AudioManager } from './AudioManager';
-// LoadingScreen removed - using WelcomeScreen back face for loading progress
 import { WelcomeScreen } from './WelcomeScreen';
+import { LoadingOverlay } from './components/LoadingOverlay'; // NEW: Simple loading overlay
 import { SettingsManager } from './SettingsManager';
 import { TouchControls } from './TouchControls';
 import { SessionManager } from './SessionManager'; // MVP 6: Player identity
@@ -294,21 +294,23 @@ async function main() {
       });
     }
 
-    // MVP 16: STEP 3 - Load game assets while showing progress on Welcome Screen back face
-    // NOTE: welcomeScreen is still visible, showing back face with progress bar
+    // NEW TWO-OVERLAY ARCHITECTURE
+    // STEP 3A: Hide welcome screen
+    console.log('🎭 [main.ts] Hiding welcome screen...');
+    await welcomeScreen.hide();
 
-    // CRITICAL: Wait for card flip animation to complete (900ms) before updating progress
-    // This ensures the back face is fully visible and elements are accessible
-    console.log('⏳ [main.ts] Waiting for card flip animation (1000ms)...');
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log('✅ [main.ts] Card flip complete, starting loading updates');
+    // STEP 3B: Show loading overlay
+    const loadingOverlay = new LoadingOverlay();
+    await loadingOverlay.show();
+    console.log('📊 [main.ts] Loading overlay shown');
 
+    // STEP 3C: Load game assets with progress updates
     // Start loading audio
-    welcomeScreen.updateLoadingProgress(0.1, 'Loading audio...');
+    loadingOverlay.updateProgress(0.1, 'Loading audio...');
     await audioManager.waitForLoad();
 
     // Initialize game instance (this loads character models, sets up scene, etc.)
-    welcomeScreen.updateLoadingProgress(0.3, 'Loading game world...');
+    loadingOverlay.updateProgress(0.3, 'Loading game world...');
     const game = new Game();
     game.selectedCharacterId = selectedCharacterId;
     game.sessionToken = sessionToken; // MVP 6: Pass session token
@@ -318,26 +320,24 @@ async function main() {
     console.log('🤖 [main.ts] Turnstile token:', game.turnstileToken ? 'Present' : 'Missing');
 
     // Run game.init() - this loads character model, connects to server, etc.
-    welcomeScreen.updateLoadingProgress(0.5, 'Connecting to server...');
+    loadingOverlay.updateProgress(0.5, 'Connecting to server...');
     await game.init(canvas, audioManager, settingsManager);
 
-    // Start render loop (but canvas still hidden)
-    welcomeScreen.updateLoadingProgress(0.8, 'Preparing scene...');
+    // Start render loop
+    loadingOverlay.updateProgress(0.7, 'Preparing scene...');
     game.start();
 
-    // CRITICAL: Show canvas WHILE hidden to allow rendering to start
-    // The canvas needs to be in the DOM and visible (not display:none) for WebGL to render
+    // Show canvas to allow rendering
     canvas.classList.remove('hidden');
     console.log('🎨 [main.ts] Canvas revealed, starting render...');
-    // But keep welcome screen on top (z-index 10000 vs canvas z-index 0)
 
-    // Wait 10 render frames (increased from 5) to ensure scene is fully rendered and painted
+    // Wait for render frames
     console.log('⏳ [main.ts] Waiting for render frames...');
     await new Promise(resolve => {
       let count = 0;
       const frameWait = () => {
         count++;
-        if (count < 10) {
+        if (count < 5) {
           requestAnimationFrame(frameWait);
         } else {
           resolve(true);
@@ -345,35 +345,30 @@ async function main() {
       };
       requestAnimationFrame(frameWait);
     });
-    console.log('✅ [main.ts] 10 frames rendered');
+    console.log('✅ [main.ts] 5 frames rendered');
 
     // Show walnut HUD
     if (walnutHud) {
       walnutHud.classList.remove('hidden');
     }
 
-    // Gradual progress steps to show smooth loading (prevent rushing to 100%)
-    welcomeScreen.updateLoadingProgress(0.85, 'Rendering trees...');
-    await new Promise(resolve => setTimeout(resolve, 400));
+    // Gradual progress steps
+    loadingOverlay.updateProgress(0.85, 'Rendering trees...');
+    await new Promise(resolve => setTimeout(resolve, 300));
 
-    welcomeScreen.updateLoadingProgress(0.9, 'Placing walnuts...');
-    await new Promise(resolve => setTimeout(resolve, 400));
+    loadingOverlay.updateProgress(0.9, 'Placing walnuts...');
+    await new Promise(resolve => setTimeout(resolve, 300));
 
-    welcomeScreen.updateLoadingProgress(0.95, 'Final touches...');
-    await new Promise(resolve => setTimeout(resolve, 400));
+    loadingOverlay.updateProgress(0.95, 'Final touches...');
+    await new Promise(resolve => setTimeout(resolve, 300));
 
-    // NOW everything is ready - scene has been rendered
-    welcomeScreen.updateLoadingProgress(1.0, '');
-    console.log('📊 [main.ts] Loading complete, calling finishLoading()');
-    await welcomeScreen.finishLoading(); // Show "Forest ready!" and pause (1500ms)
+    // Complete
+    loadingOverlay.updateProgress(1.0, '');
+    await loadingOverlay.showComplete();
 
-    // Wait even longer to ensure scene is FULLY rendered and visible behind welcome screen
-    console.log('⏳ [main.ts] Waiting 1500ms before hide...');
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // NOW hide welcome screen - canvas has been rendering underneath and is ready
-    console.log('🎭 [main.ts] Hiding welcome screen...');
-    await welcomeScreen.hide();
+    // Hide loading overlay
+    console.log('🎭 [main.ts] Hiding loading overlay...');
+    await loadingOverlay.hide();
 
     // MVP 16: Ensure DOM fully ready before showing UI
     // Double requestAnimationFrame ensures all layout/rendering is complete after overlays hide

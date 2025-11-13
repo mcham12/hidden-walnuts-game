@@ -44,88 +44,53 @@ export class WelcomeScreen {
    * Flip-card layout with front (welcome) and back (loading) states
    */
   private createHTML(): void {
-    // Create container
+    // Create container - simple overlay with centered card
     this.container = document.createElement('div');
     this.container.id = 'welcome-screen';
     this.container.innerHTML = `
       <div class="welcome-content">
-        <!-- Flip Card Scene -->
-        <div class="welcome-scene">
-          <div class="welcome-card" id="welcome-card">
+        <!-- Simple Card (NO 3D transforms) -->
+        <div class="welcome-card">
+          <div class="card-top">
+            <h1 class="card-title">HIDDEN WALNUTS</h1>
+            <p class="card-tagline">Welcome to the Forest</p>
 
-            <!-- FRONT FACE -->
-            <div class="card-face card-face-front">
-              <div class="card-top">
-                <h1 class="card-title">HIDDEN WALNUTS</h1>
-                <p class="card-tagline">Welcome to the Forest</p>
+            <!-- 3D Character (Squirrel) -->
+            <div class="card-character-3d" id="front-character-container"></div>
+          </div>
 
-                <!-- 3D Character (Squirrel) -->
-                <div class="card-character-3d" id="front-character-container"></div>
-              </div>
+          <div class="card-bottom">
+            <!-- Turnstile Bot Protection -->
+            <div class="card-turnstile" id="welcome-turnstile-container"></div>
 
-              <div class="card-bottom">
-                <!-- Turnstile Bot Protection -->
-                <div class="card-turnstile" id="welcome-turnstile-container"></div>
+            <!-- Username Input -->
+            <input
+              type="text"
+              id="welcome-username-input"
+              class="card-input"
+              placeholder="Your name..."
+              maxlength="20"
+              autocomplete="off"
+              spellcheck="false"
+            />
 
-                <!-- Username Input -->
-                <input
-                  type="text"
-                  id="welcome-username-input"
-                  class="card-input"
-                  placeholder="Your name..."
-                  maxlength="20"
-                  autocomplete="off"
-                  spellcheck="false"
-                />
+            <!-- Primary Action Button -->
+            <button id="welcome-play-button" class="card-button-primary" disabled>
+              PLAY AS GUEST
+            </button>
 
-                <!-- Primary Action Button -->
-                <button id="welcome-play-button" class="card-button-primary" disabled>
-                  PLAY AS GUEST
+            <!-- Auth Links -->
+            <div class="card-auth-links">
+              <p class="card-auth-cta">🌟 Sign up for 6 FREE characters!</p>
+              <div class="card-auth-buttons">
+                <button id="welcome-signup-link" class="card-auth-link card-auth-link-signup">
+                  Sign Up Free
                 </button>
-
-                <!-- Auth Links -->
-                <div class="card-auth-links">
-                  <p class="card-auth-cta">🌟 Sign up for 6 FREE characters!</p>
-                  <div class="card-auth-buttons">
-                    <button id="welcome-signup-link" class="card-auth-link card-auth-link-signup">
-                      Sign Up Free
-                    </button>
-                    <button id="welcome-login-link" class="card-auth-link card-auth-link-login">
-                      Log In
-                    </button>
-                  </div>
-                </div>
+                <button id="welcome-login-link" class="card-auth-link card-auth-link-login">
+                  Log In
+                </button>
               </div>
             </div>
-
-            <!-- BACK FACE (Loading State) -->
-            <div class="card-face card-face-back">
-              <div class="card-top">
-                <div class="card-progress-container">
-                  <div class="card-progress-bar" id="card-progress-bar" style="width: 0%;"></div>
-                </div>
-                <p class="card-loading-text" id="card-loading-text">Preparing your adventure...</p>
-              </div>
-
-              <div class="card-bottom">
-                <!-- 3D Character (Random Free Character) -->
-                <div class="card-character-3d" id="back-character-container"></div>
-
-                <!-- Auth Links (Same as front) -->
-                <div class="card-auth-links">
-                  <p class="card-auth-cta">🌟 Sign up for 6 FREE characters!</p>
-                  <div class="card-auth-buttons">
-                    <button id="welcome-signup-link-back" class="card-auth-link card-auth-link-signup">
-                      Sign Up Free
-                    </button>
-                    <button id="welcome-login-link-back" class="card-auth-link card-auth-link-login">
-                      Log In
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
           </div>
         </div>
       </div>
@@ -251,9 +216,9 @@ export class WelcomeScreen {
   }
 
   /**
-   * Handle Play as Guest click - flips card and shows loading
+   * Handle Play as Guest click - resolves promise to start game loading
    */
-  private async onPlayAsGuestClick(): Promise<void> {
+  private onPlayAsGuestClick(): void {
     const input = document.getElementById('welcome-username-input') as HTMLInputElement;
     const username = input?.value.trim() || '';
 
@@ -269,10 +234,7 @@ export class WelcomeScreen {
       playButton.style.opacity = '0.5';
     }
 
-    // Flip card to back (loading state)
-    await this.flipCardToBack();
-
-    // Resolve immediately with username - main.ts will handle loading progress
+    // Resolve with username - main.ts will handle transition to loading overlay
     if (this.resolvePromise) {
       this.resolvePromise(username);
     }
@@ -287,21 +249,8 @@ export class WelcomeScreen {
       const usernameInput = document.getElementById('welcome-username-input') as HTMLInputElement;
       const username = usernameInput?.value.trim() || '';
 
-      // Check if we're on the back face (loading state)
-      const card = document.getElementById('welcome-card');
-      const isLoading = card?.classList.contains('flipped');
-
-      if (isLoading) {
-        // User is interrupting loading - flip back to front and show auth modal
-        this.flipCardToFront();
-        // Wait for flip animation before opening modal
-        setTimeout(() => {
-          this.authModal?.open('signup', username ? { username } : undefined);
-        }, 900);
-      } else {
-        // Normal signup flow from front face
-        this.authModal.open('signup', username ? { username } : undefined);
-      }
+      // Open auth modal directly
+      this.authModal.open('signup', username ? { username } : undefined);
     }
   }
 
@@ -310,35 +259,16 @@ export class WelcomeScreen {
    */
   private onSignInClick(): void {
     if (this.authModal) {
-      // Check if we're on the back face (loading state)
-      const card = document.getElementById('welcome-card');
-      const isLoading = card?.classList.contains('flipped');
-
-      if (isLoading) {
-        // User is interrupting loading - flip back to front and show auth modal
-        this.flipCardToFront();
-        // Wait for flip animation before opening modal
-        setTimeout(() => {
-          this.authModal?.open('login');
-        }, 900);
-      } else {
-        // Normal login flow from front face
-        this.authModal.open('login');
-      }
+      // Open auth modal directly
+      this.authModal.open('login');
     }
   }
 
   /**
-   * Handle successful authentication - flip to loading side and start game
+   * Handle successful authentication - start game loading
    */
   private async handleAuthSuccess(userData: any): Promise<void> {
     console.log('Authentication successful:', userData);
-
-    // Flip to back face (loading state) if not already flipped
-    const card = document.getElementById('welcome-card');
-    if (card && !card.classList.contains('flipped')) {
-      await this.flipCardToBack();
-    }
 
     // Resolve with username to start game loading
     if (this.resolvePromise && userData.username) {
@@ -347,75 +277,8 @@ export class WelcomeScreen {
   }
 
   /**
-   * Flip card to back (loading state)
-   */
-  private async flipCardToBack(): Promise<void> {
-    const card = document.getElementById('welcome-card');
-    if (!card) return;
-
-    // Add flipped class to trigger CSS animation
-    card.classList.add('flipped');
-
-    // Wait for flip animation to complete (0.9s)
-    await new Promise(resolve => setTimeout(resolve, 900));
-
-    // Initialize random character on back card
-    await this.initBackCharacter();
-  }
-
-  /**
-   * Flip card to front (canceling loading state)
-   */
-  private flipCardToFront(): void {
-    const card = document.getElementById('welcome-card');
-    if (card) {
-      card.classList.remove('flipped');
-    }
-  }
-
-  /**
-   * Cancel current loading and reset to initial state
-   * Used when user interrupts guest loading to sign up/log in
-   */
-  public cancelLoading(): void {
-    // Flip back to front
-    this.flipCardToFront();
-
-    // Reset progress bar
-    const progressBar = document.getElementById('card-progress-bar');
-    if (progressBar) {
-      progressBar.style.width = '0%';
-    }
-
-    // Re-enable play button
-    const playButton = document.getElementById('welcome-play-button') as HTMLButtonElement;
-    if (playButton) {
-      playButton.disabled = false;
-      playButton.style.opacity = '1';
-    }
-  }
-
-  /**
    * Initialize random 3D character on back of card
    */
-  private async initBackCharacter(): Promise<void> {
-    try {
-      // Use preloaded character if available, otherwise pick a random one
-      const randomChar = this.randomBackCharacter || 'hare';
-
-      // Initialize 3D preview on back card
-      this.carouselPreview = new CharacterPreview3D(
-        'back-character-container',
-        randomChar,
-        { rotationSpeed: 0.008, autoRotate: true, showAnimation: true, cameraDistance: 2 }
-      );
-      await this.carouselPreview.init();
-
-      console.log(`✅ Initialized random character on back: ${randomChar}`);
-    } catch (error) {
-      console.error('Error initializing back character:', error);
-    }
-  }
 
   /**
    * Update loading progress bar (called externally from main.ts)
