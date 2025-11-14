@@ -29,8 +29,15 @@ export class WelcomeScreen {
 
   // MVP 16: Turnstile bot protection
   private turnstileToken: string | null = null;
+  private turnstileResolve: (() => void) | null = null;
+  private turnstileComplete: Promise<void>;
 
   constructor() {
+    // Create promise that resolves when Turnstile verification completes
+    this.turnstileComplete = new Promise((resolve) => {
+      this.turnstileResolve = resolve;
+    });
+
     this.createHTML();
 
     // Initialize AuthModal
@@ -374,6 +381,11 @@ export class WelcomeScreen {
             statusDiv.textContent = '❌ Verification failed. Please refresh the page.';
             statusDiv.style.color = '#c33';
           }
+          // Still resolve the promise so showWelcomeBack doesn't hang
+          // Server will handle the failed verification
+          if (this.turnstileResolve) {
+            this.turnstileResolve();
+          }
         },
         theme: 'dark',
       });
@@ -399,6 +411,11 @@ export class WelcomeScreen {
       playButton.textContent = 'PLAY AS GUEST';
       playButton.style.opacity = '1';
       playButton.style.cursor = 'pointer';
+    }
+
+    // Resolve the turnstileComplete promise
+    if (this.turnstileResolve) {
+      this.turnstileResolve();
     }
   }
 
@@ -447,11 +464,46 @@ export class WelcomeScreen {
   /**
    * MVP 6: Show "Welcome Back" message for returning users
    * Auto-continues after 2 seconds or on button click
+   *
+   * MVP 16 FIX: Wait for Turnstile verification before showing message
+   * This prevents destroying the Turnstile widget before it completes
    */
   async showWelcomeBack(username: string): Promise<void> {
     if (!this.container) return;
 
-    // Update HTML to show welcome back message
+    // Show container with original content (including Turnstile) but make card invisible
+    this.container.style.opacity = '0';
+    this.container.style.display = 'flex';
+    this.container.style.pointerEvents = 'none'; // Disable clicks while waiting
+
+    requestAnimationFrame(() => {
+      if (this.container) {
+        this.container.style.opacity = '1'; // Fade in container (but card is still invisible)
+      }
+    });
+
+    // Make the welcome card invisible while Turnstile completes in background
+    const welcomeCard = this.container.querySelector('.welcome-card') as HTMLElement;
+    if (welcomeCard) {
+      welcomeCard.style.opacity = '0';
+      welcomeCard.style.pointerEvents = 'none';
+    }
+
+    console.log('⏳ [WelcomeScreen] Waiting for Turnstile verification...');
+
+    // Wait for Turnstile verification to complete (don't destroy the widget!)
+    // Add timeout to prevent hanging forever
+    await Promise.race([
+      this.turnstileComplete,
+      new Promise((resolve) => setTimeout(() => {
+        console.warn('⚠️ [WelcomeScreen] Turnstile verification timed out after 10s');
+        resolve(undefined);
+      }, 10000))
+    ]);
+
+    console.log('✅ [WelcomeScreen] Turnstile verified, showing welcome back message');
+
+    // NOW it's safe to replace the HTML
     const welcomeContent = this.container.querySelector('.welcome-content');
     if (welcomeContent) {
       welcomeContent.innerHTML = `
@@ -465,17 +517,8 @@ export class WelcomeScreen {
       `;
     }
 
-    // Show with fade in
-    this.container.style.opacity = '0';
-    this.container.style.display = 'flex';
-    this.container.style.pointerEvents = 'auto'; // Re-enable pointer events when showing
-
-    requestAnimationFrame(() => {
-      if (this.container) {
-        this.container.style.transition = 'opacity 0.5s ease-in';
-        this.container.style.opacity = '1';
-      }
-    });
+    // Re-enable pointer events
+    this.container.style.pointerEvents = 'auto';
 
     // Auto-continue after 2 seconds OR click button
     return new Promise((resolve) => {
