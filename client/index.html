@@ -2498,11 +2498,11 @@
     <!-- MVP 16: Unified Death Screen (single overlay, all content visible) -->
     <div id="death-overlay" class="hidden">
       <div class="death-unified-content">
-        <!-- Top Section: Score Only -->
+        <!-- Top Section: Title + Score (Horizontal) -->
         <div class="death-top-section">
-          <div class="death-score-display">
-            <h1 class="death-title">💀 OH NUTS!</h1>
-            <p class="death-score">Your score: <span id="death-score-value">0</span></p>
+          <div class="death-score-display" style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+            <h1 class="death-title">OH NUTS!</h1>
+            <p class="death-score" style="margin: 0;">Your score: <span id="death-score-value">0</span></p>
           </div>
         </div>
 
@@ -2528,9 +2528,9 @@
         <div class="death-bottom-section">
           <!-- Anonymous Users Content -->
           <div id="death-content-anonymous" class="death-enticement-panel hidden">
-            <h3 class="enticement-title">👤 Sign in to get 6 Free characters + Leaderboard access!</h3>
+            <h3 class="enticement-title">Sign in to get 6 Free characters + Leaderboard access!</h3>
 
-            <div id="death-enticement-character-container" style="height: 150px; margin: 15px 0; display: flex; justify-content: center; align-items: center;">
+            <div id="death-enticement-character-container" style="height: 150px; width: 200px; margin: 15px auto; display: flex; justify-content: center; align-items: center;">
               <!-- 3D character will be rendered here by Game.ts -->
             </div>
 
@@ -2542,20 +2542,16 @@
                 🟠 BUY CHARACTER ($0.99)
               </button>
             </div>
-            <a href="#" id="death-watch-ad-link" class="watch-ad-link-small">📺 Watch ad for bonus nuts</a>
           </div>
 
           <!-- Signed-In Users Content -->
           <div id="death-content-signedin" class="death-enticement-panel hidden">
             <h3 class="enticement-title">🏆 Your Leaderboard Spot: #<span id="player-rank">42</span></h3>
-            <p style="font-size: 14px; margin: 8px 0; color: #888;">💎 Unlock Premium Characters:</p>
 
             <!-- MVP 16: Dynamic grid of locked premium characters -->
             <div id="death-locked-chars-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 15px 0;">
               <!-- Will be populated by showDeathOverlay() -->
             </div>
-
-            <a href="#" id="death-watch-ad-link-signedin" class="watch-ad-link-small">📺 Watch ad for bonus nuts</a>
           </div>
         </div>
       </div>
