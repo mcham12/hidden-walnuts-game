@@ -1,110 +1,309 @@
 # Hidden Walnuts Documentation
 
-Welcome to the Hidden Walnuts project documentation. This directory contains comprehensive documentation for the 3D multiplayer game development project.
+**Last Updated**: MVP 16 (Authentication & Character System)
 
-## 📁 Documentation Structure
+Welcome to the Hidden Walnuts project documentation. This directory contains comprehensive documentation for the production-ready 3D multiplayer game built on Cloudflare's edge platform.
 
-### **Core Project Documentation**
-- **[Project Structure](PROJECT_STRUCTURE.md)** - Detailed architecture guide and file organization
-- **[Game Vision](GameVision.md)** - Game design, features, and technical specifications
-- **[MVP Plan](MVP_Plan_Hidden_Walnuts-2.md)** - Development roadmap and milestone planning
-- **[Coding Conventions](conventions.md)** - Standards, best practices, and development guidelines
-- **[AI Usage Guidelines](README_AI.md)** - AI workflow and contribution guidelines
+## Quick Start
 
-### **Development Documentation**
-- **[Repository Structure](repo_structure.txt)** - Complete file tree of the project
+**New to the project?**
+1. Start with [README.md](../README.md) for game overview
+2. Read [Project Structure](PROJECT_STRUCTURE.md) for architecture
+3. Check [Game Vision](GameVision.md) for design philosophy
+4. Review [Conventions](conventions.md) for development standards
 
-### **MVP-Specific Documentation**
-- **[MVP 7 - Multiplayer Foundation](mvp-7/)** - Completed development phase
-  - [Overview](mvp-7/README.md) - MVP 7 objectives and status
-  - [Completion Summary](mvp-7/COMPLETION_SUMMARY.md) - Completed tasks and achievements
-  - [Task Documentation](mvp-7/tasks/) - Individual task specifications and status
-- **[MVP 8 - Animated Squirrel Players & NPC Characters](mvp-8/)** - Current development phase
-  - [Overview](mvp-8/README.md) - MVP 8 objectives and status
-  - [Task Documentation](mvp-8/tasks/) - Individual task specifications and status
+**Starting development?**
+1. Follow [README.md](../README.md) setup instructions
+2. Review [Project Structure](PROJECT_STRUCTURE.md) to understand codebase
+3. Read [Cloudflare Architecture](CLOUDFLARE_ARCHITECTURE.md) for platform details
+4. Check current [MVP 16 Progress](MVP_16_Progress.md) for latest features
 
-## 🎯 Quick Navigation
+---
 
-### **For New Developers**
-1. Start with [Game Vision](GameVision.md) to understand the project
-2. Review [Project Structure](PROJECT_STRUCTURE.md) for architecture overview
-3. Read [Coding Conventions](conventions.md) for development standards
-4. Check [MVP Plan](MVP_Plan_Hidden_Walnuts-2.md) for current priorities
+## Core Documentation
 
-### **For Current Development**
-1. Review [MVP 8 Overview](mvp-8/README.md) for current status
-2. Check [Task Documentation](mvp-8/tasks/) for specific task details
-3. Follow [Coding Conventions](conventions.md) for consistency
-4. Use [AI Guidelines](README_AI.md) when working with AI tools
+### Architecture & Structure
+- **[Project Structure](PROJECT_STRUCTURE.md)** ⭐ - Complete file organization, key files, and system architecture
+- **[Cloudflare Architecture](CLOUDFLARE_ARCHITECTURE.md)** - Platform deployment, Durable Objects, KV namespaces, edge network
+- **[Game Vision](GameVision.md)** - Design philosophy, gameplay objectives, and feature roadmap
 
-### **For Architecture Understanding**
-1. [Project Structure](PROJECT_STRUCTURE.md) - Complete architecture guide
-2. [Repository Structure](repo_structure.txt) - File organization
-3. [MVP 7 Tasks](mvp-7/tasks/) - Implementation details
+### Game Systems
+- **[Character Implementation](Character_Implementation.md)** - Character system, tiers, animations, selection UI
+- **[Animation State Machine](ANIMATION_STATE_MACHINE.md)** - Animation system, state transitions, blending
+- **[MVP 12 Predator Defense Design](MVP_12_Predator_Defense_Design.md)** - Predator AI, rank-based targeting, combat
+- **[UX Polish Design](UX_Polish_Design.md)** - UI/UX improvements, responsive design, mobile optimization
 
-## 🔄 Documentation Maintenance
+### Authentication & Security
+- **[Authentication Tech Approach](Authentication_Tech_Approach.md)** - JWT authentication, email/password flow, session management
+- **[Authentication UX Design](Authentication_UX_Design.md)** - Login/signup UI, welcome screens, character gating
+- **[Bot Prevention](BOT_PREVENTION_OPTIONS.md)** - Cloudflare Turnstile integration, rate limiting
+- **[Turnstile Rate Limiting Setup](TURNSTILE_RATE_LIMITING_SETUP.md)** - Configuration and implementation details
 
-### **🚨 CRITICAL: AI Documentation Procedures**
+### Admin & Operations
+- **[Admin API Reference](ADMIN_API_REFERENCE.md)** - Management endpoints, metrics, player administration
+- **[Admin API Security](ADMIN_API_SECURITY.md)** - Authentication, authorization, rate limiting for admin endpoints
+- **[Deployment Guide](Deployment_Guide.md)** - CI/CD pipeline, GitHub Actions, Cloudflare deployment
 
-**ALL AI CONVERSATIONS MUST FOLLOW THESE PROCEDURES:**
+### Business & Monetization
+- **[Cloudflare Cost Analysis](CLOUDFLARE_COST_ANALYSIS.md)** - Pricing breakdown, usage estimates, cost optimization
+- **[Monetization Design](MONETIZATION_DESIGN.md)** - Premium characters, pricing strategy, revenue model
 
-1. **📁 Use MVP-Based Organization**: All new documentation goes in `docs/mvp-<number>/` directories
-2. **📝 Consistent File Naming**: Use `README.md`, `testing.md`, `implementation.md`, `completion.md` for each task
-3. **🔄 Update Navigation**: Always update this `DOCUMENTATION.md` with new links
-4. **📋 Follow Established Structure**: Never create standalone files in root or random locations
-5. **🔗 Link Appropriately**: Cross-reference related documents and maintain navigation
+### Development Guides
+- **[Conventions](conventions.md)** - Code standards, naming conventions, best practices
+- **[AI Usage Guidelines](README_AI.md)** - Working with AI assistants on this project
+- **[VPN Cloudflare Issues](VPN_Cloudflare_Issues.md)** - Known issues and workarounds
 
-### **When Adding New Documentation**
-- **Place MVP-specific docs** in `mvp-<number>/` directories
-- **Use consistent naming**: `README.md`, `testing.md`, `implementation.md`, `completion.md`
-- **Update this DOCUMENTATION.md** with new links
-- **Follow the established structure** and conventions
-- **NEVER create documentation in project root** - use `docs/` directory only
+---
 
-### **Documentation Standards**
-- **Use clear, descriptive headings**
-- **Include code examples** where relevant
-- **Maintain consistent formatting**
-- **Update status indicators** (✅ COMPLETED, 📋 PENDING, 🔄 IN PROGRESS)
-- **Link related documents** appropriately
-- **Reference this structure** in all new documentation
+## MVP Progress Documentation
 
-## 📊 Current Status
+### Current Phase
+- **[MVP 16 Progress](MVP_16_Progress.md)** ✅ **CURRENT** - Authentication & character system
+  - Email/password authentication with JWT
+  - Character tier system (guest/free/premium)
+  - Email verification and password reset flows
+  - Turnstile bot protection for returning guests
+  - Character selection UI
 
-- **Active MVP**: MVP 8 (Animated Squirrel Players & NPC Characters)
-- **Current Task**: Task 1 - Animated Squirrel Model
-- **Documentation**: Complete and up-to-date
-- **Structure**: Organized by MVP and task hierarchy
+- **[MVP 16 UX Mockup](MVP_16_UX_Mockup.md)** - Design specifications
+- **[MVP 16 Post Deployment Remediation](MVP_16_Post_Deployment_Remediation.md)** - Bug fixes and polish
 
-This documentation structure provides comprehensive coverage of the Hidden Walnuts project while maintaining clear organization and easy navigation for all stakeholders.
+### Recent Phases
+- **[MVP 15 Completion](MVP_15_COMPLETION.md)** ✅ - Scheduled tasks & resets
+  - Daily map/forest reset (8am UTC)
+  - Weekly leaderboard reset (Sunday 8:05am UTC)
+  - Cron triggers via Cloudflare Workers
 
-## 🚨 CRITICAL: Build Validation & Git Commit Procedures
+- **[MVP 14 Progress](MVP_14_PROGRESS.md)** ✅ - Tree growth bonuses
+  - Milestone bonuses for trees grown
+  - Configurable admin settings
 
-### **🔧 Build Validation Required**
-**After making ANY batch of coding changes:**
+- **[MVP 13 Progress](MVP_13_PROGRESS.md)** ✅ - Admin APIs
+  - Player management endpoints
+  - Metrics tracking
+  - Configuration APIs
 
-1. **Build Client Locally**: `cd client && npm run build:preview`
-2. **Build Worker Locally**: `cd workers && npm run build`
-3. **Fix ALL TypeScript errors** before proceeding
-4. **Only proceed after successful local builds**
+- **[MVP 12 Design](MVP_12_Predator_Defense_Design.md)** ✅ - Predator system
+  - Aerial predators (Cardinal, Toucan)
+  - Ground predators (Wildebeest)
+  - Rank-based targeting
 
-### **📝 Git Commit Summary Required**
-**After completing ANY batch of changes, provide:**
+### Earlier Phases
+- **[MVP 9 Deployment Checklist](MVP_9_DEPLOYMENT_CHECKLIST.md)** - Deployment procedures
+- **[MVP 9 Leaderboard Admin](MVP_9_Leaderboard_Admin.md)** - Leaderboard admin features
+- **[MVP 8 Design](MVP_8_DESIGN.md)** - Animated characters & NPCs
+- **[MVP 7 Documentation](mvp-7/)** - Multiplayer foundation (archived)
+- **[MVP 8 Documentation](mvp-8/)** - Character animations (archived)
 
-**Git Commit Summary Format (NO LINE BREAKS):**
+---
+
+## File Organization
+
+### Documentation Standards
+
+All new documentation follows this structure:
+
 ```
-MVP-7: [Task Number] - [Brief Description] - [Key Changes Made] - [Files Modified]
+docs/
+├── Core Documentation (root level)
+│   ├── PROJECT_STRUCTURE.md
+│   ├── CLOUDFLARE_ARCHITECTURE.md
+│   ├── GameVision.md
+│   └── conventions.md
+│
+├── System Documentation (UPPERCASE.md)
+│   ├── ADMIN_API_REFERENCE.md
+│   ├── ANIMATION_STATE_MACHINE.md
+│   ├── BOT_PREVENTION_OPTIONS.md
+│   └── ... (technical specs)
+│
+├── MVP Progress (MVP_<number>_*.md)
+│   ├── MVP_16_Progress.md
+│   ├── MVP_15_COMPLETION.md
+│   └── MVP_14_PROGRESS.md
+│
+└── Archived MVPs (mvp-<number>/)
+    ├── mvp-7/ (detailed task documentation)
+    └── mvp-8/ (detailed task documentation)
 ```
 
-**Examples:**
-- `MVP-7: Task 8 - Core Multiplayer Events - Implement player_join/leave events - NetworkSystem.ts, PlayerManager.ts, api.ts`
-- `MVP-7: Task 9 - Client Prediction - Add position reconciliation logic - ClientPredictionSystem.ts, MovementSystem.ts`
-- `MVP-7: Documentation - Reorganize docs structure - Move files to docs/ directory - docs/DOCUMENTATION.md, README.md`
+### Naming Conventions
 
-**Requirements:**
-- **NO LINE BREAKS** - Single line for easy copy/paste
-- **Include MVP number** - MVP-7, MVP-8, etc.
-- **Include task number** - Task 8, Task 9, etc.
-- **Brief description** - What was accomplished
-- **Key changes** - Main technical changes made
-- **Files modified** - Primary files that were changed 
+- **Core docs**: `TitleCase.md` (e.g., `GameVision.md`)
+- **System docs**: `UPPERCASE_SNAKE_CASE.md` (e.g., `ADMIN_API_REFERENCE.md`)
+- **MVP docs**: `MVP_<number>_Title.md` (e.g., `MVP_16_Progress.md`)
+- **Archived**: `mvp-<number>/` (lowercase directories)
+
+---
+
+## Documentation Usage Guide
+
+### For New Developers
+
+**Day 1: Understanding the Game**
+1. Read [README.md](../README.md) - What is Hidden Walnuts?
+2. Play the game at [game.hiddenwalnuts.com](https://game.hiddenwalnuts.com)
+3. Review [Game Vision](GameVision.md) - Design goals
+
+**Day 2: Architecture Overview**
+1. Study [Project Structure](PROJECT_STRUCTURE.md) - File organization
+2. Read [Cloudflare Architecture](CLOUDFLARE_ARCHITECTURE.md) - Platform details
+3. Review [Conventions](conventions.md) - Code standards
+
+**Day 3: Development Setup**
+1. Follow [README.md](../README.md) setup instructions
+2. Build and run locally
+3. Make a small change to understand workflow
+
+### For Current Development
+
+**Adding a new feature:**
+1. Check [MVP 16 Progress](MVP_16_Progress.md) for current priorities
+2. Review relevant system documentation
+3. Follow [Conventions](conventions.md) for code standards
+4. Update documentation when feature is complete
+
+**Fixing a bug:**
+1. Check [MVP 16 Post Deployment Remediation](MVP_16_Post_Deployment_Remediation.md) for known issues
+2. Review system documentation for affected area
+3. Submit fix with documentation updates
+
+**Deploying changes:**
+1. Follow [Deployment Guide](Deployment_Guide.md)
+2. Use GitHub Actions for auto-deploy
+3. Monitor production metrics
+
+### For AI Assistants
+
+**When starting a session:**
+1. Read [README_AI.md](README_AI.md) for AI-specific guidelines
+2. Review [MVP 16 Progress](MVP_16_Progress.md) for current state
+3. Check [Project Structure](PROJECT_STRUCTURE.md) for file locations
+
+**When making changes:**
+1. Follow [Conventions](conventions.md) strictly
+2. Update relevant documentation
+3. Create new docs in appropriate location (see File Organization above)
+
+---
+
+## Key Technical Areas
+
+### Client Architecture
+- **Entry Point**: `client/src/main.ts` (457 lines)
+- **Game Engine**: `client/src/Game.ts` (8,349 lines)
+- **Authentication**: `client/src/services/AuthService.ts` (399 lines)
+- **Networking**: `client/src/systems/NetworkSystem.ts` (1,200+ lines)
+- **Characters**: `client/src/services/CharacterRegistry.ts` (302 lines)
+
+See [Project Structure](PROJECT_STRUCTURE.md) for complete file breakdown.
+
+### Server Architecture
+- **Entry Point**: `workers/api.ts` (routing & cron)
+- **World State**: `workers/objects/ForestManager.ts` (129 KB)
+- **Authentication**: `workers/objects/PlayerIdentity.ts` (33 KB)
+- **Rankings**: `workers/objects/Leaderboard.ts` (22 KB)
+- **NPC AI**: `workers/objects/NPCManager.ts` (36 KB)
+- **Predator AI**: `workers/objects/PredatorManager.ts` (24 KB)
+
+See [Cloudflare Architecture](CLOUDFLARE_ARCHITECTURE.md) for Durable Objects details.
+
+### Game Mechanics
+- **Walnut System**: Hide/find mechanics, point values, tree growth
+- **Combat System**: Health (100 HP), walnut projectiles (30 damage), knockouts
+- **Rank System**: 7 tiers (Rookie → Legend) with AI scaling
+- **Predator System**: Aerial (Cardinal, Toucan) and ground (Wildebeest) enemies
+- **Leaderboard**: Weekly (resets Sunday), all-time, daily rankings
+
+---
+
+## Current Status (MVP 16)
+
+### Completed Features
+- ✅ Full authentication system (email/password, JWT tokens)
+- ✅ Character tier system (guest/free/premium)
+- ✅ Email verification & password reset
+- ✅ Turnstile bot protection
+- ✅ 10 playable characters with animations
+- ✅ Multiplayer real-time sync
+- ✅ NPC AI (up to 2 NPCs)
+- ✅ Predator AI (up to 2 predators)
+- ✅ Combat system & health tracking
+- ✅ Weekly/all-time leaderboards
+- ✅ Daily/weekly resets via cron
+- ✅ Admin APIs
+- ✅ Mobile touch controls
+- ✅ Responsive design (desktop/tablet/mobile)
+
+### In Progress
+- 📋 Mobile optimization improvements
+- 📋 Analytics integration
+- 📋 Social features (friend system)
+- 📋 Premium character purchasing
+
+### Metrics (Live Production)
+- **Active players**: 22+ total registered
+- **Uptime**: 99.9%+ (Cloudflare edge)
+- **Latency**: <50ms globally
+- **Deployment**: GitHub Actions auto-deploy
+
+---
+
+## Documentation Maintenance
+
+### When Adding New Features
+
+1. **Update MVP Progress docs** (`MVP_16_Progress.md`)
+2. **Update system docs** (e.g., `ADMIN_API_REFERENCE.md` for new endpoints)
+3. **Update [Project Structure](PROJECT_STRUCTURE.md)** if files added/removed
+4. **Update this file** (`DOCUMENTATION.md`) with new doc links
+
+### When Creating New Documentation
+
+1. **Choose appropriate name** (follow naming conventions above)
+2. **Place in correct location** (core/system/MVP/archived)
+3. **Add to this index** (under appropriate section)
+4. **Cross-reference** related docs
+
+### Documentation Standards
+
+- **Clear headings** with proper hierarchy
+- **Code examples** where relevant
+- **File paths** for all references
+- **Status indicators** (✅ COMPLETED, 📋 IN PROGRESS, ❌ BLOCKED)
+- **Last updated** date at top
+- **Cross-references** to related docs
+
+---
+
+## Contributing to Documentation
+
+### Documentation Priorities
+
+1. **Accuracy** - Keep docs in sync with code
+2. **Clarity** - Write for humans and AI assistants
+3. **Completeness** - Cover all major systems
+4. **Maintainability** - Use consistent structure
+
+### Before Committing Changes
+
+1. ✅ Verify all links work
+2. ✅ Check file paths are correct
+3. ✅ Update "Last Updated" dates
+4. ✅ Follow naming conventions
+5. ✅ Add to this index if new doc
+
+---
+
+## External Resources
+
+- **Live Game**: [game.hiddenwalnuts.com](https://game.hiddenwalnuts.com)
+- **Cloudflare Docs**: [workers.cloudflare.com](https://workers.cloudflare.com)
+- **Three.js Docs**: [threejs.org/docs](https://threejs.org/docs)
+- **TypeScript Docs**: [typescriptlang.org/docs](https://www.typescriptlang.org/docs)
+
+---
+
+This documentation provides comprehensive coverage of the Hidden Walnuts project at MVP 16. For quick navigation, use the table of contents above or search for specific topics.
+
+**Last Updated**: MVP 16 (2025-11-14)

@@ -1,176 +1,302 @@
-# 🐿️ Hidden Walnuts - Multiplayer 3D Game
+# Hidden Walnuts - Multiplayer 3D Browser Game
 
-A **simplified** multiplayer 3D game where squirrels search for hidden walnuts in a procedurally generated forest. **Rebuilt with a focus on fun gameplay over enterprise complexity.**
+A production-ready **multiplayer 3D game** where players explore a procedurally generated forest, hide and find walnuts, defend against predators, and compete on weekly leaderboards. Built entirely on **Cloudflare's edge platform** for global low-latency gameplay.
 
-## 🎯 **Current Status - Simplified Architecture**
+**Play Now**: [game.hiddenwalnuts.com](https://game.hiddenwalnuts.com)
 
-- **Current Phase**: MVP 3.5 ✅ **COMPLETED** - Multiple Character Selection with 3D Preview
-- **Architecture**: **Stripped down** from complex ECS to simple, focused game logic
-- **Files**: Reduced from **31 complex files** to **8 focused files**
-- **Focus**: **Simple, playable game** instead of enterprise patterns
+## Current Status - MVP 16
 
-## 🏗️ **Simple Architecture Overview**
+- **Phase**: Authentication & Character System
+- **Status**: Production-ready multiplayer game with 22+ active players
+- **Architecture**: Cloudflare Pages (client) + Cloudflare Workers + Durable Objects (backend)
+- **Features**: Full authentication, 10 characters, NPCs, predators, leaderboards, combat, tree growth
 
-### **Core Technologies** 
-- **Frontend**: Vite + TypeScript + Three.js → **Cloudflare Pages**
-- **Backend**: Cloudflare Workers + Durable Objects
-- **Architecture**: **Simple Game.ts class** (no ECS complexity)  
-- **Networking**: **WebSocket via Workers** for real-time sync
-- **Platform**: **100% Cloudflare** - Pages + Workers + Durable Objects
+## Game Features
 
-📋 **[See CLOUDFLARE_ARCHITECTURE.md](docs/CLOUDFLARE_ARCHITECTURE.md)** for complete platform details
+### Core Gameplay
+- **Walnut Mechanics**: Hide walnuts for future discovery, find golden walnuts for points
+- **Tree Growth System**: Hidden walnuts grow into trees after 15-20 minutes, spawning 5 new walnuts
+- **Combat System**: Use walnuts as projectiles (30 HP damage), 100 HP health system
+- **Survival**: Manage health through walnut consumption, defend against predators
+- **Progression**: 7-tier rank system (Rookie → Legend) based on score
 
-### **Simplified System Diagram**
+### Multiplayer Features
+- **Real-time sync**: See other players move, emote, and interact in real-time
+- **Chat system**: Quick chat messages with 2-second cooldown
+- **Emotes**: Express yourself with animated emotes
+- **Weekly leaderboard**: Compete for top positions, resets every Sunday
+- **Daily challenges**: Fresh forest generation and walnut spawns daily
+
+### Character System (MVP 16)
+- **Guest players**: Single character (Squirrel) with full gameplay access
+- **Authenticated players**: 6 free characters (Squirrel, Hare, Goat, Chipmunk, Turkey, Mallard)
+- **Premium characters**: 4 characters (Lynx, Bear, Moose, Badger) at $1.99 each
+- **Character tiers**: Visual progression and status display
+
+### PvE Content
+- **NPCs**: Up to 2 AI squirrels that wander, gather walnuts, and throw at players
+- **Aerial Predators**: Cardinals and Toucans that dive to steal walnuts (MVP 12)
+- **Ground Predators**: Wildebeests that charge and ram players (MVP 12)
+- **Rank-based difficulty**: Higher-ranked players face more aggressive AI
+
+### Authentication System (MVP 16)
+- **Email/password accounts**: Secure authentication with JWT tokens
+- **Email verification**: Optional email verification for enhanced features
+- **Password reset**: Forgot password flow with email recovery
+- **Session persistence**: 30-day access tokens, 90-day refresh tokens
+- **Character unlocking**: Premium character purchases tied to account
+
+### Technical Features
+- **Bot protection**: Cloudflare Turnstile verification on all connections
+- **Rate limiting**: 5 connections per 5 minutes per IP
+- **Anti-cheat**: Server-authoritative movement, score, and combat validation
+- **Mobile support**: Touch controls for iOS and Android
+- **Responsive design**: Optimized for desktop, tablet, and mobile
+
+## Architecture Overview
+
+### Technology Stack
+- **Client**: Vite + TypeScript + Three.js → Cloudflare Pages
+- **Backend**: Cloudflare Workers + Durable Objects + WebSockets
+- **Persistence**: Durable Object storage + KV namespaces
+- **Security**: Turnstile bot protection + JWT authentication
+- **Deployment**: GitHub Actions → Cloudflare (auto-deploy)
+
+### System Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │             CLOUDFLARE PAGES                           │
 │           (game.hiddenwalnuts.com)                     │
 ├─────────────────────────────────────────────────────────┤
-│  main.ts (47 lines)                                    │
-│  ├── Creates Game instance                             │
-│  ├── Initializes 3D scene                             │
-│  ├── Connects to Workers WebSocket                     │
-│  └── Handles errors                                   │
+│  Client Application                                     │
+│  ├── main.ts - Bootstrap & initialization              │
+│  ├── Game.ts - Core engine (8,349 lines)               │
+│  ├── WelcomeScreen.ts - Login/guest flow               │
+│  ├── AuthModal.ts - Authentication UI                  │
+│  ├── CharacterGrid.ts - Character selection            │
+│  ├── NetworkSystem.ts - Multiplayer sync               │
+│  ├── AudioManager.ts - Sound effects & music           │
+│  └── Components/ - UI systems (HUD, settings, etc.)    │
 ├─────────────────────────────────────────────────────────┤
-│  Game.ts (250 lines - ALL game logic)                  │
-│  ├── Three.js scene setup                             │
-│  ├── Animated character (Colobus)                     │
-│  ├── Terrain-following movement                       │
-│  ├── Camera following                                  │
-│  └── WebSocket communication                          │
-├─────────────────────────────────────────────────────────┤
-│  World Generation                                       │
-│  ├── terrain.ts (procedural terrain)                  │
-│  ├── forest.ts (trees, shrubs)                        │
-│  └── Asset loading (GLTF models)                      │
+│  3D Rendering                                           │
+│  ├── Three.js scene (terrain, forest, characters)      │
+│  ├── 10 animated GLTF characters                       │
+│  ├── 400×400 unit procedural terrain                   │
+│  ├── Particle effects (sparkles, dirt, confetti)       │
+│  └── Projectile physics with gravity                   │
 └─────────────────────────────────────────────────────────┘
                               │
-                    WebSocket Connection
+                    WebSocket (wss://)
                               │
 ┌─────────────────────────────────────────────────────────┐
 │            CLOUDFLARE WORKERS                          │
 │           (api.hiddenwalnuts.com)                      │
 ├─────────────────────────────────────────────────────────┤
-│  Durable Objects                                        │
-│  ├── ForestManager (World State)                       │
-│  ├── SquirrelSession (Player State)                    │
-│  ├── WalnutRegistry (Game Objects)                     │
-│  └── Leaderboard (Scoring)                             │
+│  Durable Objects (Stateful Backend)                    │
+│  ├── ForestManager (Singleton)                         │
+│  │   ├── WebSocket hub for all players                │
+│  │   ├── Game state (walnuts, forest, NPCs)           │
+│  │   ├── Combat system & health tracking              │
+│  │   ├── Predator AI (PredatorManager)                │
+│  │   └── NPC AI (NPCManager)                          │
+│  │                                                      │
+│  ├── PlayerIdentity (Per Username)                     │
+│  │   ├── Email/password authentication                │
+│  │   ├── JWT token management                         │
+│  │   ├── Character unlocks & entitlements             │
+│  │   └── Session token mapping                        │
+│  │                                                      │
+│  ├── Leaderboard (Singleton)                           │
+│  │   ├── Weekly leaderboard (resets Sunday)           │
+│  │   ├── All-time leaderboard                         │
+│  │   └── Rank calculation & progression               │
+│  │                                                      │
+│  ├── WalnutRegistry (Singleton)                        │
+│  │   └── Walnut storage & archival                    │
+│  │                                                      │
+│  └── SquirrelSession (Per Player)                      │
+│      └── Individual session state & position          │
+├─────────────────────────────────────────────────────────┤
+│  KV Namespaces                                          │
+│  ├── EMAIL_INDEX - Email uniqueness enforcement        │
+│  └── LEADERBOARD_ARCHIVES - Historical snapshots       │
+├─────────────────────────────────────────────────────────┤
+│  Cron Triggers                                          │
+│  ├── Daily (8am UTC): Reset map, forest, positions     │
+│  └── Weekly (Sunday 8:05am UTC): Reset leaderboard     │
 └─────────────────────────────────────────────────────────┘
 ```
 
-## 🚀 **What We Removed (Complexity → Simplicity)**
+## Development Setup
 
-### **❌ Removed Complex Systems**
-- ~~10-system ECS architecture~~ → **Single Game.ts class**
-- ~~Dependency injection containers~~ → **Direct instantiation**  
-- ~~Enterprise logging system~~ → **Simple console.log**
-- ~~Client prediction & reconciliation~~ → **Basic position sync**
-- ~~Area of interest management~~ → **See all players**
-- ~~Network compression & batching~~ → **Direct WebSocket messages**
-- ~~Complex event bus~~ → **Direct method calls**
-- ~~PlayerManager system~~ → **Simple player Map**
+### Prerequisites
+- Node.js 18+ and npm
+- Cloudflare account (for deployment)
+- Wrangler CLI (for Workers development)
 
-### **✅ What We Kept (The Good Stuff)**
-- ✅ **3D forest environment** with procedural terrain and trees
-- ✅ **Animated Colobus character** with idle/run/jump animations
-- ✅ **Terrain-following movement** with bounding box positioning
-- ✅ **Player movement** with WASD controls  
-- ✅ **Camera following** player smoothly
-- ✅ **Cloudflare Workers backend** (working perfectly)
-- ✅ **Asset loading** for GLTF models and animations
+### Quick Start
 
-**Result**: **7,214 lines of complexity removed!** 🗑️
-
-## 🎮 **Current Game Features**
-
-- ✅ **3D Forest Environment** - Procedurally generated terrain with height-based colors
-- ✅ **Animated Colobus Character** - Fully animated with idle, run, and jump states
-- ✅ **Terrain-Following Movement** - Character feet properly positioned on uneven terrain
-- ✅ **WASD Controls** - Responsive movement with camera following
-- ✅ **Character Animations** - Automatic idle/run/jump animation switching
-- ✅ **Gravity & Jumping** - Physics-based movement with Space key jumping
-- ✅ **Asset Loading** - GLTF models with separate animation files
-
-## 🚀 **Development Setup (Super Simple)**
-
-### **Quick Start**
 ```bash
-# Install dependencies  
+# Install all dependencies
 npm run install:all
 
-# Terminal 1: Start backend
+# Terminal 1: Start backend (Workers + Durable Objects)
 npm run dev:worker
 
-# Terminal 2: Start frontend  
+# Terminal 2: Start frontend (Vite dev server)
 npm run dev:client
 
 # Game available at: http://localhost:5173
+# API available at: http://localhost:8787
 ```
 
-### **Manual Setup**
+### Manual Setup
+
 ```bash
-# Backend (terminal 1)
-cd workers && npx wrangler dev --port 8787
+# Backend (Cloudflare Workers)
+cd workers
+npm install
+npx wrangler dev --port 8787
 
-# Frontend (terminal 2)  
-cd client && npm run dev
+# Frontend (Vite)
+cd client
+npm install
+npm run dev
 ```
 
-## 📚 **Documentation**
+## Build & Deployment
 
-- **[📖 Documentation Index](docs/DOCUMENTATION.md)** - Updated for simplified architecture
-- **[🏗️ Project Structure](docs/PROJECT_STRUCTURE.md)** - Current 8-file structure
-- **[🎮 Game Vision](docs/GameVision.md)** - Original game design vision
-- **[📋 MVP Plan](docs/MVP_Plan_Hidden_Walnuts-2.md)** - Historical roadmap (reference)
-- **[⚙️ Conventions](docs/conventions.md)** - Simplified development standards
+### Build Commands
 
-## 🎯 **What's Next (Simple Additions)**
+```bash
+# Build client
+npm run build:client        # Production build
+npm run build:preview       # Preview build
 
-### **Immediate Next Steps**
-1. **Walnut Mechanics** - Add hiding/seeking gameplay  
-2. **Player Sync** - Better visual synchronization
-3. **Scoring System** - Points for finding walnuts
-4. **Game Polish** - Improved graphics and UX
+# Build worker
+npm run build:worker
+```
 
-### **Why This Approach Works**
-- **Faster Development** - No complex system dependencies
-- **Easier Debugging** - All logic in clear, focused files  
-- **Better Maintainability** - Simple code structure
-- **More Fun** - Focus on gameplay instead of architecture
-- **Still Production Ready** - Cloudflare backend handles scale
+### Deployment (GitHub Actions)
 
-## 🎮 **Controls & Gameplay**
+The game auto-deploys via GitHub Actions:
 
-- **WASD** - Move your squirrel around
-- **Mouse** - Camera automatically follows player
-- **Multiplayer** - See other players in real-time
-- **3D World** - Navigate through forest terrain
+```
+Push to main → Production deployment
+  ├── Client → game.hiddenwalnuts.com (Cloudflare Pages)
+  └── Worker → api.hiddenwalnuts.com (Cloudflare Workers)
 
-**Game URL**: http://localhost:5173
+Push to mvp-* → Preview deployment
+  ├── Client → <hash>.hidden-walnuts-game.pages.dev
+  └── Worker → hidden-walnuts-api-preview.mattmcarroll.workers.dev
+```
 
-## 📊 **Simple Architecture Benefits**
+## Game Controls
 
-Instead of enterprise complexity, you get:
+### Desktop
+- **WASD** - Move character
+- **Mouse** - Camera control
+- **Left Click** - Find walnut
+- **Right Click** - Hide walnut
+- **Space** - Throw walnut (combat)
+- **F1** - Tutorial overlay
+- **ESC** - Settings menu
 
-- **8 focused files** vs 31 complex files
-- **300-line Game.ts** vs 1000s of lines across systems  
-- **Simple console.log** vs complex logging infrastructure
-- **Direct method calls** vs event bus architecture
-- **Basic WebSocket** vs client prediction systems
-- **Clear code flow** vs dependency injection maze
+### Mobile
+- **Single finger drag** - Move character
+- **Two finger drag** - Camera rotation
+- **Tap** - Find walnut
+- **Double tap** - Hide walnut
+- **Long hold** - Throw walnut
 
-## 🏆 **Architecture Philosophy**
+## Documentation
 
-**"Simple is better than complex. Fun is better than perfect."**
+### Core Documentation
+- **[Project Structure](docs/PROJECT_STRUCTURE.md)** - Architecture and file organization
+- **[Game Vision](docs/GameVision.md)** - Design philosophy and features
+- **[Cloudflare Architecture](docs/CLOUDFLARE_ARCHITECTURE.md)** - Platform details
+- **[Conventions](docs/conventions.md)** - Development standards
 
-- ✅ **Readability over cleverness**
-- ✅ **Working game over perfect architecture** 
-- ✅ **Fun gameplay over enterprise patterns**
-- ✅ **8 files over 31 files**
-- ✅ **300 lines over 7,214 lines**
+### Technical Documentation
+- **[Authentication Tech Approach](docs/Authentication_Tech_Approach.md)** - Auth implementation
+- **[Character Implementation](docs/Character_Implementation.md)** - Character system
+- **[Animation State Machine](docs/ANIMATION_STATE_MACHINE.md)** - Animation system
+- **[Bot Prevention](docs/BOT_PREVENTION_OPTIONS.md)** - Turnstile integration
+- **[Admin API](docs/ADMIN_API_REFERENCE.md)** - Management endpoints
+
+### MVP Progress Documentation
+- **[MVP 16 Progress](docs/MVP_16_Progress.md)** - Current development phase (Auth & Characters)
+- **[MVP 15 Completion](docs/MVP_15_COMPLETION.md)** - Scheduled tasks & resets
+- **[MVP 14 Progress](docs/MVP_14_PROGRESS.md)** - Tree growth bonuses
+- **[MVP 13 Progress](docs/MVP_13_PROGRESS.md)** - Admin APIs
+- **[MVP 12 Design](docs/MVP_12_Predator_Defense_Design.md)** - Predator system
+
+## Project Statistics
+
+### Client (TypeScript)
+- **Game.ts**: 8,349 lines (core engine)
+- **AuthService.ts**: 399 lines (authentication)
+- **NetworkSystem.ts**: 1,200+ lines (multiplayer)
+- **Total files**: 47+ TypeScript files
+
+### Server (Cloudflare Workers)
+- **ForestManager.ts**: 129 KB (game state)
+- **PlayerIdentity.ts**: 33 KB (authentication)
+- **Leaderboard.ts**: 22 KB (rankings)
+- **Total Durable Objects**: 5 classes
+
+### Assets
+- **Characters**: 10 animated GLTF models
+- **Animations**: 6-8 states per character (idle, walk, run, attack, death, etc.)
+- **Sounds**: 28 sound effects + ambient audio
+- **Terrain**: Procedural 400×400 unit world
+
+## Current Metrics (Live Production)
+
+- **Active players**: 22+ total registered
+- **Weekly leaderboard**: Top 10 authenticated players
+- **Uptime**: 99.9%+ (Cloudflare edge)
+- **Latency**: <50ms globally (edge deployment)
+
+## Development Roadmap
+
+### Completed Milestones
+- ✅ MVP 1-6: Core gameplay, sessions, identity
+- ✅ MVP 7: NPC AI system, Turnstile bot protection
+- ✅ MVP 8: Combat system with health & walnut projectiles
+- ✅ MVP 9: Tree growth, reconnection, walnut drops
+- ✅ MVP 12: Predator system with rank-based targeting
+- ✅ MVP 13: Admin APIs and metrics tracking
+- ✅ MVP 14: Tree-growing milestone bonuses
+- ✅ MVP 15: Scheduled tasks (daily/weekly resets)
+- ✅ MVP 16: Email/password authentication, character gating
+
+### Next Steps
+- **Mobile optimization**: Improve touch controls and performance
+- **Social features**: Friend system, private messages
+- **Seasonal content**: Limited-time characters and events
+- **Monetization**: Premium character sales ($1.99 each)
+- **Analytics**: Player behavior tracking and insights
+
+## Architecture Philosophy
+
+**Production-ready edge deployment over enterprise complexity**
+
+- ✅ **Global performance** via Cloudflare's edge network
+- ✅ **Scalability** through Durable Objects (stateful coordination)
+- ✅ **Security** via Turnstile, rate limiting, server-authoritative design
+- ✅ **Developer experience** with TypeScript, hot reload, preview deployments
+- ✅ **Cost efficiency** - Pay only for what you use, automatic scaling
+
+## Contributing
+
+This is a solo development project, but feedback and bug reports are welcome via GitHub Issues.
+
+## License
+
+Proprietary - All rights reserved
 
 ---
 
-**The focus is now on making a fun, playable game rather than showcasing enterprise architecture patterns!** 🎮// Manual test comment for GitHub Actions verification (terminal - remove later)
+**The focus is on creating a fun, engaging multiplayer game experience with professional polish and global accessibility.**
