@@ -1372,6 +1372,55 @@ export default class ForestManager extends DurableObject {
       });
     }
 
+    // MVP 16: Clear all users for testing (clears EMAIL_INDEX and disconnects all players)
+    if (path === "/admin/users/clear-all" && request.method === "POST") {
+      // Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      // Count emails to be cleared
+      let emailsCleared = 0;
+      let playersDisconnected = 0;
+
+      // List all keys in EMAIL_INDEX and delete them
+      const emailList = await this.env.EMAIL_INDEX.list();
+      for (const key of emailList.keys) {
+        await this.env.EMAIL_INDEX.delete(key.name);
+        emailsCleared++;
+      }
+
+      // Disconnect all active players and close their WebSockets
+      for (const [squirrelId, player] of this.activePlayers.entries()) {
+        try {
+          player.socket.close(1000, "Admin: All users cleared for testing");
+          playersDisconnected++;
+        } catch (error) {
+          console.error(`Failed to close socket for player ${squirrelId}:`, error);
+        }
+      }
+
+      // Clear active players map
+      this.activePlayers.clear();
+
+      return new Response(JSON.stringify({
+        success: true,
+        emailsCleared,
+        playersDisconnected,
+        message: `Cleared ${emailsCleared} email registrations and disconnected ${playersDisconnected} active players`
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+
     return new Response("Not Found", { status: 404 });
   }
 

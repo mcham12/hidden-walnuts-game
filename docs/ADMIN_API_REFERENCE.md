@@ -264,6 +264,54 @@ curl -X POST https://api.hiddenwalnuts.com/admin/players/player-123/reset \
 
 ---
 
+### Clear All Users
+
+Clears all user registrations and disconnects all active players. **For testing purposes only.**
+
+**Endpoint**: `POST /admin/users/clear-all`
+**Auth**: Required
+
+**Request**:
+```bash
+curl -X POST https://api.hiddenwalnuts.com/admin/users/clear-all \
+  -H "X-Admin-Secret: YOUR_SECRET"
+```
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "emailsCleared": 15,
+  "playersDisconnected": 3,
+  "message": "Cleared 15 email registrations and disconnected 3 active players"
+}
+```
+
+**Effects**:
+- Deletes all entries from EMAIL_INDEX KV namespace (email → username mappings)
+- Disconnects all currently connected players (closes WebSockets)
+- Clears activePlayers map in ForestManager
+- **Note**: PlayerIdentity Durable Object storage remains (users can't re-register with same email until DO is manually deleted)
+
+**Use Cases**:
+- Resetting authentication system during development
+- Clearing test accounts before production launch
+- Testing user registration flow from scratch
+- Cleaning up after integration tests
+
+**Warning**:
+- This endpoint is destructive and should only be used in testing/development environments
+- Players will be immediately disconnected
+- Email addresses will be available for re-registration
+- Existing PlayerIdentity data persists in Durable Object storage
+
+**Production Safety**:
+- Only use this endpoint in preview/staging environments
+- Consider archiving user data before running
+- Coordinate with active players to avoid disruption
+
+---
+
 ## Monitoring & Metrics
 
 ### Get Server Metrics
