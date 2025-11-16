@@ -1372,7 +1372,7 @@ export default class ForestManager extends DurableObject {
       });
     }
 
-    // MVP 16: Clear all users for testing (clears EMAIL_INDEX and disconnects all players)
+    // MVP 16: Clear all users for testing (clears EMAIL_INDEX, PlayerIdentity storage, and disconnects all players)
     if (path === "/admin/users/clear-all" && request.method === "POST") {
       // Require admin authentication
       const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
@@ -1386,13 +1386,41 @@ export default class ForestManager extends DurableObject {
         });
       }
 
-      // Count emails to be cleared
+      // Count operations
       let emailsCleared = 0;
+      let identitiesCleared = 0;
       let playersDisconnected = 0;
 
-      // List all keys in EMAIL_INDEX and delete them
+      // List all keys in EMAIL_INDEX
       const emailList = await this.env.EMAIL_INDEX.list();
+
+      // For each email, get the username and clear the PlayerIdentity DO storage
       for (const key of emailList.keys) {
+        const username = await this.env.EMAIL_INDEX.get(key.name);
+
+        if (username) {
+          // Get PlayerIdentity DO for this username
+          const id = this.env.PLAYER_IDENTITY.idFromName(username);
+          const stub = this.env.PLAYER_IDENTITY.get(id);
+
+          // Call admin clear action on the PlayerIdentity DO
+          const clearUrl = new URL('https://internal/api/identity');
+          clearUrl.searchParams.set('action', 'adminClear');
+
+          const clearRequest = new Request(clearUrl.toString(), {
+            method: 'POST',
+            headers: { 'X-Admin-Secret': adminSecret }
+          });
+
+          try {
+            await stub.fetch(clearRequest);
+            identitiesCleared++;
+          } catch (error) {
+            console.error(`Failed to clear PlayerIdentity for ${username}:`, error);
+          }
+        }
+
+        // Delete email index entry
         await this.env.EMAIL_INDEX.delete(key.name);
         emailsCleared++;
       }
@@ -1413,8 +1441,9 @@ export default class ForestManager extends DurableObject {
       return new Response(JSON.stringify({
         success: true,
         emailsCleared,
+        identitiesCleared,
         playersDisconnected,
-        message: `Cleared ${emailsCleared} email registrations and disconnected ${playersDisconnected} active players`
+        message: `Cleared ${emailsCleared} email registrations, ${identitiesCleared} user identities, and disconnected ${playersDisconnected} active players`
       }), {
         status: 200,
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" }

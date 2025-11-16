@@ -128,6 +128,10 @@ export class PlayerIdentity extends DurableObject {
         case 'logoutAll':
           return await this.handleLogoutAll(request);
 
+        // Admin: Clear all storage for this identity (for testing)
+        case 'adminClear':
+          return await this.handleAdminClear(request);
+
         default:
           console.error(`❌ Invalid action: ${action}`);
           return new Response(JSON.stringify({ error: 'Invalid action', action }), {
@@ -1003,6 +1007,45 @@ export class PlayerIdentity extends DurableObject {
     } catch (error) {
       console.error('Logout all error:', error);
       return Response.json({ error: 'Failed to logout' }, { status: 500 });
+    }
+  }
+
+  /**
+   * Admin endpoint: Clear all storage for this PlayerIdentity
+   * Requires admin secret authentication
+   * Used for testing to completely reset user data
+   */
+  private async handleAdminClear(request: Request): Promise<Response> {
+    try {
+      // Validate admin secret
+      const adminSecret = request.headers.get("X-Admin-Secret") ||
+                         new URL(request.url).searchParams.get("admin_secret");
+
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return Response.json({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }, { status: 401 });
+      }
+
+      // Get current data to return email for confirmation
+      const data = await this.ctx.storage.get<PlayerIdentityData>('player');
+      const email = data?.email || null;
+      const username = data?.username || null;
+
+      // Delete ALL storage for this PlayerIdentity DO
+      await this.ctx.storage.deleteAll();
+
+      return Response.json({
+        success: true,
+        username,
+        email,
+        message: `PlayerIdentity storage cleared for ${username || 'unknown user'}`
+      });
+
+    } catch (error) {
+      console.error('Admin clear error:', error);
+      return Response.json({ error: 'Failed to clear storage' }, { status: 500 });
     }
   }
 }

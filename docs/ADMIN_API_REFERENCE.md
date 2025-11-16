@@ -282,33 +282,41 @@ curl -X POST https://api.hiddenwalnuts.com/admin/users/clear-all \
 {
   "success": true,
   "emailsCleared": 15,
+  "identitiesCleared": 15,
   "playersDisconnected": 3,
-  "message": "Cleared 15 email registrations and disconnected 3 active players"
+  "message": "Cleared 15 email registrations, 15 user identities, and disconnected 3 active players"
 }
 ```
 
 **Effects**:
 - Deletes all entries from EMAIL_INDEX KV namespace (email → username mappings)
+- Clears ALL PlayerIdentity Durable Object storage (email, password, character unlocks, tokens)
 - Disconnects all currently connected players (closes WebSockets)
 - Clears activePlayers map in ForestManager
-- **Note**: PlayerIdentity Durable Object storage remains (users can't re-register with same email until DO is manually deleted)
+- **Email addresses can be immediately reused** for new registrations
+- **Does NOT clear leaderboard data** (see note below)
 
 **Use Cases**:
 - Resetting authentication system during development
 - Clearing test accounts before production launch
-- Testing user registration flow from scratch
+- Testing user registration flow from scratch with same email addresses
 - Cleaning up after integration tests
 
 **Warning**:
-- This endpoint is destructive and should only be used in testing/development environments
+- This endpoint is **destructive** and should only be used in testing/development environments
 - Players will be immediately disconnected
-- Email addresses will be available for re-registration
-- Existing PlayerIdentity data persists in Durable Object storage
+- All user data (email, password, character unlocks) is permanently deleted
+- Leaderboard entries will become orphaned (usernames without associated accounts)
+
+**Leaderboard Interaction**:
+- User scores remain on leaderboard after clearing
+- Consider also calling `/api/leaderboard/reset` to clear orphaned scores
+- Or clear leaderboard first, then clear users for complete reset
 
 **Production Safety**:
-- Only use this endpoint in preview/staging environments
-- Consider archiving user data before running
-- Coordinate with active players to avoid disruption
+- **DO NOT use in production** - data loss is permanent
+- Only use in preview/staging environments
+- Coordinate with active players to avoid disruption during testing
 
 ---
 
