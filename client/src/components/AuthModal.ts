@@ -60,51 +60,65 @@ export class AuthModal {
     }
     this.container = root;
 
-    // Create backdrop
-    this.backdrop = document.createElement('div');
-    this.backdrop.className = 'auth-modal-backdrop';
-    this.backdrop.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(4px);
-      z-index: 10000;
-      display: none;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    `;
+    // Reuse existing backdrop or create new one
+    let existingBackdrop = root.querySelector('.auth-modal-backdrop') as HTMLElement;
+    if (existingBackdrop) {
+      this.backdrop = existingBackdrop;
+    } else {
+      this.backdrop = document.createElement('div');
+      this.backdrop.className = 'auth-modal-backdrop';
+      this.backdrop.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(4px);
+        z-index: 10000;
+        display: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      `;
+    }
 
-    // Create modal
-    this.modalElement = document.createElement('div');
-    this.modalElement.className = 'auth-modal';
-    this.modalElement.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: linear-gradient(135deg, #8B4513 0%, #D2691E 100%);
-      border-radius: 16px;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-      z-index: 10001;
-      display: none;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      max-height: 90vh;
-      overflow-y: auto;
-      width: 600px;
-      max-width: 90vw;
-      border: 2px solid rgba(255, 215, 0, 0.3);
-    `;
+    // Reuse existing modal or create new one
+    let existingModal = root.querySelector('.auth-modal') as HTMLElement;
+    if (existingModal) {
+      this.modalElement = existingModal;
+    } else {
+      this.modalElement = document.createElement('div');
+      this.modalElement.className = 'auth-modal';
+      this.modalElement.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(135deg, #8B4513 0%, #D2691E 100%);
+        border-radius: 16px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+        z-index: 10001;
+        display: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        max-height: 90vh;
+        overflow-y: auto;
+        width: 600px;
+        max-width: 90vw;
+        border: 2px solid rgba(255, 215, 0, 0.3);
+      `;
+    }
 
     // Add responsive sizing
     this.applyResponsiveStyles();
 
-    // Append to container
-    this.container.appendChild(this.backdrop);
-    this.container.appendChild(this.modalElement);
+    // Append to container only if newly created
+    if (!existingBackdrop) {
+      this.container.appendChild(this.backdrop);
+    }
+    if (!existingModal) {
+      this.container.appendChild(this.modalElement);
+    }
   }
 
   /**
