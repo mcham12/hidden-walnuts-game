@@ -278,10 +278,10 @@ export class AuthModal {
       this.modalElement.style.opacity = '1';
     }
 
-    // Render the current screen and wait for it to complete
-    await this.renderScreen();
+    // Render the current screen (synchronous)
+    this.renderScreen();
 
-    // Prefill form data if provided - now we can do it immediately since form is ready
+    // Prefill form data if provided - form is now ready
     if (this.prefillData.username) {
       const usernameInput = this.modalElement?.querySelector('input[name="username"]') as HTMLInputElement;
       if (usernameInput) {
@@ -343,15 +343,15 @@ export class AuthModal {
   /**
    * Navigate to a different screen
    */
-  public async navigateTo(screen: AuthScreen): Promise<void> {
+  public navigateTo(screen: AuthScreen): void {
     this.currentScreen = screen;
-    await this.renderScreen();
+    this.renderScreen();
   }
 
   /**
    * Render the current screen content
    */
-  private async renderScreen(): Promise<void> {
+  private renderScreen(): void {
     if (!this.modalElement) return;
 
     // Use static imports (now imported at top of file)
