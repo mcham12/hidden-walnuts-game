@@ -51,20 +51,27 @@ export class AuthModal {
    * Create the modal DOM structure
    */
   private createModal(): void {
+    console.log('🏗️ [AuthModal] createModal() called');
+
     // Get or create modal root container
     let root = document.getElementById('auth-modal-root');
     if (!root) {
+      console.log('  - Creating new auth-modal-root');
       root = document.createElement('div');
       root.id = 'auth-modal-root';
       document.body.appendChild(root);
+    } else {
+      console.log('  - Reusing existing auth-modal-root');
     }
     this.container = root;
 
     // Reuse existing backdrop or create new one
     let existingBackdrop = root.querySelector('.auth-modal-backdrop') as HTMLElement;
     if (existingBackdrop) {
+      console.log('  - Reusing existing backdrop');
       this.backdrop = existingBackdrop;
     } else {
+      console.log('  - Creating new backdrop');
       this.backdrop = document.createElement('div');
       this.backdrop.className = 'auth-modal-backdrop';
       this.backdrop.style.cssText = `
@@ -75,7 +82,7 @@ export class AuthModal {
         height: 100%;
         background: rgba(0, 0, 0, 0.7);
         backdrop-filter: blur(4px);
-        z-index: 10000;
+        z-index: 10100;
         display: none;
         opacity: 0;
         transition: opacity 0.3s ease;
@@ -85,8 +92,10 @@ export class AuthModal {
     // Reuse existing modal or create new one
     let existingModal = root.querySelector('.auth-modal') as HTMLElement;
     if (existingModal) {
+      console.log('  - Reusing existing modal element');
       this.modalElement = existingModal;
     } else {
+      console.log('  - Creating new modal element');
       this.modalElement = document.createElement('div');
       this.modalElement.className = 'auth-modal';
       this.modalElement.style.cssText = `
@@ -97,7 +106,7 @@ export class AuthModal {
         background: linear-gradient(135deg, #8B4513 0%, #D2691E 100%);
         border-radius: 16px;
         box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-        z-index: 10001;
+        z-index: 10101;
         display: none;
         opacity: 0;
         transition: opacity 0.3s ease;
@@ -113,12 +122,22 @@ export class AuthModal {
     this.applyResponsiveStyles();
 
     // Append to container only if newly created
-    if (!existingBackdrop) {
+    if (!existingBackdrop && this.backdrop) {
+      console.log('  - Appending backdrop to container');
       this.container.appendChild(this.backdrop);
     }
-    if (!existingModal) {
+    if (!existingModal && this.modalElement) {
+      console.log('  - Appending modal to container');
       this.container.appendChild(this.modalElement);
     }
+
+    console.log('✅ [AuthModal] createModal() completed');
+    console.log('  - Final state:');
+    console.log('    - container:', !!this.container);
+    console.log('    - backdrop:', !!this.backdrop);
+    console.log('    - modalElement:', !!this.modalElement);
+    console.log('    - backdrop in DOM:', this.backdrop && document.body.contains(this.backdrop));
+    console.log('    - modalElement in DOM:', this.modalElement && document.body.contains(this.modalElement));
   }
 
   /**
