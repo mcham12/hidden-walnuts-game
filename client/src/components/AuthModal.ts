@@ -17,6 +17,12 @@
  * - iPhone Landscape (≤932px width, ≤500px height): 400px compact modal
  */
 
+// Static imports instead of dynamic for better bundling
+import { SignupForm } from './SignupForm';
+import { LoginForm } from './LoginForm';
+import { ForgotPasswordForm } from './ForgotPasswordForm';
+import { ResetPasswordForm } from './ResetPasswordForm';
+
 export type AuthScreen = 'signup' | 'login' | 'forgot-password' | 'reset-password' | 'verify-email';
 
 export interface AuthModalOptions {
@@ -334,12 +340,7 @@ export class AuthModal {
   private async renderScreen(): Promise<void> {
     if (!this.modalElement) return;
 
-    // Import form components dynamically
-    const { SignupForm } = await import('./SignupForm');
-    const { LoginForm } = await import('./LoginForm');
-    const { ForgotPasswordForm } = await import('./ForgotPasswordForm');
-    const { ResetPasswordForm } = await import('./ResetPasswordForm');
-
+    // Use static imports (now imported at top of file)
     this.renderScreenWithForms(SignupForm, LoginForm, ForgotPasswordForm, ResetPasswordForm);
   }
 
