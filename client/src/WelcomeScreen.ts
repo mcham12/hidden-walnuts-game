@@ -123,12 +123,19 @@ export class WelcomeScreen {
    * Setup event handlers for flip card buttons
    */
   private setupEventHandlers(): void {
+    console.log('🔧 [WelcomeScreen] setupEventHandlers() called');
+
     const playButton = document.getElementById('welcome-play-button') as HTMLButtonElement;
     const signupLink = document.getElementById('welcome-signup-link');
     const loginLink = document.getElementById('welcome-login-link');
     const signupLinkBack = document.getElementById('welcome-signup-link-back');
     const loginLinkBack = document.getElementById('welcome-login-link-back');
     const input = document.getElementById('welcome-username-input') as HTMLInputElement;
+
+    console.log('  - playButton:', !!playButton);
+    console.log('  - signupLink:', !!signupLink);
+    console.log('  - loginLink:', !!loginLink);
+    console.log('  - input:', !!input);
 
     // Play as Guest button (already disabled, will be enabled by Turnstile)
     if (playButton && input) {
@@ -140,11 +147,18 @@ export class WelcomeScreen {
           this.onPlayAsGuestClick();
         }
       });
+      console.log('  ✅ Play button handler attached');
     }
 
     // Sign Up links (front and back)
     if (signupLink) {
-      signupLink.addEventListener('click', () => this.onSignUpClick());
+      signupLink.addEventListener('click', () => {
+        console.log('🖱️ Sign Up button CLICKED');
+        this.onSignUpClick();
+      });
+      console.log('  ✅ Sign Up button handler attached');
+    } else {
+      console.error('  ❌ Sign Up button NOT FOUND in DOM!');
     }
     if (signupLinkBack) {
       signupLinkBack.addEventListener('click', () => this.onSignUpClick());
@@ -152,13 +166,19 @@ export class WelcomeScreen {
 
     // Log In links (front and back)
     if (loginLink) {
-      loginLink.addEventListener('click', () => this.onSignInClick());
+      loginLink.addEventListener('click', () => {
+        console.log('🖱️ Log In button CLICKED');
+        this.onSignInClick();
+      });
+      console.log('  ✅ Log In button handler attached');
+    } else {
+      console.error('  ❌ Log In button NOT FOUND in DOM!');
     }
     if (loginLinkBack) {
       loginLinkBack.addEventListener('click', () => this.onSignInClick());
     }
 
-    // Removed old pane interaction code (no longer needed for flip card)
+    console.log('✅ [WelcomeScreen] Event handlers setup complete');
   }
 
   /**
@@ -251,13 +271,20 @@ export class WelcomeScreen {
    * Handle Sign Up click - Open AuthModal in signup mode with prefilled username
    */
   private onSignUpClick(): void {
+    console.log('🎯 [WelcomeScreen] onSignUpClick() called');
+    console.log('  - authModal exists:', !!this.authModal);
+
     if (this.authModal) {
       // Get username from card input field
       const usernameInput = document.getElementById('welcome-username-input') as HTMLInputElement;
       const username = usernameInput?.value.trim() || '';
+      console.log('  - username from input:', username);
 
       // Open auth modal directly
+      console.log('  - Calling authModal.open("signup", ...)');
       this.authModal.open('signup', username ? { username } : undefined);
+    } else {
+      console.error('  ❌ authModal is NULL!');
     }
   }
 
@@ -265,9 +292,15 @@ export class WelcomeScreen {
    * Handle Sign In click - Open AuthModal in login mode
    */
   private onSignInClick(): void {
+    console.log('🎯 [WelcomeScreen] onSignInClick() called');
+    console.log('  - authModal exists:', !!this.authModal);
+
     if (this.authModal) {
       // Open auth modal directly
+      console.log('  - Calling authModal.open("login")');
       this.authModal.open('login');
+    } else {
+      console.error('  ❌ authModal is NULL!');
     }
   }
 

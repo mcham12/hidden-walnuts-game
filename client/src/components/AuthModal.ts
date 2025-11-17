@@ -250,6 +250,8 @@ export class AuthModal {
    * Open the modal with the specified screen and optional prefill data
    */
   public async open(screen?: AuthScreen, prefillData?: { username?: string }): Promise<void> {
+    console.log('🚀 [AuthModal] open() called with screen:', screen, 'prefillData:', prefillData);
+
     if (screen) {
       this.currentScreen = screen;
     }
@@ -261,6 +263,10 @@ export class AuthModal {
     this.isOpen = true;
     document.body.classList.add('auth-modal-open');
 
+    console.log('📱 [AuthModal] Setting modal visibility...');
+    console.log('  - backdrop element:', this.backdrop ? 'EXISTS' : 'NULL');
+    console.log('  - modalElement:', this.modalElement ? 'EXISTS' : 'NULL');
+
     // Show elements
     if (this.backdrop) {
       this.backdrop.style.display = 'block';
@@ -268,6 +274,9 @@ export class AuthModal {
       // Force reflow for animation
       void this.backdrop.offsetWidth;
       this.backdrop.style.opacity = '1';
+      console.log('  ✅ Backdrop visible');
+    } else {
+      console.error('  ❌ Backdrop is NULL!');
     }
 
     if (this.modalElement) {
@@ -276,19 +285,25 @@ export class AuthModal {
       // Force reflow for animation
       void this.modalElement.offsetWidth;
       this.modalElement.style.opacity = '1';
+      console.log('  ✅ Modal element visible');
+    } else {
+      console.error('  ❌ Modal element is NULL!');
     }
 
+    console.log('🎨 [AuthModal] Rendering screen:', this.currentScreen);
     // Render the current screen (synchronous)
     this.renderScreen();
+    console.log('  ✅ Screen rendered');
 
     // Prefill form data if provided - form is now ready
-    if (this.prefillData.username) {
+    // NOTE: Only signup form has username field, login form only has email/password
+    if (this.prefillData.username && this.currentScreen === 'signup') {
       const usernameInput = this.modalElement?.querySelector('input[name="username"]') as HTMLInputElement;
       if (usernameInput) {
         usernameInput.value = this.prefillData.username || '';
-        console.log('Prefilled username:', this.prefillData.username);
+        console.log('✅ Prefilled username:', this.prefillData.username);
       } else {
-        console.warn('Username input not found for prefill');
+        console.warn('⚠️ Username input not found for prefill (expected for signup form)');
       }
       // Focus first empty input
       const firstEmptyInput = Array.from(this.modalElement?.querySelectorAll('input') || [])
@@ -301,6 +316,8 @@ export class AuthModal {
       const firstInput = this.modalElement?.querySelector('input') as HTMLElement;
       firstInput?.focus();
     }
+
+    console.log('✅ [AuthModal] open() completed successfully');
   }
 
   /**
@@ -352,10 +369,23 @@ export class AuthModal {
    * Render the current screen content
    */
   private renderScreen(): void {
-    if (!this.modalElement) return;
+    console.log('🎨 [AuthModal] renderScreen() called');
+    console.log('  - modalElement exists:', !!this.modalElement);
+    console.log('  - currentScreen:', this.currentScreen);
+
+    if (!this.modalElement) {
+      console.error('  ❌ modalElement is NULL, cannot render!');
+      return;
+    }
 
     // Use static imports (now imported at top of file)
-    this.renderScreenWithForms(SignupForm, LoginForm, ForgotPasswordForm, ResetPasswordForm);
+    try {
+      this.renderScreenWithForms(SignupForm, LoginForm, ForgotPasswordForm, ResetPasswordForm);
+      console.log('  ✅ renderScreenWithForms completed');
+    } catch (error) {
+      console.error('  ❌ Error in renderScreenWithForms:', error);
+      throw error;
+    }
   }
 
   /**
@@ -367,11 +397,18 @@ export class AuthModal {
     ForgotPasswordForm: any,
     ResetPasswordForm: any
   ): void {
-    if (!this.modalElement) return;
+    console.log('🎨 [AuthModal] renderScreenWithForms() called');
 
+    if (!this.modalElement) {
+      console.error('  ❌ modalElement is NULL in renderScreenWithForms');
+      return;
+    }
+
+    console.log('  - Clearing existing modal content');
     // Clear existing content
     this.modalElement.innerHTML = '';
 
+    console.log('  - Creating header');
     // Create header with close button
     const header = document.createElement('div');
     header.style.cssText = `
@@ -415,6 +452,7 @@ export class AuthModal {
     header.appendChild(closeButton);
     this.modalElement.appendChild(header);
 
+    console.log('  - Creating content container');
     // Create content container
     const content = document.createElement('div');
     content.className = 'auth-modal-content';
@@ -422,55 +460,70 @@ export class AuthModal {
       padding: 30px 20px;
     `;
 
+    console.log('  - Rendering form for screen:', this.currentScreen);
     // Render screen-specific content
-    switch (this.currentScreen) {
-      case 'signup':
-        new SignupForm(content, {
-          onSuccess: (response: any) => {
-            this.options.onAuthSuccess?.(response);
-            this.close();
-          },
-          onSwitchToLogin: () => this.navigateTo('login')
-        });
-        break;
-      case 'login':
-        new LoginForm(content, {
-          onSuccess: (response: any) => {
-            this.options.onAuthSuccess?.(response);
-            this.close();
-          },
-          onSwitchToSignup: () => this.navigateTo('signup'),
-          onForgotPassword: () => this.navigateTo('forgot-password')
-        });
-        break;
-      case 'forgot-password':
-        new ForgotPasswordForm(content, {
-          onSuccess: () => {
-            // Keep modal open to show success message
-          },
-          onBackToLogin: () => this.navigateTo('login')
-        });
-        break;
-      case 'reset-password':
-        // Get token from URL params
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token') || '';
+    try {
+      switch (this.currentScreen) {
+        case 'signup':
+          console.log('  - Creating SignupForm');
+          new SignupForm(content, {
+            onSuccess: (response: any) => {
+              this.options.onAuthSuccess?.(response);
+              this.close();
+            },
+            onSwitchToLogin: () => this.navigateTo('login')
+          });
+          break;
+        case 'login':
+          console.log('  - Creating LoginForm');
+          new LoginForm(content, {
+            onSuccess: (response: any) => {
+              this.options.onAuthSuccess?.(response);
+              this.close();
+            },
+            onSwitchToSignup: () => this.navigateTo('signup'),
+            onForgotPassword: () => this.navigateTo('forgot-password')
+          });
+          break;
+        case 'forgot-password':
+          console.log('  - Creating ForgotPasswordForm');
+          new ForgotPasswordForm(content, {
+            onSuccess: () => {
+              // Keep modal open to show success message
+            },
+            onBackToLogin: () => this.navigateTo('login')
+          });
+          break;
+        case 'reset-password':
+          console.log('  - Creating ResetPasswordForm');
+          // Get token from URL params
+          const urlParams = new URLSearchParams(window.location.search);
+          const token = urlParams.get('token') || '';
 
-        new ResetPasswordForm(content, {
-          token,
-          onSuccess: () => {
-            // Redirect to login after success message
-            setTimeout(() => this.navigateTo('login'), 2000);
-          },
-          onRequestNewLink: () => this.navigateTo('forgot-password')
-        });
-        break;
-      case 'verify-email':
-        content.innerHTML = '<p>Email verification page will be implemented in Part 2B</p>';
-        break;
+          new ResetPasswordForm(content, {
+            token,
+            onSuccess: () => {
+              // Redirect to login after success message
+              setTimeout(() => this.navigateTo('login'), 2000);
+            },
+            onRequestNewLink: () => this.navigateTo('forgot-password')
+          });
+          break;
+        case 'verify-email':
+          console.log('  - Creating verify-email placeholder');
+          content.innerHTML = '<p>Email verification page will be implemented in Part 2B</p>';
+          break;
+        default:
+          console.error('  ❌ Unknown screen type:', this.currentScreen);
+      }
+    } catch (error) {
+      console.error('  ❌ Error creating form:', error);
+      throw error;
     }
 
+    console.log('  - Appending content to modal');
     this.modalElement.appendChild(content);
+    console.log('  ✅ renderScreenWithForms completed successfully');
   }
 
   /**
