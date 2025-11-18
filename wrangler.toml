@@ -35,6 +35,12 @@ binding = "EMAIL_INDEX"
 id = "1c7b48760aae43c891eddeeae77c2030"
 preview_id = "21344757db994f7bb7a9cb31862128d4"
 
+# MVP 16: Username uniqueness index for authentication
+[[kv_namespaces]]
+binding = "USERNAME_INDEX"
+id = "1e5b880575bc403984b120b16b99675a"
+preview_id = "0b5391cad8af45fe99ac68dc2ac6f949"
+
 # MVP 7.1: Rate Limiting for bot protection
 [[unsafe.bindings]]
 name = "RATE_LIMITER"

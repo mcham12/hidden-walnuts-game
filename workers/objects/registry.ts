@@ -12,6 +12,7 @@ export interface EnvWithBindings {
 
   // KV Namespaces
   EMAIL_INDEX: KVNamespace; // MVP 16: Email uniqueness index for authentication
+  USERNAME_INDEX: KVNamespace; // MVP 16: Username uniqueness index for authentication
 
   // Environment variables from wrangler.toml
   ENVIRONMENT: string;

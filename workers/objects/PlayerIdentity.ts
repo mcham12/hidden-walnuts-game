@@ -357,13 +357,14 @@ export class PlayerIdentity extends DurableObject {
         }, { status: 400 });
       }
 
-      // Check if user already exists
+      // Check if user already exists in THIS Durable Object instance
       const existing = await this.ctx.storage.get<PlayerIdentityData>('player');
       // Only block signup if existing account is already authenticated
       // Quick Play accounts (no email or not authenticated) can be upgraded
       if (existing && existing.email && existing.isAuthenticated) {
         return Response.json({
-          error: 'This username already has an account'
+          error: 'Email already registered',
+          message: 'This email address already has an account. Please log in instead.'
         }, { status: 409 });
       }
 
@@ -371,10 +372,23 @@ export class PlayerIdentity extends DurableObject {
       const normalizedEmail = email.toLowerCase().trim();
       const emailKey = `email:${normalizedEmail}`;
 
-      const existingUsername = await this.env.EMAIL_INDEX.get(emailKey);
-      if (existingUsername && existingUsername !== username) {
+      const existingUsernameForEmail = await this.env.EMAIL_INDEX.get(emailKey);
+      if (existingUsernameForEmail && existingUsernameForEmail !== username) {
         return Response.json({
-          error: 'Email already registered'
+          error: 'Email already registered',
+          message: 'This email address is already registered with a different username. Please log in instead.'
+        }, { status: 409 });
+      }
+
+      // MVP 16: Check username uniqueness across all users (global KV index)
+      const normalizedUsername = username.toLowerCase().trim();
+      const usernameKey = `username:${normalizedUsername}`;
+
+      const existingEmailForUsername = await this.env.USERNAME_INDEX.get(usernameKey);
+      if (existingEmailForUsername && existingEmailForUsername !== normalizedEmail) {
+        return Response.json({
+          error: 'Username already taken',
+          message: 'This username is already taken. Please choose a different username.'
         }, { status: 409 });
       }
 
@@ -461,8 +475,9 @@ export class PlayerIdentity extends DurableObject {
 
       await this.ctx.storage.put('player', data);
 
-      // MVP 16: Register email in global KV index
+      // MVP 16: Register email and username in global KV indices
       await this.env.EMAIL_INDEX.put(emailKey, username);
+      await this.env.USERNAME_INDEX.put(usernameKey, normalizedEmail);
 
       // Send verification email
       if (this.env.SMTP_USER && this.env.SMTP_PASSWORD) {

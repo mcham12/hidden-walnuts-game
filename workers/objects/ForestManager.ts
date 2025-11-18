@@ -1372,7 +1372,7 @@ export default class ForestManager extends DurableObject {
       });
     }
 
-    // MVP 16: Clear all users for testing (clears EMAIL_INDEX, PlayerIdentity storage, and disconnects all players)
+    // MVP 16: Clear all users for testing (clears EMAIL_INDEX, USERNAME_INDEX, PlayerIdentity storage, and disconnects all players)
     if (path === "/admin/users/clear-all" && request.method === "POST") {
       // Require admin authentication
       const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
@@ -1388,6 +1388,7 @@ export default class ForestManager extends DurableObject {
 
       // Count operations
       let emailsCleared = 0;
+      let usernamesCleared = 0;
       let identitiesCleared = 0;
       let playersDisconnected = 0;
 
@@ -1425,6 +1426,13 @@ export default class ForestManager extends DurableObject {
         emailsCleared++;
       }
 
+      // Clear all USERNAME_INDEX entries
+      const usernameList = await this.env.USERNAME_INDEX.list();
+      for (const key of usernameList.keys) {
+        await this.env.USERNAME_INDEX.delete(key.name);
+        usernamesCleared++;
+      }
+
       // Disconnect all active players and close their WebSockets
       for (const [squirrelId, player] of this.activePlayers.entries()) {
         try {
@@ -1441,9 +1449,10 @@ export default class ForestManager extends DurableObject {
       return new Response(JSON.stringify({
         success: true,
         emailsCleared,
+        usernamesCleared,
         identitiesCleared,
         playersDisconnected,
-        message: `Cleared ${emailsCleared} email registrations, ${identitiesCleared} user identities, and disconnected ${playersDisconnected} active players`
+        message: `Cleared ${emailsCleared} email registrations, ${usernamesCleared} username registrations, ${identitiesCleared} user identities, and disconnected ${playersDisconnected} active players`
       }), {
         status: 200,
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" }

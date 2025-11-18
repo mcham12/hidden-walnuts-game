@@ -119,6 +119,7 @@ export interface Env {
   ADMIN_SECRET?: string; // MVP 13: Admin API authentication
   JWT_SECRET: string; // MVP 16: JWT token generation/verification
   EMAIL_INDEX: KVNamespace; // MVP 16: Email uniqueness index
+  USERNAME_INDEX: KVNamespace; // MVP 16: Username uniqueness index
   SMTP_USER?: string; // MVP 16: Email service SMTP user
   SMTP_PASSWORD?: string; // MVP 16: Email service SMTP password
 }
