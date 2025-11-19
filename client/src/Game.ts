@@ -4407,12 +4407,13 @@ export class Game {
     const isAuth = isAuthenticated();
     const currentUser = getCurrentUser();
 
-    console.log(`🎯 [showDeathOverlay] Auth status: ${isAuth}, User:`, currentUser);
+    console.log('🎯 [showDeathOverlay] Auth status: ' + isAuth + ', User:', currentUser);
+
+    const signedInContent = document.getElementById('death-content-signedin');
+    const anonymousContent = document.getElementById('death-content-anonymous');
 
     if (isAuth) {
       // Show signed-in content panel
-      const signedInContent = document.getElementById('death-content-signedin');
-      const anonymousContent = document.getElementById('death-content-anonymous');
 
       if (signedInContent) {
         signedInContent.classList.remove('hidden');
@@ -4473,20 +4474,18 @@ export class Game {
           };
           const emoji = emojiMap[char.id] || '🐾';
 
-          card.innerHTML = `
-            <div style="font-size: 32px; margin-bottom: 5px;">${emoji}</div>
-      // Update rank
-      const rankSpan = document.getElementById('player-rank');
-      if (rankSpan) {
-        // Use leaderboard rank if available, otherwise random placeholder for MVP
-        // In a real implementation, we'd fetch the user's actual rank
-        const randomRank = Math.floor(Math.random() * 100) + 1;
-        rankSpan.textContent = randomRank.toString();
+          card.innerHTML = '<div style="font-size: 32px; margin-bottom: 5px;">' + emoji + '</div>' +
+            '<div style="font-weight: bold; color: #fff;">' + char.name + '</div>' +
+            '<div style="font-size: 12px; color: #aaa;">$' + (char.price || 0) + '</div>';
+
+          card.onclick = () => this.handleBuyPremiumCharacter(char.id, char.name, char.price);
+          lockedCharsGrid.appendChild(card);
+        });
       }
-      
+
       // Initialize 3D character preview
       this.initDeathEnticementCharacter();
-      
+
     } else {
       // Show anonymous content panel
       if (anonymousContent) {
@@ -4501,7 +4500,7 @@ export class Game {
       if (signinBtn) {
         signinBtn.onclick = () => this.handleDeathSignIn();
       }
-      
+
       // Initialize 3D character preview
       this.initDeathEnticementCharacter();
     }
@@ -4511,15 +4510,12 @@ export class Game {
     if (overlay) {
       overlay.classList.remove('hidden');
     }
-    
+
     // Update score
     const scoreValue = document.getElementById('death-score-value');
     if (scoreValue) {
-      scoreValue.textContent = Math.floor(this.score).toString();
+      scoreValue.textContent = Math.floor(this.playerScore).toString();
     }
-    
-    // Start respawn countdown
-    this.startRespawnCountdown();
   }
 
   /**
@@ -4585,7 +4581,7 @@ export class Game {
       return;
     }
 
-    console.log(`🎲 Death screen enticement: showing ${ characterToShow.name } (${ isAuth ? 'Premium' : 'Free' })`);
+    console.log('🎲 Death screen enticement: showing ' + characterToShow.name + ' (' + (isAuth ? 'Premium' : 'Free') + ')');
 
     // Initialize 3D preview
     this.deathEnticementPreview = new CharacterPreview3D(
@@ -4613,13 +4609,8 @@ export class Game {
     }
   }
 
-  /**
-   * MVP 16: Handle Buy Character from death screen
-   */
-  private handleBuyCharacter(): void {
-    console.log('TODO: Open character purchase flow');
-    // Will be wired to payment system
-  }
+  // Removed unused handleBuyCharacter method
+
 
   /**
    * MVP 16: Handle Buy Premium Character (signed-in users)
@@ -4631,22 +4622,16 @@ export class Game {
    *   5. Show success message and unlock character immediately
    */
   private handleBuyPremiumCharacter(characterId?: string, characterName?: string, price?: number): void {
-    const charInfo = characterId ? `${ characterName } ($${ price })` : 'premium character';
-    console.log(`TODO(MONETIZATION): Open premium character purchase flow for ${ charInfo }`);
+    const charInfo = characterId ? characterName + ' ($' + price + ')' : 'premium character';
+    console.log('TODO(MONETIZATION): Open premium character purchase flow for ' + charInfo);
     // Will be wired to payment system - Stripe/PayPal integration
     // For now, just log the purchase intent
     if (characterId) {
-      console.log(`🛒 Purchase intent: Character = ${ characterId }, Price = $${ price } `);
+      console.log('🛒 Purchase intent: Character = ' + characterId + ', Price = $' + price);
     }
   }
 
-  /**
-   * MVP 16: Handle Watch Ad
-   */
-  private handleWatchAd(): void {
-    console.log('TODO: Show ad and reward player');
-    // Will be wired to ad network
-  }
+  // Removed unused handleWatchAd method
 
   /**
    * MVP 16: Respawn player after death
@@ -4674,7 +4659,7 @@ export class Game {
       const spawnZ = (Math.random() - 0.5) * 300; // -150 to 150
       const spawnY = getTerrainHeight(spawnX, spawnZ) + 2; // 2 units above ground
 
-      console.log(`🎯 Teleporting to random spawn: (${ spawnX.toFixed(1) }, ${ spawnY.toFixed(1) }, ${ spawnZ.toFixed(1) })`);
+      console.log('🎯 Teleporting to random spawn: (' + spawnX.toFixed(1) + ', ' + spawnY.toFixed(1) + ', ' + spawnZ.toFixed(1) + ')');
 
       this.character.position.set(spawnX, spawnY, spawnZ);
 
@@ -4792,7 +4777,7 @@ export class Game {
 
     if (healthBar) {
       const healthPercent = Math.max(0, Math.min(100, (this.health / this.MAX_HEALTH) * 100));
-      healthBar.style.width = `${ healthPercent }% `;
+      healthBar.style.width = healthPercent + '%';
 
       // Color changes based on health level
       if (healthPercent > 60) {
@@ -4807,9 +4792,9 @@ export class Game {
     }
 
     if (healthText) {
-      healthText.textContent = `${ Math.round(this.health) }/${this.MAX_HEALTH}`;
-      }
+      healthText.textContent = Math.round(this.health) + '/' + this.MAX_HEALTH;
     }
+  }
 
   /**
    * MVP 12: Update wildebeest annoyance data (stores in predator userData)
@@ -4852,7 +4837,7 @@ export class Game {
     notification.style.zIndex = '10000';
     notification.style.pointerEvents = 'none';
     notification.style.fontFamily = 'Arial, sans-serif';
-    notification.textContent = `Eliminated ${targetName}!`;
+    notification.textContent = `Eliminated ${targetName} !`;
 
     document.body.appendChild(notification);
 
@@ -5018,16 +5003,16 @@ export class Game {
     this.boundaryVignetteElement = document.createElement('div');
     this.boundaryVignetteElement.id = 'boundary-vignette';
     this.boundaryVignetteElement.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 500;
-      display: none;
-      background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.8) 100%);
-    `;
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100 %;
+          height: 100 %;
+          pointer - events: none;
+          z - index: 500;
+          display: none;
+          background: radial - gradient(circle, transparent 20 %, rgba(0, 0, 0, 0.8) 100 %);
+          `;
     document.body.appendChild(this.boundaryVignetteElement);
 
     // Create warning text
@@ -5035,20 +5020,20 @@ export class Game {
     this.boundaryWarningElement.id = 'boundary-warning';
     this.boundaryWarningElement.textContent = '⚠️ Turn Back';
     this.boundaryWarningElement.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: #ff4444;
-      font-size: 32px;
-      font-weight: bold;
-      font-family: Arial, sans-serif;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-      pointer-events: none;
-      z-index: 501;
-      display: none;
-      animation: pulse 1s ease-in-out infinite;
-    `;
+          position: fixed;
+          top: 50 %;
+          left: 50 %;
+          transform: translate(-50 %, -50 %);
+          color: #ff4444;
+          font - size: 32px;
+          font - weight: bold;
+          font - family: Arial, sans - serif;
+          text - shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+          pointer - events: none;
+          z - index: 501;
+          display: none;
+          animation: pulse 1s ease -in -out infinite;
+          `;
     document.body.appendChild(this.boundaryWarningElement);
 
     // Add pulse animation if not already present
@@ -5056,11 +5041,11 @@ export class Game {
       const style = document.createElement('style');
       style.id = 'boundary-animation-style';
       style.textContent = `
-        @keyframes pulse {
-          0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
-          50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
-        }
-      `;
+          @keyframes pulse {
+            0 %, 100 % { opacity: 0.6; transform: translate(-50 %, -50 %) scale(1); }
+            50 % { opacity: 1; transform: translate(-50 %, -50 %) scale(1.1); }
+          }
+          `;
       document.head.appendChild(style);
     }
   }
@@ -5114,7 +5099,7 @@ export class Game {
       // Load the tree model
       const loadedModel = await this.loadCachedAsset(modelPath);
       if (!loadedModel) {
-        console.error(`❌ Failed to load landmark: ${modelPath}`);
+        console.error(`❌ Failed to load landmark: ${modelPath} `);
         return;
       }
 
@@ -5139,7 +5124,7 @@ export class Game {
       });
 
       if (!closestMesh) {
-        console.error(`❌ No mesh found in landmark: ${modelPath}`);
+        console.error(`❌ No mesh found in landmark: ${modelPath} `);
         return;
       }
 
@@ -5171,7 +5156,7 @@ export class Game {
       if (this.collisionSystem) {
         const treeWorldPos = new THREE.Vector3(x, terrainY, z);
         this.collisionSystem.addTreeMeshCollider(
-          `landmark_${name}`,
+          `landmark_${name} `,
           tree,
           treeWorldPos
         );
@@ -5180,7 +5165,7 @@ export class Game {
       // Add floating text label above the landmark (1.3x higher to clear tree canopy)
       this.createLandmarkLabel(name, x, terrainY + 39, z);
     } catch (error) {
-      console.error(`❌ Error creating landmark ${name}:`, error);
+      console.error(`❌ Error creating landmark ${name}: `, error);
     }
   }
 
@@ -5276,7 +5261,7 @@ export class Game {
       Game.assetCache.set(modelPath, gltf.scene); // Store original scene
       return this.cloneGLTF(gltf.scene); // Return proper clone
     } catch (error) {
-      console.error(`❌ Failed to load model ${modelPath}:`, error);
+      console.error(`❌ Failed to load model ${modelPath}: `, error);
       return null;
     }
   }
@@ -5333,11 +5318,11 @@ export class Game {
         Game.animationCache.set(animPath, clip);
         return clip;
       } else {
-        console.warn(`⚠️ No animations found in ${animPath}`);
+        console.warn(`⚠️ No animations found in ${animPath} `);
         return null;
       }
     } catch (error) {
-      console.error(`❌ Failed to load animation ${animPath}:`, error);
+      console.error(`❌ Failed to load animation ${animPath}: `, error);
       return null;
     }
   }
@@ -5409,11 +5394,11 @@ export class Game {
 
         if (this.character && playerPosSpan) {
           const pos = this.character.position;
-          playerPosSpan.textContent = `${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}`;
+          playerPosSpan.textContent = `${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)} `;
         }
 
         if (playerCountSpan) {
-          playerCountSpan.textContent = `${this.remotePlayers.size + 1}`; // +1 for local player
+          playerCountSpan.textContent = `${this.remotePlayers.size + 1} `; // +1 for local player
         }
 
         if (networkStatusSpan) {
@@ -5426,7 +5411,7 @@ export class Game {
 
         // MVP 5: Enhanced debug info
         if (fpsSpan) {
-          fpsSpan.textContent = `${Math.round(this.fps)}`;
+          fpsSpan.textContent = `${Math.round(this.fps)} `;
         }
 
         if (memorySpan) {
@@ -5466,18 +5451,18 @@ export class Game {
 
     if (walnutCountSpan) {
       // MVP 8: Display unified walnut inventory
-      walnutCountSpan.textContent = `${this.walnutInventory}`;
+      walnutCountSpan.textContent = `${this.walnutInventory} `;
     }
 
     if (playerScoreSpan) {
       // MVP 5: Display animated score with tweening
-      playerScoreSpan.textContent = `${Math.floor(this.displayedScore)}`;
+      playerScoreSpan.textContent = `${Math.floor(this.displayedScore)} `;
     }
 
     if (playerTitleSpan) {
       // MVP 12: Display player title + character (e.g., "Ninja Squirrel")
       const characterName = this.getCharacterName(this.selectedCharacterId);
-      playerTitleSpan.textContent = `${this.playerTitleName} ${characterName}`;
+      playerTitleSpan.textContent = `${this.playerTitleName} ${characterName} `;
     }
 
     // MVP 5.7: Update mobile buttons
@@ -5543,8 +5528,8 @@ export class Game {
     const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
     const y = (vector.y * -0.5 + 0.5) * window.innerHeight;
 
-    label.style.left = `${x}px`;
-    label.style.top = `${y}px`;
+    label.style.left = `${x} px`;
+    label.style.top = `${y} px`;
 
     // Hide label if behind camera
     const isBehindCamera = vector.z > 1;
@@ -5636,7 +5621,7 @@ export class Game {
    */
   private updateHealthBar(fill: HTMLElement, currentHealth: number, maxHealth: number): void {
     const healthPercent = Math.max(0, Math.min(100, (currentHealth / maxHealth) * 100));
-    fill.style.width = `${healthPercent}%`;
+    fill.style.width = `${healthPercent}% `;
 
     // Color-coded based on health percentage
     if (healthPercent > 60) {
@@ -5771,7 +5756,7 @@ export class Game {
           // Update annoyance bar fill based on userData (0-4 hits = 0-100%)
           const annoyanceLevel = wildebeest.userData.annoyanceLevel ?? 0;
           const annoyancePercent = Math.max(0, Math.min(100, (annoyanceLevel / 4) * 100));
-          annoyanceBar.fill.style.width = `${annoyancePercent}%`;
+          annoyanceBar.fill.style.width = `${annoyancePercent}% `;
         } else {
           // Hide bar if too far or fleeing
           annoyanceBar.container.style.display = 'none';
@@ -6615,7 +6600,7 @@ export class Game {
     const playerPos = this.character.position.clone();
     const terrainY = getTerrainHeight(playerPos.x, playerPos.z);
 
-    const walnutId = `player-${this.playerId}-${Date.now()}`;
+    const walnutId = `player - ${this.playerId} -${Date.now()} `;
     const BUSH_PROXIMITY_THRESHOLD = 2; // Units - player must be very close to bush to hide in it
 
     let walnutGroup: THREE.Group;
@@ -6769,7 +6754,7 @@ export class Game {
     // Check cooldown
     if (now - this.lastThrowTime < currentCooldown) {
       const remaining = Math.ceil((currentCooldown - (now - this.lastThrowTime)) / 1000);
-      this.toastManager.warning(`Throw cooldown: ${remaining}s`);
+      this.toastManager.warning(`Throw cooldown: ${remaining} s`);
       return;
     }
 
@@ -7262,7 +7247,7 @@ export class Game {
       }
 
       // MVP 5: Toast notification for scoring
-      this.toastManager.success(`+${points} points!`);
+      this.toastManager.success(`+ ${points} points!`);
     }
 
     // Remove the walnut from the world
@@ -7321,13 +7306,13 @@ export class Game {
     switch (data.walnutType) {
       case 'buried':
         walnutGroup = this.createBuriedWalnutVisual(position);
-        labelText = data.ownerId === this.playerId ? 'Your Buried Walnut (3 pts)' : `Buried Walnut (3 pts)`;
+        labelText = data.ownerId === this.playerId ? 'Your Buried Walnut (3 pts)' : `Buried Walnut(3 pts)`;
         labelColor = '#8B4513';
         break;
 
       case 'bush':
         walnutGroup = this.createBushWalnutVisual(position);
-        labelText = data.ownerId === this.playerId ? 'Your Bush Walnut (1 pt)' : `Bush Walnut (1 pt)`;
+        labelText = data.ownerId === this.playerId ? 'Your Bush Walnut (1 pt)' : `Bush Walnut(1 pt)`;
         labelColor = '#90EE90';
 
         // MVP 8: Add subtle glow/throb effect on bush containing walnut
@@ -7353,7 +7338,7 @@ export class Game {
         break;
 
       default:
-        console.warn(`⚠️ Unknown walnut type: ${data.walnutType}`);
+        console.warn(`⚠️ Unknown walnut type: ${data.walnutType} `);
         return;
     }
 
@@ -7503,15 +7488,15 @@ export class Game {
       // MVP 9/16: Fetch leaderboard data based on selected tab (weekly or all-time)
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
       const leaderboardType = this.currentLeaderboardTab; // 'weekly' or 'alltime'
-      const endpoint = `${apiUrl}/api/leaderboard/top?limit=10&type=${leaderboardType}`;
+      const endpoint = `${apiUrl} /api/leaderboard / top ? limit = 10 & type=${leaderboardType} `;
 
-      console.log(`🏆 Fetching ${leaderboardType} leaderboard from: ${endpoint}`);
+      console.log(`🏆 Fetching ${leaderboardType} leaderboard from: ${endpoint} `);
 
       const response = await fetch(endpoint);
 
       let leaderboardData;
       if (!response.ok) {
-        console.warn(`⚠️ Leaderboard fetch failed (${response.status} ${response.statusText}), using mock data`);
+        console.warn(`⚠️ Leaderboard fetch failed(${response.status} ${response.statusText}), using mock data`);
         leaderboardData = this.getMockLeaderboardData();
       } else {
         const data = await response.json();
@@ -7525,7 +7510,7 @@ export class Game {
           leaderboardData = data.leaderboard.map((entry: any) => ({
             playerId: entry.playerId,
             displayName: entry.playerId === this.playerId
-              ? (this.username ? `You (${this.username})` : 'You')
+              ? (this.username ? `You(${this.username})` : 'You')
               : entry.playerId.substring(0, 8), // Show first 8 chars of player ID
             score: entry.score,
             isAuthenticated: entry.isAuthenticated || false, // MVP 16: Auth status
@@ -7547,13 +7532,13 @@ export class Game {
       if (leaderboardType === 'weekly') {
         const labelEl = document.createElement('div');
         labelEl.style.cssText = `
-          font-size: 11px;
+          font - size: 11px;
           color: #FFD700;
-          text-align: center;
+          text - align: center;
           margin: -10px 0 10px 0;
-          font-weight: 600;
-          text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-        `;
+          font - weight: 600;
+          text - shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+          `;
         labelEl.textContent = 'Top 10 - Verified Players Only';
         leaderboardList.appendChild(labelEl);
       }
@@ -7576,10 +7561,10 @@ export class Game {
 
         // Create entry HTML
         li.innerHTML = `
-          <span class="leaderboard-rank">#${index + 1}</span>
-          <span class="leaderboard-name">${verifiedBadge}${entry.displayName}</span>
-          <span class="leaderboard-score">${entry.score}</span>
-        `;
+            < span class="leaderboard-rank" > #${index + 1} </span>
+              < span class="leaderboard-name" > ${verifiedBadge}${entry.displayName} </span>
+                < span class="leaderboard-score" > ${entry.score} </span>
+                  `;
 
         leaderboardList.appendChild(li);
       });
@@ -7595,8 +7580,8 @@ export class Game {
           // Add separator
           const separator = document.createElement('div');
           separator.style.cssText = `
-            border-top: 1px solid rgba(255, 215, 0, 0.3);
-            margin: 10px 0;
+          border - top: 1px solid rgba(255, 215, 0, 0.3);
+          margin: 10px 0;
           `;
           leaderboardList.appendChild(separator);
 
@@ -7607,10 +7592,10 @@ export class Game {
           const verifiedBadge = playerEntry.isAuthenticated ? '🔒 ' : '';
 
           playerLi.innerHTML = `
-            <span class="leaderboard-rank">#${playerRank}</span>
-            <span class="leaderboard-name">${verifiedBadge}${playerEntry.displayName}</span>
-            <span class="leaderboard-score">${playerEntry.score}</span>
-          `;
+            < span class="leaderboard-rank" > #${playerRank} </span>
+              < span class="leaderboard-name" > ${verifiedBadge}${playerEntry.displayName} </span>
+                < span class="leaderboard-score" > ${playerEntry.score} </span>
+                  `;
 
           leaderboardList.appendChild(playerLi);
 
@@ -7618,16 +7603,16 @@ export class Game {
           if (!playerEntry.isAuthenticated && leaderboardType === 'weekly') {
             const ctaEl = document.createElement('div');
             ctaEl.style.cssText = `
-              text-align: center;
-              font-size: 11px;
-              color: #FFD700;
-              margin-top: 8px;
-              padding: 8px;
-              background: rgba(255, 215, 0, 0.1);
-              border-radius: 6px;
-              cursor: pointer;
-              transition: background 0.2s;
-            `;
+          text - align: center;
+          font - size: 11px;
+          color: #FFD700;
+          margin - top: 8px;
+          padding: 8px;
+          background: rgba(255, 215, 0, 0.1);
+          border - radius: 6px;
+          cursor: pointer;
+          transition: background 0.2s;
+          `;
             ctaEl.textContent = '💡 Sign up to compete for top 10!';
             ctaEl.addEventListener('mouseenter', () => {
               ctaEl.style.background = 'rgba(255, 215, 0, 0.2)';
@@ -7662,7 +7647,7 @@ export class Game {
   }> {
     // Create mock data including current player
     // MVP 6/16: Show actual username instead of just "You"
-    const displayName = this.username ? `You (${this.username})` : 'You';
+    const displayName = this.username ? `You(${this.username})` : 'You';
     const mockData = [
       {
         playerId: this.playerId,
@@ -7678,8 +7663,8 @@ export class Game {
     for (let i = 0; i < 9; i++) {
       const isAuth = i % 3 === 0; // Every 3rd player is authenticated
       mockData.push({
-        playerId: `player_${i}`,
-        displayName: `Player ${i + 1}`,
+        playerId: `player_${i} `,
+        displayName: `Player ${i + 1} `,
         score: Math.floor(Math.random() * 50),
         isAuthenticated: isAuth, // MVP 16: Mix of auth/no-auth
         emailVerified: isAuth,
@@ -7722,7 +7707,7 @@ export class Game {
 
     // Setup quick chat buttons
     const chatButtons = document.querySelectorAll('.chat-button');
-    console.log(`✅ [initChatAndEmotes] Found ${chatButtons.length} chat buttons`);
+    console.log(`✅[initChatAndEmotes] Found ${chatButtons.length} chat buttons`);
     chatButtons.forEach((button) => {
       button.addEventListener('click', () => {
         console.log('🎯 [initChatAndEmotes] Chat button pointerdown');
@@ -7735,7 +7720,7 @@ export class Game {
 
     // Setup emote buttons
     const emoteButtons = document.querySelectorAll('.emote-button');
-    console.log(`✅ [initChatAndEmotes] Found ${emoteButtons.length} emote buttons`);
+    console.log(`✅[initChatAndEmotes] Found ${emoteButtons.length} emote buttons`);
     emoteButtons.forEach((button) => {
       button.addEventListener('click', () => {
         console.log('🎯 [initChatAndEmotes] Emote button pointerdown');
@@ -8027,7 +8012,7 @@ export class Game {
 
         // Add active class to clicked tab and corresponding content
         tabButton.classList.add('active');
-        const content = document.getElementById(`${tabName}-tab`);
+        const content = document.getElementById(`${tabName} -tab`);
         if (content) {
           content.classList.add('active');
         }
@@ -8046,9 +8031,9 @@ export class Game {
     // Update volume displays and AudioManager
     const updateVolume = (type: 'master' | 'sfx' | 'ambient', value: number) => {
       const percentage = Math.round(value);
-      const valueSpan = document.getElementById(`${type}-volume-value`);
+      const valueSpan = document.getElementById(`${type} -volume - value`);
       if (valueSpan) {
-        valueSpan.textContent = `${percentage}%`;
+        valueSpan.textContent = `${percentage}% `;
       }
       this.audioManager.setVolume(type, value / 100);
     };
@@ -8086,7 +8071,7 @@ export class Game {
         const value = parseFloat((e.target as HTMLInputElement).value);
         const valueSpan = document.getElementById('sensitivity-value');
         if (valueSpan) {
-          valueSpan.textContent = `${Math.round(value)}%`;
+          valueSpan.textContent = `${Math.round(value)}% `;
         }
         // Apply sensitivity to controls (value is 25-200, convert to multiplier)
         this.mouseSensitivity = value / 100;
@@ -8212,7 +8197,7 @@ export class Game {
           z: data.tree.z,
           timestamp: Date.now()
         });
-        console.log(`🌳 Tree tracked on minimap at (${data.tree.x.toFixed(1)}, ${data.tree.z.toFixed(1)}) - total: ${this.recentTrees.length}`);
+        console.log(`🌳 Tree tracked on minimap at(${data.tree.x.toFixed(1)}, ${data.tree.z.toFixed(1)}) - total: ${this.recentTrees.length} `);
       } else {
         console.log(`🌳 Tree grew but not local player's - ownerId: ${data.ownerId}, playerId: ${this.playerId}`);
       }
