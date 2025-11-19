@@ -1529,7 +1529,11 @@ export default class ForestManager extends DurableObject {
         for (const identifier of identifiersToClear) {
           const id = this.env.PLAYER_IDENTITY.idFromName(identifier);
           const stub = this.env.PLAYER_IDENTITY.get(id);
-          await stub.fetch(new Request("http://internal/api/identity?action=adminClear", { method: "POST" }));
+          // FIXED: Must pass admin secret to the DO!
+          await stub.fetch(new Request("http://internal/api/identity?action=adminClear", {
+            method: "POST",
+            headers: { "X-Admin-Secret": this.env.ADMIN_SECRET }
+          }));
           identitiesCleared++;
         }
 
