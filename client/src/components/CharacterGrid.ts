@@ -359,7 +359,7 @@ export class CharacterGrid {
       buttonsElement.appendChild(loginBtn);
     } else {
       // Authenticated CTA
-      textElement.textContent = 'Premium characters coming in MVP 17! Stay tuned 🐻';
+      textElement.textContent = 'Premium characters coming soon!';
     }
 
     this.ctaBanner.style.display = 'flex';

@@ -173,7 +173,7 @@ export class Game {
 
   // INDUSTRY STANDARD: Manual delta time calculation to avoid Clock.getDelta() issues
   private lastFrameTime: number = 0;
-  private MAX_DELTA_TIME = 1/30; // Cap at 30fps to prevent spiral of death
+  private MAX_DELTA_TIME = 1 / 30; // Cap at 30fps to prevent spiral of death
 
   // MVP 5: Performance tracking for debug overlay
   private fps: number = 60;
@@ -882,26 +882,14 @@ export class Game {
         this.eatWalnut();
       }
 
-      // Debug overlay toggle with F key
-      if (e.key === 'f' || e.key === 'F') {
-        const debugOverlay = document.getElementById('debug-overlay');
-        if (debugOverlay) {
-          debugOverlay.classList.toggle('hidden');
-        }
-        // MVP 5.5: Also toggle collision debug visualization
-        if (this.collisionSystem) {
-          this.collisionSystem.toggleDebug();
-        }
-      }
-
       // MVP 5: Mute toggle with M key
       if (e.key === 'm' || e.key === 'M') {
         this.audioManager.toggleMute();
       }
 
-      // Debug: Teleport to nearest golden walnut with G key
-      if (e.key === 'g' || e.key === 'G') {
-        this.teleportToNearestGoldenWalnut();
+      // Debug: Self Destruct with K key
+      if (e.key === 'k' || e.key === 'K') {
+        this.triggerSelfDestruct();
       }
 
       // Debug scene contents with I key (Info)
@@ -981,15 +969,25 @@ export class Game {
     window.addEventListener('orientationchange', () => {
       // Call onResize to update camera and renderer
       this.onResize();
-      
+
       // Reset touch controls if active
       if (this.touchControls) {
         this.touchControls.onOrientationChange();
       }
-      
+
       // Clear movement keys to prevent stuck input
       this.keys.clear();
     });
+  }
+
+  /**
+   * Debug: Trigger self destruct for testing death mechanics
+   */
+  private triggerSelfDestruct(): void {
+    if (this.isDead) return;
+
+    console.log('💥 Self destruct initiated');
+    this.takeDamage(1000, 'self_destruct');
   }
 
   /**
@@ -1049,6 +1047,18 @@ export class Game {
       });
     }
 
+    // Debug: Wire up die button
+    const dieButton = document.getElementById('mobile-die-btn');
+    if (dieButton) {
+      dieButton.addEventListener('click', () => {
+        // Haptic feedback on mobile
+        if (navigator.vibrate) {
+          navigator.vibrate(100);
+        }
+        this.triggerSelfDestruct();
+      });
+    }
+
     // CRITICAL: Initialize button states immediately (don't wait for server)
     this.updateMobileButtons();
   }
@@ -1057,7 +1067,7 @@ export class Game {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    
+
     // Additional reset for touch controls
     if (this.touchControls) {
       this.touchControls.onOrientationChange();
@@ -1074,13 +1084,13 @@ export class Game {
   public destroy(): void {
     // Stop all intervals
     this.stopIntervals();
-    
+
     // Close WebSocket connection
     if (this.websocket) {
       this.websocket.close(1000, 'Game shutdown');
       this.websocket = null;
     }
-    
+
     // Remove all remote players
     for (const playerId of this.remotePlayers.keys()) {
       this.removeRemotePlayer(playerId);
@@ -1119,7 +1129,7 @@ export class Game {
 
     // INDUSTRY STANDARD: Manual delta time calculation (avoids Clock.getDelta() issues)
     const currentTime = performance.now() / 1000; // Convert to seconds
-    let delta = this.lastFrameTime === 0 ? 1/60 : currentTime - this.lastFrameTime;
+    let delta = this.lastFrameTime === 0 ? 1 / 60 : currentTime - this.lastFrameTime;
     this.lastFrameTime = currentTime;
 
     // INDUSTRY STANDARD: Cap delta to prevent spiral of death on lag spikes
@@ -1478,8 +1488,8 @@ export class Game {
     // PHASE 3.5: Use state machine for idle variations (IDLE_VARIANT priority)
     const hasOverrideForIdle = this.animState.overrideAnimation !== null;
     if (this.animState.baseAnimation === 'idle' &&
-        this.currentAnimationName === 'idle' &&
-        !hasOverrideForIdle) {
+      this.currentAnimationName === 'idle' &&
+      !hasOverrideForIdle) {
       const timeSinceLastVariation = performance.now() - this.lastIdleVariationTime;
       if (timeSinceLastVariation >= this.idleVariationInterval) {
         // Filter idle animations that exist in the current character
@@ -1655,14 +1665,14 @@ export class Game {
 
     // MVP 6: Include sessionToken and username in WebSocket URL
     const wsUrl = apiUrl.replace('http:', 'ws:').replace('https:', 'wss:') +
-                  `/ws?squirrelId=${this.playerId}&characterId=${this.selectedCharacterId}&sessionToken=${this.sessionToken}&username=${encodeURIComponent(this.username)}${accessTokenParam}${turnstileParam}`;
+      `/ws?squirrelId=${this.playerId}&characterId=${this.selectedCharacterId}&sessionToken=${this.sessionToken}&username=${encodeURIComponent(this.username)}${accessTokenParam}${turnstileParam}`;
 
     console.log(`🔌 [connectWebSocket] Attempting connection to: ${wsUrl.replace(/turnstileToken=[^&]+/, 'turnstileToken=***').replace(/accessToken=[^&]+/, 'accessToken=***')}`);
 
     try {
       this.websocket = new WebSocket(wsUrl);
       console.log(`🔌 [connectWebSocket] WebSocket created, readyState: ${this.websocket.readyState}`);
-      
+
       // Set connection timeout
       const connectionTimeout = setTimeout(() => {
         if (this.websocket && this.websocket.readyState === WebSocket.CONNECTING) {
@@ -1692,7 +1702,7 @@ export class Game {
           }
         }, 5000);
       };
-      
+
       this.websocket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
@@ -1701,7 +1711,7 @@ export class Game {
           console.error('❌ Failed to parse WebSocket message:', error);
         }
       };
-      
+
       this.websocket.onerror = (error) => {
         clearTimeout(connectionTimeout);
         console.error('❌ WebSocket error:', error);
@@ -1709,7 +1719,7 @@ export class Game {
         // MVP 5: Show error toast
         this.toastManager.error('Connection error occurred');
       };
-      
+
       this.websocket.onclose = (event) => {
         clearTimeout(connectionTimeout);
         this.isConnected = false;
@@ -1733,7 +1743,7 @@ export class Game {
           this.toastManager.error('Disconnected from server');
         }
       };
-      
+
     } catch (error) {
       console.error('❌ Failed to create WebSocket:', error);
       // Retry connection
@@ -1803,8 +1813,8 @@ export class Game {
     const rotationThreshold = 0.1;
 
     const positionChanged = Math.abs(pos.x - this.lastPositionSent.x) > positionThreshold ||
-                           Math.abs(pos.y - this.lastPositionSent.y) > positionThreshold ||
-                           Math.abs(pos.z - this.lastPositionSent.z) > positionThreshold;
+      Math.abs(pos.y - this.lastPositionSent.y) > positionThreshold ||
+      Math.abs(pos.z - this.lastPositionSent.z) > positionThreshold;
 
     const rotationChanged = Math.abs(rot - this.lastPositionSent.rotation) > rotationThreshold;
 
@@ -2296,7 +2306,7 @@ export class Game {
 
             // Show visual feedback (blood particles)
             if (this.vfxManager && this.character) {
-              this.vfxManager.spawnParticles('sparkle',this.character.position, 15);
+              this.vfxManager.spawnParticles('sparkle', this.character.position, 15);
             }
           } else {
             // Remote player or NPC took damage - update their health in userData
@@ -2308,7 +2318,7 @@ export class Game {
 
               // Show blood particles at remote player position
               if (this.vfxManager) {
-                this.vfxManager.spawnParticles('sparkle',remotePlayer.position, 15);
+                this.vfxManager.spawnParticles('sparkle', remotePlayer.position, 15);
               }
 
               // MVP 9: Show kill notification if local player got the kill
@@ -2325,7 +2335,7 @@ export class Game {
 
               // Show blood particles at NPC position
               if (this.vfxManager) {
-                this.vfxManager.spawnParticles('sparkle',npc.position, 15);
+                this.vfxManager.spawnParticles('sparkle', npc.position, 15);
               }
 
               // MVP 9: Show kill notification if local player got the kill
@@ -2413,12 +2423,12 @@ export class Game {
 
   private validatePlayerData(data: any): boolean {
     return data &&
-           typeof data.squirrelId === 'string' &&
-           data.position &&
-           typeof data.position.x === 'number' &&
-           typeof data.position.y === 'number' &&
-           typeof data.position.z === 'number' &&
-           typeof data.rotationY === 'number';
+      typeof data.squirrelId === 'string' &&
+      data.position &&
+      typeof data.position.x === 'number' &&
+      typeof data.position.y === 'number' &&
+      typeof data.position.z === 'number' &&
+      typeof data.rotationY === 'number';
   }
 
   /**
@@ -2456,7 +2466,7 @@ export class Game {
       // Visual distinction for remote players
       remoteCharacter.traverse((child: any) => {
         if (child.isMesh && child.material) {
-          const material = Array.isArray(child.material) 
+          const material = Array.isArray(child.material)
             ? child.material.map((mat: any) => mat.clone())
             : child.material.clone();
           if (Array.isArray(material)) {
@@ -2619,28 +2629,28 @@ export class Game {
         velocity: velocity ? new THREE.Vector3(velocity.x, velocity.y, velocity.z) : new THREE.Vector3(0, 0, 0),
         timestamp: Date.now()
       };
-      
+
       // Get or create buffer for this player
       let buffer = this.remotePlayerBuffers.get(playerId);
       if (!buffer) {
         buffer = [];
         this.remotePlayerBuffers.set(playerId, buffer);
       }
-      
+
       // Add new state and maintain buffer - industry standard cleanup
       buffer.push(newState);
-      
+
       // Remove states older than interpolation window + safety margin
       const cutoffTime = newState.timestamp - (this.INTERPOLATION_DELAY + 100);
       while (buffer.length > 2 && buffer[0].timestamp < cutoffTime) {
         buffer.shift();
       }
-      
+
       // Safety: never let buffer exceed max size
       while (buffer.length > this.MAX_BUFFER_SIZE) {
         buffer.shift();
       }
-      
+
 
 
       // Update animation if provided with time-based sync
@@ -5053,7 +5063,7 @@ export class Game {
   private addSanityCheckCube(): void {
     // INDUSTRY STANDARD: Add basic visible primitive to verify rendering works
     const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshBasicMaterial({ 
+    const material = new THREE.MeshBasicMaterial({
       color: 0x00ff00, // Bright green
       wireframe: false
     });
@@ -5268,23 +5278,23 @@ export class Game {
   // INDUSTRY STANDARD: Proper GLTF scene cloning for animated models
   private cloneGLTF(gltfScene: THREE.Object3D): THREE.Group {
     const clonedScene = gltfScene.clone();
-    
+
     // CRITICAL: Fix SkinnedMesh references after cloning
     const skinnedMeshes: { [key: string]: THREE.SkinnedMesh } = {};
-    
+
     // First pass: collect all SkinnedMeshes
     gltfScene.traverse((node) => {
       if ((node as THREE.SkinnedMesh).isSkinnedMesh) {
         skinnedMeshes[node.name] = node as THREE.SkinnedMesh;
       }
     });
-    
+
     // Second pass: fix skeleton references in cloned SkinnedMeshes
     clonedScene.traverse((node) => {
       if ((node as THREE.SkinnedMesh).isSkinnedMesh) {
         const skinnedMesh = node as THREE.SkinnedMesh;
         const originalMesh = skinnedMeshes[node.name];
-        
+
         if (originalMesh && originalMesh.skeleton) {
           // Find corresponding bones in cloned hierarchy
           const bones: THREE.Bone[] = [];
@@ -5294,14 +5304,14 @@ export class Game {
               bones.push(clonedBone);
             }
           }
-          
+
           if (bones.length > 0) {
             skinnedMesh.bind(new THREE.Skeleton(bones, originalMesh.skeleton.boneInverses));
           }
         }
       }
     });
-    
+
     return clonedScene as THREE.Group;
   }
 
@@ -7481,8 +7491,8 @@ export class Game {
 
       // Check if click/tap is outside leaderboard AND outside toggle button
       if (this.leaderboardVisible &&
-          !leaderboardDiv.contains(target) &&
-          !toggleButton.contains(target)) {
+        !leaderboardDiv.contains(target) &&
+        !toggleButton.contains(target)) {
         this.leaderboardVisible = false;
         leaderboardDiv.classList.add('hidden');
       }
@@ -7734,8 +7744,8 @@ export class Game {
     // Setup quick chat buttons
     const chatButtons = document.querySelectorAll('.chat-button');
     console.log(`✅ [initChatAndEmotes] Found ${chatButtons.length} chat buttons`);
-      chatButtons.forEach((button) => {
-        button.addEventListener('click', () => {
+    chatButtons.forEach((button) => {
+      button.addEventListener('click', () => {
         console.log('🎯 [initChatAndEmotes] Chat button pointerdown');
         const message = (button as HTMLElement).getAttribute('data-message');
         if (message) {
@@ -7747,8 +7757,8 @@ export class Game {
     // Setup emote buttons
     const emoteButtons = document.querySelectorAll('.emote-button');
     console.log(`✅ [initChatAndEmotes] Found ${emoteButtons.length} emote buttons`);
-      emoteButtons.forEach((button) => {
-        button.addEventListener('click', () => {
+    emoteButtons.forEach((button) => {
+      button.addEventListener('click', () => {
         console.log('🎯 [initChatAndEmotes] Emote button pointerdown');
         const emote = (button as HTMLElement).getAttribute('data-emote');
         if (emote) {
@@ -8147,10 +8157,10 @@ export class Game {
     const dismissSettings = (event: Event) => {
       const target = event.target as HTMLElement;
       if (settingsOverlay &&
-          !settingsOverlay.classList.contains('hidden') &&
-          !settingsOverlay.contains(target) &&
-          settingsToggle &&
-          !settingsToggle.contains(target)) {
+        !settingsOverlay.classList.contains('hidden') &&
+        !settingsOverlay.contains(target) &&
+        settingsToggle &&
+        !settingsToggle.contains(target)) {
         hideSettings();
       }
     };
