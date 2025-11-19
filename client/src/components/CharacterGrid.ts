@@ -360,6 +360,8 @@ export class CharacterGrid {
     } else {
       // Authenticated CTA
       textElement.textContent = 'Premium characters coming soon!';
+      textElement.style.width = '100%';
+      textElement.style.textAlign = 'center';
     }
 
     this.ctaBanner.style.display = 'flex';
