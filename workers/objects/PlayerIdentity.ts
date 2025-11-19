@@ -362,6 +362,7 @@ export class PlayerIdentity extends DurableObject {
       // Only block signup if existing account is already authenticated
       // Quick Play accounts (no email or not authenticated) can be upgraded
       if (existing && existing.email && existing.isAuthenticated) {
+        console.log(`❌ Blocking signup: Local DO storage already has authenticated user ${existing.email}`);
         return Response.json({
           error: 'Email already registered',
           message: 'This email address already has an account. Please log in instead.'
@@ -374,6 +375,7 @@ export class PlayerIdentity extends DurableObject {
 
       const existingUsernameForEmail = await this.env.EMAIL_INDEX.get(emailKey);
       if (existingUsernameForEmail && existingUsernameForEmail !== username) {
+        console.log(`❌ Blocking signup: KV EMAIL_INDEX conflict. ${emailKey} -> ${existingUsernameForEmail}`);
         return Response.json({
           error: 'Email already registered',
           message: 'This email address is already registered with a different username. Please log in instead.'
@@ -386,6 +388,7 @@ export class PlayerIdentity extends DurableObject {
 
       const existingEmailForUsername = await this.env.USERNAME_INDEX.get(usernameKey);
       if (existingEmailForUsername && existingEmailForUsername !== normalizedEmail) {
+        console.log(`❌ Blocking signup: KV USERNAME_INDEX conflict. ${usernameKey} -> ${existingEmailForUsername}`);
         return Response.json({
           error: 'Username already taken',
           message: 'This username is already taken. Please choose a different username.'
@@ -1034,7 +1037,7 @@ export class PlayerIdentity extends DurableObject {
     try {
       // Validate admin secret
       const adminSecret = request.headers.get("X-Admin-Secret") ||
-                         new URL(request.url).searchParams.get("admin_secret");
+        new URL(request.url).searchParams.get("admin_secret");
 
       if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
         return Response.json({
