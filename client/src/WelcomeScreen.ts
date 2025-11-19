@@ -13,7 +13,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 export class WelcomeScreen {
   private container: HTMLDivElement | null = null;
-  private resolvePromise: ((username: string) => void) | null = null;
+  private resolvePromise: ((result: { username: string; isGuest: boolean }) => void) | null = null;
 
   // 3D preview components
   private squirrelPreview: CharacterPreview3D | null = null;
@@ -263,7 +263,7 @@ export class WelcomeScreen {
 
     // Resolve with username - main.ts will handle transition to loading overlay
     if (this.resolvePromise) {
-      this.resolvePromise(username);
+      this.resolvePromise({ username, isGuest: true });
     }
   }
 
@@ -312,7 +312,7 @@ export class WelcomeScreen {
 
     // Resolve with username to start game loading
     if (this.resolvePromise && userData.username) {
-      this.resolvePromise(userData.username);
+      this.resolvePromise({ username: userData.username, isGuest: false });
     }
   }
 
@@ -460,36 +460,27 @@ export class WelcomeScreen {
   }
 
   /**
-   * Show welcome screen and wait for user interaction
-   * Returns the username entered by the user
+   * Wait for user to enter username and click play
+   * Returns promise that resolves with username and guest status
    */
-  async show(): Promise<string> {
-    return new Promise(async (resolve) => {
+  public waitForUsername(): Promise<{ username: string; isGuest: boolean }> {
+    // Initialize 3D previews after DOM is ready
+    setTimeout(async () => {
+      await this.init3DPreviews();
+    }, 100);
+
+    return new Promise((resolve) => {
       this.resolvePromise = resolve;
 
       if (this.container) {
-        // Fade in
-        this.container.style.opacity = '0';
-        this.container.style.display = 'flex';
-        this.container.style.pointerEvents = 'auto'; // Re-enable pointer events when showing
+        this.container.style.transition = 'opacity 0.5s ease-in';
+        this.container.style.opacity = '1';
+      }
 
-        requestAnimationFrame(() => {
-          if (this.container) {
-            this.container.style.transition = 'opacity 0.5s ease-in';
-            this.container.style.opacity = '1';
-          }
-
-          // Auto-focus the username input
-          const input = document.getElementById('welcome-username-input') as HTMLInputElement;
-          if (input) {
-            setTimeout(() => input.focus(), 100);
-          }
-        });
-
-        // Initialize 3D previews after DOM is ready
-        setTimeout(async () => {
-          await this.init3DPreviews();
-        }, 100);
+      // Auto-focus the username input
+      const input = document.getElementById('welcome-username-input') as HTMLInputElement;
+      if (input) {
+        setTimeout(() => input.focus(), 100);
       }
     });
   }

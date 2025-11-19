@@ -2412,10 +2412,27 @@ export class Game {
         } else {
           // MVP 9 FIX: Remote player respawned - update their health
           const remotePlayer = this.remotePlayers.get(data.playerId);
-          if (remotePlayer && typeof data.health === 'number') {
-            remotePlayer.userData.health = data.health;
-            // Mark timestamp so player_update doesn't overwrite immediately
-            this.lastPlayerHealthUpdateTime.set(data.playerId, Date.now());
+          if (remotePlayer) {
+            if (typeof data.health === 'number') {
+              remotePlayer.userData.health = data.health;
+              // Mark timestamp so player_update doesn't overwrite immediately
+              this.lastPlayerHealthUpdateTime.set(data.playerId, Date.now());
+            }
+
+            // FIX: Reset animation state on respawn (prevent stuck death animation)
+            const actions = this.remotePlayerActions.get(data.playerId);
+            if (actions) {
+              const deathAction = actions['death'];
+              if (deathAction) {
+                deathAction.stop();
+                deathAction.reset();
+              }
+              // Play idle immediately to ensure they stand up
+              const idleAction = actions['idle'];
+              if (idleAction) {
+                idleAction.reset().play();
+              }
+            }
           }
         }
         break;
@@ -5612,7 +5629,7 @@ export class Game {
     container.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
     container.style.border = '1px solid rgba(255, 136, 0, 0.5)'; // Orange border
     container.style.borderRadius = '3px';
-    container.style.overflow = 'hidden';
+    // container.style.overflow = 'hidden'; // REMOVED: Causes label to be clipped (invisible)
     container.style.pointerEvents = 'none';
     container.style.zIndex = '999';
     container.style.transform = 'translateX(-50%)';
@@ -5621,6 +5638,8 @@ export class Game {
     // Create fill (foreground - annoyance percentage)
     const fill = document.createElement('div');
     fill.className = 'annoyance-bar-fill';
+    fill.style.borderRadius = '3px'; // Match container since overflow is visible
+    fill.style.borderRadius = '3px'; // Match container since overflow is visible
     fill.style.position = 'absolute';
     fill.style.top = '0';
     fill.style.left = '0';

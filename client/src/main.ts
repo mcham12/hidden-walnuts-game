@@ -7,7 +7,7 @@ import { LoadingOverlay } from './components/LoadingOverlay'; // NEW: Simple loa
 import { SettingsManager } from './SettingsManager';
 import { TouchControls } from './TouchControls';
 import { SessionManager } from './SessionManager'; // MVP 6: Player identity
-import { restoreSession, startTokenRefreshTimer, isAuthenticated } from './services/AuthService'; // MVP 16: Session persistence
+import { restoreSession, startTokenRefreshTimer, isAuthenticated, clearAuth } from './services/AuthService'; // MVP 16: Session persistence
 import { AuthModal } from './components/AuthModal'; // MVP 16: Authentication modals
 import { CharacterGrid } from './components/CharacterGrid'; // MVP 16: Character selection
 import { CharacterRegistry } from './services/CharacterRegistry'; // MVP 16: Character data
@@ -191,7 +191,11 @@ async function main() {
       } else {
         // Username doesn't exist on server anymore - prompt for new username
         welcomeScreen = new WelcomeScreen();
-        username = await welcomeScreen.show();
+        const welcomeResult = await welcomeScreen.waitForUsername();
+        username = welcomeResult.username;
+        if (welcomeResult.isGuest) {
+          clearAuth();
+        }
 
         // Check if this new username exists or create it
         const newResult = await checkExistingUsername(username, sessionToken);
@@ -208,7 +212,11 @@ async function main() {
     } else {
       // No stored username (new user or private browsing) - prompt for username
       welcomeScreen = new WelcomeScreen();
-      username = await welcomeScreen.show();
+      const welcomeResult = await welcomeScreen.waitForUsername();
+      username = welcomeResult.username;
+      if (welcomeResult.isGuest) {
+        clearAuth();
+      }
 
       // Check if username exists on server (private browsing case!)
       const result = await checkExistingUsername(username, sessionToken);
