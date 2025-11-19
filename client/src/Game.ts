@@ -19,7 +19,7 @@ import { EnticementService } from './services/EnticementService.js'; // MVP 16: 
 import { AuthModal } from './components/AuthModal.js'; // MVP 16: Authentication modal
 import { SessionExpiredBanner } from './components/SessionExpiredBanner.js'; // MVP 16: Session expiry
 import { isAuthenticated, getCurrentUser } from './services/AuthService.js'; // MVP 16: Auth state checking
-import { CharacterRegistry } from './services/CharacterRegistry.js'; // MVP 16: Character availability
+import { CharacterRegistry, type CharacterDefinition } from './services/CharacterRegistry.js'; // MVP 16: Character availability
 import { CharacterPreview3D } from './components/CharacterPreview3D.js'; // MVP 16: 3D character previews
 import { TutorialOverlay } from './TutorialOverlay.js';
 import { getPlayerTitle } from '@shared/PlayerRanks';
@@ -4562,29 +4562,59 @@ export class Game {
 
   /**
    * MVP 16: Initialize 3D character enticement on death screen
-   * Shows a random unpurchased free character rotating in 3D
+   * Shows a random character rotating in 3D based on auth state
    */
   private async initDeathEnticementCharacter(): Promise<void> {
     // Cleanup any existing preview
     this.cleanupDeathEnticementCharacter();
 
-    // Get all free tier characters (the 6 characters that unlock when you sign in)
-    const allCharacters = CharacterRegistry.getAllCharacters();
-    const freeCharacters = allCharacters.filter(char => char.tier === 'free');
+    const isAuth = isAuthenticated();
+    const user = getCurrentUser();
+    let targetContainerId = '';
+    let characterToShow: CharacterDefinition | null = null;
 
-    if (freeCharacters.length === 0) {
-      console.warn('⚠️ No free characters available for enticement');
+    if (isAuth) {
+      // SIGNED IN: Show random unowned PREMIUM character
+      targetContainerId = 'death-enticement-character-container-signedin';
+
+      // Get all premium characters
+      const allCharacters = CharacterRegistry.getAllCharacters();
+      const premiumCharacters = allCharacters.filter(char => char.tier === 'premium');
+
+      // Filter out ones already owned
+      const ownedCharIds = user?.unlockedCharacters || [];
+      const unownedPremium = premiumCharacters.filter(char => !ownedCharIds.includes(char.id));
+
+      if (unownedPremium.length > 0) {
+        characterToShow = unownedPremium[Math.floor(Math.random() * unownedPremium.length)];
+      } else {
+        // If they own all premium characters, show a random premium one anyway (or maybe a future one?)
+        // For now, just show a random premium one to keep the vibe
+        characterToShow = premiumCharacters[Math.floor(Math.random() * premiumCharacters.length)];
+      }
+    } else {
+      // ANONYMOUS: Show random FREE character
+      targetContainerId = 'death-enticement-character-container-anon';
+
+      const allCharacters = CharacterRegistry.getAllCharacters();
+      const freeCharacters = allCharacters.filter(char => char.tier === 'free');
+
+      if (freeCharacters.length > 0) {
+        characterToShow = freeCharacters[Math.floor(Math.random() * freeCharacters.length)];
+      }
+    }
+
+    if (!characterToShow) {
+      console.warn('⚠️ No suitable character found for death enticement');
       return;
     }
 
-    // Select random character
-    const randomChar = freeCharacters[Math.floor(Math.random() * freeCharacters.length)];
-    console.log(`🎲 Death screen enticement: showing ${randomChar.name}`);
+    console.log(`🎲 Death screen enticement: showing ${characterToShow.name} (${isAuth ? 'Premium' : 'Free'})`);
 
     // Initialize 3D preview
     this.deathEnticementPreview = new CharacterPreview3D(
-      'death-enticement-character-container',
-      randomChar.id,
+      targetContainerId,
+      characterToShow.id,
       {
         rotationSpeed: 0.01,
         autoRotate: true,
