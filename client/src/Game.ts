@@ -7488,9 +7488,9 @@ export class Game {
       // MVP 9/16: Fetch leaderboard data based on selected tab (weekly or all-time)
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
       const leaderboardType = this.currentLeaderboardTab; // 'weekly' or 'alltime'
-      const endpoint = `${apiUrl} /api/leaderboard / top ? limit = 10 & type=${leaderboardType} `;
+      const endpoint = `${apiUrl}/api/leaderboard/top?limit=10&type=${leaderboardType}`;
 
-      console.log(`🏆 Fetching ${leaderboardType} leaderboard from: ${endpoint} `);
+      console.log('🏆 Fetching ' + leaderboardType + ' leaderboard from: ' + endpoint);
 
       const response = await fetch(endpoint);
 
