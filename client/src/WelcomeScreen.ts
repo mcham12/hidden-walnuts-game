@@ -473,6 +473,10 @@ export class WelcomeScreen {
       this.resolvePromise = resolve;
 
       if (this.container) {
+        this.container.style.display = 'flex'; // Ensure it's visible!
+        this.container.style.pointerEvents = 'auto';
+        // Force reflow
+        this.container.offsetHeight;
         this.container.style.transition = 'opacity 0.5s ease-in';
         this.container.style.opacity = '1';
       }
