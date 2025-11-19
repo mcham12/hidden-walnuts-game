@@ -6938,34 +6938,7 @@ export class Game {
     this.toastManager.success('+25 HP!');
   }
 
-  /**
-   * Debug: Teleport to nearest golden walnut for testing
-   */
-  private teleportToNearestGoldenWalnut(): void {
-    if (!this.character) return;
 
-    let nearestGoldenWalnut: THREE.Group | null = null;
-    let minDistance = Infinity;
-
-    // Find nearest golden walnut
-    for (const [_id, walnutGroup] of this.walnuts) {
-      if (walnutGroup.userData.type === 'game') {
-        const distance = this.character.position.distanceTo(walnutGroup.position);
-        if (distance < minDistance) {
-          minDistance = distance;
-          nearestGoldenWalnut = walnutGroup;
-        }
-      }
-    }
-
-    if (nearestGoldenWalnut) {
-      // Teleport player near the golden walnut (5 units away so they can see it)
-      const offset = new THREE.Vector3(5, 0, 5);
-      this.character.position.copy(nearestGoldenWalnut.position).add(offset);
-      this.character.position.y = 2; // Keep player at proper height
-    } else {
-    }
-  }
 
   /**
    * MVP 8: Create subtle glow/throb effect on bush containing walnut
