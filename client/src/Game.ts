@@ -4412,14 +4412,22 @@ export class Game {
     const signedInContent = document.getElementById('death-content-signedin');
     const anonymousContent = document.getElementById('death-content-anonymous');
 
+    // CRITICAL: Always hide both first, then show the correct one
+    if (anonymousContent) {
+      anonymousContent.classList.add('hidden');
+    }
+    if (signedInContent) {
+      signedInContent.classList.add('hidden');
+    }
+
     if (isAuth) {
       // Show signed-in content panel
+      console.log('🔐 Showing signed-in death content');
 
       if (signedInContent) {
         signedInContent.classList.remove('hidden');
-      }
-      if (anonymousContent) {
-        anonymousContent.classList.add('hidden');
+      } else {
+        console.error('❌ death-content-signedin element not found!');
       }
 
       // TODO: Fetch and update player rank from leaderboard
@@ -4488,11 +4496,12 @@ export class Game {
 
     } else {
       // Show anonymous content panel
+      console.log('👤 Showing anonymous death content');
+
       if (anonymousContent) {
         anonymousContent.classList.remove('hidden');
-      }
-      if (signedInContent) {
-        signedInContent.classList.add('hidden');
+      } else {
+        console.error('❌ death-content-anonymous element not found!');
       }
 
       // Wire up buttons
