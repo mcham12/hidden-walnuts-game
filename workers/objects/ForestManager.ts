@@ -1520,13 +1520,22 @@ export default class ForestManager extends DurableObject {
         // 2. FORCE CLEAR Durable Object by ID
         // We must derive the ID from the identifier used in routing (api.ts)
         // In api.ts, /auth/signup uses body.email OR body.username
-        // So we need to clear BOTH potential DOs to be safe
+        // We clear both raw and normalized versions to be safe against casing mismatches
 
         const identifiersToClear: string[] = [];
-        if (email) identifiersToClear.push(email);
-        if (username) identifiersToClear.push(username);
+        if (email) {
+          identifiersToClear.push(email);
+          identifiersToClear.push(email.toLowerCase().trim());
+        }
+        if (username) {
+          identifiersToClear.push(username);
+          identifiersToClear.push(username.toLowerCase().trim());
+        }
 
-        for (const identifier of identifiersToClear) {
+        // Deduplicate
+        const uniqueIdentifiers = [...new Set(identifiersToClear)];
+
+        for (const identifier of uniqueIdentifiers) {
           const id = this.env.PLAYER_IDENTITY.idFromName(identifier);
           const stub = this.env.PLAYER_IDENTITY.get(id);
           // FIXED: Must pass admin secret to the DO!
