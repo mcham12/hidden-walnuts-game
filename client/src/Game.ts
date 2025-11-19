@@ -4475,46 +4475,20 @@ export class Game {
 
           card.innerHTML = `
             <div style="font-size: 32px; margin-bottom: 5px;">${emoji}</div>
-            <div style="font-size: 13px; font-weight: bold; margin-bottom: 3px;">${char.name}</div>
-            <div style="font-size: 11px; color: #ffa500; font-weight: bold; margin-bottom: 8px;">$${char.price?.toFixed(2)}</div>
-            <button class="death-buy-char-btn" data-char-id="${char.id}" style="
-              background: linear-gradient(135deg, #ff6b00 0%, #ff8800 100%);
-              color: white;
-              border: none;
-              padding: 6px 12px;
-              border-radius: 4px;
-              font-size: 11px;
-              font-weight: bold;
-              cursor: pointer;
-              width: 100%;
-            ">BUY NOW</button>
-          `;
-
-          // Wire up buy button
-          const buyBtn = card.querySelector('.death-buy-char-btn') as HTMLButtonElement;
-          if (buyBtn) {
-            buyBtn.onclick = (e) => {
-              e.stopPropagation();
-              this.handleBuyPremiumCharacter(char.id, char.name, char.price || 0);
-            };
-          }
-
-          lockedCharsGrid.appendChild(card);
-        });
+      // Update rank
+      const rankSpan = document.getElementById('player-rank');
+      if (rankSpan) {
+        // Use leaderboard rank if available, otherwise random placeholder for MVP
+        // In a real implementation, we'd fetch the user's actual rank
+        const randomRank = Math.floor(Math.random() * 100) + 1;
+        rankSpan.textContent = randomRank.toString();
       }
-
-      const watchAdLink = document.getElementById('death-watch-ad-link-signedin');
-      if (watchAdLink) {
-        watchAdLink.onclick = (e) => {
-          e.preventDefault();
-          this.handleWatchAd();
-        };
-      }
+      
+      // Initialize 3D character preview
+      this.initDeathEnticementCharacter();
+      
     } else {
       // Show anonymous content panel
-      const anonymousContent = document.getElementById('death-content-anonymous');
-      const signedInContent = document.getElementById('death-content-signedin');
-
       if (anonymousContent) {
         anonymousContent.classList.remove('hidden');
       }
@@ -4527,23 +4501,25 @@ export class Game {
       if (signinBtn) {
         signinBtn.onclick = () => this.handleDeathSignIn();
       }
-
-      const buyCharBtn = document.getElementById('death-buy-char-btn');
-      if (buyCharBtn) {
-        buyCharBtn.onclick = () => this.handleBuyCharacter();
-      }
-
-      const watchAdLink = document.getElementById('death-watch-ad-link');
-      if (watchAdLink) {
-        watchAdLink.onclick = (e) => {
-          e.preventDefault();
-          this.handleWatchAd();
-        };
-      }
-
-      // Initialize 3D character enticement (random unpurchased free character)
+      
+      // Initialize 3D character preview
       this.initDeathEnticementCharacter();
     }
+
+    // Show the overlay
+    const overlay = document.getElementById('death-overlay');
+    if (overlay) {
+      overlay.classList.remove('hidden');
+    }
+    
+    // Update score
+    const scoreValue = document.getElementById('death-score-value');
+    if (scoreValue) {
+      scoreValue.textContent = Math.floor(this.score).toString();
+    }
+    
+    // Start respawn countdown
+    this.startRespawnCountdown();
   }
 
   /**
@@ -4609,7 +4585,7 @@ export class Game {
       return;
     }
 
-    console.log(`🎲 Death screen enticement: showing ${characterToShow.name} (${isAuth ? 'Premium' : 'Free'})`);
+    console.log(`🎲 Death screen enticement: showing ${ characterToShow.name } (${ isAuth ? 'Premium' : 'Free' })`);
 
     // Initialize 3D preview
     this.deathEnticementPreview = new CharacterPreview3D(
@@ -4655,12 +4631,12 @@ export class Game {
    *   5. Show success message and unlock character immediately
    */
   private handleBuyPremiumCharacter(characterId?: string, characterName?: string, price?: number): void {
-    const charInfo = characterId ? `${characterName} ($${price})` : 'premium character';
-    console.log(`TODO(MONETIZATION): Open premium character purchase flow for ${charInfo}`);
+    const charInfo = characterId ? `${ characterName } ($${ price })` : 'premium character';
+    console.log(`TODO(MONETIZATION): Open premium character purchase flow for ${ charInfo }`);
     // Will be wired to payment system - Stripe/PayPal integration
     // For now, just log the purchase intent
     if (characterId) {
-      console.log(`🛒 Purchase intent: Character=${characterId}, Price=$${price}`);
+      console.log(`🛒 Purchase intent: Character = ${ characterId }, Price = $${ price } `);
     }
   }
 
@@ -4698,7 +4674,7 @@ export class Game {
       const spawnZ = (Math.random() - 0.5) * 300; // -150 to 150
       const spawnY = getTerrainHeight(spawnX, spawnZ) + 2; // 2 units above ground
 
-      console.log(`🎯 Teleporting to random spawn: (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`);
+      console.log(`🎯 Teleporting to random spawn: (${ spawnX.toFixed(1) }, ${ spawnY.toFixed(1) }, ${ spawnZ.toFixed(1) })`);
 
       this.character.position.set(spawnX, spawnY, spawnZ);
 
@@ -4816,7 +4792,7 @@ export class Game {
 
     if (healthBar) {
       const healthPercent = Math.max(0, Math.min(100, (this.health / this.MAX_HEALTH) * 100));
-      healthBar.style.width = `${healthPercent}%`;
+      healthBar.style.width = `${ healthPercent }% `;
 
       // Color changes based on health level
       if (healthPercent > 60) {
@@ -4831,9 +4807,9 @@ export class Game {
     }
 
     if (healthText) {
-      healthText.textContent = `${Math.round(this.health)}/${this.MAX_HEALTH}`;
+      healthText.textContent = `${ Math.round(this.health) }/${this.MAX_HEALTH}`;
+      }
     }
-  }
 
   /**
    * MVP 12: Update wildebeest annoyance data (stores in predator userData)
