@@ -1373,6 +1373,7 @@ export default class ForestManager extends DurableObject {
     }
 
     // MVP 16: Clear all users for testing (clears EMAIL_INDEX, USERNAME_INDEX, PlayerIdentity storage, and disconnects all players)
+    // MVP 16: Clear all users for testing (clears EMAIL_INDEX, USERNAME_INDEX, PlayerIdentity storage, and disconnects all players)
     if (path === "/admin/users/clear-all" && request.method === "POST") {
       // Require admin authentication
       const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
@@ -1392,14 +1393,37 @@ export default class ForestManager extends DurableObject {
       let identitiesCleared = 0;
       let playersDisconnected = 0;
 
-      // List all keys in EMAIL_INDEX
-      const emailList = await this.env.EMAIL_INDEX.list();
+      // Set of usernames to clear (from both indexes)
+      const usernamesToClear = new Set<string>();
 
-      // For each email, get the username and clear the PlayerIdentity DO storage
+      // 1. Scan EMAIL_INDEX
+      const emailList = await this.env.EMAIL_INDEX.list();
       for (const key of emailList.keys) {
         const username = await this.env.EMAIL_INDEX.get(key.name);
-
         if (username) {
+          usernamesToClear.add(username);
+        }
+        // Delete email index entry immediately
+        await this.env.EMAIL_INDEX.delete(key.name);
+        emailsCleared++;
+      }
+
+      // 2. Scan USERNAME_INDEX
+      const usernameList = await this.env.USERNAME_INDEX.list();
+      for (const key of usernameList.keys) {
+        // Key format: "username:someuser"
+        const parts = key.name.split(':');
+        if (parts.length > 1) {
+          usernamesToClear.add(parts[1]);
+        }
+        // Delete username index entry immediately
+        await this.env.USERNAME_INDEX.delete(key.name);
+        usernamesCleared++;
+      }
+
+      // 3. Clear PlayerIdentity DOs for all found usernames
+      for (const username of usernamesToClear) {
+        try {
           // Get PlayerIdentity DO for this username
           const id = this.env.PLAYER_IDENTITY.idFromName(username);
           const stub = this.env.PLAYER_IDENTITY.get(id);
@@ -1413,24 +1437,11 @@ export default class ForestManager extends DurableObject {
             headers: { 'X-Admin-Secret': adminSecret }
           });
 
-          try {
-            await stub.fetch(clearRequest);
-            identitiesCleared++;
-          } catch (error) {
-            console.error(`Failed to clear PlayerIdentity for ${username}:`, error);
-          }
+          await stub.fetch(clearRequest);
+          identitiesCleared++;
+        } catch (error) {
+          console.error(`Failed to clear PlayerIdentity for ${username}:`, error);
         }
-
-        // Delete email index entry
-        await this.env.EMAIL_INDEX.delete(key.name);
-        emailsCleared++;
-      }
-
-      // Clear all USERNAME_INDEX entries
-      const usernameList = await this.env.USERNAME_INDEX.list();
-      for (const key of usernameList.keys) {
-        await this.env.USERNAME_INDEX.delete(key.name);
-        usernamesCleared++;
       }
 
       // Disconnect all active players and close their WebSockets
@@ -1457,6 +1468,78 @@ export default class ForestManager extends DurableObject {
         status: 200,
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
       });
+    }
+
+    // MVP 16: Clear specific user for testing
+    if (path === "/admin/users/clear" && request.method === "POST") {
+      // Require admin authentication
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized",
+          message: "Invalid or missing admin secret"
+        }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      try {
+        const body = await request.json() as { username: string };
+        const username = body.username;
+
+        if (!username) {
+          return new Response(JSON.stringify({ error: "Missing username" }), {
+            status: 400,
+            headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+          });
+        }
+
+        // 1. Find email from USERNAME_INDEX
+        const usernameKey = `username:${username.toLowerCase()}`;
+        const email = await this.env.USERNAME_INDEX.get(usernameKey);
+        
+        // 2. Delete from USERNAME_INDEX
+        if (email) {
+          await this.env.USERNAME_INDEX.delete(usernameKey);
+          
+          // 3. Delete from EMAIL_INDEX
+          const emailKey = `email:${email}`;
+          await this.env.EMAIL_INDEX.delete(emailKey);
+        }
+
+        // 4. Clear PlayerIdentity DO
+        const id = this.env.PLAYER_IDENTITY.idFromName(username);
+        const stub = this.env.PLAYER_IDENTITY.get(id);
+        
+        const clearUrl = new URL('https://internal/api/identity');
+        clearUrl.searchParams.set('action', 'adminClear');
+        
+        const clearRequest = new Request(clearUrl.toString(), {
+          method: 'POST',
+          headers: { 'X-Admin-Secret': adminSecret }
+        });
+        
+        await stub.fetch(clearRequest);
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: `Cleared user ${username}`,
+          emailRemoved: !!email
+        }), {
+          status: 200,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+
+      } catch (error) {
+        return new Response(JSON.stringify({
+          error: "Failed to clear user",
+          message: error instanceof Error ? error.message : "Unknown error"
+        }), {
+          status: 500,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
     }
 
     return new Response("Not Found", { status: 404 });
