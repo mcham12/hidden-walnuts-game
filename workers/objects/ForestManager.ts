@@ -576,8 +576,8 @@ export default class ForestManager extends DurableObject {
         return new Response(JSON.stringify({
           error: 'Character not available',
           message: `The character '${characterId}' is not available for your account. ${isAuthenticated
-              ? 'This is a premium character that requires purchase.'
-              : 'Please sign in to access more characters.'
+            ? 'This is a premium character that requires purchase.'
+            : 'Please sign in to access more characters.'
             }`
         }), {
           status: 403,
@@ -1484,47 +1484,61 @@ export default class ForestManager extends DurableObject {
       }
 
       try {
-        const body = await request.json() as { username: string };
+        const body = await request.json() as { username?: string; email?: string };
         const username = body.username;
+        const email = body.email;
 
-        if (!username) {
-          return new Response(JSON.stringify({ error: "Missing username" }), {
+        if (!username && !email) {
+          return new Response(JSON.stringify({
+            error: "Bad Request",
+            message: "Username or email required"
+          }), {
             status: 400,
             headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
           });
         }
 
-        // 1. Find email from USERNAME_INDEX
-        const usernameKey = `username:${username.toLowerCase()}`;
-        const email = await this.env.USERNAME_INDEX.get(usernameKey);
+        let emailsCleared = 0;
+        let usernamesCleared = 0;
+        let identitiesCleared = 0;
 
-        // 2. Delete from USERNAME_INDEX
+        // 1. Clear KV entries if they exist
         if (email) {
-          await this.env.USERNAME_INDEX.delete(usernameKey);
-
-          // 3. Delete from EMAIL_INDEX
-          const emailKey = `email:${email}`;
+          const normalizedEmail = email.toLowerCase().trim();
+          const emailKey = `email:${normalizedEmail}`;
           await this.env.EMAIL_INDEX.delete(emailKey);
+          emailsCleared++;
         }
 
-        // 4. Clear PlayerIdentity DO
-        const id = this.env.PLAYER_IDENTITY.idFromName(username);
-        const stub = this.env.PLAYER_IDENTITY.get(id);
+        if (username) {
+          const normalizedUsername = username.toLowerCase().trim();
+          const usernameKey = `username:${normalizedUsername}`;
+          await this.env.USERNAME_INDEX.delete(usernameKey);
+          usernamesCleared++;
+        }
 
-        const clearUrl = new URL('https://internal/api/identity');
-        clearUrl.searchParams.set('action', 'adminClear');
+        // 2. FORCE CLEAR Durable Object by ID
+        // We must derive the ID from the identifier used in routing (api.ts)
+        // In api.ts, /auth/signup uses body.email OR body.username
+        // So we need to clear BOTH potential DOs to be safe
 
-        const clearRequest = new Request(clearUrl.toString(), {
-          method: 'POST',
-          headers: { 'X-Admin-Secret': adminSecret }
-        });
+        const identifiersToClear: string[] = [];
+        if (email) identifiersToClear.push(email);
+        if (username) identifiersToClear.push(username);
 
-        await stub.fetch(clearRequest);
+        for (const identifier of identifiersToClear) {
+          const id = this.env.PLAYER_IDENTITY.idFromName(identifier);
+          const stub = this.env.PLAYER_IDENTITY.get(id);
+          await stub.fetch(new Request("http://internal/api/identity?action=adminClear", { method: "POST" }));
+          identitiesCleared++;
+        }
 
         return new Response(JSON.stringify({
           success: true,
-          message: `Cleared user ${username}`,
-          emailRemoved: !!email
+          emailsCleared,
+          usernamesCleared,
+          identitiesCleared,
+          message: `Cleared user data for ${email || username}`
         }), {
           status: 200,
           headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
