@@ -251,13 +251,13 @@ async function main() {
     let selectedCharacterId: string;
 
     // Check if user has saved character
-    if (savedCharacterId) {
-      // Returning user with saved character - skip selection!
-      selectedCharacterId = savedCharacterId;
-    } else if (!isAuthenticated()) {
-      // Guest player - auto-assign Squirrel and skip CharacterGrid
+    if (!isAuthenticated()) {
+      // Guest player - ALWAYS force Squirrel, ignore saved character
       selectedCharacterId = 'squirrel';
-      console.log('🐿️ Guest player detected - auto-assigned Squirrel character');
+      console.log('🐿️ Guest player detected - forcing Squirrel character');
+    } else if (savedCharacterId) {
+      // Returning AUTHENTICATED user with saved character - skip selection!
+      selectedCharacterId = savedCharacterId;
     } else {
       // MVP 16: Authenticated user with no saved character - show CharacterGrid
       const selectDiv = document.getElementById('character-select') as HTMLDivElement;

@@ -268,7 +268,7 @@ export class CharacterPreviewModal {
         opacity: 0.8;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       `;
-      premiumButton.textContent = `Coming Soon in MVP 17! ($${character.price?.toFixed(2) || '1.99'})`;
+      premiumButton.textContent = `Coming Soon!`;
       buttonsContainer.appendChild(premiumButton);
     } else {
       // Sign up button for locked free characters

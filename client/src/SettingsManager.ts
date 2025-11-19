@@ -684,7 +684,7 @@ export class SettingsManager {
     });
 
     // Disabled buttons (coming soon)
-    const changePasswordButton = this.createDisabledButton('Change Password', 'Coming soon in MVP 17!');
+    const changePasswordButton = this.createDisabledButton('Change Password', 'Coming soon!');
     const deleteAccountButton = this.createDisabledButton('Delete Account', 'Contact support to delete account');
 
     buttonsSection.appendChild(logoutButton);

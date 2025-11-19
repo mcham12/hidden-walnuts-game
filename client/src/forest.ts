@@ -38,6 +38,9 @@ export async function createForestFromServer(
 
     // MVP 5.5: Load rock models (5 variants) and calculate height offsets
     for (let i = 0; i < 5; i++) {
+      // MVP 16: Skip Rock_02 (index 1) as requested (floating issues)
+      if (i === 1) continue;
+
       rockModels[i] = await loadModel(`/assets/models/environment/Rock_0${i + 1}.glb`);
 
       // Calculate correct height offset for this rock variant
@@ -111,7 +114,10 @@ export async function createForestFromServer(
         // Note: Bushes are passable, no collision needed
       } else if (obj.type === 'rock') {
         // MVP 5.5: Add rocks as obstacles
-        const rockIndex = (obj.modelVariant || 1) - 1;
+        // MVP 16: Remap Rock_02 (index 1) to Rock_01 (index 0) since we skipped loading it
+        let rockIndex = (obj.modelVariant || 1) - 1;
+        if (rockIndex === 1) rockIndex = 0;
+
         const rockModel = rockModels[rockIndex];
         if (rockModel) {
           const rock = rockModel.clone();
@@ -121,9 +127,13 @@ export async function createForestFromServer(
           // Each rock model has different dimensions and pivot points
           const rockHeightOffset = rockHeightOffsets[rockIndex] * obj.scale;
           const centerOffset = rockCenterOffsets[rockIndex].clone().multiplyScalar(obj.scale);
+
+          // MVP 16: Sink rocks slightly (-0.3) to prevent floating on slopes
+          const SINK_OFFSET = -0.3;
+
           rock.position.set(
             obj.x + centerOffset.x,
-            y + rockHeightOffset,
+            y + rockHeightOffset + SINK_OFFSET,
             obj.z + centerOffset.z
           );
           rock.scale.set(obj.scale, obj.scale, obj.scale);
@@ -220,9 +230,9 @@ function createFallbackForest(scene: THREE.Scene) {
     const x = (Math.random() - 0.5) * 180;
     const z = (Math.random() - 0.5) * 180;
     const y = getTerrainHeight(x, z);
-    
+
     const tree = new THREE.Group();
-    
+
     // Trunk
     const trunk = new THREE.Mesh(
       new THREE.CylinderGeometry(0.2, 0.3, 2),
@@ -230,7 +240,7 @@ function createFallbackForest(scene: THREE.Scene) {
     );
     trunk.position.y = 1;
     tree.add(trunk);
-    
+
     // Crown
     const crown = new THREE.Mesh(
       new THREE.SphereGeometry(1.5),
@@ -238,11 +248,11 @@ function createFallbackForest(scene: THREE.Scene) {
     );
     crown.position.y = 2.5;
     tree.add(crown);
-    
+
     tree.position.set(x, y, z);
     scene.add(tree);
   }
-  
+
   // Create simple bush shapes
   for (let i = 0; i < BUSH_COUNT; i++) {
     const x = (Math.random() - 0.5) * 180;
@@ -282,7 +292,7 @@ async function loadModel(path: string): Promise<THREE.Group> {
     return model;
   } catch (error) {
     console.error(`Failed to load model ${path}:`, error);
-    
+
     // Create a more detailed fallback based on the model type
     if (path.includes('Tree')) {
       return createFallbackTree();
@@ -302,7 +312,7 @@ async function loadModel(path: string): Promise<THREE.Group> {
 // Create fallback tree shape
 function createFallbackTree(): THREE.Group {
   const tree = new THREE.Group();
-  
+
   // Trunk
   const trunk = new THREE.Mesh(
     new THREE.CylinderGeometry(0.2, 0.3, 2),
@@ -312,7 +322,7 @@ function createFallbackTree(): THREE.Group {
   trunk.castShadow = true;
   trunk.receiveShadow = true;
   tree.add(trunk);
-  
+
   // Crown
   const crown = new THREE.Mesh(
     new THREE.SphereGeometry(1.5, 8, 6),
@@ -322,14 +332,14 @@ function createFallbackTree(): THREE.Group {
   crown.castShadow = true;
   crown.receiveShadow = true;
   tree.add(crown);
-  
+
   return tree;
 }
 
 // Create fallback bush shape  
 function createFallbackBush(): THREE.Group {
   const bush = new THREE.Group();
-  
+
   const bushMesh = new THREE.Mesh(
     new THREE.SphereGeometry(0.8, 8, 6),
     new THREE.MeshStandardMaterial({ color: 0x32CD32 })
@@ -338,6 +348,6 @@ function createFallbackBush(): THREE.Group {
   bushMesh.castShadow = true;
   bushMesh.receiveShadow = true;
   bush.add(bushMesh);
-  
+
   return bush;
 }

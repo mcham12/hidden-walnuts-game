@@ -1554,6 +1554,19 @@ export class Game {
         return; // Only one collision per update
       }
     }
+
+    // Check collision with Predators (Wildebeest)
+    for (const predator of this.predators.values()) {
+      const distance = playerPos.distanceTo(predator.position);
+      // Wildebeest is larger, so use slightly larger radius
+      if (distance < COLLISION_RADIUS * 1.5) {
+        // Play collision sound
+        this.audioManager.playSound('player', 'player_collision');
+        this.triggerBumpEffect();
+        this.lastEntityCollisionTime = now;
+        return; // Only one collision per update
+      }
+    }
   }
 
   /**
@@ -5617,6 +5630,19 @@ export class Game {
     fill.style.transition = 'width 0.3s ease';
 
     container.appendChild(fill);
+
+    // Add "Predator" label
+    const label = document.createElement('div');
+    label.textContent = 'Predator';
+    label.style.position = 'absolute';
+    label.style.top = '-16px';
+    label.style.width = '100%';
+    label.style.textAlign = 'center';
+    label.style.color = '#ffaa00';
+    label.style.fontSize = '10px';
+    label.style.fontWeight = 'bold';
+    label.style.textShadow = '1px 1px 2px black';
+    container.appendChild(label);
 
     if (this.labelsContainer) {
       this.labelsContainer.appendChild(container);
