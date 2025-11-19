@@ -1560,6 +1560,8 @@ export class Game {
       const distance = playerPos.distanceTo(predator.position);
       // Wildebeest is larger, so use slightly larger radius
       if (distance < COLLISION_RADIUS * 1.5) {
+        // Take damage from predator collision
+        this.takeDamage(10, 'predator');
         // Play collision sound
         this.audioManager.playSound('player', 'player_collision');
         this.triggerBumpEffect();
@@ -5567,8 +5569,8 @@ export class Game {
     const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
     const y = (vector.y * -0.5 + 0.5) * window.innerHeight;
 
-    label.style.left = `${x} px`;
-    label.style.top = `${y} px`;
+    label.style.left = `${x}px`;
+    label.style.top = `${y}px`;
 
     // Hide label if behind camera
     const isBehindCamera = vector.z > 1;
