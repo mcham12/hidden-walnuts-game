@@ -575,11 +575,10 @@ export default class ForestManager extends DurableObject {
         console.warn(`❌ Character ${characterId} not available for user ${username} (auth: ${isAuthenticated})`);
         return new Response(JSON.stringify({
           error: 'Character not available',
-          message: `The character '${characterId}' is not available for your account. ${
-            isAuthenticated
+          message: `The character '${characterId}' is not available for your account. ${isAuthenticated
               ? 'This is a premium character that requires purchase.'
               : 'Please sign in to access more characters.'
-          }`
+            }`
         }), {
           status: 403,
           headers: { 'Content-Type': 'application/json' }
@@ -602,7 +601,7 @@ export default class ForestManager extends DurableObject {
     if (path === "/join" && request.method === "POST") {
       const url = new URL(request.url);
       const squirrelId = url.searchParams.get("squirrelId");
-      
+
       if (!squirrelId) {
         return new Response(JSON.stringify({ error: "Missing squirrelId" }), {
           status: 400,
@@ -611,7 +610,7 @@ export default class ForestManager extends DurableObject {
       }
 
       // Simple session creation
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         squirrelId,
         token: "simplified-token",
         message: "Joined successfully"
@@ -1001,8 +1000,8 @@ export default class ForestManager extends DurableObject {
         message: spawned > 0
           ? `NPC count adjusted - spawned ${spawned} new NPCs`
           : despawned > 0
-          ? `NPC count adjusted - despawned ${despawned} NPCs`
-          : "NPC count unchanged"
+            ? `NPC count adjusted - despawned ${despawned} NPCs`
+            : "NPC count unchanged"
       }), {
         status: 200,
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
@@ -1114,8 +1113,8 @@ export default class ForestManager extends DurableObject {
         message: spawned > 0
           ? `Predator count adjusted - spawned ${spawned} new predators`
           : despawned > 0
-          ? `Predator count adjusted - despawned ${despawned} predators`
-          : "Predator count unchanged"
+            ? `Predator count adjusted - despawned ${despawned} predators`
+            : "Predator count unchanged"
       }), {
         status: 200,
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
@@ -1498,11 +1497,11 @@ export default class ForestManager extends DurableObject {
         // 1. Find email from USERNAME_INDEX
         const usernameKey = `username:${username.toLowerCase()}`;
         const email = await this.env.USERNAME_INDEX.get(usernameKey);
-        
+
         // 2. Delete from USERNAME_INDEX
         if (email) {
           await this.env.USERNAME_INDEX.delete(usernameKey);
-          
+
           // 3. Delete from EMAIL_INDEX
           const emailKey = `email:${email}`;
           await this.env.EMAIL_INDEX.delete(emailKey);
@@ -1511,15 +1510,15 @@ export default class ForestManager extends DurableObject {
         // 4. Clear PlayerIdentity DO
         const id = this.env.PLAYER_IDENTITY.idFromName(username);
         const stub = this.env.PLAYER_IDENTITY.get(id);
-        
+
         const clearUrl = new URL('https://internal/api/identity');
         clearUrl.searchParams.set('action', 'adminClear');
-        
+
         const clearRequest = new Request(clearUrl.toString(), {
           method: 'POST',
           headers: { 'X-Admin-Secret': adminSecret }
         });
-        
+
         await stub.fetch(clearRequest);
 
         return new Response(JSON.stringify({
@@ -1540,6 +1539,36 @@ export default class ForestManager extends DurableObject {
           headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
         });
       }
+    }
+
+    // Debug: Dump KV contents to verify state
+    if (path === "/admin/debug/dump" && request.method === "GET") {
+      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+        return new Response("Unauthorized", { status: 401 });
+      }
+
+      const emailList = await this.env.EMAIL_INDEX.list();
+      const usernameList = await this.env.USERNAME_INDEX.list();
+
+      const emails: Record<string, string | null> = {};
+      for (const key of emailList.keys) {
+        emails[key.name] = await this.env.EMAIL_INDEX.get(key.name);
+      }
+
+      const usernames: Record<string, string | null> = {};
+      for (const key of usernameList.keys) {
+        usernames[key.name] = await this.env.USERNAME_INDEX.get(key.name);
+      }
+
+      return new Response(JSON.stringify({
+        emailIndex: emails,
+        usernameIndex: usernames,
+        emailCount: emailList.keys.length,
+        usernameCount: usernameList.keys.length
+      }, null, 2), {
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
     }
 
     return new Response("Not Found", { status: 404 });
@@ -1937,7 +1966,7 @@ export default class ForestManager extends DurableObject {
           timestamp: data.timestamp // Forward client timestamp for latency compensation
         });
         break;
-        
+
       case "heartbeat":
         this.sendMessage(playerConnection.socket, {
           type: 'heartbeat',
@@ -3522,19 +3551,19 @@ export default class ForestManager extends DurableObject {
     deltaTime: number
   ): boolean {
     const MAX_SPEED = 20; // Maximum allowed speed in units per second
-    
+
     const distance = Math.sqrt(
       Math.pow(newPosition.x - oldPosition.x, 2) +
       Math.pow(newPosition.z - oldPosition.z, 2)
     );
-    
+
     const speed = distance / (deltaTime / 1000); // Convert deltaTime to seconds
-    
+
     if (speed > MAX_SPEED) {
       console.warn(`Suspicious movement speed detected: ${speed.toFixed(2)} units/sec (max: ${MAX_SPEED})`);
       return false;
     }
-    
+
     return true;
   }
 
