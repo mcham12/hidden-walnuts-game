@@ -41,6 +41,11 @@ export interface PlayerIdentityData {
     deviceInfo?: string;              // User agent string
     lastUsed?: number;                // Last used timestamp
   }[];
+
+  // MVP 16: Persistent Game Stats
+  score: number;          // Current score (persisted)
+  titleId: string;        // Rank ID
+  titleName: string;      // Rank Name
 }
 
 /**
@@ -98,6 +103,12 @@ export class PlayerIdentity extends DurableObject {
 
         case 'updateCharacter':
           return await this.handleUpdateCharacter(request);
+
+        case 'updateStats':
+          return await this.handleUpdateStats(request);
+
+        case 'getStats':
+          return await this.handleGetStats(request);
 
         // MVP 16: Authentication methods
         case 'signup':
@@ -185,7 +196,11 @@ export class PlayerIdentity extends DurableObject {
         lastCharacterId: data.lastCharacterId || null, // FIXED: Explicitly return null if undefined
         // MVP 16: Return auth status and unlocked characters for WebSocket validation
         isAuthenticated: data.isAuthenticated || false,
-        unlockedCharacters: data.unlockedCharacters || ['squirrel']
+        unlockedCharacters: data.unlockedCharacters || ['squirrel'],
+        // MVP 16: Return persistent stats
+        score: data.score || 0,
+        titleId: data.titleId || 'rookie',
+        titleName: data.titleName || 'Rookie'
       });
     }
 
@@ -236,7 +251,10 @@ export class PlayerIdentity extends DurableObject {
       emailVerified: false,
       isAuthenticated: false,
       unlockedCharacters: ['squirrel'], // No-auth users get only Squirrel
-      authTokens: []
+      authTokens: [],
+      score: 0,
+      titleId: 'rookie',
+      titleName: 'Rookie'
     };
 
     await this.ctx.storage.put('player', data);
@@ -305,6 +323,47 @@ export class PlayerIdentity extends DurableObject {
     await this.ctx.storage.put('player', data);
 
     return Response.json({ success: true, characterId });
+  }
+
+  /**
+   * Update game stats (score, rank)
+   */
+  private async handleUpdateStats(request: Request): Promise<Response> {
+    const body = await request.json() as { score: number; titleId: string; titleName: string };
+    const { score, titleId, titleName } = body;
+
+    const data = await this.ctx.storage.get<PlayerIdentityData>('player');
+
+    if (!data) {
+      return Response.json({ error: 'Identity not found' }, { status: 404 });
+    }
+
+    // Update stats
+    if (score !== undefined) data.score = score;
+    if (titleId) data.titleId = titleId;
+    if (titleName) data.titleName = titleName;
+
+    data.lastSeen = Date.now();
+    await this.ctx.storage.put('player', data);
+
+    return Response.json({ success: true });
+  }
+
+  /**
+   * Get game stats (internal use)
+   */
+  private async handleGetStats(request: Request): Promise<Response> {
+    const data = await this.ctx.storage.get<PlayerIdentityData>('player');
+
+    if (!data) {
+      return Response.json({ error: 'Identity not found' }, { status: 404 });
+    }
+
+    return Response.json({
+      score: data.score || 0,
+      titleId: data.titleId || 'rookie',
+      titleName: data.titleName || 'Rookie'
+    });
   }
 
   /**
@@ -411,7 +470,10 @@ export class PlayerIdentity extends DurableObject {
         emailVerified: false,
         isAuthenticated: false,
         unlockedCharacters: ['squirrel'],
-        authTokens: []
+        authTokens: [],
+        score: 0,
+        titleId: 'rookie',
+        titleName: 'Rookie'
       };
 
       // Add authentication fields
@@ -513,7 +575,11 @@ export class PlayerIdentity extends DurableObject {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
         accessTokenExpiry: tokens.accessTokenExpiry,
-        refreshTokenExpiry: tokens.refreshTokenExpiry
+        refreshTokenExpiry: tokens.refreshTokenExpiry,
+        // Persistent stats
+        score: data.score || 0,
+        titleId: data.titleId || 'rookie',
+        titleName: data.titleName || 'Rookie'
       });
 
     } catch (error) {
@@ -620,7 +686,11 @@ export class PlayerIdentity extends DurableObject {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
         accessTokenExpiry: tokens.accessTokenExpiry,
-        refreshTokenExpiry: tokens.refreshTokenExpiry
+        refreshTokenExpiry: tokens.refreshTokenExpiry,
+        // Persistent stats
+        score: data.score || 0,
+        titleId: data.titleId || 'rookie',
+        titleName: data.titleName || 'Rookie'
       });
 
     } catch (error) {

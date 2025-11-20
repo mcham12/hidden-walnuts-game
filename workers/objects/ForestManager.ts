@@ -29,6 +29,7 @@ interface PlayerConnection {
   // MVP 6: Player identity
   sessionToken: string;
   username: string;
+  isAuthenticated: boolean; // MVP 16: Auth status
 
   // MVP 7.1: Position save throttling
   lastPositionSave: number;
@@ -521,6 +522,8 @@ export default class ForestManager extends DurableObject {
 
       // MVP 16 FIX: Check for JWT access token in URL parameter (WebSocket doesn't support Authorization headers)
       const accessToken = url.searchParams.get('accessToken');
+      let persistedStats: { score: number, titleId: string, titleName: string } | undefined;
+
       if (accessToken) {
         try {
           // Verify JWT access token directly (can't use AuthMiddleware with URL params)
@@ -531,6 +534,16 @@ export default class ForestManager extends DurableObject {
             isAuthenticated = payload.isAuthenticated;
             unlockedCharacters = payload.unlockedCharacters || [];
             console.log(`✅ Authenticated WebSocket: ${username} (${unlockedCharacters.length} characters)`);
+
+            // Fetch persistent stats
+            try {
+              const playerIdentityId = this.env.PLAYER_IDENTITY.idFromName(username);
+              const playerIdentity = this.env.PLAYER_IDENTITY.get(playerIdentityId);
+              const statsResponse = await playerIdentity.fetch(new Request('http://internal/api/identity?action=getStats'));
+              if (statsResponse.ok) {
+                persistedStats = await statsResponse.json() as any;
+              }
+            } catch (e) { console.error('Failed to fetch stats', e); }
           }
         } catch (error) {
           console.error(`Failed to verify access token for ${username}:`, error);
@@ -558,10 +571,21 @@ export default class ForestManager extends DurableObject {
               exists: boolean;
               isAuthenticated?: boolean;
               unlockedCharacters?: string[];
+              score?: number;
+              titleId?: string;
+              titleName?: string;
             };
             // Check if this sessionToken is linked to an authenticated account
             isAuthenticated = playerData.isAuthenticated || false;
             unlockedCharacters = playerData.unlockedCharacters || [];
+
+            if (playerData.score !== undefined) {
+              persistedStats = {
+                score: playerData.score,
+                titleId: playerData.titleId || 'rookie',
+                titleName: playerData.titleName || 'Rookie'
+              };
+            }
             console.log(`📋 SessionToken lookup: ${username} (auth: ${isAuthenticated}, ${unlockedCharacters.length} characters)`);
           }
         } catch (error) {
@@ -589,7 +613,8 @@ export default class ForestManager extends DurableObject {
       const [client, server] = Object.values(webSocketPair);
 
       server.accept();
-      await this.setupPlayerConnection(squirrelId, characterId, server, sessionToken, username);
+      server.accept();
+      await this.setupPlayerConnection(squirrelId, characterId, server, sessionToken, username, isAuthenticated, persistedStats);
 
       return new Response(null, {
         status: 101,
@@ -1602,7 +1627,15 @@ export default class ForestManager extends DurableObject {
   }
 
   // Simple player connection setup
-  private async setupPlayerConnection(squirrelId: string, characterId: string, socket: WebSocket, sessionToken: string, username: string): Promise<void> {
+  private async setupPlayerConnection(
+    squirrelId: string,
+    characterId: string,
+    socket: WebSocket,
+    sessionToken: string,
+    username: string,
+    isAuthenticated: boolean,
+    persistedStats?: { score: number, titleId: string, titleName: string }
+  ): Promise<void> {
     // MVP 5.8: Check if player is reconnecting (still in active players but disconnected)
     const existingPlayer = this.activePlayers.get(squirrelId);
     const isReconnecting = existingPlayer && existingPlayer.isDisconnected;
@@ -1747,6 +1780,7 @@ export default class ForestManager extends DurableObject {
         // MVP 6: Player identity
         sessionToken,
         username,
+        isAuthenticated,
         // MVP 7.1: Position save throttling
         lastPositionSave: 0,
         // MVP 8: Combat system
@@ -1808,6 +1842,14 @@ export default class ForestManager extends DurableObject {
           if (joinData.stats?.score) {
             playerConnection.score = joinData.stats.score;
             console.log(`♻️ Restored score for ${username}: ${joinData.stats.score}`);
+          }
+
+          // MVP 16: Override with persisted stats if authenticated
+          if (persistedStats) {
+            playerConnection.score = persistedStats.score;
+            titleId = persistedStats.titleId;
+            titleName = persistedStats.titleName;
+            console.log(`♻️ Restored persisted stats for ${username}: Score=${playerConnection.score}, Rank=${titleName}`);
           }
         }
       } catch (error) {
@@ -2121,6 +2163,21 @@ export default class ForestManager extends DurableObject {
 
           // MVP 8: Report updated score to leaderboard
           await this.reportScoreToLeaderboard(playerConnection);
+
+          // MVP 16: Sync persistent stats if authenticated
+          if (playerConnection.isAuthenticated) {
+            const playerIdentityId = this.env.PLAYER_IDENTITY.idFromName(playerConnection.username);
+            const playerIdentity = this.env.PLAYER_IDENTITY.get(playerIdentityId);
+            // Fire and forget
+            playerIdentity.fetch(new Request('http://internal/api/identity?action=updateStats', {
+              method: 'POST',
+              body: JSON.stringify({
+                score: playerConnection.score,
+                titleId: playerConnection.titleId,
+                titleName: playerConnection.titleName
+              })
+            })).catch(e => console.error('Failed to sync stats', e));
+          }
         } else {
           console.warn(`⚠️ SERVER: Walnut ${data.walnutId} not found in mapState`);
         }
