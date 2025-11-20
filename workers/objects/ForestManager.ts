@@ -1721,6 +1721,11 @@ export default class ForestManager extends DurableObject {
         health: existingPlayer.health,
         maxHealth: existingPlayer.maxHealth
       });
+      // MVP 16: Send score update
+      this.sendMessage(socket, {
+        type: 'score_update',
+        score: existingPlayer.score
+      });
 
       // MVP 8 FIX: Spawn NPCs if none exist (they may have been despawned when last player left)
       if (this.npcManager.getNPCCount() === 0) {
@@ -1953,6 +1958,11 @@ export default class ForestManager extends DurableObject {
         playerId: squirrelId,
         health: playerConnection.health,
         maxHealth: playerConnection.maxHealth
+      });
+      // MVP 16: Send initial score (persisted)
+      this.sendMessage(socket, {
+        type: 'score_update',
+        score: playerConnection.score
       });
 
       // MVP 8 FIX: Spawn NPCs if none exist (they may have been despawned when last player left)
@@ -2862,6 +2872,21 @@ export default class ForestManager extends DurableObject {
 
       if (!response.ok) {
         console.warn(`⚠️ Failed to report score to leaderboard for ${playerConnection.username} (status: ${response.status})`);
+      }
+
+      // MVP 16: Sync persistent stats if authenticated
+      if (playerConnection.isAuthenticated) {
+        const playerIdentityId = this.env.PLAYER_IDENTITY.idFromName(playerConnection.username);
+        const playerIdentity = this.env.PLAYER_IDENTITY.get(playerIdentityId);
+        // Fire and forget
+        playerIdentity.fetch(new Request('http://internal/api/identity?action=updateStats', {
+          method: 'POST',
+          body: JSON.stringify({
+            score: playerConnection.score,
+            titleId: playerConnection.titleId,
+            titleName: playerConnection.titleName
+          })
+        })).catch(e => console.error('Failed to sync stats', e));
       }
     } catch (error) {
       console.error('❌ Error reporting score to leaderboard:', error);
