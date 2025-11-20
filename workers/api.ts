@@ -37,7 +37,7 @@ const CORS_HEADERS = {
 
 export default {
   async fetch(request: Request, env: EnvWithBindings, ctx: ExecutionContext): Promise<Response> {
-    
+
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         headers: {
@@ -85,7 +85,6 @@ export default {
             // These require JWT token in Authorization header
             const authHeader = request.headers.get('Authorization');
             if (authHeader && authHeader.startsWith('Bearer ')) {
-              const token = authHeader.substring(7);
               // We'll need to decode the JWT to get the username
               // For now, extract from body if available
               identifier = body.username || body.email;
@@ -93,6 +92,14 @@ export default {
           } else if (action === 'verifyEmail' || action === 'resetPassword') {
             // These use tokens, extract username from body or token
             identifier = body.username || body.email;
+          } else if (action === 'resend-verification') {
+            // Can be authenticated (header) or unauthenticated (email in body)
+            if (body.email) {
+              identifier = body.email;
+            }
+            // Note: If email is not in body, we can't route to the correct DO instance
+            // because we don't have the username/email to look it up.
+            // The client MUST send the email in the body.
           }
 
           if (!identifier) {
@@ -180,7 +187,7 @@ export default {
       if (pathname === "/join") {
         const forest = getObjectInstance(env, "forest", "daily-forest");
         const response = await forest.fetch(request);
-        
+
         // Add CORS headers
         return new Response(response.body, {
           status: response.status,
@@ -195,22 +202,22 @@ export default {
       if (pathname === "/hide") {
         // Get squirrelId from query string
         const id = url.searchParams.get("squirrelId");
-        
+
         // Validate squirrelId is provided
         if (!id) {
           return new Response(JSON.stringify({
             error: "Missing squirrelId",
             message: "A squirrelId query parameter is required"
-          }), { 
+          }), {
             status: 400,
             headers: { "Content-Type": "application/json" }
           });
         }
-        
+
         // Create a modified request with the ID in the path
         const newUrl = new URL(request.url);
         newUrl.pathname = "/hide";
-        
+
         // Get SquirrelSession Durable Object instance and forward the request
         const squirrel = getObjectInstance(env, "squirrel", id);
         return await squirrel.fetch(new Request(newUrl, request));
@@ -242,7 +249,7 @@ export default {
       return new Response(JSON.stringify({
         error: "Not found",
         message: "The requested endpoint does not exist"
-      }), { 
+      }), {
         status: 404,
         headers: {
           ...CORS_HEADERS,
@@ -256,7 +263,7 @@ export default {
       return new Response(JSON.stringify({
         error: "Internal server error",
         message: errorMessage
-      }), { 
+      }), {
         status: 500,
         headers: {
           ...CORS_HEADERS,

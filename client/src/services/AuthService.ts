@@ -314,10 +314,19 @@ export async function resendVerification(data?: ResendVerificationRequest): Prom
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    // Ensure email is present (required for routing in api.ts)
+    const requestData = data || {};
+    if (!requestData.email) {
+      const user = getCurrentUser();
+      if (user && user.email) {
+        requestData.email = user.email;
+      }
+    }
+
     const response = await fetch(`${API_URL}/auth/resend-verification`, {
       method: 'POST',
       headers,
-      body: JSON.stringify(data || {}),
+      body: JSON.stringify(requestData),
     });
 
     const result = await response.json();

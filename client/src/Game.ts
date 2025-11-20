@@ -5652,17 +5652,21 @@ export class Game {
 
     container.appendChild(fill);
 
-    // Add "Predator" label
+    // Add "Predator" label (Capsule style)
     const label = document.createElement('div');
     label.textContent = 'Predator';
     label.style.position = 'absolute';
-    label.style.top = '-20px';
-    label.style.width = '100%';
-    label.style.textAlign = 'center';
-    label.style.color = '#ff4444';
-    label.style.fontSize = '14px';
+    label.style.top = '-24px'; // Moved up slightly to accommodate padding
+    label.style.left = '50%';
+    label.style.transform = 'translateX(-50%)';
+    label.style.padding = '2px 8px';
+    label.style.backgroundColor = 'rgba(255, 68, 68, 0.9)'; // Red background
+    label.style.color = 'white';
+    label.style.fontSize = '12px';
     label.style.fontWeight = 'bold';
-    label.style.textShadow = '1px 1px 2px black';
+    label.style.borderRadius = '10px';
+    label.style.whiteSpace = 'nowrap';
+    label.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
     container.appendChild(label);
 
     if (this.labelsContainer) {

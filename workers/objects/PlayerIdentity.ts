@@ -129,6 +129,9 @@ export class PlayerIdentity extends DurableObject {
         case 'changePassword':
           return await this.handleChangePassword(request);
 
+        case 'resend-verification':
+          return await this.handleResendVerification(request);
+
         // MVP 16: Token management
         case 'refreshToken':
           return await this.handleRefreshToken(request);
@@ -1149,6 +1152,71 @@ export class PlayerIdentity extends DurableObject {
     } catch (error) {
       console.error('Admin clear error:', error);
       return Response.json({ error: 'Failed to clear storage' }, { status: 500 });
+    }
+  }
+
+  /**
+   * Handle resend verification email request
+   * POST with body: { email }
+   */
+  private async handleResendVerification(request: Request): Promise<Response> {
+    try {
+      const body = await request.json() as { email: string };
+      const { email } = body;
+
+      if (!email) {
+        return Response.json({ error: 'Missing email' }, { status: 400 });
+      }
+
+      const data = await this.ctx.storage.get<PlayerIdentityData>('player');
+
+      // Security: Don't reveal if email exists or not
+      if (!data || !data.email || data.email.toLowerCase() !== email.toLowerCase().trim()) {
+        return Response.json({
+          success: true,
+          message: 'If an account exists with that email, a verification link has been sent.'
+        });
+      }
+
+      if (data.emailVerified) {
+        return Response.json({
+          success: true,
+          message: 'Email is already verified.'
+        });
+      }
+
+      // Generate new token
+      const verificationToken = TokenGenerator.generateVerificationToken();
+      const verificationExpiry = TokenGenerator.generateExpiry(24); // 24 hours
+
+      data.emailVerificationToken = verificationToken;
+      data.emailVerificationExpiry = verificationExpiry;
+
+      await this.ctx.storage.put('player', data);
+
+      // Send email
+      if (this.env.SMTP_USER && this.env.SMTP_PASSWORD) {
+        const emailService = new EmailService({
+          smtpUser: this.env.SMTP_USER,
+          smtpPassword: this.env.SMTP_PASSWORD
+        });
+
+        const origin = new URL(request.url).origin;
+        await emailService.sendVerificationEmail(
+          data.email,
+          data.username,
+          verificationToken,
+          origin
+        );
+      }
+
+      return Response.json({
+        success: true,
+        message: 'Verification email sent.'
+      });
+    } catch (error) {
+      console.error('Resend verification error:', error);
+      return Response.json({ error: 'Failed to resend verification email' }, { status: 500 });
     }
   }
 }
