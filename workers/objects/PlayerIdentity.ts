@@ -551,10 +551,12 @@ export class PlayerIdentity extends DurableObject {
           smtpPassword: this.env.SMTP_PASSWORD
         });
 
+        const origin = new URL(request.url).origin;
         const emailResult = await emailService.sendVerificationEmail(
           data.email!,
           data.username,
-          verificationToken
+          verificationToken,
+          origin
         );
 
         if (!emailResult.success) {
@@ -810,10 +812,12 @@ export class PlayerIdentity extends DurableObject {
           smtpPassword: this.env.SMTP_PASSWORD
         });
 
+        const origin = new URL(request.url).origin;
         await emailService.sendPasswordResetEmail(
-          data.email,
+          data.email!,
           data.username,
-          resetToken
+          resetToken,
+          origin
         );
       }
 

@@ -5656,11 +5656,11 @@ export class Game {
     const label = document.createElement('div');
     label.textContent = 'Predator';
     label.style.position = 'absolute';
-    label.style.top = '-16px';
+    label.style.top = '-20px';
     label.style.width = '100%';
     label.style.textAlign = 'center';
-    label.style.color = '#ffaa00';
-    label.style.fontSize = '10px';
+    label.style.color = '#ff4444';
+    label.style.fontSize = '14px';
     label.style.fontWeight = 'bold';
     label.style.textShadow = '1px 1px 2px black';
     container.appendChild(label);

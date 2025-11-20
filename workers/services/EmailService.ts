@@ -34,10 +34,11 @@ export class EmailService {
   async sendVerificationEmail(
     email: string,
     username: string,
-    token: string
+    token: string,
+    baseUrl: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const verificationUrl = `https://hiddenwalnuts.com/verify?token=${token}`;
+      const verificationUrl = `${baseUrl}/verify?token=${token}`;
 
       await this.transporter.sendMail({
         from: this.fromAddress,
@@ -122,10 +123,11 @@ export class EmailService {
   async sendPasswordResetEmail(
     email: string,
     username: string,
-    token: string
+    token: string,
+    baseUrl: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const resetUrl = `https://hiddenwalnuts.com/reset-password?token=${token}`;
+      const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
       await this.transporter.sendMail({
         from: this.fromAddress,
