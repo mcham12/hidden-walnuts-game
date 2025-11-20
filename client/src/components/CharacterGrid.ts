@@ -20,6 +20,7 @@ import { CharacterCard, type CharacterCardData } from './CharacterCard';
 import { getCurrentUser, isAuthenticated } from '../services/AuthService';
 import { CharacterRegistry } from '../services/CharacterRegistry';
 import { CharacterPreviewModal } from './CharacterPreviewModal';
+import { EmailVerificationOverlay } from './EmailVerificationOverlay';
 
 export interface CharacterGridOptions {
   onCharacterSelect?: (characterId: string) => void;
@@ -346,7 +347,7 @@ export class CharacterGrid {
 
     if (!isAuthenticated) {
       // No-auth CTA
-      textElement.textContent = '🌟 Sign up for 6 FREE characters!';
+      textElement.textContent = '🌟 Sign up to unlock characters!';
 
       const signupBtn = document.createElement('button');
       signupBtn.className = 'btn-primary';
@@ -408,8 +409,18 @@ export class CharacterGrid {
     new CharacterPreviewModal({
       characterId,
       isAvailable,
+      isAuthenticated: userIsAuthenticated,
+      isEmailVerified: user?.emailVerified,
       onSelect: (id) => this.handleCharacterSelect(id),
-      onSignUp: () => this.options.onSignUpClick?.()
+      onSignUp: () => this.options.onSignUpClick?.(),
+      onVerify: () => {
+        if (user?.email) {
+          new EmailVerificationOverlay({
+            email: user.email,
+            onPlayAsGuest: () => { /* Close overlay */ }
+          });
+        }
+      }
     });
   }
 

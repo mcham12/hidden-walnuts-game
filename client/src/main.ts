@@ -7,10 +7,11 @@ import { LoadingOverlay } from './components/LoadingOverlay'; // NEW: Simple loa
 import { SettingsManager } from './SettingsManager';
 import { TouchControls } from './TouchControls';
 import { SessionManager } from './SessionManager'; // MVP 6: Player identity
-import { restoreSession, startTokenRefreshTimer, isAuthenticated, clearAuth } from './services/AuthService'; // MVP 16: Session persistence
+import { restoreSession, startTokenRefreshTimer, isAuthenticated, clearAuth, getCurrentUser } from './services/AuthService'; // MVP 16: Session persistence
 import { AuthModal } from './components/AuthModal'; // MVP 16: Authentication modals
 import { CharacterGrid } from './components/CharacterGrid'; // MVP 16: Character selection
 import { CharacterRegistry } from './services/CharacterRegistry'; // MVP 16: Character data
+import { VerifyEmailPage } from './pages/VerifyEmail'; // MVP 16: Email verification
 
 // MVP 6: API URL from environment (for worker communication)
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -131,6 +132,11 @@ async function updateCharacterSelection(username: string, characterId: string): 
 
 async function main() {
   try {
+    // MVP 16: Check for email verification route
+    if (VerifyEmailPage.handleVerificationRoute()) {
+      return; // Stop game initialization if verifying email
+    }
+
     // MVP 16: STEP 0 - Load character registry (required for character selection and game)
     await CharacterRegistry.loadCharacters();
 
@@ -372,6 +378,15 @@ async function main() {
     // Double requestAnimationFrame ensures all layout/rendering is complete after overlays hide
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     console.log('✅ [main.ts] DOM fully ready, UI should be interactive now');
+
+    // MVP 16: Check for unverified email
+    const user = getCurrentUser();
+    if (user && user.isAuthenticated && !user.emailVerified) {
+      // Show verification reminder immediately
+      import('./utils/emailReminder').then(({ showEmailVerificationReminder }) => {
+        showEmailVerificationReminder();
+      });
+    }
 
     // REMOVED: Problematic re-initialization code that was causing issues
     // The UI components are already initialized in game.init() and should work correctly.

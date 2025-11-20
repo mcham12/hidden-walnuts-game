@@ -30,6 +30,7 @@ interface PlayerConnection {
   sessionToken: string;
   username: string;
   isAuthenticated: boolean; // MVP 16: Auth status
+  emailVerified: boolean; // MVP 16: Email verification status
 
   // MVP 7.1: Position save throttling
   lastPositionSave: number;
@@ -518,6 +519,7 @@ export default class ForestManager extends DurableObject {
 
       // MVP 16: Validate character selection based on authentication and unlocked characters
       let isAuthenticated = false;
+      let emailVerified = false;
       let unlockedCharacters: string[] = [];
 
       // MVP 16 FIX: Check for JWT access token in URL parameter (WebSocket doesn't support Authorization headers)
@@ -532,6 +534,7 @@ export default class ForestManager extends DurableObject {
 
           if (payload) {
             isAuthenticated = payload.isAuthenticated;
+            emailVerified = payload.emailVerified || false;
             unlockedCharacters = payload.unlockedCharacters || [];
             console.log(`✅ Authenticated WebSocket: ${username} (${unlockedCharacters.length} characters)`);
 
@@ -570,6 +573,7 @@ export default class ForestManager extends DurableObject {
             const playerData = await checkResponse.json() as {
               exists: boolean;
               isAuthenticated?: boolean;
+              emailVerified?: boolean;
               unlockedCharacters?: string[];
               score?: number;
               titleId?: string;
@@ -577,6 +581,7 @@ export default class ForestManager extends DurableObject {
             };
             // Check if this sessionToken is linked to an authenticated account
             isAuthenticated = playerData.isAuthenticated || false;
+            emailVerified = playerData.emailVerified || false;
             unlockedCharacters = playerData.unlockedCharacters || [];
 
             if (playerData.score !== undefined) {
@@ -614,7 +619,8 @@ export default class ForestManager extends DurableObject {
 
       server.accept();
       server.accept();
-      await this.setupPlayerConnection(squirrelId, characterId, server, sessionToken, username, isAuthenticated, persistedStats);
+      server.accept();
+      await this.setupPlayerConnection(squirrelId, characterId, server, sessionToken, username, isAuthenticated, emailVerified, persistedStats);
 
       return new Response(null, {
         status: 101,
@@ -1634,6 +1640,7 @@ export default class ForestManager extends DurableObject {
     sessionToken: string,
     username: string,
     isAuthenticated: boolean,
+    emailVerified: boolean,
     persistedStats?: { score: number, titleId: string, titleName: string }
   ): Promise<void> {
     // MVP 5.8: Check if player is reconnecting (still in active players but disconnected)
@@ -1785,7 +1792,9 @@ export default class ForestManager extends DurableObject {
         // MVP 6: Player identity
         sessionToken,
         username,
+
         isAuthenticated,
+        emailVerified,
         // MVP 7.1: Position save throttling
         lastPositionSave: 0,
         // MVP 8: Combat system
@@ -1849,8 +1858,8 @@ export default class ForestManager extends DurableObject {
             console.log(`♻️ Restored score for ${username}: ${joinData.stats.score}`);
           }
 
-          // MVP 16: Override with persisted stats if authenticated
-          if (persistedStats) {
+          // MVP 16: Override with persisted stats if authenticated AND verified
+          if (persistedStats && isAuthenticated && emailVerified) {
             playerConnection.score = persistedStats.score;
             titleId = persistedStats.titleId;
             titleName = persistedStats.titleName;
@@ -2174,8 +2183,8 @@ export default class ForestManager extends DurableObject {
           // MVP 8: Report updated score to leaderboard
           await this.reportScoreToLeaderboard(playerConnection);
 
-          // MVP 16: Sync persistent stats if authenticated
-          if (playerConnection.isAuthenticated) {
+          // MVP 16: Sync persistent stats if authenticated AND verified
+          if (playerConnection.isAuthenticated && playerConnection.emailVerified) {
             const playerIdentityId = this.env.PLAYER_IDENTITY.idFromName(playerConnection.username);
             const playerIdentity = this.env.PLAYER_IDENTITY.get(playerIdentityId);
             // Fire and forget
@@ -2874,8 +2883,8 @@ export default class ForestManager extends DurableObject {
         console.warn(`⚠️ Failed to report score to leaderboard for ${playerConnection.username} (status: ${response.status})`);
       }
 
-      // MVP 16: Sync persistent stats if authenticated
-      if (playerConnection.isAuthenticated) {
+      // MVP 16: Sync persistent stats if authenticated AND verified
+      if (playerConnection.isAuthenticated && playerConnection.emailVerified) {
         const playerIdentityId = this.env.PLAYER_IDENTITY.idFromName(playerConnection.username);
         const playerIdentity = this.env.PLAYER_IDENTITY.get(playerIdentityId);
         // Fire and forget

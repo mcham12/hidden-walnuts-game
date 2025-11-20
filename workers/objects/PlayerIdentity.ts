@@ -485,14 +485,14 @@ export class PlayerIdentity extends DurableObject {
       data.accountCreated = Date.now();
       data.lastSeen = Date.now();
 
-      // Unlock free characters (6 total for authenticated users)
+      // Unlock free characters (Immediate access to 5 characters)
+      // Mallard is reserved as a "Verified Bonus"
       data.unlockedCharacters = [
         'squirrel',
         'hare',
         'goat',
         'chipmunk',
-        'turkey',
-        'mallard'
+        'turkey'
       ];
 
       // If upgrading from Quick Play with a valid character, keep it.
@@ -735,6 +735,17 @@ export class PlayerIdentity extends DurableObject {
       data.emailVerified = true;
       data.emailVerificationToken = undefined;
       data.emailVerificationExpiry = undefined;
+
+      // Unlock "Verified Bonus" character (Mallard)
+      const bonusCharacters = ['mallard'];
+
+      // Add bonus characters to unlocked list
+      for (const charId of bonusCharacters) {
+        if (!data.unlockedCharacters.includes(charId)) {
+          data.unlockedCharacters.push(charId);
+        }
+      }
+
       data.lastSeen = Date.now();
       await this.ctx.storage.put('player', data);
 

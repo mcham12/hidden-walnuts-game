@@ -20,8 +20,11 @@ import { CharacterRegistry } from '../services/CharacterRegistry';
 export interface CharacterPreviewOptions {
   characterId: string;
   isAvailable: boolean;
+  isAuthenticated?: boolean;
+  isEmailVerified?: boolean;
   onSelect?: (characterId: string) => void;
   onSignUp?: () => void;
+  onVerify?: () => void;
   onClose?: () => void;
 }
 
@@ -206,7 +209,11 @@ export class CharacterPreviewModal {
       tierValue.textContent = `💎 $${character.price?.toFixed(2) || '1.99'}`;
     } else {
       tierLabel.textContent = 'Status';
-      tierValue.textContent = '🔒 Locked - Sign up to unlock!';
+      if (this.options.isAuthenticated && !this.options.isEmailVerified) {
+        tierValue.textContent = '🔒 Locked - Verify Email to Unlock!';
+      } else {
+        tierValue.textContent = '🔒 Locked - Sign up to unlock!';
+      }
     }
 
     tierElement.appendChild(tierLabel);
@@ -271,36 +278,70 @@ export class CharacterPreviewModal {
       premiumButton.textContent = `Coming Soon!`;
       buttonsContainer.appendChild(premiumButton);
     } else {
-      // Sign up button for locked free characters
-      const signupButton = document.createElement('button');
-      signupButton.style.cssText = `
-        flex: 1;
-        min-width: 200px;
-        height: 50px;
-        background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-        color: #2c5f2d;
-        border: none;
-        border-radius: 8px;
-        font-size: 16px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s;
-        box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
-      `;
-      signupButton.textContent = 'Sign Up to Unlock Free!';
-      signupButton.addEventListener('mouseenter', () => {
-        signupButton.style.transform = 'scale(1.05)';
-        signupButton.style.boxShadow = '0 6px 16px rgba(255, 215, 0, 0.6)';
-      });
-      signupButton.addEventListener('mouseleave', () => {
-        signupButton.style.transform = 'scale(1)';
-        signupButton.style.boxShadow = '0 4px 12px rgba(255, 215, 0, 0.4)';
-      });
-      signupButton.addEventListener('click', () => {
-        this.options.onSignUp?.();
-        this.close();
-      });
-      buttonsContainer.appendChild(signupButton);
+      // Locked free characters
+      // If authenticated but not verified, show "Verify Email"
+      if (this.options.isAuthenticated && !this.options.isEmailVerified) {
+        const verifyButton = document.createElement('button');
+        verifyButton.style.cssText = `
+          flex: 1;
+          min-width: 200px;
+          height: 50px;
+          background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+          color: #2c5f2d;
+          border: none;
+          border-radius: 8px;
+          font-size: 16px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: transform 0.2s, box-shadow 0.2s;
+          box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+        `;
+        verifyButton.textContent = 'Verify Email to Unlock!';
+        verifyButton.addEventListener('mouseenter', () => {
+          verifyButton.style.transform = 'scale(1.05)';
+          verifyButton.style.boxShadow = '0 6px 16px rgba(255, 215, 0, 0.6)';
+        });
+        verifyButton.addEventListener('mouseleave', () => {
+          verifyButton.style.transform = 'scale(1)';
+          verifyButton.style.boxShadow = '0 4px 12px rgba(255, 215, 0, 0.4)';
+        });
+        verifyButton.addEventListener('click', () => {
+          this.options.onVerify?.();
+          this.close();
+        });
+        buttonsContainer.appendChild(verifyButton);
+      } else {
+        // Not authenticated, show "Sign Up"
+        const signupButton = document.createElement('button');
+        signupButton.style.cssText = `
+          flex: 1;
+          min-width: 200px;
+          height: 50px;
+          background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+          color: #2c5f2d;
+          border: none;
+          border-radius: 8px;
+          font-size: 16px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: transform 0.2s, box-shadow 0.2s;
+          box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+        `;
+        signupButton.textContent = 'Sign Up to Unlock Free!';
+        signupButton.addEventListener('mouseenter', () => {
+          signupButton.style.transform = 'scale(1.05)';
+          signupButton.style.boxShadow = '0 6px 16px rgba(255, 215, 0, 0.6)';
+        });
+        signupButton.addEventListener('mouseleave', () => {
+          signupButton.style.transform = 'scale(1)';
+          signupButton.style.boxShadow = '0 4px 12px rgba(255, 215, 0, 0.4)';
+        });
+        signupButton.addEventListener('click', () => {
+          this.options.onSignUp?.();
+          this.close();
+        });
+        buttonsContainer.appendChild(signupButton);
+      }
     }
 
     // Assemble info section

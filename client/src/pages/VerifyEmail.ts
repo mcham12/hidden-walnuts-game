@@ -259,13 +259,15 @@ export class VerifyEmailPage {
 
   /**
    * Static method to handle verification from URL
+   * Returns true if verification route was handled
    */
-  public static handleVerificationRoute(): void {
+  public static handleVerificationRoute(): boolean {
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
 
     // Check if this is a verification route
-    if (token && (window.location.pathname === '/verify-email' || urlParams.has('verify'))) {
+    // Support both /verify-email and /verify (short URL)
+    if (token && (window.location.pathname === '/verify-email' || window.location.pathname === '/verify' || urlParams.has('verify'))) {
       // Create container for verification page
       const container = document.createElement('div');
       container.id = 'verify-email-page';
@@ -274,7 +276,8 @@ export class VerifyEmailPage {
       // Initialize verification page
       new VerifyEmailPage(container, token);
 
-      return;
+      return true;
     }
+    return false;
   }
 }
