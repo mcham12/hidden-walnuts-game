@@ -7588,12 +7588,12 @@ export class Game {
       if (leaderboardType === 'weekly') {
         const labelEl = document.createElement('div');
         labelEl.style.cssText = `
-          font - size: 11px;
+          font-size: 11px;
           color: #FFD700;
-          text - align: center;
+          text-align: center;
           margin: -10px 0 10px 0;
-          font - weight: 600;
-          text - shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+          font-weight: 600;
+          text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
           `;
         labelEl.textContent = 'Top 10 - Verified Players Only';
         leaderboardList.appendChild(labelEl);
@@ -7617,10 +7617,10 @@ export class Game {
 
         // Create entry HTML
         li.innerHTML = `
-            < span class="leaderboard-rank" > #${index + 1} </span>
-              < span class="leaderboard-name" > ${verifiedBadge}${entry.displayName} </span>
-                < span class="leaderboard-score" > ${entry.score} </span>
-                  `;
+            <span class="leaderboard-rank">#${index + 1}</span>
+            <span class="leaderboard-name">${verifiedBadge}${entry.displayName}</span>
+            <span class="leaderboard-score">${entry.score}</span>
+          `;
 
         leaderboardList.appendChild(li);
       });
@@ -7636,7 +7636,7 @@ export class Game {
           // Add separator
           const separator = document.createElement('div');
           separator.style.cssText = `
-          border - top: 1px solid rgba(255, 215, 0, 0.3);
+          border-top: 1px solid rgba(255, 215, 0, 0.3);
           margin: 10px 0;
           `;
           leaderboardList.appendChild(separator);
@@ -7648,10 +7648,10 @@ export class Game {
           const verifiedBadge = playerEntry.isAuthenticated ? '🔒 ' : '';
 
           playerLi.innerHTML = `
-            < span class="leaderboard-rank" > #${playerRank} </span>
-              < span class="leaderboard-name" > ${verifiedBadge}${playerEntry.displayName} </span>
-                < span class="leaderboard-score" > ${playerEntry.score} </span>
-                  `;
+              <span class="leaderboard-rank">#${playerRank}</span>
+              <span class="leaderboard-name">${verifiedBadge}You(${this.username})</span>
+              <span class="leaderboard-score">${playerEntry.score}</span>
+            `;
 
           leaderboardList.appendChild(playerLi);
 

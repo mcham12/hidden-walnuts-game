@@ -79,6 +79,9 @@ export class CharacterGrid {
         width: 100%;
         padding: 20px;
         box-sizing: border-box;
+        overflow-y: auto;
+        max-height: 80vh;
+        -webkit-overflow-scrolling: touch;
       }
 
       .character-grid {
