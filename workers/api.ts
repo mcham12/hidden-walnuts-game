@@ -77,6 +77,7 @@ export default {
         try {
           const bodyText = await request.text();
           const body = bodyText ? JSON.parse(bodyText) : {};
+          console.log('🔍 Auth route body:', JSON.stringify(body));
 
           // Different actions use different identifiers
           if (action === 'signup' || action === 'login' || action === 'requestPasswordReset') {
@@ -102,7 +103,7 @@ export default {
             // The client MUST send the email in the body.
           }
 
-          if (!identifier) {
+          if (!identifier && action !== 'verifyEmail') {
             return new Response(JSON.stringify({
               success: false,
               error: 'Missing identifier',
