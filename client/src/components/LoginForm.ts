@@ -59,7 +59,7 @@ export class LoginForm {
         </div>
 
         <!-- Error Message -->
-        <div class="error-message" style="display: none; background: rgba(255,99,71,0.2); border: 1px solid rgba(255,99,71,0.5); color: #FFE4B5; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 14px;"></div>
+        <div class="error-message" style="display: none; background: rgba(255, 68, 68, 0.15); border: 1px solid rgba(255, 68, 68, 0.5); color: #FF9999; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; font-weight: 500;"></div>
 
         <!-- Email Field -->
         <div class="form-group" style="margin-bottom: 20px;">
@@ -92,7 +92,7 @@ export class LoginForm {
               display: none;
             "></span>
           </div>
-          <div class="field-error" style="color: #c33; font-size: 13px; margin-top: 4px; display: none;"></div>
+          <div class="field-error" style="color: #FF6B6B; font-size: 13px; margin-top: 4px; display: none; font-weight: 500;"></div>
         </div>
 
         <!-- Password Field -->
@@ -141,7 +141,7 @@ export class LoginForm {
               display: none;
             "></span>
           </div>
-          <div class="field-error" style="color: #c33; font-size: 13px; margin-top: 4px; display: none;"></div>
+          <div class="field-error" style="color: #FF6B6B; font-size: 13px; margin-top: 4px; display: none; font-weight: 500;"></div>
         </div>
 
         <!-- Forgot Password Link -->

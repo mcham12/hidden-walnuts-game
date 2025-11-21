@@ -76,7 +76,7 @@ export class SignupForm {
         </div>
 
         <!-- Error Message -->
-        <div class="error-message" style="display: none; background: #fee; border: 1px solid #fcc; color: #c33; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 14px;"></div>
+        <div class="error-message" style="display: none; background: rgba(255, 68, 68, 0.15); border: 1px solid rgba(255, 68, 68, 0.5); color: #FF9999; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; font-weight: 500;"></div>
 
         <!-- Username Field -->
         <div class="form-group" style="margin-bottom: 20px;">
@@ -109,7 +109,7 @@ export class SignupForm {
               display: none;
             "></span>
           </div>
-          <div class="field-error" style="color: #c33; font-size: 13px; margin-top: 4px; display: none;"></div>
+          <div class="field-error" style="color: #FF6B6B; font-size: 13px; margin-top: 4px; display: none; font-weight: 500;"></div>
         </div>
 
         <!-- Email Field -->
@@ -143,7 +143,7 @@ export class SignupForm {
               display: none;
             "></span>
           </div>
-          <div class="field-error" style="color: #c33; font-size: 13px; margin-top: 4px; display: none;"></div>
+          <div class="field-error" style="color: #FF6B6B; font-size: 13px; margin-top: 4px; display: none; font-weight: 500;"></div>
         </div>
 
         <!-- Password Field -->
@@ -192,7 +192,7 @@ export class SignupForm {
               display: none;
             "></span>
           </div>
-          <div class="field-error" style="color: #c33; font-size: 13px; margin-top: 4px; display: none;"></div>
+          <div class="field-error" style="color: #FF6B6B; font-size: 13px; margin-top: 4px; display: none; font-weight: 500;"></div>
 
           <!-- Password Strength Meter -->
           <div class="password-strength" style="margin-top: 8px;">
@@ -237,7 +237,7 @@ export class SignupForm {
               display: none;
             "></span>
           </div>
-          <div class="field-error" style="color: #c33; font-size: 13px; margin-top: 4px; display: none;"></div>
+          <div class="field-error" style="color: #FF6B6B; font-size: 13px; margin-top: 4px; display: none; font-weight: 500;"></div>
         </div>
 
         <!-- Submit Button -->
@@ -488,7 +488,7 @@ export class SignupForm {
 
         // MVP 16: If email already registered, highlight the "Log In" link
         if (response.error === 'Email already registered' ||
-            (response.message && response.message.includes('already registered'))) {
+          (response.message && response.message.includes('already registered'))) {
           this.highlightLoginLink();
         }
       }
