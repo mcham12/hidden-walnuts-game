@@ -1533,72 +1533,62 @@ export default class ForestManager extends DurableObject {
         const foundUsername = await this.env.EMAIL_INDEX.get(emailKey);
         if (foundUsername) {
           username = foundUsername;
-        } else {
-          // If not in KV, we can't easily find the DO if we don't know the username
-          // But we can try to guess if the username is the email (some systems do this)
-          // Or just fail.
-          return new Response(JSON.stringify({
-            error: "User not found",
-            message: "Could not find username for this email in KV index. Please provide username directly."
-          }), {
-            status: 404,
-            headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
-          });
         }
+        // If not found in KV, we proceed with just the email.
+        // This allows clearing "Zombie DOs" that are keyed by email but missing from KV.
       }
 
-      if (!username) {
-        return new Response(JSON.stringify({
-          error: "Username resolution failed",
-          message: "Could not resolve username"
-        }), {
-          status: 400,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
-        });
-      }
+      const normalizedEmail = email ? email.toLowerCase().trim() : null;
+      const normalizedUsername = username ? username.toLowerCase().trim() : null;
 
-      const normalizedUsername = username.toLowerCase().trim();
-      let message = `Cleared user ${username}`;
+      let message = `Cleared user request: ${username || 'N/A'}, ${email || 'N/A'}`;
       let foundInEmailIndex = false;
       let foundInUsernameIndex = false;
       let identitiesCleared = 0;
 
-      try {
-        // 1. Clear PlayerIdentity DO
-        // We use the provided username to find the DO.
-        const id = this.env.PLAYER_IDENTITY.idFromName(username);
-        const stub = this.env.PLAYER_IDENTITY.get(id);
+      // IDs to clear - we might have DOs keyed by username OR email
+      const idsToClear = new Set<string>();
+      if (normalizedUsername) idsToClear.add(normalizedUsername);
+      if (normalizedEmail) idsToClear.add(normalizedEmail);
 
-        // Call admin clear action on the PlayerIdentity DO
-        const clearUrl = new URL('https://internal/api/identity');
-        clearUrl.searchParams.set('action', 'adminClear');
+      for (const idName of idsToClear) {
+        try {
+          // Get PlayerIdentity DO for this identifier
+          const id = this.env.PLAYER_IDENTITY.idFromName(idName);
+          const stub = this.env.PLAYER_IDENTITY.get(id);
 
-        const clearRequest = new Request(clearUrl.toString(), {
-          method: 'POST',
-          headers: { 'X-Admin-Secret': adminSecret }
-        });
+          // Call admin clear action on the PlayerIdentity DO
+          const clearUrl = new URL('https://internal/api/identity');
+          clearUrl.searchParams.set('action', 'adminClear');
 
-        const response = await stub.fetch(clearRequest);
-        if (response.ok) {
-          identitiesCleared++;
-          const data = await response.json() as any;
-          // If we found an email in the DO, try to clear it from KV too
-          if (data.email && !email) {
-            email = data.email;
+          const clearRequest = new Request(clearUrl.toString(), {
+            method: 'POST',
+            headers: { 'X-Admin-Secret': adminSecret }
+          });
+
+          const response = await stub.fetch(clearRequest);
+          if (response.ok) {
+            identitiesCleared++;
+            const data = await response.json() as any;
+            // If we found an email/username in the DO that we didn't know, try to clear that too
+            if (data.email && !email) email = data.email;
+            if (data.username && !username) username = data.username;
           }
+        } catch (error) {
+          console.error(`Failed to clear PlayerIdentity for ${idName}:`, error);
+          message += ` (DO clear failed for ${idName}: ${error})`;
         }
-      } catch (error) {
-        console.error(`Failed to clear PlayerIdentity for ${username}:`, error);
-        message += ` (DO clear failed: ${error})`;
       }
 
       // 2. Clear from USERNAME_INDEX
-      const usernameKey = `username:${normalizedUsername}`;
-      const existingEmail = await this.env.USERNAME_INDEX.get(usernameKey);
-      if (existingEmail) {
-        foundInUsernameIndex = true;
-        await this.env.USERNAME_INDEX.delete(usernameKey);
-        if (!email) email = existingEmail;
+      if (username) {
+        const usernameKey = `username:${username.toLowerCase().trim()}`;
+        const existingEmail = await this.env.USERNAME_INDEX.get(usernameKey);
+        if (existingEmail) {
+          foundInUsernameIndex = true;
+          await this.env.USERNAME_INDEX.delete(usernameKey);
+          if (!email) email = existingEmail;
+        }
       }
 
       // 3. Clear from EMAIL_INDEX
