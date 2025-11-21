@@ -604,8 +604,11 @@ export class PlayerIdentity extends DurableObject {
 
       try {
         // MVP 16: Register email and username in global KV indices
+        console.log(`📝 Writing to KV: ${emailKey} → ${username}`);
         await this.env.EMAIL_INDEX.put(emailKey, username);
+        console.log(`📝 Writing to KV: ${usernameKey} → ${normalizedEmail}`);
         await this.env.USERNAME_INDEX.put(usernameKey, normalizedEmail);
+        console.log(`✅ KV indices updated successfully`);
       } catch (kvError) {
         console.error('❌ KV Index update failed, rolling back DO creation:', kvError);
         // Rollback: Delete the player data we just created to prevent "Zombie DO"
