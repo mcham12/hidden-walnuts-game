@@ -1630,6 +1630,95 @@ export default class ForestManager extends DurableObject {
     return new Response("Not Found", { status: 404 });
   }
 
+  // MVP 16: Admin endpoint to manually verify a user (bypassing email)
+  // Useful when email delivery fails (e.g., Apple 554 error)
+  private async handleAdminVerifyUser(request: Request): Promise<Response> {
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, X-Admin-Secret",
+    };
+
+    // Require admin authentication
+    const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
+    if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
+      return new Response(JSON.stringify({
+        error: "Unauthorized",
+        message: "Invalid or missing admin secret"
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    try {
+      const body = await request.json() as { username?: string; email?: string };
+      let { username, email } = body;
+
+      if (!username && !email) {
+        return new Response(JSON.stringify({
+          error: "Missing identifier",
+          message: "Must provide username or email"
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      // Resolve email to username if needed
+      if (!username && email) {
+        const emailKey = `email:${email.toLowerCase().trim()}`;
+        const foundUsername = await this.env.EMAIL_INDEX.get(emailKey);
+        if (foundUsername) {
+          username = foundUsername;
+        } else {
+          // Fallback: try using email as ID (zombie case)
+          username = email.toLowerCase().trim();
+        }
+      }
+
+      if (!username) {
+        return new Response(JSON.stringify({
+          error: "Resolution failed",
+          message: "Could not resolve user identifier"
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      // Call PlayerIdentity DO
+      const id = this.env.PLAYER_IDENTITY.idFromName(username);
+      const stub = this.env.PLAYER_IDENTITY.get(id);
+
+      const verifyUrl = new URL('https://internal/api/identity');
+      verifyUrl.searchParams.set('action', 'adminVerify');
+
+      const verifyRequest = new Request(verifyUrl.toString(), {
+        method: 'POST',
+        headers: { 'X-Admin-Secret': adminSecret }
+      });
+
+      const response = await stub.fetch(verifyRequest);
+      const data = await response.json();
+
+      return new Response(JSON.stringify(data), {
+        status: response.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+
+    } catch (error) {
+      console.error('Admin verify error:', error);
+      return new Response(JSON.stringify({
+        error: "Internal Error",
+        message: error instanceof Error ? error.message : "Unknown error"
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+  }
+
   // Simple player connection setup
   private async setupPlayerConnection(
     squirrelId: string,

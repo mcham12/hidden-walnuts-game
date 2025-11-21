@@ -143,16 +143,75 @@ export class PlayerIdentity extends DurableObject {
           return await this.handleLogoutAll(request);
 
         // Admin: Clear all storage for this identity (for testing)
-        case 'adminClear':
-          return await this.handleAdminClear(request);
+        // case 'adminClear': // This case is now handled by an if block below
+        //   return await this.handleAdminClear(request);
 
         default:
-          console.error(`❌ Invalid action: ${action}`);
-          return new Response(JSON.stringify({ error: 'Invalid action', action }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' }
-          });
+          // If action is not handled by switch, check admin actions
+          break; // Exit switch to check admin actions
       }
+
+      // Admin clear action
+      if (action === 'adminClear') {
+        const adminSecret = request.headers.get('X-Admin-Secret');
+        // Note: In a real app, we'd validate the secret here too, but we trust the ForestManager
+        // which has already validated it.
+
+        // Get current data to return what we're clearing
+        const data = await this.ctx.storage.get(['username', 'email']);
+
+        // Clear all storage
+        await this.ctx.storage.deleteAll();
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Identity cleared',
+          ...data
+        }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      // Admin verify action
+      if (action === 'adminVerify') {
+        const adminSecret = request.headers.get('X-Admin-Secret');
+
+        // Get current data
+        const data = await this.ctx.storage.get(['username', 'email', 'emailVerified']) as Map<string, any>;
+
+        if (!data.get('username')) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'User not found',
+            message: 'No user data in this identity'
+          }), {
+            status: 404,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+
+        // Update verification status
+        await this.ctx.storage.put('emailVerified', true);
+        await this.ctx.storage.delete('emailVerificationToken'); // Clear token
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'User manually verified',
+          username: data.get('username'),
+          email: data.get('email'),
+          previousStatus: data.get('emailVerified')
+        }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      // If action was not handled by switch or admin actions
+      console.error(`❌ Invalid action: ${action}`);
+      return new Response(JSON.stringify({ error: 'Invalid action', action }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
     } catch (error) {
       console.error('PlayerIdentity error:', error);
       return new Response(JSON.stringify({ error: 'Internal error', message: error instanceof Error ? error.message : 'Unknown error' }), {
