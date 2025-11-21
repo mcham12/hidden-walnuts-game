@@ -4,17 +4,17 @@
  *
  * Features:
  * - Display: "✉️ Check Your Email!" with user's email
- * - Message: "Click the link to verify your account and unlock 6 characters!"
- * - [Resend Email] button with rate limiting (3 per hour) and countdown timer
- * - [Play as Guest] button to continue without verification
- * - API: POST `/auth/resend-verification`
+ * - Message: "You are signed in, but need to verify your email to unlock characters."
+ * - [Resend Email] button with rate limiting
+ * - [Log Out] button to switch accounts
+ * - Dark theme styling to match game UI
  */
 
-import { resendVerification } from '../services/AuthService';
+import { resendVerification, logout } from '../services/AuthService';
 
 export interface EmailVerificationOverlayOptions {
   email: string;
-  onPlayAsGuest?: () => void;
+  onPlayAsGuest?: () => void; // Deprecated but kept for interface compatibility
   onClose?: () => void;
 }
 
@@ -92,7 +92,8 @@ export class EmailVerificationOverlay {
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(4px);
       z-index: 10000;
       display: flex;
       align-items: center;
@@ -104,19 +105,21 @@ export class EmailVerificationOverlay {
     // Create content box
     const content = document.createElement('div');
     content.style.cssText = `
-      background: white;
+      background: #2c3e50;
+      border: 2px solid #daa520;
       border-radius: 16px;
       padding: 40px;
       max-width: 500px;
       width: 100%;
       text-align: center;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
+      color: #ecf0f1;
     `;
 
     // Email icon
     const icon = document.createElement('div');
     icon.style.cssText = `
-      font-size: 72px;
+      font-size: 64px;
       margin-bottom: 20px;
     `;
     icon.textContent = '✉️';
@@ -126,30 +129,21 @@ export class EmailVerificationOverlay {
     title.style.cssText = `
       margin: 0 0 12px 0;
       font-size: 28px;
-      color: #333;
+      color: #daa520;
       font-weight: 700;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
     `;
-    title.textContent = 'Check Your Email!';
-
-    // Email display
-    const emailDisplay = document.createElement('p');
-    emailDisplay.style.cssText = `
-      margin: 0 0 20px 0;
-      font-size: 16px;
-      color: #667eea;
-      font-weight: 600;
-    `;
-    emailDisplay.textContent = this.options.email;
+    title.textContent = 'Verify Your Email';
 
     // Message
     const message = document.createElement('p');
     message.style.cssText = `
-      margin: 0 0 30px 0;
+      margin: 0 0 20px 0;
       font-size: 16px;
-      color: #666;
+      color: #bdc3c7;
       line-height: 1.6;
     `;
-    message.textContent = 'Click the link in your email to verify your account and unlock 6 free characters!';
+    message.innerHTML = `You are signed in as <strong style="color: #fff;">${this.options.email}</strong>.<br>Please verify your email to unlock all characters.`;
 
     // Status message (for success/error)
     const statusMessage = document.createElement('div');
@@ -168,67 +162,63 @@ export class EmailVerificationOverlay {
     this.resendButton.style.cssText = `
       width: 100%;
       height: 50px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%);
       color: white;
       border: none;
       border-radius: 8px;
       font-size: 16px;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       transition: transform 0.2s, opacity 0.2s;
       margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 0 #219150;
     `;
     this.updateResendButtonState();
 
-    // Play as Guest button
-    const guestButton = document.createElement('button');
-    guestButton.style.cssText = `
+    // Log Out button
+    const logoutButton = document.createElement('button');
+    logoutButton.style.cssText = `
       width: 100%;
-      height: 50px;
-      background: white;
-      color: #667eea;
-      border: 2px solid #667eea;
+      height: 40px;
+      background: transparent;
+      color: #bdc3c7;
+      border: 1px solid #7f8c8d;
       border-radius: 8px;
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      transition: transform 0.2s, background 0.2s;
+      transition: all 0.2s;
     `;
-    guestButton.textContent = 'Play as Guest';
+    logoutButton.textContent = 'Log Out';
 
     // Assemble content
     content.appendChild(icon);
     content.appendChild(title);
-    content.appendChild(emailDisplay);
     content.appendChild(message);
     content.appendChild(statusMessage);
     content.appendChild(this.resendButton);
-    content.appendChild(guestButton);
+    content.appendChild(logoutButton);
 
     this.overlay.appendChild(content);
     this.container.appendChild(this.overlay);
 
     // Setup event listeners
     this.resendButton.addEventListener('click', () => this.handleResend());
-    guestButton.addEventListener('click', () => this.handlePlayAsGuest());
 
-    // Button hover effects
-    this.resendButton.addEventListener('mouseenter', () => {
-      if (this.resendButton && !this.resendButton.disabled) {
-        this.resendButton.style.transform = 'scale(1.02)';
-      }
-    });
-    this.resendButton.addEventListener('mouseleave', () => {
-      if (this.resendButton) {
-        this.resendButton.style.transform = 'scale(1)';
-      }
+    logoutButton.addEventListener('click', async () => {
+      await logout();
+      window.location.reload();
     });
 
-    guestButton.addEventListener('mouseenter', () => {
-      guestButton.style.background = '#f0f0f0';
+    logoutButton.addEventListener('mouseenter', () => {
+      logoutButton.style.borderColor = '#ecf0f1';
+      logoutButton.style.color = '#ecf0f1';
     });
-    guestButton.addEventListener('mouseleave', () => {
-      guestButton.style.background = 'white';
+    logoutButton.addEventListener('mouseleave', () => {
+      logoutButton.style.borderColor = '#7f8c8d';
+      logoutButton.style.color = '#bdc3c7';
     });
 
     // Prevent body scroll
@@ -250,8 +240,10 @@ export class EmailVerificationOverlay {
         this.resendButton.disabled = true;
         this.resendButton.style.opacity = '0.5';
         this.resendButton.style.cursor = 'not-allowed';
+        this.resendButton.style.background = '#7f8c8d';
+        this.resendButton.style.boxShadow = 'none';
         const minutesRemaining = Math.ceil(timeRemaining / 60000);
-        this.resendButton.textContent = `Try again in ${minutesRemaining} min`;
+        this.resendButton.textContent = `TRY AGAIN IN ${minutesRemaining} MIN`;
         return;
       } else {
         // Reset if hour has passed
@@ -272,7 +264,9 @@ export class EmailVerificationOverlay {
     this.resendButton.disabled = false;
     this.resendButton.style.opacity = '1';
     this.resendButton.style.cursor = 'pointer';
-    this.resendButton.textContent = 'Resend Email';
+    this.resendButton.style.background = 'linear-gradient(180deg, #2ecc71 0%, #27ae60 100%)';
+    this.resendButton.style.boxShadow = '0 4px 0 #219150';
+    this.resendButton.textContent = 'RESEND VERIFICATION EMAIL';
   }
 
   /**
@@ -282,8 +276,10 @@ export class EmailVerificationOverlay {
     if (!this.resendButton) return;
 
     this.resendButton.disabled = true;
-    this.resendButton.style.opacity = '0.5';
+    this.resendButton.style.opacity = '0.7';
     this.resendButton.style.cursor = 'not-allowed';
+    this.resendButton.style.background = '#7f8c8d';
+    this.resendButton.style.boxShadow = 'none';
 
     const updateCountdown = (remaining: number) => {
       if (!this.resendButton) return;
@@ -293,7 +289,7 @@ export class EmailVerificationOverlay {
         return;
       }
 
-      this.resendButton.textContent = `Resend Email (${remaining}s)`;
+      this.resendButton.textContent = `RESEND EMAIL (${remaining}s)`;
 
       this.countdownTimer = window.setTimeout(() => {
         updateCountdown(remaining - 1);
@@ -314,7 +310,7 @@ export class EmailVerificationOverlay {
     this.resendButton.disabled = true;
     this.resendButton.style.opacity = '0.7';
     const originalText = this.resendButton.textContent;
-    this.resendButton.textContent = 'Sending...';
+    this.resendButton.textContent = 'SENDING...';
 
     try {
       // Call resend API
@@ -336,14 +332,16 @@ export class EmailVerificationOverlay {
         this.showStatusMessage(response.message || 'Failed to send email. Please try again.', 'error');
         this.resendButton.disabled = false;
         this.resendButton.style.opacity = '1';
-        this.resendButton.textContent = originalText || 'Resend Email';
+        this.resendButton.textContent = originalText || 'RESEND VERIFICATION EMAIL';
+        this.updateResendButtonState(); // Restore style
       }
     } catch (error) {
       console.error('Resend verification error:', error);
       this.showStatusMessage('Network error. Please check your connection.', 'error');
       this.resendButton.disabled = false;
       this.resendButton.style.opacity = '1';
-      this.resendButton.textContent = originalText || 'Resend Email';
+      this.resendButton.textContent = originalText || 'RESEND VERIFICATION EMAIL';
+      this.updateResendButtonState(); // Restore style
     }
   }
 
@@ -355,13 +353,13 @@ export class EmailVerificationOverlay {
     if (!statusElement) return;
 
     if (type === 'success') {
-      statusElement.style.background = '#d4edda';
-      statusElement.style.border = '1px solid #c3e6cb';
-      statusElement.style.color = '#155724';
+      statusElement.style.background = 'rgba(46, 204, 113, 0.2)';
+      statusElement.style.border = '1px solid #2ecc71';
+      statusElement.style.color = '#2ecc71';
     } else {
-      statusElement.style.background = '#fee';
-      statusElement.style.border = '1px solid #fcc';
-      statusElement.style.color = '#c33';
+      statusElement.style.background = 'rgba(231, 76, 60, 0.2)';
+      statusElement.style.border = '1px solid #e74c3c';
+      statusElement.style.color = '#e74c3c';
     }
 
     statusElement.textContent = message;
@@ -371,14 +369,6 @@ export class EmailVerificationOverlay {
     setTimeout(() => {
       statusElement.style.display = 'none';
     }, 5000);
-  }
-
-  /**
-   * Handle "Play as Guest" click
-   */
-  private handlePlayAsGuest(): void {
-    this.close();
-    this.options.onPlayAsGuest?.();
   }
 
   /**
