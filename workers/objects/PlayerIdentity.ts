@@ -543,9 +543,16 @@ export class PlayerIdentity extends DurableObject {
 
       await this.ctx.storage.put('player', data);
 
-      // MVP 16: Register email and username in global KV indices
-      await this.env.EMAIL_INDEX.put(emailKey, username);
-      await this.env.USERNAME_INDEX.put(usernameKey, normalizedEmail);
+      try {
+        // MVP 16: Register email and username in global KV indices
+        await this.env.EMAIL_INDEX.put(emailKey, username);
+        await this.env.USERNAME_INDEX.put(usernameKey, normalizedEmail);
+      } catch (kvError) {
+        console.error('❌ KV Index update failed, rolling back DO creation:', kvError);
+        // Rollback: Delete the player data we just created to prevent "Zombie DO"
+        await this.ctx.storage.delete('player');
+        throw new Error('Failed to register user index. Please try again.');
+      }
 
       // Send verification email
       if (this.env.SMTP_USER && this.env.SMTP_PASSWORD) {

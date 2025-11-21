@@ -1403,7 +1403,7 @@ export default class ForestManager extends DurableObject {
     }
 
     // MVP 16: Clear all users for testing (clears EMAIL_INDEX, USERNAME_INDEX, PlayerIdentity storage, and disconnects all players)
-    // MVP 16: Clear all users for testing (clears EMAIL_INDEX, USERNAME_INDEX, PlayerIdentity storage, and disconnects all players)
+    // MVP 16: Clear all users for testing (clears EMAIL_INDEX, USERNAME_INDEX,
     if (path === "/admin/users/clear-all" && request.method === "POST") {
       // Require admin authentication
       const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
@@ -1486,22 +1486,10 @@ export default class ForestManager extends DurableObject {
 
       // Clear active players map
       this.activePlayers.clear();
-
-      return new Response(JSON.stringify({
-        success: true,
-        emailsCleared,
-        usernamesCleared,
-        identitiesCleared,
-        playersDisconnected,
-        message: `Cleared ${emailsCleared} email registrations, ${usernamesCleared} username registrations, ${identitiesCleared} user identities, and disconnected ${playersDisconnected} active players`
-      }), {
-        status: 200,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
-      });
     }
 
-    // MVP 16: Clear specific user for testing
-    if (path === "/admin/users/clear" && request.method === "POST") {
+    // MVP 16: Clear specific user (fixes "Zombie DO" issue where user exists in DO but not in KV)
+    if (path === "/admin/users/clear-user" && request.method === "POST") {
       // Require admin authentication
       const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
       if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
@@ -1514,121 +1502,129 @@ export default class ForestManager extends DurableObject {
         });
       }
 
-      try {
-        const body = await request.json() as { username?: string; email?: string };
-        const username = body.username;
-        const email = body.email;
+      const body = await request.json() as { username?: string; email?: string };
+      let { username, email } = body;
 
-        if (!username && !email) {
+      if (!username && !email) {
+        return new Response(JSON.stringify({
+          error: "Missing identifier",
+          message: "Must provide username or email"
+        }), {
+          status: 400,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      // If only email provided, try to look up username from KV
+      if (!username && email) {
+        const emailKey = `email:${email.toLowerCase().trim()}`;
+        const foundUsername = await this.env.EMAIL_INDEX.get(emailKey);
+        if (foundUsername) {
+          username = foundUsername;
+        } else {
+          // If not in KV, we can't easily find the DO if we don't know the username
+          // But we can try to guess if the username is the email (some systems do this)
+          // Or just fail.
           return new Response(JSON.stringify({
-            error: "Bad Request",
-            message: "Username or email required"
+            error: "User not found",
+            message: "Could not find username for this email in KV index. Please provide username directly."
           }), {
-            status: 400,
+            status: 404,
             headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
           });
         }
+      }
 
-        let emailsCleared = 0;
-        let usernamesCleared = 0;
-        let identitiesCleared = 0;
+      if (!username) {
+        return new Response(JSON.stringify({
+          error: "Username resolution failed",
+          message: "Could not resolve username"
+        }), {
+          status: 400,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
 
-        // 1. Clear KV entries if they exist
-        if (email) {
-          const normalizedEmail = email.toLowerCase().trim();
-          const emailKey = `email:${normalizedEmail}`;
-          await this.env.EMAIL_INDEX.delete(emailKey);
-          emailsCleared++;
-        }
+      const normalizedUsername = username.toLowerCase().trim();
+      let message = `Cleared user ${username}`;
+      let foundInEmailIndex = false;
+      let foundInUsernameIndex = false;
+      let identitiesCleared = 0;
 
-        if (username) {
-          const normalizedUsername = username.toLowerCase().trim();
-          const usernameKey = `username:${normalizedUsername}`;
-          await this.env.USERNAME_INDEX.delete(usernameKey);
-          usernamesCleared++;
-        }
+      try {
+        // 1. Clear PlayerIdentity DO
+        // We use the provided username to find the DO.
+        const id = this.env.PLAYER_IDENTITY.idFromName(username);
+        const stub = this.env.PLAYER_IDENTITY.get(id);
 
-        // 2. FORCE CLEAR Durable Object by ID
-        // We must derive the ID from the identifier used in routing (api.ts)
-        // In api.ts, /auth/signup uses body.email OR body.username
-        // We clear both raw and normalized versions to be safe against casing mismatches
+        // Call admin clear action on the PlayerIdentity DO
+        const clearUrl = new URL('https://internal/api/identity');
+        clearUrl.searchParams.set('action', 'adminClear');
 
-        const identifiersToClear: string[] = [];
-        if (email) {
-          identifiersToClear.push(email);
-          identifiersToClear.push(email.toLowerCase().trim());
-        }
-        if (username) {
-          identifiersToClear.push(username);
-          identifiersToClear.push(username.toLowerCase().trim());
-        }
+        const clearRequest = new Request(clearUrl.toString(), {
+          method: 'POST',
+          headers: { 'X-Admin-Secret': adminSecret }
+        });
 
-        // Deduplicate
-        const uniqueIdentifiers = [...new Set(identifiersToClear)];
-
-        for (const identifier of uniqueIdentifiers) {
-          const id = this.env.PLAYER_IDENTITY.idFromName(identifier);
-          const stub = this.env.PLAYER_IDENTITY.get(id);
-          // FIXED: Must pass admin secret to the DO!
-          await stub.fetch(new Request("http://internal/api/identity?action=adminClear", {
-            method: "POST",
-            headers: { "X-Admin-Secret": this.env.ADMIN_SECRET }
-          }));
+        const response = await stub.fetch(clearRequest);
+        if (response.ok) {
           identitiesCleared++;
+          const data = await response.json() as any;
+          // If we found an email in the DO, try to clear it from KV too
+          if (data.email && !email) {
+            email = data.email;
+          }
         }
-
-        return new Response(JSON.stringify({
-          success: true,
-          emailsCleared,
-          usernamesCleared,
-          identitiesCleared,
-          message: `Cleared user data for ${email || username}`
-        }), {
-          status: 200,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
-        });
-
       } catch (error) {
-        return new Response(JSON.stringify({
-          error: "Failed to clear user",
-          message: error instanceof Error ? error.message : "Unknown error"
-        }), {
-          status: 500,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
-        });
-      }
-    }
-
-    // Debug: Dump KV contents to verify state
-    if (path === "/admin/debug/dump" && request.method === "GET") {
-      const adminSecret = request.headers.get("X-Admin-Secret") || new URL(request.url).searchParams.get("admin_secret");
-      if (!adminSecret || adminSecret !== this.env.ADMIN_SECRET) {
-        return new Response("Unauthorized", { status: 401 });
+        console.error(`Failed to clear PlayerIdentity for ${username}:`, error);
+        message += ` (DO clear failed: ${error})`;
       }
 
-      const emailList = await this.env.EMAIL_INDEX.list();
-      const usernameList = await this.env.USERNAME_INDEX.list();
-
-      const emails: Record<string, string | null> = {};
-      for (const key of emailList.keys) {
-        emails[key.name] = await this.env.EMAIL_INDEX.get(key.name);
+      // 2. Clear from USERNAME_INDEX
+      const usernameKey = `username:${normalizedUsername}`;
+      const existingEmail = await this.env.USERNAME_INDEX.get(usernameKey);
+      if (existingEmail) {
+        foundInUsernameIndex = true;
+        await this.env.USERNAME_INDEX.delete(usernameKey);
+        if (!email) email = existingEmail;
       }
 
-      const usernames: Record<string, string | null> = {};
-      for (const key of usernameList.keys) {
-        usernames[key.name] = await this.env.USERNAME_INDEX.get(key.name);
+      // 3. Clear from EMAIL_INDEX
+      if (email) {
+        const emailKey = `email:${email.toLowerCase().trim()}`;
+        const existingUsername = await this.env.EMAIL_INDEX.get(emailKey);
+        if (existingUsername) {
+          foundInEmailIndex = true;
+          await this.env.EMAIL_INDEX.delete(emailKey);
+        }
+      }
+
+      // 4. Disconnect active player if connected
+      let disconnected = false;
+      for (const [squirrelId, player] of this.activePlayers.entries()) {
+        if (player.username === username) {
+          try {
+            player.socket.close(1000, "Admin: User cleared");
+            this.activePlayers.delete(squirrelId);
+            disconnected = true;
+          } catch (e) { console.error('Failed to close socket', e); }
+        }
       }
 
       return new Response(JSON.stringify({
-        emailIndex: emails,
-        usernameIndex: usernames,
-        emailCount: emailList.keys.length,
-        usernameCount: usernameList.keys.length
-      }, null, 2), {
+        success: true,
+        username,
+        email,
+        identitiesCleared,
+        foundInUsernameIndex,
+        foundInEmailIndex,
+        disconnected,
+        message: `User ${username} cleared. DO: ${identitiesCleared}, KV-User: ${foundInUsernameIndex}, KV-Email: ${foundInEmailIndex}, Active: ${disconnected}`
+      }), {
+        status: 200,
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
       });
     }
-
     return new Response("Not Found", { status: 404 });
   }
 
