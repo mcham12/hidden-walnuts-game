@@ -1417,22 +1417,39 @@ export default class ForestManager extends DurableObject {
         });
       }
 
+      // Optional: Accept array of emails/usernames to force-clear
+      let forceClearIdentifiers: string[] = [];
+      try {
+        const bodyText = await request.text();
+        if (bodyText) {
+          const body = JSON.parse(bodyText) as { identifiers?: string[] };
+          forceClearIdentifiers = body.identifiers || [];
+        }
+      } catch (e) {
+        // No body or invalid JSON - that's fine, we'll just clear from KV
+      }
+
       // Count operations
       let emailsCleared = 0;
       let usernamesCleared = 0;
       let identitiesCleared = 0;
       let playersDisconnected = 0;
 
-      // Set of usernames to clear (from both indexes)
-      const usernamesToClear = new Set<string>();
+      // Set of identifiers to clear (from both indexes)
+      const identifiersToClear = new Set<string>();
 
       // 1. Scan EMAIL_INDEX
       const emailList = await this.env.EMAIL_INDEX.list();
+      console.log(`📧 Found ${emailList.keys.length} emails in EMAIL_INDEX`);
       for (const key of emailList.keys) {
         const username = await this.env.EMAIL_INDEX.get(key.name);
         if (username) {
-          usernamesToClear.add(username);
+          identifiersToClear.add(username);
         }
+        // Also try to clear DO by email directly (in case DO is keyed by email)
+        const emailWithoutPrefix = key.name.replace('email:', '');
+        identifiersToClear.add(emailWithoutPrefix);
+
         // Delete email index entry immediately
         await this.env.EMAIL_INDEX.delete(key.name);
         emailsCleared++;
@@ -1440,22 +1457,32 @@ export default class ForestManager extends DurableObject {
 
       // 2. Scan USERNAME_INDEX
       const usernameList = await this.env.USERNAME_INDEX.list();
+      console.log(`👤 Found ${usernameList.keys.length} usernames in USERNAME_INDEX`);
       for (const key of usernameList.keys) {
         // Key format: "username:someuser"
         const parts = key.name.split(':');
         if (parts.length > 1) {
-          usernamesToClear.add(parts[1]);
+          identifiersToClear.add(parts[1]);
         }
         // Delete username index entry immediately
         await this.env.USERNAME_INDEX.delete(key.name);
         usernamesCleared++;
       }
 
-      // 3. Clear PlayerIdentity DOs for all found usernames
-      for (const username of usernamesToClear) {
+      console.log(`🎯 Total unique identifiers from KV: ${identifiersToClear.size}`);
+
+      // Add force-clear identifiers (if provided in request body)
+      for (const identifier of forceClearIdentifiers) {
+        identifiersToClear.add(identifier.toLowerCase().trim());
+      }
+
+      console.log(`🎯 Total identifiers to clear (including force-clear): ${identifiersToClear.size}`);
+
+      // 3. Clear PlayerIdentity DOs for all found identifiers
+      for (const identifier of identifiersToClear) {
         try {
-          // Get PlayerIdentity DO for this username
-          const id = this.env.PLAYER_IDENTITY.idFromName(username);
+          // Get PlayerIdentity DO for this identifier
+          const id = this.env.PLAYER_IDENTITY.idFromName(identifier);
           const stub = this.env.PLAYER_IDENTITY.get(id);
 
           // Call admin clear action on the PlayerIdentity DO
@@ -1470,11 +1497,11 @@ export default class ForestManager extends DurableObject {
           await stub.fetch(clearRequest);
           identitiesCleared++;
         } catch (error) {
-          console.error(`Failed to clear PlayerIdentity for ${username}:`, error);
+          console.error(`Failed to clear PlayerIdentity for ${identifier}:`, error);
         }
       }
 
-      // Disconnect all active players and close their WebSockets
+      // 4. Disconnect all active players and close their WebSockets
       for (const [squirrelId, player] of this.activePlayers.entries()) {
         try {
           player.socket.close(1000, "Admin: All users cleared for testing");
@@ -1487,13 +1514,17 @@ export default class ForestManager extends DurableObject {
       // Clear active players map
       this.activePlayers.clear();
 
+      const message = emailsCleared === 0 && usernamesCleared === 0
+        ? `⚠️ No entries found in KV indexes. This usually means they were already cleared. Cleared ${identitiesCleared} DOs and disconnected ${playersDisconnected} players. Note: If you signed up but don't see data cleared, the DO might be keyed by email - use /admin/users/clear-user with the email instead.`
+        : `Cleared ${emailsCleared} email registrations, ${usernamesCleared} username registrations, ${identitiesCleared} user identities, and disconnected ${playersDisconnected} active players`;
+
       return new Response(JSON.stringify({
         success: true,
         emailsCleared,
         usernamesCleared,
         identitiesCleared,
         playersDisconnected,
-        message: `Cleared ${emailsCleared} email registrations, ${usernamesCleared} username registrations, ${identitiesCleared} user identities, and disconnected ${playersDisconnected} active players`
+        message
       }), {
         status: 200,
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
