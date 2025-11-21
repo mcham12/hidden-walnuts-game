@@ -38,7 +38,7 @@ export class EmailService {
     baseUrl: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const verificationUrl = `${baseUrl}/verify?token=${token}`;
+      const verificationUrl = `${baseUrl}/verify?token=${token}&email=${encodeURIComponent(email)}`;
 
       await this.transporter.sendMail({
         from: this.fromAddress,

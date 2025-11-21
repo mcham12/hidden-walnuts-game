@@ -17,10 +17,12 @@ import { getCurrentUser } from '../services/AuthService';
 export class VerifyEmailPage {
   private container: HTMLElement;
   private token: string;
+  private email: string | null;
 
-  constructor(container: HTMLElement, token: string) {
+  constructor(container: HTMLElement, token: string, email: string | null = null) {
     this.container = container;
     this.token = token;
+    this.email = email;
     this.init();
   }
 
@@ -36,7 +38,10 @@ export class VerifyEmailPage {
 
     try {
       // Call verify email API
-      const response = await verifyEmail({ token: this.token });
+      const response = await verifyEmail({
+        token: this.token,
+        email: this.email || undefined
+      });
 
       if (response.success) {
         // Show success message
@@ -84,18 +89,19 @@ export class VerifyEmailPage {
         min-height: 100vh;
         padding: 20px;
         text-align: center;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1a3a1a 0%, #0d1f0d 100%);
       ">
         <div style="
-          background: white;
+          background: rgba(44, 62, 50, 0.95);
+          border: 2px solid #4a7c59;
           border-radius: 20px;
           padding: 50px;
           max-width: 500px;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
         ">
           <div style="font-size: 60px; margin-bottom: 20px;">⏳</div>
-          <h2 style="margin: 0 0 12px 0; font-size: 24px; color: #333;">Verifying Your Email...</h2>
-          <p style="margin: 0; color: #666; font-size: 16px;">Please wait while we confirm your email address.</p>
+          <h2 style="margin: 0 0 12px 0; font-size: 24px; color: #daa520;">Verifying Your Email...</h2>
+          <p style="margin: 0; color: #bdc3c7; font-size: 16px;">Please wait while we confirm your email address.</p>
         </div>
       </div>
     `;
@@ -114,21 +120,22 @@ export class VerifyEmailPage {
         min-height: 100vh;
         padding: 20px;
         text-align: center;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1a3a1a 0%, #0d1f0d 100%);
       ">
         <div style="
-          background: white;
+          background: rgba(44, 62, 50, 0.95);
+          border: 2px solid #4a7c59;
           border-radius: 20px;
           padding: 50px;
           max-width: 500px;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
         ">
           <div style="font-size: 72px; margin-bottom: 20px; animation: checkmark 0.5s ease;">✅</div>
-          <h2 style="margin: 0 0 12px 0; font-size: 28px; color: #27AE60; font-weight: 700;">Email Verified!</h2>
-          <p style="margin: 0 0 20px 0; color: #666; font-size: 16px; line-height: 1.6;">
+          <h2 style="margin: 0 0 12px 0; font-size: 28px; color: #2ecc71; font-weight: 700;">Email Verified!</h2>
+          <p style="margin: 0 0 20px 0; color: #bdc3c7; font-size: 16px; line-height: 1.6;">
             Your account has been successfully verified. You now have access to all authenticated features!
           </p>
-          <p style="margin: 0; color: #999; font-size: 14px;">
+          <p style="margin: 0; color: #95a5a6; font-size: 14px;">
             Redirecting you to the game...
           </p>
         </div>
@@ -163,18 +170,19 @@ export class VerifyEmailPage {
         min-height: 100vh;
         padding: 20px;
         text-align: center;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1a3a1a 0%, #0d1f0d 100%);
       ">
         <div style="
-          background: white;
+          background: rgba(44, 62, 50, 0.95);
+          border: 2px solid #4a7c59;
           border-radius: 20px;
           padding: 50px;
           max-width: 500px;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
         ">
           <div style="font-size: 60px; margin-bottom: 20px;">❌</div>
-          <h2 style="margin: 0 0 12px 0; font-size: 24px; color: #E74C3C; font-weight: 700;">Verification Failed</h2>
-          <p style="margin: 0 0 30px 0; color: #666; font-size: 16px; line-height: 1.6;">
+          <h2 style="margin: 0 0 12px 0; font-size: 24px; color: #e74c3c; font-weight: 700;">Verification Failed</h2>
+          <p style="margin: 0 0 30px 0; color: #bdc3c7; font-size: 16px; line-height: 1.6;">
             ${message}
           </p>
 
@@ -183,7 +191,7 @@ export class VerifyEmailPage {
             style="
               width: 100%;
               height: 50px;
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%);
               color: white;
               border: none;
               border-radius: 8px;
@@ -202,9 +210,9 @@ export class VerifyEmailPage {
             style="
               width: 100%;
               height: 50px;
-              background: white;
-              color: #667eea;
-              border: 2px solid #667eea;
+              background: transparent;
+              color: #bdc3c7;
+              border: 2px solid #4a7c59;
               border-radius: 8px;
               font-size: 16px;
               font-weight: 600;
@@ -264,6 +272,7 @@ export class VerifyEmailPage {
   public static handleVerificationRoute(): boolean {
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
+    const email = urlParams.get('email');
 
     // Check if this is a verification route
     // Support both /verify-email and /verify (short URL)
@@ -274,7 +283,7 @@ export class VerifyEmailPage {
       document.body.appendChild(container);
 
       // Initialize verification page
-      new VerifyEmailPage(container, token);
+      new VerifyEmailPage(container, token, email);
 
       return true;
     }

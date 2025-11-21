@@ -93,6 +93,7 @@ export interface ResetPasswordResponse {
 
 export interface VerifyEmailRequest {
   token: string;
+  email?: string; // Optional for routing to correct DO
 }
 
 export interface VerifyEmailResponse {
