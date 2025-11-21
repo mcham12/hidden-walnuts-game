@@ -92,8 +92,10 @@ export class EmailService {
               <div class="footer">
                 <p>Happy walnut hunting!</p>
                 <p>The Hidden Walnuts Team</p>
-                <p style="margin-top: 20px;">
-                  <a href="https://hiddenwalnuts.com">hiddenwalnuts.com</a>
+                <p style="margin-top: 20px; font-size: 11px; color: #999;">
+                  You received this email because you signed up for Hidden Walnuts.
+                  <br>
+                  <a href="https://hiddenwalnuts.com" style="color: #999;">hiddenwalnuts.com</a>
                 </p>
               </div>
             </div>
@@ -176,8 +178,10 @@ export class EmailService {
               <div class="footer">
                 <p>Stay secure!</p>
                 <p>The Hidden Walnuts Team</p>
-                <p style="margin-top: 20px;">
-                  <a href="https://hiddenwalnuts.com">hiddenwalnuts.com</a>
+                <p style="margin-top: 20px; font-size: 11px; color: #999;">
+                  You received this email because you requested a password reset for your Hidden Walnuts account.
+                  <br>
+                  <a href="https://hiddenwalnuts.com" style="color: #999;">hiddenwalnuts.com</a>
                 </p>
               </div>
             </div>
@@ -257,8 +261,10 @@ export class EmailService {
               <div class="footer">
                 <p>Happy walnut hunting!</p>
                 <p>The Hidden Walnuts Team</p>
-                <p style="margin-top: 20px;">
-                  <a href="https://hiddenwalnuts.com">hiddenwalnuts.com</a>
+                <p style="margin-top: 20px; font-size: 11px; color: #999;">
+                  You received this email because you signed up for Hidden Walnuts.
+                  <br>
+                  <a href="https://hiddenwalnuts.com" style="color: #999;">hiddenwalnuts.com</a>
                 </p>
               </div>
             </div>
