@@ -439,9 +439,10 @@ export class PlayerIdentity extends DurableObject {
         email: string;
         username: string;
         password: string;
+        origin?: string;
       };
 
-      const { email, username, password } = body;
+      const { email, username, password, origin: bodyOrigin } = body;
 
       // Validate inputs
       if (!email || !username || !password) {
@@ -547,12 +548,11 @@ export class PlayerIdentity extends DurableObject {
       data.accountCreated = Date.now();
       data.lastSeen = Date.now();
 
-      // Unlock free characters (Immediate access to 5 characters)
-      // Mallard is reserved as a "Verified Bonus"
+      // Unlock free characters (Immediate access to 4 characters)
+      // Goat is reserved as a "Verified Bonus"
       data.unlockedCharacters = [
         'squirrel',
         'hare',
-        'goat',
         'chipmunk',
         'turkey'
       ];
@@ -621,7 +621,33 @@ export class PlayerIdentity extends DurableObject {
           smtpPassword: this.env.SMTP_PASSWORD
         });
 
-        const origin = new URL(request.url).origin;
+        // Determine client origin for verification link
+        // 1. Use origin from body (explicitly passed by client)
+        // 2. Use Origin header (if valid CORS request)
+        // 3. Fallback to production URL
+        let origin = 'https://hiddenwalnuts.com';
+
+        if (bodyOrigin) {
+          origin = bodyOrigin;
+        } else {
+          const originHeader = request.headers.get('Origin');
+          if (originHeader && originHeader !== 'null') {
+            origin = originHeader;
+          }
+        }
+
+        // Prevent using worker URL as origin
+        if (origin.includes('workers.dev')) {
+          // If we somehow got the worker URL, force fallback unless it's the preview environment we want
+          // But generally we want the client URL. 
+          // If the user IS testing on a worker preview URL, we might want to allow it if it was passed in body.
+          // But request.url origin is DEFINITELY wrong as it points to the API.
+          // Let's trust bodyOrigin if provided, otherwise fallback.
+          if (!bodyOrigin) {
+            origin = 'https://hiddenwalnuts.com';
+          }
+        }
+
         const emailResult = await emailService.sendVerificationEmail(
           data.email!,
           data.username,
@@ -812,8 +838,8 @@ export class PlayerIdentity extends DurableObject {
       data.emailVerificationToken = undefined;
       data.emailVerificationExpiry = undefined;
 
-      // Unlock "Verified Bonus" character (Mallard)
-      const bonusCharacters = ['mallard'];
+      // Unlock "Verified Bonus" character (Goat)
+      const bonusCharacters = ['goat'];
 
       // Add bonus characters to unlocked list
       for (const charId of bonusCharacters) {
@@ -1232,8 +1258,8 @@ export class PlayerIdentity extends DurableObject {
    */
   private async handleResendVerification(request: Request): Promise<Response> {
     try {
-      const body = await request.json() as { email: string };
-      const { email } = body;
+      const body = await request.json() as { email: string; origin?: string };
+      const { email, origin: bodyOrigin } = body;
 
       if (!email) {
         return Response.json({ error: 'Missing email' }, { status: 400 });
@@ -1272,7 +1298,18 @@ export class PlayerIdentity extends DurableObject {
           smtpPassword: this.env.SMTP_PASSWORD
         });
 
-        const origin = new URL(request.url).origin;
+        // Determine client origin for verification link
+        let origin = 'https://hiddenwalnuts.com';
+
+        if (bodyOrigin) {
+          origin = bodyOrigin;
+        } else {
+          const originHeader = request.headers.get('Origin');
+          if (originHeader && originHeader !== 'null') {
+            origin = originHeader;
+          }
+        }
+
         const emailResult = await emailService.sendVerificationEmail(
           data.email,
           data.username,

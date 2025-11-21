@@ -7616,13 +7616,21 @@ export class Game {
           playerInTop10 = true;
         }
 
-        // MVP 16: Add verified badge (🔒) for authenticated players
-        const verifiedBadge = entry.isAuthenticated ? '🔒 ' : '';
+        // MVP 16: Add verified badge based on email verification status
+        let badge = '';
+        if (entry.emailVerified) {
+          // Green checkmark for verified email users
+          badge = '<span style="color: #2ecc71; font-weight: bold;" title="Verified Email">✓</span> ';
+        } else if (entry.isAuthenticated) {
+          // Gray lock for authenticated but unverified users
+          badge = '<span style="color: #95a5a6;" title="Signed In (Unverified)">🔒</span> ';
+        }
+        // No badge for guest players
 
         // Create entry HTML
         li.innerHTML = `
             <span class="leaderboard-rank">#${index + 1}</span>
-            <span class="leaderboard-name">${verifiedBadge}${entry.displayName}</span>
+            <span class="leaderboard-name">${badge}${entry.displayName}</span>
             <span class="leaderboard-score">${entry.score}</span>
           `;
 
@@ -7649,11 +7657,17 @@ export class Game {
           const playerLi = document.createElement('li');
           playerLi.classList.add('current-player');
 
-          const verifiedBadge = playerEntry.isAuthenticated ? '🔒 ' : '';
+          // Use same badge logic as top 10
+          let playerBadge = '';
+          if (playerEntry.emailVerified) {
+            playerBadge = '<span style="color: #2ecc71; font-weight: bold;" title="Verified Email">✓</span> ';
+          } else if (playerEntry.isAuthenticated) {
+            playerBadge = '<span style="color: #95a5a6;" title="Signed In (Unverified)">🔒</span> ';
+          }
 
           playerLi.innerHTML = `
               <span class="leaderboard-rank">#${playerRank}</span>
-              <span class="leaderboard-name">${verifiedBadge}You(${this.username})</span>
+              <span class="leaderboard-name">${playerBadge}You(${this.username})</span>
               <span class="leaderboard-score">${playerEntry.score}</span>
             `;
 

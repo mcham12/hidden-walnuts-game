@@ -64,19 +64,11 @@ export class EmailService {
               </div>
               <div class="content">
                 <h2>Hi ${username},</h2>
-                <p>Thanks for signing up! Click the button below to verify your email address and unlock 6 characters:</p>
+                <p>Thanks for signing up! Click the button below to verify your email address and unlock one more free character: the Goat!</p>
 
                 <div style="text-align: center;">
                   <a href="${verificationUrl}" class="button">Verify Email Address</a>
                 </div>
-
-                <p><strong>What you'll unlock:</strong></p>
-                <ul>
-                  <li>6 playable characters (Squirrel, Hare, Goat, Chipmunk, Turkey, Mallard)</li>
-                  <li>Cross-device sync - play on any device</li>
-                  <li>Hall of Fame leaderboard access</li>
-                  <li>Progress tracking & stats</li>
-                </ul>
 
                 <p>This verification link expires in 24 hours.</p>
 

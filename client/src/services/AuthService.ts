@@ -134,7 +134,7 @@ export async function signup(data: SignupRequest): Promise<SignupResponse> {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, origin: window.location.origin }),
     });
 
     const result = await response.json();
@@ -326,7 +326,7 @@ export async function resendVerification(data?: ResendVerificationRequest): Prom
     const response = await fetch(`${API_URL}/auth/resend-verification`, {
       method: 'POST',
       headers,
-      body: JSON.stringify(requestData),
+      body: JSON.stringify({ ...requestData, origin: window.location.origin }),
     });
 
     const result = await response.json();

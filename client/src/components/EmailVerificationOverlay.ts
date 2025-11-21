@@ -10,7 +10,7 @@
  * - Dark theme styling to match game UI
  */
 
-import { resendVerification, logout } from '../services/AuthService';
+import { resendVerification } from '../services/AuthService';
 
 export interface EmailVerificationOverlayOptions {
   email: string;
@@ -177,9 +177,9 @@ export class EmailVerificationOverlay {
     `;
     this.updateResendButtonState();
 
-    // Log Out button
-    const logoutButton = document.createElement('button');
-    logoutButton.style.cssText = `
+    // Continue button
+    const continueButton = document.createElement('button');
+    continueButton.style.cssText = `
       width: 100%;
       height: 40px;
       background: transparent;
@@ -191,7 +191,7 @@ export class EmailVerificationOverlay {
       cursor: pointer;
       transition: all 0.2s;
     `;
-    logoutButton.textContent = 'Log Out';
+    continueButton.textContent = 'Continue without Verifying';
 
     // Assemble content
     content.appendChild(icon);
@@ -199,7 +199,7 @@ export class EmailVerificationOverlay {
     content.appendChild(message);
     content.appendChild(statusMessage);
     content.appendChild(this.resendButton);
-    content.appendChild(logoutButton);
+    content.appendChild(continueButton);
 
     this.overlay.appendChild(content);
     this.container.appendChild(this.overlay);
@@ -207,18 +207,17 @@ export class EmailVerificationOverlay {
     // Setup event listeners
     this.resendButton.addEventListener('click', () => this.handleResend());
 
-    logoutButton.addEventListener('click', async () => {
-      await logout();
-      window.location.reload();
+    continueButton.addEventListener('click', () => {
+      this.hide();
     });
 
-    logoutButton.addEventListener('mouseenter', () => {
-      logoutButton.style.borderColor = '#ecf0f1';
-      logoutButton.style.color = '#ecf0f1';
+    continueButton.addEventListener('mouseenter', () => {
+      continueButton.style.borderColor = '#ecf0f1';
+      continueButton.style.color = '#ecf0f1';
     });
-    logoutButton.addEventListener('mouseleave', () => {
-      logoutButton.style.borderColor = '#7f8c8d';
-      logoutButton.style.color = '#bdc3c7';
+    continueButton.addEventListener('mouseleave', () => {
+      continueButton.style.borderColor = '#7f8c8d';
+      continueButton.style.color = '#bdc3c7';
     });
 
     // Prevent body scroll
@@ -399,5 +398,12 @@ export class EmailVerificationOverlay {
       this.overlay.style.display = 'flex';
     }
     document.body.style.overflow = 'hidden';
+  }
+
+  /**
+   * Hide the overlay (alias for close)
+   */
+  public hide(): void {
+    this.close();
   }
 }
