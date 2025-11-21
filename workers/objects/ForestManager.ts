@@ -1486,6 +1486,18 @@ export default class ForestManager extends DurableObject {
 
       // Clear active players map
       this.activePlayers.clear();
+
+      return new Response(JSON.stringify({
+        success: true,
+        emailsCleared,
+        usernamesCleared,
+        identitiesCleared,
+        playersDisconnected,
+        message: `Cleared ${emailsCleared} email registrations, ${usernamesCleared} username registrations, ${identitiesCleared} user identities, and disconnected ${playersDisconnected} active players`
+      }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
     }
 
     // MVP 16: Clear specific user (fixes "Zombie DO" issue where user exists in DO but not in KV)
