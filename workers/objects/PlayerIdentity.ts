@@ -555,6 +555,7 @@ export class PlayerIdentity extends DurableObject {
       }
 
       // Send verification email
+      let emailError: string | undefined;
       if (this.env.SMTP_USER && this.env.SMTP_PASSWORD) {
         const emailService = new EmailService({
           smtpUser: this.env.SMTP_USER,
@@ -571,8 +572,10 @@ export class PlayerIdentity extends DurableObject {
 
         if (!emailResult.success) {
           console.error('Failed to send verification email:', emailResult.error);
-          // Don't fail signup if email fails - user can resend later
+          emailError = emailResult.error;
         }
+      } else {
+        emailError = 'Missing SMTP configuration';
       }
 
       return Response.json({
@@ -591,7 +594,9 @@ export class PlayerIdentity extends DurableObject {
         // Persistent stats
         score: data.score || 0,
         titleId: data.titleId || 'rookie',
-        titleName: data.titleName || 'Rookie'
+        titleName: data.titleName || 'Rookie',
+        // Debug info
+        emailError
       });
 
     } catch (error) {
