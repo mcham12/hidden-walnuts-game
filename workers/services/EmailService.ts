@@ -60,7 +60,7 @@ export class EmailService {
           <body>
             <div class="container">
               <div class="header">
-                <h1>🌰 Welcome to Hidden Walnuts!</h1>
+                <h1>Welcome to Hidden Walnuts!</h1>
               </div>
               <div class="content">
                 <h2>Hi ${username},</h2>
@@ -233,7 +233,7 @@ export class EmailService {
           <body>
             <div class="container">
               <div class="header">
-                <h1>🎉 Welcome, ${username}!</h1>
+                <h1>Welcome, ${username}!</h1>
               </div>
               <div class="content">
                 <h2>Your account is verified!</h2>
