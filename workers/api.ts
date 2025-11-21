@@ -79,30 +79,24 @@ export default {
           const body = bodyText ? JSON.parse(bodyText) : {};
           console.log('🔍 Auth route body:', JSON.stringify(body));
 
-          // Different actions use different identifiers
+          // Different actions use different identifiers (unchanged)
           if (action === 'signup' || action === 'login' || action === 'requestPasswordReset') {
             identifier = body.email || body.username;
           } else if (action === 'refreshToken' || action === 'logout' || action === 'logoutAll' || action === 'changePassword') {
-            // These require JWT token in Authorization header
             const authHeader = request.headers.get('Authorization');
             if (authHeader && authHeader.startsWith('Bearer ')) {
-              // We'll need to decode the JWT to get the username
-              // For now, extract from body if available
               identifier = body.username || body.email;
             }
           } else if (action === 'verifyEmail' || action === 'resetPassword') {
-            // These use tokens, extract username from body or token
-            identifier = body.username || body.email;
+            // For verifyEmail we can use the email if supplied
+            identifier = body.email || body.username;
           } else if (action === 'resend-verification') {
-            // Can be authenticated (header) or unauthenticated (email in body)
             if (body.email) {
               identifier = body.email;
             }
-            // Note: If email is not in body, we can't route to the correct DO instance
-            // because we don't have the username/email to look it up.
-            // The client MUST send the email in the body.
           }
 
+          // If identifier is missing (and not a verifyEmail request) return error
           if (!identifier && action !== 'verifyEmail') {
             return new Response(JSON.stringify({
               success: false,
@@ -114,13 +108,14 @@ export default {
             });
           }
 
-          // MVP 16 FIX: Normalize identifier to lowercase to ensure case-insensitive identity
-          // This prevents "Matt@example.com" and "matt@example.com" from creating different DOs
-          identifier = identifier.toLowerCase().trim();
+          // Normalise identifier when present
+          if (identifier) {
+            identifier = identifier.toLowerCase().trim();
+          }
 
-          // Get PlayerIdentity DO instance (one per email/username)
-          const id = env.PLAYER_IDENTITY.idFromName(identifier);
-          const stub = env.PLAYER_IDENTITY.get(id);
+          // Get PlayerIdentity DO instance (one per email/username) when we have an identifier
+          const id = identifier ? env.PLAYER_IDENTITY.idFromName(identifier) : null;
+          const stub = id ? env.PLAYER_IDENTITY.get(id) : null;
 
           // Create new URL with action parameter
           const newUrl = new URL(request.url);
@@ -134,8 +129,8 @@ export default {
             body: bodyText || undefined
           });
 
-          // Forward to PlayerIdentity DO
-          const response = await stub.fetch(newRequest);
+          // Forward to PlayerIdentity DO (if stub exists)
+          const response = await (stub ? stub.fetch(newRequest) : fetch(newRequest));
 
           // Add CORS headers
           return new Response(response.body, {
