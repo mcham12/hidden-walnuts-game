@@ -113,6 +113,10 @@ export default {
             });
           }
 
+          // MVP 16 FIX: Normalize identifier to lowercase to ensure case-insensitive identity
+          // This prevents "Matt@example.com" and "matt@example.com" from creating different DOs
+          identifier = identifier.toLowerCase().trim();
+
           // Get PlayerIdentity DO instance (one per email/username)
           const id = env.PLAYER_IDENTITY.idFromName(identifier);
           const stub = env.PLAYER_IDENTITY.get(id);
