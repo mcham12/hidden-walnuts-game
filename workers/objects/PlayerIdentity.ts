@@ -1209,12 +1209,21 @@ export class PlayerIdentity extends DurableObject {
         });
 
         const origin = new URL(request.url).origin;
-        await emailService.sendVerificationEmail(
+        const emailResult = await emailService.sendVerificationEmail(
           data.email,
           data.username,
           verificationToken,
           origin
         );
+
+        if (!emailResult.success) {
+          console.error('Failed to send verification email:', emailResult.error);
+          return Response.json({
+            success: false,
+            error: 'Email delivery failed',
+            message: emailResult.error || 'Unknown email error'
+          }, { status: 500 });
+        }
       }
 
       return Response.json({
