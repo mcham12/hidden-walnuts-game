@@ -828,7 +828,7 @@ export class SettingsManager {
    */
   openAccountTab(): void {
     this.open();
-    this.switchTab('account');
+    // Tab switching removed - all content shown at once
     this.populateAccountInfo(); // Refresh account info when opening
   }
 }
