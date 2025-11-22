@@ -2288,6 +2288,14 @@ export default class ForestManager extends DurableObject {
             points: points
           });
 
+          // MVP 16: Update auth status from client message (if provided)
+          if (typeof data.isAuthenticated === 'boolean') {
+            playerConnection.isAuthenticated = data.isAuthenticated;
+          }
+          if (typeof data.emailVerified === 'boolean') {
+            playerConnection.emailVerified = data.emailVerified;
+          }
+
           // MVP 8: Send inventory + score update to the player who found it
           this.sendMessage(playerConnection.socket, {
             type: 'inventory_update',
@@ -2987,7 +2995,11 @@ export default class ForestManager extends DurableObject {
           hidden: 0, // TODO: Track these stats
           found: 0
         },
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        // MVP 16: Include auth status for All-Time leaderboard filtering
+        isAuthenticated: !!playerConnection.isAuthenticated,
+        emailVerified: !!playerConnection.emailVerified,
+        characterId: playerConnection.characterId || 'squirrel'
       };
 
       // Report to leaderboard
