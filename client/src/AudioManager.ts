@@ -33,7 +33,7 @@ export class AudioManager {
   constructor() {
     // Detect mobile for iOS-specific audio handling
     this.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
-                    (typeof navigator.maxTouchPoints !== 'undefined' && navigator.maxTouchPoints > 2);
+      (typeof navigator.maxTouchPoints !== 'undefined' && navigator.maxTouchPoints > 2);
 
     console.log('🎵 AudioManager: Mobile detected:', this.isMobile);
     this.initializeSounds();
@@ -288,17 +288,22 @@ export class AudioManager {
     try {
       // Create a Promise that resolves when the sound finishes loading
       const loadPromise = new Promise<void>((resolve) => {
+        // STRATEGY CHANGE: On mobile, only use HTML5 Audio for long tracks (music/ambient)
+        // Short SFX should use Web Audio to avoid the iOS limit on concurrent HTML5 audio elements
+        const isLongTrack = id === 'game_music' || id === 'ambient_forest';
+        const useHtml5 = this.isMobile && isLongTrack;
+
         const sound = new Howl({
           src: config.src,
           volume: config.volume,
           loop: config.loop || false,
           sprite: config.sprite,
           preload: true,
-          // CRITICAL iOS FIX: Use HTML5 Audio on mobile for better compatibility
-          // Web Audio API has stricter restrictions on iOS Safari
-          html5: this.isMobile,
+          // CRITICAL iOS FIX: Use HTML5 Audio ONLY for long tracks on mobile
+          // Web Audio API is better for SFX (low latency, high concurrency)
+          html5: useHtml5,
           // iOS-specific optimization: Smaller pool on mobile (iOS limits concurrent audio)
-          pool: this.isMobile ? 3 : 5,
+          pool: this.isMobile ? (useHtml5 ? 1 : 5) : 5,
           onloaderror: (_soundId, error) => {
             console.warn(`🎵 AudioManager: Failed to load sound "${id}":`, error);
             // Don't reject - allow game to continue without this sound
@@ -314,7 +319,7 @@ export class AudioManager {
             }
           },
           onload: () => {
-            console.log(`🎵 AudioManager: Loaded sound "${id}"`);
+            console.log(`🎵 AudioManager: Loaded sound "${id}" (${useHtml5 ? 'HTML5' : 'Web Audio'})`);
             resolve();
           },
         });

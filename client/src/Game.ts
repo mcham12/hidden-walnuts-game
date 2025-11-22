@@ -351,6 +351,21 @@ export class Game {
         this.mouseSensitivity = e.detail.mouseSensitivity;
       }) as EventListener);
 
+      // CRITICAL iOS FIX: Add auto-resume listener for AudioContext
+      // iOS Safari often suspends AudioContext if not created in direct response to user gesture
+      // or if the tab is backgrounded. We need to resume it on any touch interaction.
+      const resumeAudio = () => {
+        if (Howler.ctx && Howler.ctx.state === 'suspended') {
+          Howler.ctx.resume().then(() => {
+            console.log('🎵 Game: AudioContext resumed by user interaction');
+          });
+        }
+      };
+
+      window.addEventListener('touchstart', resumeAudio, { passive: true });
+      window.addEventListener('click', resumeAudio, { passive: true });
+      window.addEventListener('keydown', resumeAudio, { passive: true });
+
       // Scene
       this.scene = new THREE.Scene();
       this.scene.background = new THREE.Color(0x87ceeb);
