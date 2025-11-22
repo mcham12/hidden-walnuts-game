@@ -23,8 +23,6 @@ export class SettingsManager {
   // DOM elements
   private overlay: HTMLElement;
   private toggleButton: HTMLElement;
-  private tabs: NodeListOf<HTMLElement>;
-  private tabContents: NodeListOf<HTMLElement>;
 
   // Audio sliders
   private masterVolumeSlider: HTMLInputElement;
@@ -51,8 +49,6 @@ export class SettingsManager {
     // Get DOM elements
     this.overlay = document.getElementById('settings-overlay')!;
     this.toggleButton = document.getElementById('settings-toggle')!;
-    this.tabs = document.querySelectorAll('.settings-tab');
-    this.tabContents = document.querySelectorAll('.settings-content');
 
     // Audio controls
     this.masterVolumeSlider = document.getElementById('master-volume') as HTMLInputElement;
@@ -96,12 +92,14 @@ export class SettingsManager {
       }
     });
 
-    // Tab switching
-    this.tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        const tabName = tab.getAttribute('data-tab');
-        this.switchTab(tabName!);
-      });
+    // Tab switching removed - all content shown at once
+
+    // Overlay click-to-dismiss
+    this.overlay.addEventListener('click', (e) => {
+      // Only close if clicking the overlay itself, not its children
+      if (e.target === this.overlay) {
+        this.cancel();
+      }
     });
 
     // Audio sliders with feedback
@@ -175,28 +173,7 @@ export class SettingsManager {
     }
   }
 
-  /**
-   * Switch between tabs
-   */
-  private switchTab(tabName: string): void {
-    // Update tab buttons
-    this.tabs.forEach(tab => {
-      if (tab.getAttribute('data-tab') === tabName) {
-        tab.classList.add('active');
-      } else {
-        tab.classList.remove('active');
-      }
-    });
 
-    // Update tab content
-    this.tabContents.forEach(content => {
-      if (content.id === `${tabName}-tab`) {
-        content.classList.add('active');
-      } else {
-        content.classList.remove('active');
-      }
-    });
-  }
 
   /**
    * Open settings menu
@@ -219,18 +196,6 @@ export class SettingsManager {
 
     // Play UI sound
     this.audioManager.playSound('ui', 'button_click');
-
-    // Add click-outside-to-dismiss handler
-    setTimeout(() => {
-      const handleOutsideClick = (e: MouseEvent) => {
-        // Only close if clicking directly on the overlay (not its children)
-        if (e.target === this.overlay) {
-          this.cancel();
-          document.removeEventListener('click', handleOutsideClick);
-        }
-      };
-      document.addEventListener('click', handleOutsideClick);
-    }, 100); // Small delay to prevent immediate close from the open click
   }
 
   /**
