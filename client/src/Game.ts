@@ -7351,8 +7351,8 @@ export class Game {
       points: points,
       timestamp: Date.now(),
       // MVP 16: Send auth status for All-Time leaderboard filtering
-      isAuthenticated: this.isAuthenticated,
-      emailVerified: this.emailVerified
+      isAuthenticated: isAuthenticated(),
+      emailVerified: getCurrentUser()?.emailVerified || false
     });
   }
 
