@@ -603,12 +603,38 @@
         left: 0;
         right: 0;
         width: 100%;
-        max-height: 75dvh;
-        /* Use dvh */
-        border-radius: 12px 12px 0 0;
-        padding: 20px 15px;
-        padding-bottom: env(safe-area-inset-bottom, 20px);
-        /* Handle notch/home bar */
+        max-height: 85dvh;
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+      }
+
+      #settings-header {
+        padding: 20px 20px 16px 20px;
+        padding-top: calc(20px + env(safe-area-inset-top, 0px));
+      }
+
+      #settings-header h2 {
+        font-size: 22px;
+      }
+
+      #settings-close-btn {
+        font-size: 32px;
+        width: 36px;
+        height: 36px;
+      }
+
+      #settings-body {
+        padding: 16px 20px;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom));
+      }
+
+      .settings-tabs {
+        margin-bottom: 16px;
+      }
+
+      .setting-group {
+        margin-bottom: 16px;
+        padding: 10px;
       }
 
       .controls-grid {
@@ -1671,6 +1697,55 @@
       padding: 12px 16px;
       background: rgba(0, 0, 0, 0.2);
       border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    #settings-header {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #settings-header h2 {
+      margin: 0;
+      font-size: 20px;
+      color: #FFD700;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    #settings-close-btn {
+      background: none;
+      border: none;
+      color: #bcaaa4;
+      font-size: 28px;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: all 0.2s;
+      line-height: 1;
+    }
+
+    #settings-close-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    #settings-body {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
     }
 
     .tip-card-title {
