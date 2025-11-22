@@ -87,7 +87,7 @@ export default {
             if (authHeader && authHeader.startsWith('Bearer ')) {
               identifier = body.username || body.email;
             }
-          } else if (action === 'verifyEmail' || action === 'resetPassword') {
+          } else if (action === 'verifyEmail' || action === 'verify-email' || action === 'resetPassword') {
             // For verifyEmail we can use the email if supplied
             identifier = body.email || body.username;
           } else if (action === 'resend-verification') {
@@ -97,7 +97,7 @@ export default {
           }
 
           // If identifier is missing (and not a verifyEmail request) return error
-          if (!identifier && action !== 'verifyEmail') {
+          if (!identifier && action !== 'verifyEmail' && action !== 'verify-email') {
             return new Response(JSON.stringify({
               success: false,
               error: 'Missing identifier',
@@ -117,9 +117,12 @@ export default {
           const id = identifier ? env.PLAYER_IDENTITY.idFromName(identifier) : null;
           const stub = id ? env.PLAYER_IDENTITY.get(id) : null;
 
+          // Normalize action name for DO (verify-email -> verifyEmail)
+          const doAction = action === 'verify-email' ? 'verifyEmail' : action;
+
           // Create new URL with action parameter
           const newUrl = new URL(request.url);
-          newUrl.searchParams.set('action', action);
+          newUrl.searchParams.set('action', doAction);
           newUrl.pathname = '/api/identity';
 
           // Recreate request with modified URL and original body
