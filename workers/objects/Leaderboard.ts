@@ -245,11 +245,23 @@ export default class Leaderboard {
       this.scores.set(record.playerId, record);
       await this.storage.put(record.playerId, record);
 
-      // All-time leaderboard (never resets) - only update if score is higher
+      // All-time leaderboard (never resets)
       const existingAllTimeRecord = this.alltimeScores.get(record.playerId);
       if (!existingAllTimeRecord || record.score > existingAllTimeRecord.score) {
+        // New high score or no existing record - update everything
         this.alltimeScores.set(record.playerId, record);
         await this.storage.put(`alltime_${record.playerId}`, record);
+      } else {
+        // Existing high score is better, but we MUST update metadata (auth, verified, character)
+        // otherwise verified users might be hidden if their high score was set before verification
+        existingAllTimeRecord.isAuthenticated = record.isAuthenticated;
+        existingAllTimeRecord.emailVerified = record.emailVerified;
+        existingAllTimeRecord.characterId = record.characterId;
+        existingAllTimeRecord.updatedAt = now; // Update timestamp to show activity
+
+        // We don't change the score, but we save the updated metadata
+        this.alltimeScores.set(record.playerId, existingAllTimeRecord);
+        await this.storage.put(`alltime_${record.playerId}`, existingAllTimeRecord);
       }
 
       return new Response(JSON.stringify({

@@ -107,6 +107,8 @@ export class SettingsManager {
       const value = parseInt(this.masterVolumeSlider.value) / 100;
       this.updateSliderDisplay('master-volume-value', value);
       this.audioManager.setVolume('master', value); // Apply immediately
+      this.settings.masterVolume = value;
+      this.saveSettings();
       this.playSliderFeedback();
     });
 
@@ -114,6 +116,8 @@ export class SettingsManager {
       const value = parseInt(this.sfxVolumeSlider.value) / 100;
       this.updateSliderDisplay('sfx-volume-value', value);
       this.audioManager.setVolume('sfx', value); // Apply immediately
+      this.settings.sfxVolume = value;
+      this.saveSettings();
       this.playSliderFeedback();
     });
 
@@ -121,6 +125,8 @@ export class SettingsManager {
       const value = parseInt(this.ambientVolumeSlider.value) / 100;
       this.updateSliderDisplay('ambient-volume-value', value);
       this.audioManager.setVolume('ambient', value); // Apply immediately
+      this.settings.ambientVolume = value;
+      this.saveSettings();
       // No feedback for ambient slider to avoid noise overlap
     });
 
@@ -130,6 +136,8 @@ export class SettingsManager {
     this.muteCheckbox.addEventListener('change', () => {
       // Apply mute immediately for preview
       this.audioManager.setMute(this.muteCheckbox.checked);
+      this.settings.isMuted = this.muteCheckbox.checked;
+      this.saveSettings();
     });
 
     // MVP 14: Reset tips button
@@ -213,7 +221,6 @@ export class SettingsManager {
    * Cancel and revert changes
    */
   cancel(): void {
-    this.loadSettings(); // Revert to saved values
     this.close();
 
     // Play UI sound
