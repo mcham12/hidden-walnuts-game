@@ -7724,48 +7724,6 @@ export class Game {
   }
 
   /**
-   * Get mock leaderboard data (temporary until server implements leaderboard)
-   */
-  private getMockLeaderboardData(): Array<{
-    playerId: string;
-    displayName: string;
-    score: number;
-    isAuthenticated: boolean;
-    emailVerified: boolean;
-    characterId: string;
-  }> {
-    // Create mock data including current player
-    // MVP 6/16: Show actual username instead of just "You"
-    const displayName = this.username ? `You(${this.username})` : 'You';
-    const mockData = [
-      {
-        playerId: this.playerId,
-        displayName,
-        score: this.playerScore,
-        isAuthenticated: false, // MVP 16: Mock as no-auth
-        emailVerified: false,
-        characterId: 'squirrel'
-      }
-    ];
-
-    // Add some mock players for testing (mix of auth and no-auth)
-    for (let i = 0; i < 9; i++) {
-      const isAuth = i % 3 === 0; // Every 3rd player is authenticated
-      mockData.push({
-        playerId: `player_${i} `,
-        displayName: `Player ${i + 1} `,
-        score: Math.floor(Math.random() * 50),
-        isAuthenticated: isAuth, // MVP 16: Mix of auth/no-auth
-        emailVerified: isAuth,
-        characterId: isAuth ? ['hare', 'goat', 'chipmunk'][i % 3] : 'squirrel'
-      });
-    }
-
-    // Sort by score descending
-    return mockData.sort((a, b) => b.score - a.score);
-  }
-
-  /**
    * Initialize quick chat and emote systems
    */
   private initChatAndEmotes(): void {
