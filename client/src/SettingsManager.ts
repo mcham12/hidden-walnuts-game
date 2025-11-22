@@ -219,6 +219,18 @@ export class SettingsManager {
 
     // Play UI sound
     this.audioManager.playSound('ui', 'button_click');
+
+    // Add click-outside-to-dismiss handler
+    setTimeout(() => {
+      const handleOutsideClick = (e: MouseEvent) => {
+        // Only close if clicking directly on the overlay (not its children)
+        if (e.target === this.overlay) {
+          this.cancel();
+          document.removeEventListener('click', handleOutsideClick);
+        }
+      };
+      document.addEventListener('click', handleOutsideClick);
+    }, 100); // Small delay to prevent immediate close from the open click
   }
 
   /**
