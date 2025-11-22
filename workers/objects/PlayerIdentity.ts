@@ -554,7 +554,8 @@ export class PlayerIdentity extends DurableObject {
         'squirrel',
         'hare',
         'chipmunk',
-        'turkey'
+        'turkey',
+        'mallard'
       ];
 
       // If upgrading from Quick Play with a valid character, keep it.
