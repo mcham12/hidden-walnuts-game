@@ -280,12 +280,34 @@ export async function verifyEmail(data: VerifyEmailRequest): Promise<VerifyEmail
 
     const result = await response.json();
 
-    // If verification successful, update cached user data
+    // If verification successful, update cached user data and tokens
     if (result.success) {
-      const user = getCurrentUser();
-      if (user) {
-        user.emailVerified = true;
-        localStorage.setItem('auth_user', JSON.stringify(user));
+      // 1. Update tokens if provided (auto-login)
+      if (result.accessToken && result.refreshToken) {
+        localStorage.setItem('auth_access_token', result.accessToken);
+        localStorage.setItem('auth_refresh_token', result.refreshToken);
+        localStorage.setItem('auth_access_token_expiry', result.accessTokenExpiry.toString());
+        localStorage.setItem('auth_refresh_token_expiry', result.refreshTokenExpiry.toString());
+      }
+
+      // 2. Update user data
+      const user = getCurrentUser() || {
+        username: result.username || '',
+        email: result.email || '',
+        emailVerified: true,
+        unlockedCharacters: [], // Will be fetched on next load
+        // isAuthenticated: true // This property is not part of UserData interface
+      };
+
+      // Ensure emailVerified is true
+      user.emailVerified = true;
+
+      // Update storage
+      localStorage.setItem('auth_user', JSON.stringify(user));
+
+      // Also store username in legacy format if available
+      if (user.username) {
+        localStorage.setItem('hw_username', user.username);
       }
     }
 

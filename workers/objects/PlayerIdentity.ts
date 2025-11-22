@@ -852,6 +852,42 @@ export class PlayerIdentity extends DurableObject {
         }
       }
 
+      // Generate new JWT tokens with emailVerified: true
+      const tokenId = generateTokenId();
+      const deviceInfo = request.headers.get('User-Agent') || 'Unknown';
+
+      // Ensure authTokens array exists
+      if (!data.authTokens) {
+        data.authTokens = [];
+      }
+
+      const tokens = generateTokenPair(
+        {
+          username: data.username,
+          email: data.email,
+          isAuthenticated: data.isAuthenticated,
+          emailVerified: true, // Explicitly true
+          unlockedCharacters: data.unlockedCharacters
+        },
+        tokenId,
+        this.env.JWT_SECRET
+      );
+
+      // Store token metadata
+      data.authTokens.push({
+        tokenId,
+        created: Date.now(),
+        expiresAt: tokens.refreshTokenExpiry,
+        deviceInfo,
+        lastUsed: Date.now()
+      });
+
+      // Limit to 10 active tokens
+      if (data.authTokens.length > 10) {
+        data.authTokens.sort((a, b) => b.created - a.created);
+        data.authTokens = data.authTokens.slice(0, 10);
+      }
+
       data.lastSeen = Date.now();
       await this.ctx.storage.put('player', data);
 
@@ -870,7 +906,12 @@ export class PlayerIdentity extends DurableObject {
         success: true,
         message: 'Email verified successfully',
         username: data.username,
-        email: data.email
+        email: data.email,
+        // Return new tokens for auto-login
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        accessTokenExpiry: tokens.accessTokenExpiry,
+        refreshTokenExpiry: tokens.refreshTokenExpiry
       });
     } catch (error) {
       console.error('Email verification error:', error);
