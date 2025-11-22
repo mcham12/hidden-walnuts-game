@@ -7571,21 +7571,21 @@ export class Game {
 
       let leaderboardData;
       if (!response.ok) {
-        console.warn(`⚠️ Leaderboard fetch failed(${response.status} ${response.statusText}), using mock data`);
-        leaderboardData = this.getMockLeaderboardData();
+        console.error(`❌ Leaderboard fetch failed (${response.status} ${response.statusText})`);
+        leaderboardData = []; // Empty leaderboard on API failure
       } else {
         const data = await response.json();
         console.log(`📊 Leaderboard stats: ${data.count} entries shown, ${data.totalPlayers} total players in DB`);
 
         if (data.leaderboard.length === 0) {
-          console.warn('⚠️ Leaderboard is empty! No scores have been reported yet. Falling back to mock data.');
-          leaderboardData = this.getMockLeaderboardData();
+          console.log('ℹ️ Leaderboard is empty - no scores reported yet.');
+          leaderboardData = [];
         } else {
           // MVP 16: Include authentication fields in leaderboard data
           leaderboardData = data.leaderboard.map((entry: any) => ({
             playerId: entry.playerId,
             displayName: entry.playerId === this.playerId
-              ? (this.username ? `You(${this.username})` : 'You')
+              ? (this.username ? `You (${this.username})` : 'You')
               : entry.playerId.substring(0, 8), // Show first 8 chars of player ID
             score: entry.score,
             isAuthenticated: entry.isAuthenticated || false, // MVP 16: Auth status
