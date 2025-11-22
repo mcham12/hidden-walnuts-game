@@ -2796,104 +2796,113 @@
   </div>
   <!-- MVP 5: Settings Menu -->
   <button id="settings-toggle" class="hidden">⚙️ Settings</button>
-  <!-- MVP 9: Compact Settings Panel (Leaderboard-style) -->
+  <!-- MVP 5: Settings Menu Overlay -->
   <div id="settings-overlay" class="hidden">
-    <h2>⚙️ Settings</h2>
-    <div class="settings-tabs">
-      <button class="settings-tab active" data-tab="audio">🔊 Audio</button>
-      <button class="settings-tab" data-tab="controls">🎮 Controls</button>
-      <button class="settings-tab" data-tab="tips">💡 Tips</button>
-      <button class="settings-tab" data-tab="account">👤 Account</button>
+    <div id="settings-header">
+      <h2>⚙️ Settings</h2>
+      <!-- Close button for easier access -->
+      <button id="settings-close-btn"
+        style="background:none; border:none; color:#bcaaa4; font-size:24px; cursor:pointer;">&times;</button>
     </div>
-    <div id="audio-tab" class="settings-content active">
-      <div class="setting-group">
-        <label>
-          Master
-          <span class="slider-value" id="master-volume-value">100%</span>
-        </label>
-        <input type="range" id="master-volume" min="0" max="100" value="100">
+
+    <div id="settings-body">
+      <div class="settings-tabs">
+        <button class="settings-tab active" data-tab="audio">Audio</button>
+        <button class="settings-tab" data-tab="controls">Controls</button>
+        <button class="settings-tab" data-tab="tips">Tips</button>
+        <button class="settings-tab" data-tab="account">Account</button>
       </div>
-      <div class="setting-group">
-        <label>
-          SFX
-          <span class="slider-value" id="sfx-volume-value">70%</span>
-        </label>
-        <input type="range" id="sfx-volume" min="0" max="100" value="70">
+
+      <div id="audio-tab" class="settings-content active">
+        <div class="setting-group">
+          <label>
+            <span>🔊 Master Volume</span>
+            <span class="slider-value" id="master-volume-value">100%</span>
+          </label>
+          <input type="range" id="master-volume" min="0" max="100" value="100">
+        </div>
+        <div class="setting-group">
+          <label>
+            <span>🎵 Music & Ambient</span>
+            <span class="slider-value" id="ambient-volume-value">50%</span>
+          </label>
+          <input type="range" id="ambient-volume" min="0" max="100" value="50">
+        </div>
+        <div class="setting-group">
+          <label>
+            <span>💥 Sound Effects</span>
+            <span class="slider-value" id="sfx-volume-value">70%</span>
+          </label>
+          <input type="range" id="sfx-volume" min="0" max="100" value="70">
+        </div>
+        <div class="setting-group"
+          style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"
+          onclick="document.getElementById('mute-toggle').click()">
+          <span style="font-weight: 600; color: #d7ccc8;">🔇 Mute All Audio</span>
+          <input type="checkbox" id="mute-toggle" style="width: 20px; height: 20px; accent-color: #FFD700;">
+        </div>
       </div>
-      <div class="setting-group">
-        <label>
-          Ambient
-          <span class="slider-value" id="ambient-volume-value">50%</span>
-        </label>
-        <input type="range" id="ambient-volume" min="0" max="100" value="50">
-      </div>
-      <div class="setting-group">
-        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px;">
-          <input type="checkbox" id="mute-toggle" style="width: 16px; height: 16px; cursor: pointer;">
-          Mute All (M key)
-        </label>
-      </div>
-    </div>
-    <div id="controls-tab" class="settings-content">
-      <div class="setting-group">
-        <label>
-          Mouse Sensitivity
-          <span class="slider-value" id="sensitivity-value">100%</span>
-        </label>
-        <input type="range" id="mouse-sensitivity" min="25" max="200" value="100">
-      </div>
-      <div class="setting-group">
-        <label>Controls</label>
-        <div class="controls-grid">
-          <div class="control-item">
-            <span class="control-key">WASD/↑←↓→</span> Move
+
+      <div id="controls-tab" class="settings-content">
+        <div class="setting-group">
+          <label>
+            <span>🖱️ Sensitivity</span>
+            <span class="slider-value" id="sensitivity-value">100%</span>
+          </label>
+          <input type="range" id="mouse-sensitivity" min="25" max="200" value="100">
+        </div>
+
+        <div class="setting-group">
+          <label style="margin-bottom: 12px;">🎮 Input Map</label>
+
+          <!-- Desktop Controls -->
+          <div class="controls-grid desktop-only">
+            <div class="control-item">
+              <span>Move</span>
+              <span class="control-key">WASD</span>
+            </div>
+            <div class="control-item">
+              <span>Jump</span>
+              <span class="control-key">SPACE</span>
+            </div>
+            <div class="control-item">
+              <span>Action</span>
+              <span class="control-key">CLICK</span>
+            </div>
+            <div class="control-item">
+              <span>Throw</span>
+              <span class="control-key">T</span>
+            </div>
           </div>
-          <div class="control-item">
-            <span class="control-key">SPACE</span> Jump
-          </div>
-          <div class="control-item">
-            <span class="control-key">H</span> Hide
-          </div>
-          <div class="control-item">
-            <span class="control-key">T</span> Throw
-          </div>
-          <div class="control-item">
-            <span class="control-key">E</span> Eat
-          </div>
-          <div class="control-item">
-            <span class="control-key">CLICK</span> Find
-          </div>
-          <div class="control-item">
-            <span class="control-key">M</span> Mute
-          </div>
-          <div class="control-item">
-            <span class="control-key">L</span> Leader
+
+          <!-- Mobile Controls Message -->
+          <div class="touch-controls-msg mobile-only">
+            <div style="font-size: 40px; margin-bottom: 10px;">📱</div>
+            Touch controls are active.<br>
+            Use the on-screen joystick and buttons to play.
           </div>
         </div>
       </div>
-    </div>
-    <!-- MVP 14: Tips Tab -->
-    <div id="tips-tab" class="settings-content">
-      <div class="setting-group">
-        <div id="tips-container"
-          style="display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto;">
-          <!-- Tips will be populated by SettingsManager -->
+
+      <div id="tips-tab" class="settings-content">
+        <div class="setting-group">
+          <div id="tips-container" style="display: flex; flex-direction: column; gap: 12px;">
+            <!-- Tips populated by JS -->
+          </div>
         </div>
-      </div>
-      <div class="setting-group">
         <button id="reset-tips-btn" class="settings-button secondary" style="width: 100%;">Reset Seen Tips</button>
       </div>
-    </div>
-    <!-- MVP 16: Account Tab -->
-    <div id="account-tab" class="settings-content">
-      <div id="account-container"
-        style="display: flex; flex-direction: column; gap: 16px; max-height: 400px; overflow-y: auto;">
-        <!-- Account info will be populated by SettingsManager -->
+
+      <div id="account-tab" class="settings-content">
+        <div id="account-container" style="display: flex; flex-direction: column; gap: 16px;">
+          <!-- Account info populated by JS -->
+        </div>
       </div>
-    </div>
-    <div class="settings-buttons">
-      <button class="settings-button primary" id="settings-apply">Apply</button>
-      <button class="settings-button secondary" id="settings-cancel">Cancel</button>
+
+      <div class="settings-buttons">
+        <button class="settings-button secondary" id="settings-cancel">Cancel</button>
+        <button class="settings-button primary" id="settings-apply">Save Changes</button>
+      </div>
     </div>
   </div>
   <canvas id="gameCanvas" class="hidden"></canvas>

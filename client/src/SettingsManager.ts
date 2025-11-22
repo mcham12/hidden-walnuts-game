@@ -111,26 +111,34 @@ export class SettingsManager {
       });
     });
 
-    // Audio sliders
+    // Audio sliders with feedback
     this.masterVolumeSlider.addEventListener('input', () => {
       const value = parseInt(this.masterVolumeSlider.value) / 100;
       this.updateSliderDisplay('master-volume-value', value);
+      this.audioManager.setVolume('master', value); // Apply immediately
+      this.playSliderFeedback();
     });
 
     this.sfxVolumeSlider.addEventListener('input', () => {
       const value = parseInt(this.sfxVolumeSlider.value) / 100;
       this.updateSliderDisplay('sfx-volume-value', value);
+      this.audioManager.setVolume('sfx', value); // Apply immediately
+      this.playSliderFeedback();
     });
 
     this.ambientVolumeSlider.addEventListener('input', () => {
       const value = parseInt(this.ambientVolumeSlider.value) / 100;
       this.updateSliderDisplay('ambient-volume-value', value);
+      this.audioManager.setVolume('ambient', value); // Apply immediately
+      // No feedback for ambient slider to avoid noise overlap
     });
 
     // Sensitivity slider
     this.sensitivitySlider.addEventListener('input', () => {
       const value = parseInt(this.sensitivitySlider.value) / 100;
       this.updateSliderDisplay('sensitivity-value', value);
+      // Sensitivity is applied on "Apply" or via event, but we can store it in temp state if needed
+      // For now, just update display
     });
 
     // Mute checkbox
@@ -146,6 +154,27 @@ export class SettingsManager {
         this.populateTips(); // Refresh display
         this.audioManager.playSound('ui', 'button_click');
       });
+    }
+
+    // Close button (new)
+    const closeBtn = document.getElementById('settings-close-btn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => this.cancel());
+    }
+  }
+
+  /**
+   * Play a subtle feedback sound when adjusting sliders
+   * Throttled to prevent spamming
+   */
+  private lastFeedbackTime = 0;
+  private playSliderFeedback(): void {
+    const now = Date.now();
+    if (now - this.lastFeedbackTime > 100) { // Max 10 times per second
+      // Use a very short, subtle click or blip
+      // Reusing 'ui' sound with low volume and high pitch if possible, or just standard click
+      this.audioManager.playSound('ui', 'button_click');
+      this.lastFeedbackTime = now;
     }
   }
 
@@ -188,6 +217,18 @@ export class SettingsManager {
   open(): void {
     this.isOpen = true;
     this.overlay.classList.remove('hidden');
+
+    // MVP 9: Toggle mobile/desktop specific elements
+    // We use a helper to check if we are on mobile (touch device)
+    // Import dynamically to avoid circular dependency issues if any
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+      (typeof navigator.maxTouchPoints !== 'undefined' && navigator.maxTouchPoints > 0);
+
+    if (isMobile) {
+      document.body.classList.add('is-mobile');
+    } else {
+      document.body.classList.remove('is-mobile');
+    }
 
     // Play UI sound
     this.audioManager.playSound('ui', 'button_click');
