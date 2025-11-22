@@ -907,6 +907,7 @@ export class PlayerIdentity extends DurableObject {
         message: 'Email verified successfully',
         username: data.username,
         email: data.email,
+        unlockedCharacters: data.unlockedCharacters, // Return full list including Goat
         // Return new tokens for auto-login
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,

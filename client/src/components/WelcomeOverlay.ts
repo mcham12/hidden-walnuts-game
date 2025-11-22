@@ -90,7 +90,8 @@ export class WelcomeOverlay {
     // Create content box
     const content = document.createElement('div');
     content.style.cssText = `
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #1a3a1a 0%, #0d1f0d 100%);
+      border: 2px solid #4a7c59;
       border-radius: 20px;
       padding: 50px;
       max-width: 600px;
@@ -194,8 +195,8 @@ export class WelcomeOverlay {
     button.style.cssText = `
       width: 100%;
       height: 60px;
-      background: white;
-      color: #667eea;
+      background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%);
+      color: white;
       border: none;
       border-radius: 12px;
       font-size: 20px;

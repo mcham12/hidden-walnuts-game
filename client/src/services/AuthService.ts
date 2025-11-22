@@ -295,12 +295,17 @@ export async function verifyEmail(data: VerifyEmailRequest): Promise<VerifyEmail
         username: result.username || '',
         email: result.email || '',
         emailVerified: true,
-        unlockedCharacters: [], // Will be fetched on next load
+        unlockedCharacters: result.unlockedCharacters || [], // Use returned list
         // isAuthenticated: true // This property is not part of UserData interface
       };
 
       // Ensure emailVerified is true
       user.emailVerified = true;
+
+      // Update unlocked characters if provided
+      if (result.unlockedCharacters) {
+        user.unlockedCharacters = result.unlockedCharacters;
+      }
 
       // Update storage
       localStorage.setItem('auth_user', JSON.stringify(user));
