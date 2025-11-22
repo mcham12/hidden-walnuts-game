@@ -32,8 +32,7 @@ export class SettingsManager {
   private ambientVolumeSlider: HTMLInputElement;
   private muteCheckbox: HTMLInputElement;
 
-  // Other controls
-  private sensitivitySlider: HTMLInputElement;
+  // Mouse sensitivity removed (no longer in UI)
 
   // MVP 14: Tips tab elements
   private tipsContainer: HTMLElement | null = null;
@@ -61,8 +60,7 @@ export class SettingsManager {
     this.ambientVolumeSlider = document.getElementById('ambient-volume') as HTMLInputElement;
     this.muteCheckbox = document.getElementById('mute-toggle') as HTMLInputElement;
 
-    // Other controls
-    this.sensitivitySlider = document.getElementById('mouse-sensitivity') as HTMLInputElement;
+    // Mouse sensitivity removed (no longer in UI)
 
     // MVP 14: Tips tab elements
     this.tipsContainer = document.getElementById('tips-container');
@@ -128,13 +126,7 @@ export class SettingsManager {
       // No feedback for ambient slider to avoid noise overlap
     });
 
-    // Sensitivity slider
-    this.sensitivitySlider.addEventListener('input', () => {
-      const value = parseInt(this.sensitivitySlider.value) / 100;
-      this.updateSliderDisplay('sensitivity-value', value);
-      // Sensitivity is applied on "Apply" or via event, but we can store it in temp state if needed
-      // For now, just update display
-    });
+    // Sensitivity slider removed (no longer in UI)
 
     // Mute checkbox
     this.muteCheckbox.addEventListener('change', () => {
@@ -267,7 +259,7 @@ export class SettingsManager {
     this.settings.masterVolume = parseInt(this.masterVolumeSlider.value) / 100;
     this.settings.sfxVolume = parseInt(this.sfxVolumeSlider.value) / 100;
     this.settings.ambientVolume = parseInt(this.ambientVolumeSlider.value) / 100;
-    this.settings.mouseSensitivity = parseInt(this.sensitivitySlider.value) / 100;
+    // Mouse sensitivity removed (no longer in UI)
     this.settings.isMuted = this.muteCheckbox.checked;
 
     // Apply to audio manager
@@ -303,14 +295,12 @@ export class SettingsManager {
     this.masterVolumeSlider.value = String(Math.round(this.settings.masterVolume * 100));
     this.sfxVolumeSlider.value = String(Math.round(this.settings.sfxVolume * 100));
     this.ambientVolumeSlider.value = String(Math.round(this.settings.ambientVolume * 100));
-    this.sensitivitySlider.value = String(Math.round(this.settings.mouseSensitivity * 100));
     this.muteCheckbox.checked = this.settings.isMuted;
 
     // Update displays
     this.updateSliderDisplay('master-volume-value', this.settings.masterVolume);
     this.updateSliderDisplay('sfx-volume-value', this.settings.sfxVolume);
     this.updateSliderDisplay('ambient-volume-value', this.settings.ambientVolume);
-    this.updateSliderDisplay('sensitivity-value', this.settings.mouseSensitivity);
 
     // Apply to audio manager
     this.audioManager.setVolume('master', this.settings.masterVolume);
