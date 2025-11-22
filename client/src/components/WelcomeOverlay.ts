@@ -159,7 +159,7 @@ export class WelcomeOverlay {
       { icon: '🦊', text: '6 free characters to choose from' },
       { icon: '☁️', text: 'Progress synced across all devices' },
       { icon: '🏆', text: 'Access to Hall of Fame leaderboard' },
-      { icon: '🔒', text: 'Verified badge on your profile' },
+      { icon: '✅', text: 'Verified badge on your profile' },
       { icon: '📊', text: 'Track your stats and achievements' }
     ];
 
