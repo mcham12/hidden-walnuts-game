@@ -142,8 +142,11 @@ export default class Leaderboard {
         });
       }
 
-      const playerRecord = this.scores.get(playerId);
-      const rank = this.getPlayerRank(playerId);
+      const type = url.searchParams.get("type") || "weekly";
+      const scoresMap = type === "alltime" ? this.alltimeScores : this.scores;
+
+      const playerRecord = scoresMap.get(playerId);
+      const rank = this.getPlayerRank(playerId, scoresMap);
 
       // MVP 16: Include authentication info in player rank response
       return new Response(JSON.stringify({
@@ -622,13 +625,13 @@ export default class Leaderboard {
   }
 
   // Get a player's current rank
-  private getPlayerRank(playerId: string): number {
-    const playerRecord = this.scores.get(playerId);
+  private getPlayerRank(playerId: string, scoresMap: Map<string, ScoreRecord> = this.scores): number {
+    const playerRecord = scoresMap.get(playerId);
     if (!playerRecord) {
       return -1; // Player not found
     }
 
-    const sortedScores = Array.from(this.scores.values())
+    const sortedScores = Array.from(scoresMap.values())
       .sort((a, b) => b.score - a.score);
 
     const rank = sortedScores.findIndex(record => record.playerId === playerId);

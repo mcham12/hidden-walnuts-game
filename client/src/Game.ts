@@ -7653,69 +7653,71 @@ export class Game {
       });
 
       // MVP 16: Show player rank below top 10 if not in top 10
-      if (!playerInTop10 && leaderboardData.length > 10) {
-        // Find current player's rank
-        const playerEntry = leaderboardData.find((entry: any) => entry.playerId === this.playerId);
+      if (!playerInTop10) {
+        // Fetch specific player rank from API
+        try {
+          // Use window.location.origin for API URL if not defined
+          const apiBase = window.location.origin;
+          const type = this.currentLeaderboardTab || 'weekly';
 
-        if (playerEntry) {
-          const playerRank = leaderboardData.indexOf(playerEntry) + 1;
+          const rankResponse = await fetch(`${apiBase}/api/leaderboard/player?playerId=${this.playerId}&type=${type}`);
+          if (rankResponse.ok) {
+            const playerEntry = await rankResponse.json();
 
-          // Add separator
-          const separator = document.createElement('div');
-          separator.style.cssText = `
-          border-top: 1px solid rgba(255, 215, 0, 0.3);
-          margin: 10px 0;
-          `;
-          leaderboardList.appendChild(separator);
+            if (playerEntry && playerEntry.rank > 0) {
+              // Add separator
+              const separator = document.createElement('div');
+              separator.style.cssText = `
+              border-top: 1px solid rgba(255, 215, 0, 0.3);
+              margin: 10px 0;
+              `;
+              leaderboardList.appendChild(separator);
 
-          // Add player's rank
-          const playerLi = document.createElement('li');
-          playerLi.classList.add('current-player');
+              // Add player's rank
+              const playerLi = document.createElement('li');
+              playerLi.classList.add('current-player');
 
-          // Use same badge logic as top 10
-          let playerBadge = '';
-          if (playerEntry.emailVerified) {
-            playerBadge = '<span style="color: #2ecc71; font-weight: bold;" title="Verified Email">✓</span> ';
-          } else if (playerEntry.isAuthenticated) {
-            playerBadge = '<span style="color: #95a5a6;" title="Signed In (Unverified)">🔒</span> ';
+              // Use same badge logic as top 10
+              let playerBadge = '';
+              if (playerEntry.emailVerified) {
+                playerBadge = '<span style="color: #2ecc71; font-weight: bold;" title="Verified Email">✓</span> ';
+              } else if (playerEntry.isAuthenticated) {
+                playerBadge = '<span style="color: #95a5a6;" title="Signed In (Unverified)">🔒</span> ';
+              }
+
+              playerLi.innerHTML = `
+                  <span class="leaderboard-rank">#${playerEntry.rank}</span>
+                  <span class="leaderboard-name">${playerBadge}You (${this.username || 'Player'})</span>
+                  <span class="leaderboard-score">${playerEntry.score}</span>
+                `;
+
+              leaderboardList.appendChild(playerLi);
+
+              // MVP 16: Add CTA for no-auth players ranked below top 10
+              if (!playerEntry.isAuthenticated && type === 'weekly') {
+                const ctaEl = document.createElement('div');
+                ctaEl.style.cssText = `
+              text-align: center;
+              font-size: 11px;
+              color: #FFD700;
+              margin-top: 8px;
+              padding: 8px;
+              background: rgba(255, 215, 0, 0.1);
+              border-radius: 4px;
+              cursor: pointer;
+              `;
+                ctaEl.innerHTML = '🔒 Sign in to save your score!';
+                ctaEl.onclick = () => {
+                  // Open settings to account tab
+                  const settingsToggle = document.getElementById('settings-toggle');
+                  if (settingsToggle) settingsToggle.click();
+                };
+                leaderboardList.appendChild(ctaEl);
+              }
+            }
           }
-
-          playerLi.innerHTML = `
-              <span class="leaderboard-rank">#${playerRank}</span>
-              <span class="leaderboard-name">${playerBadge}You(${this.username})</span>
-              <span class="leaderboard-score">${playerEntry.score}</span>
-            `;
-
-          leaderboardList.appendChild(playerLi);
-
-          // MVP 16: Add CTA for no-auth players ranked below top 10
-          if (!playerEntry.isAuthenticated && leaderboardType === 'weekly') {
-            const ctaEl = document.createElement('div');
-            ctaEl.style.cssText = `
-          text - align: center;
-          font - size: 11px;
-          color: #FFD700;
-          margin - top: 8px;
-          padding: 8px;
-          background: rgba(255, 215, 0, 0.1);
-          border - radius: 6px;
-          cursor: pointer;
-          transition: background 0.2s;
-          `;
-            ctaEl.textContent = '💡 Sign up to compete for top 10!';
-            ctaEl.addEventListener('mouseenter', () => {
-              ctaEl.style.background = 'rgba(255, 215, 0, 0.2)';
-            });
-            ctaEl.addEventListener('mouseleave', () => {
-              ctaEl.style.background = 'rgba(255, 215, 0, 0.1)';
-            });
-            ctaEl.addEventListener('click', () => {
-              // MVP 16: Open signup modal (safe context, player is viewing leaderboard)
-              this.openSignupModal();
-            });
-
-            leaderboardList.appendChild(ctaEl);
-          }
+        } catch (err) {
+          console.error('Error fetching player rank:', err);
         }
       }
     } catch (error) {
