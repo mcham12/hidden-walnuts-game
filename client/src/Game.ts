@@ -7349,7 +7349,10 @@ export class Game {
       walnutId: walnutId,
       finderId: this.playerId,
       points: points,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      // MVP 16: Send auth status for All-Time leaderboard filtering
+      isAuthenticated: this.isAuthenticated,
+      emailVerified: this.emailVerified
     });
   }
 
