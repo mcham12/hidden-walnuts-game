@@ -27,6 +27,8 @@ export interface UserData {
   isAuthenticated: boolean;
   unlockedCharacters: string[];
   lastCharacterId?: string;
+  createdAt?: number | string; // Timestamp or ISO string
+  lastLogin?: number | string; // Timestamp or ISO string
 }
 
 export interface SignupRequest {
@@ -46,6 +48,8 @@ export interface SignupResponse {
   refreshToken: string;
   accessTokenExpiry: number;
   refreshTokenExpiry: number;
+  createdAt?: number | string;
+  lastLogin?: number | string;
   error?: string;
   message?: string;
 }
@@ -66,6 +70,8 @@ export interface LoginResponse {
   refreshToken: string;
   accessTokenExpiry: number;
   refreshTokenExpiry: number;
+  createdAt?: number | string;
+  lastLogin?: number | string;
   error?: string;
   message?: string;
 }
@@ -528,7 +534,9 @@ function storeAuthData(data: SignupResponse | LoginResponse): void {
     emailVerified: data.emailVerified,
     isAuthenticated: true,
     unlockedCharacters: data.unlockedCharacters,
-    lastCharacterId: data.lastCharacterId
+    lastCharacterId: data.lastCharacterId,
+    createdAt: data.createdAt,
+    lastLogin: data.lastLogin
   };
 
   localStorage.setItem('auth_user', JSON.stringify(userData));
