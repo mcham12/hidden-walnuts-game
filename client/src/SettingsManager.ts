@@ -23,8 +23,6 @@ export class SettingsManager {
   // DOM elements
   private overlay: HTMLElement;
   private toggleButton: HTMLElement;
-  private applyButton: HTMLElement;
-  private cancelButton: HTMLElement;
   private tabs: NodeListOf<HTMLElement>;
   private tabContents: NodeListOf<HTMLElement>;
 
@@ -54,8 +52,6 @@ export class SettingsManager {
     // Get DOM elements
     this.overlay = document.getElementById('settings-overlay')!;
     this.toggleButton = document.getElementById('settings-toggle')!;
-    this.applyButton = document.getElementById('settings-apply')!;
-    this.cancelButton = document.getElementById('settings-cancel')!;
     this.tabs = document.querySelectorAll('.settings-tab');
     this.tabContents = document.querySelectorAll('.settings-content');
 
@@ -88,9 +84,8 @@ export class SettingsManager {
     // Open settings
     this.toggleButton.addEventListener('click', () => this.open());
 
-    // Close settings
-    this.applyButton.addEventListener('click', () => this.applyAndClose());
-    this.cancelButton.addEventListener('click', () => this.cancel());
+    // Note: Apply/Cancel buttons removed since sliders work instantly
+    // Keeping references for backward compatibility but not adding listeners
 
     // ESC key to open/close settings
     document.addEventListener('keydown', (e) => {
@@ -665,9 +660,18 @@ export class SettingsManager {
     // Password field
     const passwordField = this.createInfoField('🔒 Password', '••••••••', true);
 
-    // Account dates
-    const createdDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown';
-    const lastLogin = user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Just now';
+    // Account dates - handle both timestamp and ISO string formats
+    let createdDate = 'Unknown';
+    if (user.createdAt) {
+      const date = typeof user.createdAt === 'number' ? new Date(user.createdAt) : new Date(user.createdAt);
+      createdDate = date.toLocaleDateString();
+    }
+
+    let lastLogin = 'Just now';
+    if (user.lastLogin) {
+      const date = typeof user.lastLogin === 'number' ? new Date(user.lastLogin) : new Date(user.lastLogin);
+      lastLogin = date.toLocaleDateString();
+    }
     const createdField = this.createInfoField('📅 Member Since', createdDate, true);
     const loginField = this.createInfoField('🕐 Last Login', lastLogin, true);
 
@@ -724,9 +728,47 @@ export class SettingsManager {
       logoutButton.style.boxShadow = '0 4px 12px rgba(255, 107, 107, 0.4)';
     });
 
-    // Disabled buttons (coming soon)
-    const changePasswordButton = this.createDisabledButton('Change Password', 'Coming soon!');
-    const deleteAccountButton = this.createDisabledButton('Delete Account', 'Contact support to delete account');
+    // Change Password button
+    const changePasswordButton = document.createElement('button');
+    changePasswordButton.className = 'settings-button secondary';
+    changePasswordButton.style.cssText = `
+      width: 100%;
+      height: 44px;
+      background: rgba(0, 0, 0, 0.3);
+      color: #efebe9;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    `;
+    changePasswordButton.textContent = '🔑 Change Password';
+    changePasswordButton.addEventListener('click', () => {
+      alert('Password change feature coming soon! Please contact support if you need to reset your password.');
+    });
+
+    // Delete Account button
+    const deleteAccountButton = document.createElement('button');
+    deleteAccountButton.className = 'settings-button secondary';
+    deleteAccountButton.style.cssText = `
+      width: 100%;
+      height: 44px;
+      background: rgba(139, 0, 0, 0.3);
+      color: #ff6b6b;
+      border: 1px solid rgba(255, 107, 107, 0.3);
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    `;
+    deleteAccountButton.textContent = '🗑️ Delete Account';
+    deleteAccountButton.addEventListener('click', () => {
+      if (confirm('Are you sure you want to delete your account? This action cannot be undone. Please contact support to proceed.')) {
+        alert('Please email support@hiddenwalnuts.com to request account deletion.');
+      }
+    });
 
     buttonsSection.appendChild(logoutButton);
     buttonsSection.appendChild(changePasswordButton);
@@ -773,31 +815,6 @@ export class SettingsManager {
     field.appendChild(valueEl);
 
     return field;
-  }
-
-  /**
-   * MVP 16: Create disabled button with tooltip
-   */
-  private createDisabledButton(text: string, tooltip: string): HTMLElement {
-    const button = document.createElement('button');
-    button.className = 'settings-button secondary';
-    button.style.cssText = `
-      width: 100%;
-      height: 44px;
-      background: rgba(100, 100, 100, 0.3);
-      color: #888;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: not-allowed;
-      opacity: 0.6;
-    `;
-    button.textContent = text;
-    button.title = tooltip;
-    button.disabled = true;
-
-    return button;
   }
 
   /**

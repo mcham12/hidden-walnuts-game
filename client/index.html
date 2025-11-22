@@ -2846,41 +2846,14 @@
       <div id="controls-tab" class="settings-content">
         <div class="setting-group">
           <label>
-            <span>🖱️ Sensitivity</span>
+            <span>🖱️ Mouse Sensitivity</span>
             <span class="slider-value" id="sensitivity-value">100%</span>
           </label>
           <input type="range" id="mouse-sensitivity" min="25" max="200" value="100">
         </div>
-
-        <div class="setting-group">
-          <label style="margin-bottom: 12px;">🎮 Input Map</label>
-
-          <!-- Desktop Controls -->
-          <div class="controls-grid desktop-only">
-            <div class="control-item">
-              <span>Move</span>
-              <span class="control-key">WASD</span>
-            </div>
-            <div class="control-item">
-              <span>Jump</span>
-              <span class="control-key">SPACE</span>
-            </div>
-            <div class="control-item">
-              <span>Action</span>
-              <span class="control-key">CLICK</span>
-            </div>
-            <div class="control-item">
-              <span>Throw</span>
-              <span class="control-key">T</span>
-            </div>
-          </div>
-
-          <!-- Mobile Controls Message -->
-          <div class="touch-controls-msg mobile-only">
-            <div style="font-size: 40px; margin-bottom: 10px;">📱</div>
-            Touch controls are active.<br>
-            Use the on-screen joystick and buttons to play.
-          </div>
+        <div style="text-align: center; padding: 20px; color: #bcaaa4; font-style: italic;">
+          <div style="font-size: 32px; margin-bottom: 10px;">❓</div>
+          Press <strong>?</strong> in-game to view controls
         </div>
       </div>
 
@@ -2897,11 +2870,6 @@
         <div id="account-container" style="display: flex; flex-direction: column; gap: 16px;">
           <!-- Account info populated by JS -->
         </div>
-      </div>
-
-      <div class="settings-buttons">
-        <button class="settings-button secondary" id="settings-cancel">Cancel</button>
-        <button class="settings-button primary" id="settings-apply">Save Changes</button>
       </div>
     </div>
   </div>
