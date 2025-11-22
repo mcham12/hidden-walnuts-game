@@ -2923,66 +2923,68 @@
   <button id="settings-toggle" class="hidden">⚙️ Settings</button>
   <!-- MVP 5: Settings Menu Overlay -->
   <div id="settings-overlay" class="hidden">
-    <div id="settings-header">
-      <h2>⚙️ Settings</h2>
-      <!-- Close button for easier access -->
-      <button id="settings-close-btn"
-        style="background:none; border:none; color:#bcaaa4; font-size:24px; cursor:pointer;">&times;</button>
-    </div>
-
-    <div id="settings-body">
-      <!-- All settings in one scrollable view - no tabs -->
-
-      <!-- Audio Settings -->
-      <div class="settings-section">
-        <h3 class="section-title">🔊 Audio</h3>
-        <div class="setting-group">
-          <label>
-            <span>🔇 Master Volume</span>
-            <span class="slider-value" id="master-volume-value">100%</span>
-          </label>
-          <input type="range" id="master-volume" min="0" max="100" value="100">
-        </div>
-
-        <div class="setting-group">
-          <label>
-            <span>🎵 Music & Ambient</span>
-            <span class="slider-value" id="ambient-volume-value">50%</span>
-          </label>
-          <input type="range" id="ambient-volume" min="0" max="100" value="50">
-        </div>
-
-        <div class="setting-group">
-          <label>
-            <span>💥 Sound Effects</span>
-            <span class="slider-value" id="sfx-volume-value">70%</span>
-          </label>
-          <input type="range" id="sfx-volume" min="0" max="100" value="70">
-        </div>
-
-        <div class="setting-group">
-          <label class="checkbox-label">
-            <input type="checkbox" id="mute-toggle">
-            <span>🔇 Mute All Audio</span>
-          </label>
-        </div>
+    <div id="settings-menu">
+      <div id="settings-header">
+        <h2>⚙️ Settings</h2>
+        <!-- Close button for easier access -->
+        <button id="settings-close-btn">×</button>
       </div>
 
-      <!-- Tips Section -->
-      <div class="settings-section">
-        <h3 class="section-title">💡 Tips</h3>
-        <div id="tips-container" style="display: flex; flex-direction: column; gap: 12px;">
-          <!-- Tips populated by JS -->
-        </div>
-        <button id="reset-tips-btn" class="settings-button secondary" style="width: 100%; margin-top: 12px;">Reset Seen
-          Tips</button>
-      </div>
+      <div id="settings-body">
+        <!-- All settings in one scrollable view - no tabs -->
 
-      <!-- Account Section -->
-      <div class="settings-section">
-        <h3 class="section-title">👤 Account</h3>
-        <div id="account-container" style="display: flex; flex-direction: column; gap: 16px;">
-          <!-- Account info populated by JS -->
+        <!-- Audio Settings -->
+        <div class="settings-section">
+          <h3 class="section-title">🔊 Audio</h3>
+          <div class="setting-group">
+            <label>
+              <span>🔇 Master Volume</span>
+              <span class="slider-value" id="master-volume-value">100%</span>
+            </label>
+            <input type="range" id="master-volume" min="0" max="100" value="100">
+          </div>
+
+          <div class="setting-group">
+            <label>
+              <span>🎵 Music & Ambient</span>
+              <span class="slider-value" id="ambient-volume-value">50%</span>
+            </label>
+            <input type="range" id="ambient-volume" min="0" max="100" value="50">
+          </div>
+
+          <div class="setting-group">
+            <label>
+              <span>💥 Sound Effects</span>
+              <span class="slider-value" id="sfx-volume-value">70%</span>
+            </label>
+            <input type="range" id="sfx-volume" min="0" max="100" value="70">
+          </div>
+
+          <div class="setting-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="mute-toggle">
+              <span>🔇 Mute All Audio</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Tips Section -->
+        <div class="settings-section">
+          <h3 class="section-title">💡 Tips</h3>
+          <div id="tips-container" style="display: flex; flex-direction: column; gap: 12px;">
+            <!-- Tips populated by JS -->
+          </div>
+          <button id="reset-tips-btn" class="settings-button secondary" style="width: 100%; margin-top: 12px;">Reset
+            Seen
+            Tips</button>
+        </div>
+
+        <!-- Account Section -->
+        <div class="settings-section">
+          <h3 class="section-title">👤 Account</h3>
+          <div id="account-container" style="display: flex; flex-direction: column; gap: 16px;">
+            <!-- Account info populated by JS -->
+          </div>
         </div>
       </div>
     </div>
