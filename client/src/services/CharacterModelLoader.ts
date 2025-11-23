@@ -51,7 +51,7 @@ export class CharacterModelLoader {
       throw new Error(`Character not found: ${characterId}`);
     }
 
-    console.log(`Loading character: ${characterDef.name}`);
+
 
     try {
       // Load the main character model
@@ -102,12 +102,12 @@ export class CharacterModelLoader {
         isLoaded: true
       };
 
-      console.log(`✅ Character loaded: ${characterDef.name} with ${animations.size} animations`);
+
       return loadedCharacter;
 
     } catch (error) {
       console.error(`Failed to load character ${characterId}:`, error);
-      
+
       // Create a fallback character (simple colored cube)
       const fallbackCharacter = await this.createFallbackCharacter(characterId, characterDef);
       return fallbackCharacter;
@@ -183,15 +183,15 @@ export class CharacterModelLoader {
   // Create a fallback character (colored cube) when model loading fails
   private async createFallbackCharacter(characterId: string, characterDef: CharacterDefinition): Promise<LoadedCharacter> {
     const THREE = await import('three');
-    
+
     // Get a unique color for this character
     const color = CharacterRegistry.getCharacterColorVariant(characterId, characterId);
-    
+
     // Create a simple colored cube
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const material = new THREE.MeshLambertMaterial({ color });
     const model = new THREE.Mesh(geometry, material);
-    
+
     model.scale.setScalar(characterDef.scale);
     model.castShadow = true;
     model.receiveShadow = true;
@@ -216,7 +216,7 @@ export class CharacterModelLoader {
 
     // Clone the model and create new mixer
     const clonedModel = loadedCharacter.model.clone();
-    
+
     let clonedMixer = null;
     if (loadedCharacter.mixer) {
       const THREE = require('three');
@@ -247,16 +247,16 @@ export class CharacterModelLoader {
     // Start new action
     const animationClip = character.animations.get(animationName);
     const action = character.mixer.clipAction(animationClip);
-    
+
     if (loop) {
       const THREE = require('three');
       action.setLoop(THREE.LoopRepeat);
     }
-    
+
     action.reset().play();
     character.currentAction = action;
 
-    console.log(`Playing animation ${animationName} for character ${character.id}`);
+
     return true;
   }
 
@@ -281,17 +281,16 @@ export class CharacterModelLoader {
 
   // Preload multiple characters
   async preloadCharacters(characterIds: string[]): Promise<void> {
-    console.log(`Preloading ${characterIds.length} characters...`);
-    
-    const loadingPromises = characterIds.map(id => 
+
+
+    const loadingPromises = characterIds.map(id =>
       this.loadCharacter(id).catch(error => {
         console.warn(`Failed to preload character ${id}:`, error);
         return null;
       })
     );
-    
+
     await Promise.allSettled(loadingPromises);
-    console.log(`Preloading complete. ${this.loadedCharacters.size} characters loaded.`);
   }
 
   // Dispose of character resources

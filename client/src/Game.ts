@@ -1693,7 +1693,7 @@ export class Game {
 
     // Get WebSocket URL - check environment or use default
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:50569';
-    console.log(`🔌 [connectWebSocket] API URL: ${apiUrl}`);
+
 
     // MVP 7.1: Include Turnstile token for bot protection (optional parameter - null if not verified)
     const turnstileParam = this.turnstileToken ? `&turnstileToken=${this.turnstileToken}` : '';
@@ -1706,11 +1706,10 @@ export class Game {
     const wsUrl = apiUrl.replace('http:', 'ws:').replace('https:', 'wss:') +
       `/ws?squirrelId=${this.playerId}&characterId=${this.selectedCharacterId}&sessionToken=${this.sessionToken}&username=${encodeURIComponent(this.username)}${accessTokenParam}${turnstileParam}`;
 
-    console.log(`🔌 [connectWebSocket] Attempting connection to: ${wsUrl.replace(/turnstileToken=[^&]+/, 'turnstileToken=***').replace(/accessToken=[^&]+/, 'accessToken=***')}`);
 
     try {
       this.websocket = new WebSocket(wsUrl);
-      console.log(`🔌 [connectWebSocket] WebSocket created, readyState: ${this.websocket.readyState}`);
+
 
       // Set connection timeout
       const connectionTimeout = setTimeout(() => {
@@ -1721,7 +1720,6 @@ export class Game {
 
       this.websocket.onopen = () => {
         clearTimeout(connectionTimeout);
-        this.isConnected = true;
         this.connectionAttempts = 0; // Reset on successful connection
 
         // MVP 5: Update connection status
@@ -1747,13 +1745,11 @@ export class Game {
           const data = JSON.parse(event.data);
           this.handleMessage(data);
         } catch (error) {
-          console.error('❌ Failed to parse WebSocket message:', error);
         }
       };
 
-      this.websocket.onerror = (error) => {
+      this.websocket.onerror = () => {
         clearTimeout(connectionTimeout);
-        console.error('❌ WebSocket error:', error);
 
         // MVP 5: Show error toast
         this.toastManager.error('Connection error occurred');
@@ -1784,7 +1780,6 @@ export class Game {
       };
 
     } catch (error) {
-      console.error('❌ Failed to create WebSocket:', error);
       // Retry connection
       if (this.connectionAttempts < this.maxConnectionAttempts) {
         // MVP 5: Update connection status to reconnecting
@@ -1900,7 +1895,6 @@ export class Game {
   private async handleMessage(data: any): Promise<void> {
     // Validate message structure
     if (!data || typeof data.type !== 'string') {
-      console.warn('⚠️ Invalid message format:', data);
       return;
     }
 
@@ -1928,7 +1922,6 @@ export class Game {
 
               // CRITICAL FIX: Skip walnuts with undefined type (corrupted/old data)
               if (!walnutType) {
-                console.warn(`⚠️ Skipping walnut ${walnut.id} with undefined type (hiddenIn=${walnut.hiddenIn}, origin=${walnut.origin})`);
                 continue;
               }
 
@@ -1970,13 +1963,11 @@ export class Game {
         }
 
         // MVP 12: Handle initial title data and show welcome message if first join
-        console.log(`🎮 CLIENT: Received world_state - isFirstJoin: ${data.isFirstJoin}, titleId: ${data.titleId}, titleName: ${data.titleName}`);
         if (data.titleId && data.titleName) {
           this.playerTitleName = data.titleName;
 
           // Show welcome overlay if this is first join
           if (data.isFirstJoin) {
-            console.log(`🎉 CLIENT: Queueing welcome overlay for ${data.titleName}`);
             this.overlayManager.enqueue(
               'welcome',
               OverlayPriority.MEDIUM,
@@ -1984,13 +1975,11 @@ export class Game {
               3000 // Duration from RankOverlay
             );
           } else {
-            console.log(`📝 CLIENT: Not first join, skipping welcome overlay`);
           }
         } else {
           // Fallback: Calculate title from score if not provided
           const currentTitle = getPlayerTitle(this.playerScore);
           this.playerTitleName = currentTitle.name;
-          console.log(`⚠️ CLIENT: No title in world_state, using fallback: ${currentTitle.name}`);
         }
         break;
 
@@ -2184,7 +2173,6 @@ export class Game {
         if (data.npc && data.npc.id) {
           this.createNPC(data.npc.id, data.npc.position, data.npc.rotationY, data.npc.characterId, data.npc.username, data.npc.animation);
         } else {
-          console.error('❌ Invalid npc_spawned data:', data);
         }
         break;
 
@@ -2213,10 +2201,7 @@ export class Game {
 
       case 'predators_update':
         // MVP 12: Predator system - batch update for all predators
-        if (data.predators && Array.isArray(data.predators)) {
-          console.log('🦅 Received predators update:', data.predators.length, 'predators');
-          this.updatePredators(data.predators);
-        }
+        this.updatePredators(data.predators);
         break;
 
       case 'predator_annoyance_update':
@@ -2279,7 +2264,6 @@ export class Game {
         // MVP 12: Player ranked up!
         if (data.titleName && data.description) {
           this.playerTitleName = data.titleName;
-          console.log(`🎉 Ranked up to ${data.titleName}!`);
 
           // MVP 14: Queue rank up overlay (prevents conflicts with bonus overlay)
           this.overlayManager.enqueue(
@@ -2297,7 +2281,6 @@ export class Game {
       case 'tree_growing_bonus':
         // MVP 14: Player earned tree growing bonus!
         if (typeof data.points === 'number' && typeof data.count === 'number' && data.message) {
-          console.log(`🌳 Tree growing bonus! ${data.count} trees grown, +${data.points} points`);
 
           // MVP 14: Queue bonus overlay (prevents conflicts with rank overlay)
           this.overlayManager.enqueue(
@@ -2473,7 +2456,6 @@ export class Game {
         break;
 
       default:
-        console.warn('⚠️ Unknown message type:', data.type);
     }
   }
 
@@ -2509,13 +2491,11 @@ export class Game {
 
       const char = this.characters.find(c => c.id === remoteCharacterId);
       if (!char) {
-        console.error('❌ Character config not found for:', remoteCharacterId);
         return;
       }
 
       const remoteCharacter = await this.loadCachedAsset(char.modelPath);
       if (!remoteCharacter) {
-        console.error('❌ Failed to load remote player model');
         return;
       }
 
@@ -2549,11 +2529,9 @@ export class Game {
             remoteActions[name] = remoteMixer.clipAction(clip);
             return { name, success: true };
           } else {
-            console.error(`❌ Failed to load remote animation ${name}: clip not found`);
             return { name, success: false };
           }
         } catch (error) {
-          console.error(`❌ Failed to load remote animation ${name}:`, error);
           return { name, success: false };
         }
       });
@@ -2654,7 +2632,6 @@ export class Game {
         );
       }
     } catch (error) {
-      console.error('❌ Failed to create remote player:', playerId, error);
     }
   }
 
@@ -2716,7 +2693,6 @@ export class Game {
     } else {
       // MVP 6: Don't create players from player_update messages (no username)
       // Players should only be created from player_joined and existing_players
-      console.warn(`⚠️ Received update for unknown player ${playerId}, ignoring (will be created on player_joined)`);
     }
   }
 
@@ -3144,14 +3120,12 @@ export class Game {
       // Load character model (same as remote players)
       const char = this.characters.find(c => c.id === characterId);
       if (!char) {
-        console.error('❌ Character config not found for NPC:', characterId);
         delete (this as any)[loadingKey]; // Clean up loading flag
         return;
       }
 
       const npcCharacter = await this.loadCachedAsset(char.modelPath);
       if (!npcCharacter) {
-        console.error('❌ Failed to load NPC model');
         delete (this as any)[loadingKey]; // Clean up loading flag
         return;
       }
@@ -3171,11 +3145,9 @@ export class Game {
             npcActions[name] = npcMixer.clipAction(clip);
             return { name, success: true };
           } else {
-            console.error(`❌ Failed to load NPC animation ${name}: clip not found`);
             return { name, success: false };
           }
         } catch (error) {
-          console.error(`❌ Failed to load NPC animation ${name}:`, error);
           return { name, success: false };
         }
       });
@@ -3271,7 +3243,6 @@ export class Game {
       if (this.labelsContainer) {
         this.labelsContainer.appendChild(npcNameLabel);
       } else {
-        console.error('❌ No labels container found for NPC label');
       }
 
       // MVP 9: Create health bar for NPC
@@ -3294,7 +3265,6 @@ export class Game {
       // MVP 8: Clear loading flag after successful creation
       delete (this as any)[loadingKey];
     } catch (error) {
-      console.error('❌ Failed to create NPC:', npcId, error);
       // MVP 8: Clear loading flag on error
       delete (this as any)[loadingKey];
     }
@@ -3359,7 +3329,7 @@ export class Game {
         if (currentAnimation !== animation) {
           const actions = this.npcActions.get(npcId);
           if (actions && actions[animation]) {
-            // Stop current animation
+            // Stop all animations
             Object.values(actions).forEach(action => action.stop());
             // Play new animation with proper loop configuration
             const action = actions[animation];
@@ -3497,7 +3467,6 @@ export class Game {
       // Load model
       const predatorModel = await this.loadCachedAsset(modelPath);
       if (!predatorModel) {
-        console.error('❌ Failed to load predator model:', type);
         delete (this as any)[loadingKey];
         return;
       }
@@ -3517,7 +3486,6 @@ export class Game {
             predatorActions[name] = predatorMixer.clipAction(clip);
           }
         } catch (error) {
-          console.error(`❌ Failed to load predator animation ${name}:`, error);
         }
       });
 
@@ -3587,7 +3555,6 @@ export class Game {
 
       delete (this as any)[loadingKey];
     } catch (error) {
-      console.error('❌ Failed to create predator:', predatorId, error);
       delete (this as any)[loadingKey];
     }
   }
@@ -4005,7 +3972,6 @@ export class Game {
    * BEST PRACTICE: Transform projectile mesh into pickup walnut (no destroy/recreate)
    */
   private onProjectileMiss(data: { projectileId: string; ownerId: string; position: THREE.Vector3; mesh: THREE.Group }): void {
-    // MVP 12: Removed verbose projectile miss debug logs
 
     // MVP 11: Play miss sound (reuse for tree drops too)
     this.audioManager.playSound('combat', 'walnut_miss');
@@ -4076,7 +4042,6 @@ export class Game {
    * This is called when ProjectileManager detects a near miss
    */
   private onProjectileNearMiss(data: { projectileId: string; ownerId: string; entityId: string; position: THREE.Vector3 }): void {
-    // MVP 12: Removed near-miss debug log
 
     // MIGRATION PHASE 2.3: Use state machine for fear animation (STUN priority, doesn't block movement)
     if (data.entityId === this.playerId) {
@@ -4248,13 +4213,9 @@ export class Game {
     const COLLISION_RADIUS = 1.5; // Distance for collision damage
     const playerPos = this.character.position.clone();
 
-    // MVP 12: Removed collision check debug log
-
     // Check collisions with remote players
     this.remotePlayers.forEach((remotePlayer, playerId) => {
       const distance = playerPos.distanceTo(remotePlayer.position);
-
-      // MVP 12: Removed distance debug logging
 
       if (distance < COLLISION_RADIUS) {
         // Collision detected! Apply damage
@@ -4272,8 +4233,6 @@ export class Game {
     // MVP 8 FIX: Also check collisions with NPCs
     this.npcs.forEach((npc, npcId) => {
       const distance = playerPos.distanceTo(npc.position);
-
-      // MVP 12: Removed distance debug logging
 
       if (distance < COLLISION_RADIUS) {
         // Collision detected! Apply damage
@@ -4303,7 +4262,7 @@ export class Game {
    * Fixed 10-second respawn timer with skip button
    */
   private onDeath(killerId: string): void {
-    console.log(`💀 Player died! Killed by ${killerId}`);
+
     this.isDead = true;
 
     // MVP 11: Play death sound
@@ -4441,7 +4400,7 @@ export class Game {
       }
       // Update button text
       pauseButton.innerHTML = '▶️ RESUME';
-      console.log('⏸️ Respawn paused with', this.respawnTimeRemaining, 'ms remaining');
+
     } else {
       // RESUME: Restart auto-respawn timer with remaining time
       this.respawnTimerId = window.setTimeout(() => {
@@ -4449,7 +4408,7 @@ export class Game {
       }, this.respawnTimeRemaining);
       // Update button text
       pauseButton.innerHTML = '⏸️ PAUSE';
-      console.log('▶️ Respawn resumed, will respawn in', this.respawnTimeRemaining, 'ms');
+
     }
   }
 
@@ -4461,9 +4420,9 @@ export class Game {
     // MVP 16: Check if user is authenticated using official AuthService
     // FIXED: Previously used wrong localStorage key 'auth_token', now uses isAuthenticated()
     const isAuth = isAuthenticated();
-    const currentUser = getCurrentUser();
 
-    console.log('🎯 [showDeathOverlay] Auth status: ' + isAuth + ', User:', currentUser);
+
+
 
     const signedInContent = document.getElementById('death-content-signedin');
     const anonymousContent = document.getElementById('death-content-anonymous');
@@ -4478,12 +4437,11 @@ export class Game {
 
     if (isAuth) {
       // Show signed-in content panel
-      console.log('🔐 Showing signed-in death content');
+
 
       if (signedInContent) {
         signedInContent.classList.remove('hidden');
       } else {
-        console.error('❌ death-content-signedin element not found!');
       }
 
       // TODO: Fetch and update player rank from leaderboard
@@ -4542,7 +4500,7 @@ export class Game {
             '<div style="font-weight: bold; color: #fff;">' + char.name + '</div>' +
             '<div style="font-size: 12px; color: #aaa;">$' + (char.price || 0) + '</div>';
 
-          card.onclick = () => this.handleBuyPremiumCharacter(char.id, char.name, char.price);
+          card.onclick = () => this.handleBuyPremiumCharacter(char.id);
           lockedCharsGrid.appendChild(card);
         });
       }
@@ -4574,7 +4532,7 @@ export class Game {
               this.deathCharacterGrid = new CharacterGrid(characterGridContainer, {
                 selectedCharacterId: this.selectedCharacterId,
                 onCharacterSelect: (characterId: string) => {
-                  console.log(`🎭 Character selected in death overlay: ${characterId}`);
+
 
                   // Update selected character
                   this.selectedCharacterId = characterId;
@@ -4583,7 +4541,6 @@ export class Game {
                   try {
                     localStorage.setItem('last_character_id', characterId);
                   } catch (e) {
-                    console.error('Failed to save character selection:', e);
                   }
 
                   // Hide character grid
@@ -4610,12 +4567,11 @@ export class Game {
 
     } else {
       // Show anonymous content panel
-      console.log('👤 Showing anonymous death content');
+
 
       if (anonymousContent) {
         anonymousContent.classList.remove('hidden');
       } else {
-        console.error('❌ death-content-anonymous element not found!');
       }
 
       // Wire up buttons
@@ -4646,12 +4602,11 @@ export class Game {
    * Opens SIGNUP modal (not login) - after signup, page reloads and user sees character grid
    */
   private handleDeathSignIn(): void {
-    console.log('🎯 Opening signup modal from death screen');
+
     // Open AuthModal in signup mode
     if (this.authModal) {
       this.authModal.open('signup');
     } else {
-      console.error('❌ AuthModal not initialized');
     }
   }
 
@@ -4700,11 +4655,10 @@ export class Game {
     }
 
     if (!characterToShow) {
-      console.warn('⚠️ No suitable character found for death enticement');
       return;
     }
 
-    console.log('🎲 Death screen enticement: showing ' + characterToShow.name + ' (' + (isAuth ? 'Premium' : 'Free') + ')');
+
 
     // Initialize 3D preview
     this.deathEnticementPreview = new CharacterPreview3D(
@@ -4744,13 +4698,12 @@ export class Game {
    *   4. Update local state (reload character grid or update directly)
    *   5. Show success message and unlock character immediately
    */
-  private handleBuyPremiumCharacter(characterId?: string, characterName?: string, price?: number): void {
-    const charInfo = characterId ? characterName + ' ($' + price + ')' : 'premium character';
-    console.log('TODO(MONETIZATION): Open premium character purchase flow for ' + charInfo);
+  private handleBuyPremiumCharacter(characterId?: string): void {
+
     // Will be wired to payment system - Stripe/PayPal integration
     // For now, just log the purchase intent
     if (characterId) {
-      console.log('🛒 Purchase intent: Character = ' + characterId + ', Price = $' + price);
+
     }
   }
 
@@ -4761,7 +4714,7 @@ export class Game {
    * Updates the selected character and triggers respawn
    */
   private async respawnWithNewCharacter(characterId: string): Promise<void> {
-    console.log(`🎭 Respawning with new character: ${characterId}`);
+
 
     // CRITICAL: Clear any existing respawn timers to prevent double-respawn
     if (this.respawnTimerId) {
@@ -4863,7 +4816,7 @@ export class Game {
       if (anonymousContent) anonymousContent.classList.add('hidden');
       if (signedInContent) signedInContent.classList.add('hidden');
 
-      console.log(`✅ Successfully changed to character: ${characterId}`);
+
     } catch (error) {
       console.error('Failed to load new character:', error);
 
@@ -4904,7 +4857,7 @@ export class Game {
       const spawnZ = (Math.random() - 0.5) * 300; // -150 to 150
       const spawnY = getTerrainHeight(spawnX, spawnZ) + 2; // 2 units above ground
 
-      console.log('🎯 Teleporting to random spawn: (' + spawnX.toFixed(1) + ', ' + spawnY.toFixed(1) + ', ' + spawnZ.toFixed(1) + ')');
+
 
       this.character.position.set(spawnX, spawnY, spawnZ);
 
@@ -7648,7 +7601,7 @@ export class Game {
   private initLeaderboard(): void {
     // MVP 16: Guard against double-initialization (prevents duplicate event listeners)
     if (this.leaderboardInitialized) {
-      console.log('⚠️ [initLeaderboard] Already initialized, skipping to prevent duplicate listeners');
+
       return;
     }
 
@@ -7665,14 +7618,14 @@ export class Game {
       return;
     }
 
-    console.log('✅ [initLeaderboard] Leaderboard elements found, attaching listeners');
+
 
     // Show toggle button when game starts
     toggleButton.classList.remove('hidden');
 
     // Toggle leaderboard visibility
     toggleButton.addEventListener('click', () => {
-      console.log('🎯 [initLeaderboard] Toggle button pointerdown');
+
       this.leaderboardVisible = !this.leaderboardVisible;
       if (this.leaderboardVisible) {
         leaderboardDiv.classList.remove('hidden');
@@ -7687,13 +7640,13 @@ export class Game {
     const alltimeTab = leaderboardDiv.querySelector('[data-tab="alltime"]') as HTMLElement;
 
     if (weeklyTab && alltimeTab) {
-      console.log('✅ [initLeaderboard] Tab elements found, attaching tab listeners');
+
       // Set weekly as default active tab
       weeklyTab.classList.add('active');
 
       // Weekly tab pointerdown handler
       weeklyTab.addEventListener('click', () => {
-        console.log('🎯 [initLeaderboard] Weekly tab pointerdown');
+
         if (this.currentLeaderboardTab !== 'weekly') {
           this.currentLeaderboardTab = 'weekly';
           weeklyTab.classList.add('active');
@@ -7704,7 +7657,7 @@ export class Game {
 
       // All-time tab pointerdown handler
       alltimeTab.addEventListener('click', () => {
-        console.log('🎯 [initLeaderboard] All-time tab pointerdown');
+
         if (this.currentLeaderboardTab !== 'alltime') {
           this.currentLeaderboardTab = 'alltime';
           alltimeTab.classList.add('active');
@@ -7757,7 +7710,7 @@ export class Game {
       const leaderboardType = this.currentLeaderboardTab; // 'weekly' or 'alltime'
       const endpoint = `${apiUrl}/api/leaderboard/top?limit=10&type=${leaderboardType}`;
 
-      console.log('🏆 Fetching ' + leaderboardType + ' leaderboard from: ' + endpoint);
+
 
       const response = await fetch(endpoint);
 
@@ -7767,10 +7720,10 @@ export class Game {
         leaderboardData = []; // Empty leaderboard on API failure
       } else {
         const data = await response.json();
-        console.log(`📊 Leaderboard stats: ${data.count} entries shown, ${data.totalPlayers} total players in DB`);
+
 
         if (data.leaderboard.length === 0) {
-          console.log('ℹ️ Leaderboard is empty - no scores reported yet.');
+
           leaderboardData = [];
         } else {
           // MVP 16: Determine effective player ID (username for authenticated, squirrelId for guests)
@@ -7790,7 +7743,7 @@ export class Game {
             characterId: entry.characterId || 'squirrel' // MVP 16: Character used
           }));
 
-          console.log('🏆 Processed leaderboard data:', leaderboardData);
+
         }
       }
 
@@ -7862,7 +7815,7 @@ export class Game {
             ? this.username
             : this.playerId;
 
-          console.log(`🏆 [Leaderboard] Fetching player rank for ID: ${effectivePlayerId} (Username: ${this.username}, Auth: ${isAuthenticated()})`);
+
 
           const rankResponse = await fetch(`${apiUrl}/api/leaderboard/player?playerId=${effectivePlayerId}&type=${this.currentLeaderboardTab}`);
           if (rankResponse.ok) {
@@ -7935,7 +7888,7 @@ export class Game {
   private initChatAndEmotes(): void {
     // MVP 16: Guard against double-initialization (prevents duplicate event listeners)
     if (this.chatEmotesInitialized) {
-      console.log('⚠️ [initChatAndEmotes] Already initialized, skipping to prevent duplicate listeners');
+
       return;
     }
 
@@ -7952,7 +7905,7 @@ export class Game {
       return;
     }
 
-    console.log('✅ [initChatAndEmotes] Chat and emote elements found');
+
 
     // Show UI elements
     quickChatDiv.classList.remove('hidden');
@@ -7960,10 +7913,10 @@ export class Game {
 
     // Setup quick chat buttons
     const chatButtons = document.querySelectorAll('.chat-button');
-    console.log(`✅[initChatAndEmotes] Found ${chatButtons.length} chat buttons`);
+
     chatButtons.forEach((button) => {
       button.addEventListener('click', () => {
-        console.log('🎯 [initChatAndEmotes] Chat button pointerdown');
+
         const message = (button as HTMLElement).getAttribute('data-message');
         if (message) {
           this.sendChatMessage(message);
@@ -7973,10 +7926,10 @@ export class Game {
 
     // Setup emote buttons
     const emoteButtons = document.querySelectorAll('.emote-button');
-    console.log(`✅[initChatAndEmotes] Found ${emoteButtons.length} emote buttons`);
+
     emoteButtons.forEach((button) => {
       button.addEventListener('click', () => {
-        console.log('🎯 [initChatAndEmotes] Emote button pointerdown');
+
         const emote = (button as HTMLElement).getAttribute('data-emote');
         if (emote) {
           this.sendEmote(emote);
@@ -8220,7 +8173,7 @@ export class Game {
   private initSettingsMenu(): void {
     // MVP 16: Guard against double-initialization (prevents duplicate event listeners)
     if (this.settingsInitialized) {
-      console.log('⚠️ [initSettingsMenu] Already initialized, skipping to prevent duplicate listeners');
+
       return;
     }
 
@@ -8247,7 +8200,7 @@ export class Game {
       return;
     }
 
-    console.log('✅ [initSettingsMenu] Settings elements found, attaching listeners');
+
 
     // Show settings toggle button when game starts
     settingsToggle.classList.remove('hidden');
@@ -8333,13 +8286,13 @@ export class Game {
 
     // Show/hide settings menu
     const showSettings = () => {
-      console.log('🎯 [initSettingsMenu] Opening settings menu');
+
       settingsOverlay.classList.remove('hidden');
       this.audioManager.playSound('ui', 'button_click');
     };
 
     const hideSettings = () => {
-      console.log('🎯 [initSettingsMenu] Closing settings menu');
+
       settingsOverlay.classList.add('hidden');
       this.audioManager.playSound('ui', 'button_click');
     };

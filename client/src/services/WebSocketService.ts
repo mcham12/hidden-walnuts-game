@@ -23,11 +23,11 @@ export class WebSocketService {
   private reconnectInterval: ReturnType<typeof setInterval> | null = null;
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private messageQueue: WebSocketMessage[] = [];
-  
+
   // Connection state
   public isConnected: boolean = false;
   public isConnecting: boolean = false;
-  
+
   // Event handlers
   public onConnected?: () => void;
   public onDisconnected?: () => void;
@@ -43,7 +43,7 @@ export class WebSocketService {
     private squirrelId: string,
     private characterId: string = 'colobus',
     private serverUrl: string = 'ws://localhost:8787'
-  ) {}
+  ) { }
 
   // Connect to WebSocket server
   connect(): Promise<void> {
@@ -54,13 +54,12 @@ export class WebSocketService {
       }
 
       this.isConnecting = true;
-      console.log(`Connecting to ${this.serverUrl}/ws?squirrelId=${this.squirrelId}&characterId=${this.characterId}`);
+
 
       try {
         this.socket = new WebSocket(`${this.serverUrl}/ws?squirrelId=${this.squirrelId}&characterId=${this.characterId}`);
 
         this.socket.onopen = () => {
-          console.log('WebSocket connected');
           this.isConnected = true;
           this.isConnecting = false;
           this.startHeartbeat();
@@ -69,8 +68,7 @@ export class WebSocketService {
           resolve();
         };
 
-        this.socket.onclose = (event) => {
-          console.log('WebSocket disconnected:', event.code, event.reason);
+        this.socket.onclose = () => {
           this.handleDisconnection();
         };
 
@@ -138,17 +136,14 @@ export class WebSocketService {
 
     switch (message.type) {
       case 'world_state':
-        console.log('Received world state:', message);
         this.onWorldState?.(message);
         break;
 
       case 'existing_players':
-        console.log('Received existing players:', message.players);
         this.onExistingPlayers?.(message.players || []);
         break;
 
       case 'player_joined':
-        console.log('Player joined:', message.squirrelId);
         this.onPlayerJoined?.({
           squirrelId: message.squirrelId,
           position: message.position,
@@ -158,7 +153,6 @@ export class WebSocketService {
         break;
 
       case 'player_leave':
-        console.log('Player left:', message.squirrelId);
         this.onPlayerLeft?.(message.squirrelId);
         break;
 
@@ -176,7 +170,6 @@ export class WebSocketService {
         break;
 
       default:
-        console.log('Unhandled message type:', message.type);
         break;
     }
   }
@@ -216,7 +209,6 @@ export class WebSocketService {
     this.stopReconnection();
     this.reconnectInterval = setInterval(() => {
       if (!this.isConnected && !this.isConnecting) {
-        console.log('Attempting to reconnect...');
         this.connect().catch(error => {
           console.error('Reconnection failed:', error);
         });

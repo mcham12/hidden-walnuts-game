@@ -40,7 +40,7 @@ export class EnticementService {
   start(): void {
     // Don't show enticements if user is already authenticated
     if (isAuthenticated()) {
-      console.log('🚫 EnticementService: User authenticated, no enticements needed');
+
       return;
     }
 
@@ -62,7 +62,7 @@ export class EnticementService {
       }
     }, 60 * 1000); // Check every minute
 
-    console.log('✅ EnticementService: Started (will show every 15+ minutes, max 4/hour)');
+
   }
 
   /**
@@ -72,7 +72,6 @@ export class EnticementService {
     if (this.intervalId !== null) {
       window.clearInterval(this.intervalId);
       this.intervalId = null;
-      console.log('🛑 EnticementService: Stopped');
     }
   }
 
@@ -115,7 +114,7 @@ export class EnticementService {
     // Move to next message (rotate)
     this.currentMessageIndex = (this.currentMessageIndex + 1) % this.messages.length;
 
-    console.log(`💡 EnticementService: Showed message ${this.currentMessageIndex + 1}/${this.messages.length}`);
+
   }
 
   /**
@@ -196,7 +195,6 @@ export class EnticementService {
 
       // Mark as shown this session
       sessionStorage.setItem('shown_death_enticement', 'true');
-      console.log('💀 EnticementService: Showed after-death reminder');
     }, 1500); // 1.5 second delay
   }
 }

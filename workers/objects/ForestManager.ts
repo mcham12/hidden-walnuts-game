@@ -515,7 +515,7 @@ export default class ForestManager extends DurableObject {
         return new Response('Bot verification failed. Please refresh the page.', { status: 403 });
       }
 
-      console.log(`✅ Turnstile validation successful for ${username}`);
+
 
       // MVP 16: Validate character selection based on authentication and unlocked characters
       let isAuthenticated = false;
@@ -536,7 +536,7 @@ export default class ForestManager extends DurableObject {
             isAuthenticated = payload.isAuthenticated;
             emailVerified = payload.emailVerified || false;
             unlockedCharacters = payload.unlockedCharacters || [];
-            console.log(`✅ Authenticated WebSocket: ${username} (${unlockedCharacters.length} characters)`);
+
 
             // Fetch persistent stats
             try {
@@ -591,7 +591,7 @@ export default class ForestManager extends DurableObject {
                 titleName: playerData.titleName || 'Rookie'
               };
             }
-            console.log(`📋 SessionToken lookup: ${username} (auth: ${isAuthenticated}, ${unlockedCharacters.length} characters)`);
+
           }
         } catch (error) {
           console.error(`Failed to lookup player data for ${username}:`, error);

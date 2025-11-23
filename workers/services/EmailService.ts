@@ -96,7 +96,7 @@ export class EmailService {
         `
       });
 
-      console.log(`✅ Verification email sent to ${email}`);
+
       return { success: true };
 
     } catch (error) {
@@ -182,7 +182,7 @@ export class EmailService {
         `
       });
 
-      console.log(`✅ Password reset email sent to ${email}`);
+
       return { success: true };
 
     } catch (error) {
@@ -265,7 +265,7 @@ export class EmailService {
         `
       });
 
-      console.log(`✅ Welcome email sent to ${email}`);
+
       return { success: true };
 
     } catch (error) {
