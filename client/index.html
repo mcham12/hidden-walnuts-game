@@ -2876,6 +2876,36 @@
           <p style="text-align: center; color: #FFD700; font-weight: bold; margin-top: 10px;">
             🏆 Your Rank: #<span id="player-rank">--</span>
           </p>
+
+          <!-- Change Character Button (Authenticated Users Only) -->
+          <div style="text-align: center; margin-top: 15px;">
+            <button id="death-change-character-btn" class="death-action-btn" style="
+              background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+              color: #2c5f2d;
+              border: none;
+              padding: 12px 24px;
+              border-radius: 8px;
+              font-weight: 700;
+              font-size: 14px;
+              cursor: pointer;
+              box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+              transition: transform 0.2s, box-shadow 0.2s;
+              min-height: 44px;
+              min-width: 44px;
+            ">
+              🎭 Change Character
+            </button>
+          </div>
+
+          <!-- Character Grid Container (Hidden by default) -->
+          <div id="death-character-grid-container" class="hidden" style="
+            margin-top: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+          ">
+            <!-- CharacterGrid will be rendered here -->
+          </div>
         </div>
       </div>
     </div>

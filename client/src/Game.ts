@@ -20,6 +20,7 @@ import { AuthModal } from './components/AuthModal.js'; // MVP 16: Authentication
 import { SessionExpiredBanner } from './components/SessionExpiredBanner.js'; // MVP 16: Session expiry
 import { isAuthenticated, getCurrentUser } from './services/AuthService.js'; // MVP 16: Auth state checking
 import { CharacterRegistry, type CharacterDefinition } from './services/CharacterRegistry.js'; // MVP 16: Character availability
+import { CharacterGrid } from './components/CharacterGrid.js'; // Character selection grid
 import { CharacterPreview3D } from './components/CharacterPreview3D.js'; // MVP 16: 3D character previews
 import { TutorialOverlay } from './TutorialOverlay.js';
 import { getPlayerTitle } from '@shared/PlayerRanks';
@@ -299,6 +300,8 @@ export class Game {
 
   // MVP 16: Death screen enticement - 3D character preview
   private deathEnticementPreview: CharacterPreview3D | null = null;
+  private deathCharacterGrid: CharacterGrid | null = null; // Character selection in death overlay
+
 
   // MVP 16: Session expired banner
   private sessionExpiredBanner: SessionExpiredBanner | null = null;
@@ -4541,6 +4544,54 @@ export class Game {
       // Initialize 3D character preview
       this.initDeathEnticementCharacter();
 
+      // Setup "Change Character" button for authenticated users
+      const changeCharacterBtn = document.getElementById('death-change-character-btn');
+      const characterGridContainer = document.getElementById('death-character-grid-container');
+
+      if (changeCharacterBtn && characterGridContainer) {
+        changeCharacterBtn.onclick = () => {
+          // Toggle character grid visibility
+          const isHidden = characterGridContainer.classList.contains('hidden');
+
+          if (isHidden) {
+            // Show character grid
+            characterGridContainer.classList.remove('hidden');
+            changeCharacterBtn.textContent = '✖️ Close';
+
+            // Initialize CharacterGrid if not already done
+            if (!this.deathCharacterGrid) {
+              this.deathCharacterGrid = new CharacterGrid(characterGridContainer, {
+                selectedCharacterId: this.selectedCharacterId,
+                onCharacterSelect: (characterId: string) => {
+                  console.log(`🎭 Character selected in death overlay: ${characterId}`);
+
+                  // Update selected character
+                  this.selectedCharacterId = characterId;
+
+                  // Save to localStorage
+                  try {
+                    localStorage.setItem('last_character_id', characterId);
+                  } catch (e) {
+                    console.error('Failed to save character selection:', e);
+                  }
+
+                  // Hide character grid
+                  characterGridContainer.classList.add('hidden');
+                  changeCharacterBtn.textContent = '🎭 Change Character';
+
+                  // Trigger respawn with new character
+                  this.respawnWithNewCharacter(characterId);
+                }
+              });
+            }
+          } else {
+            // Hide character grid
+            characterGridContainer.classList.add('hidden');
+            changeCharacterBtn.textContent = '🎭 Change Character';
+          }
+        };
+      }
+
     } else {
       // Show anonymous content panel
       console.log('👤 Showing anonymous death content');
@@ -4688,6 +4739,56 @@ export class Game {
   }
 
   // Removed unused handleWatchAd method
+
+  /**
+   * Respawn with a new character selection
+   * Reloads the character model and triggers respawn
+   */
+  private async respawnWithNewCharacter(characterId: string): Promise<void> {
+    console.log(`🎭 Respawning with new character: ${characterId}`);
+
+    // Hide death overlay immediately
+    const deathOverlay = document.getElementById('death-overlay');
+    if (deathOverlay) {
+      deathOverlay.classList.add('hidden');
+    }
+
+    // Clean up character grid
+    if (this.deathCharacterGrid) {
+      this.deathCharacterGrid.destroy();
+      this.deathCharacterGrid = null;
+    }
+
+    // Store current position before reloading character
+    const currentPosition = this.character ? {
+      x: this.character.position.x,
+      y: this.character.position.y,
+      z: this.character.position.z
+    } : null;
+
+    try {
+      // Update selected character ID (loadCharacter uses this.selectedCharacterId)
+      this.selectedCharacterId = characterId;
+
+      // Reload character model with new selection
+      await this.loadCharacter();
+
+      // Restore position if we had one
+      if (currentPosition && this.character) {
+        this.character.position.set(currentPosition.x, currentPosition.y, currentPosition.z);
+      }
+
+      // Trigger normal respawn logic (health reset, server notification, etc.)
+      this.respawn();
+
+      console.log(`✅ Successfully changed to character: ${characterId}`);
+    } catch (error) {
+      console.error('Failed to load new character:', error);
+
+      // Still trigger respawn with old character
+      this.respawn();
+    }
+  }
 
   /**
    * MVP 16: Respawn player after death
