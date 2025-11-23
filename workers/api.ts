@@ -67,10 +67,16 @@ export default {
 
         // Forward the WebSocket request to the ForestManager DO
         const forest = getObjectInstance(env, "forest", "daily-forest");
-        // Rewrite URL to strip /api prefix so DO sees expected path
-        const newUrl = new URL(request.url);
-        newUrl.pathname = normalizedPath;
-        return forest.fetch(new Request(newUrl, request));
+
+        // Optimization: Only rewrite URL if path actually changed
+        // This preserves internal Cloudflare WebSocket flags on the original request
+        if (pathname !== normalizedPath) {
+          const newUrl = new URL(request.url);
+          newUrl.pathname = normalizedPath;
+          return forest.fetch(new Request(newUrl, request));
+        }
+
+        return forest.fetch(request);
       }
 
       // MVP 16: Handle /auth/* routes (authentication system)

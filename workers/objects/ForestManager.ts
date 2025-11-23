@@ -1976,8 +1976,9 @@ export default class ForestManager extends DurableObject {
             console.log(`♻️ Restored score for ${username}: ${joinData.stats.score}`);
           }
 
-          // MVP 16: Override with persisted stats if authenticated AND verified
-          if (persistedStats && isAuthenticated && emailVerified) {
+          // MVP 16: Override with persisted stats if authenticated (verified or not)
+          // FIX: Allow unverified users to restore score too
+          if (persistedStats && isAuthenticated) {
             playerConnection.score = persistedStats.score;
             titleId = persistedStats.titleId;
             titleName = persistedStats.titleName;
@@ -2989,8 +2990,14 @@ export default class ForestManager extends DurableObject {
       const leaderboard = this.env.LEADERBOARD.get(leaderboardId);
 
       // Prepare score record
+      // MVP 16: Use username for authenticated players, squirrelId for guests
+      // FIX: Don't use "Anonymous" as ID, fall back to squirrelId
+      const shouldUseUsername = playerConnection.isAuthenticated &&
+        playerConnection.username &&
+        playerConnection.username !== 'Anonymous';
+
       const scoreRecord = {
-        playerId: playerConnection.username || playerConnection.squirrelId,
+        playerId: shouldUseUsername ? playerConnection.username : playerConnection.squirrelId,
         score: playerConnection.score,
         walnuts: {
           hidden: 0, // TODO: Track these stats
