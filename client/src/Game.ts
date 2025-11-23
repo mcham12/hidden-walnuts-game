@@ -4558,6 +4558,11 @@ export class Game {
             characterGridContainer.classList.remove('hidden');
             changeCharacterBtn.textContent = '✖️ Close';
 
+            // Auto-pause respawn countdown to give user time to browse
+            if (!this.respawnPaused) {
+              this.toggleRespawnPause();
+            }
+
             // Initialize CharacterGrid if not already done
             if (!this.deathCharacterGrid) {
               this.deathCharacterGrid = new CharacterGrid(characterGridContainer, {
@@ -4588,6 +4593,11 @@ export class Game {
             // Hide character grid
             characterGridContainer.classList.add('hidden');
             changeCharacterBtn.textContent = '🎭 Change Character';
+
+            // Resume countdown if it was paused
+            if (this.respawnPaused) {
+              this.toggleRespawnPause();
+            }
           }
         };
       }
