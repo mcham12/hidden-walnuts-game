@@ -7663,7 +7663,11 @@ export class Game {
           const apiBase = window.location.origin;
           const type = this.currentLeaderboardTab || 'weekly';
 
-          const rankResponse = await fetch(`${apiBase}/api/leaderboard/player?playerId=${this.playerId}&type=${type}`);
+          // MVP 16: Use username if available (authenticated), otherwise squirrelId
+          // This matches ForestManager logic where authenticated users are stored by username
+          const idToFetch = this.username || this.playerId;
+
+          const rankResponse = await fetch(`${apiBase}/api/leaderboard/player?playerId=${idToFetch}&type=${type}`);
           if (rankResponse.ok) {
             const playerEntry = await rankResponse.json();
 
