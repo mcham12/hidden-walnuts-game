@@ -52,9 +52,13 @@ export default {
     const url = new URL(request.url);
     const pathname = url.pathname;
 
+    // Normalize path: remove /api prefix if present to handle both direct and proxied requests
+    // e.g. /api/auth/signup -> /auth/signup
+    const normalizedPath = pathname.startsWith('/api') ? pathname.substring(4) : pathname;
+
     try {
       // Handle WebSocket connections
-      if (pathname === "/ws") {
+      if (normalizedPath === "/ws") {
         // Check if this is a WebSocket upgrade request
         const upgradeHeader = request.headers.get('Upgrade');
         if (upgradeHeader !== 'websocket') {
@@ -68,8 +72,8 @@ export default {
 
       // MVP 16: Handle /auth/* routes (authentication system)
       // Transform /auth/signup → PlayerIdentity DO with action=signup
-      if (pathname.startsWith("/auth/")) {
-        const action = pathname.replace("/auth/", "");
+      if (normalizedPath.startsWith("/auth/")) {
+        const action = normalizedPath.replace("/auth/", "");
 
         // For most auth actions, we need to extract email/username from request body
         let identifier: string | null = null;
@@ -156,9 +160,9 @@ export default {
         }
       }
 
-      // MVP 6: Handle /api/identity routes (player identity management)
+      // MVP 6: Handle /identity routes (player identity management)
       // FIXED: Use username as DO ID (not sessionToken) for private browsing support
-      if (pathname.startsWith("/api/identity")) {
+      if (normalizedPath.startsWith("/identity")) {
         const username = url.searchParams.get('username');
 
         if (!username) {
@@ -187,7 +191,7 @@ export default {
       }
 
       // Handle /join route
-      if (pathname === "/join") {
+      if (normalizedPath === "/join") {
         const forest = getObjectInstance(env, "forest", "daily-forest");
         const response = await forest.fetch(request);
 
@@ -202,7 +206,7 @@ export default {
       }
 
       // Handle /hide route
-      if (pathname === "/hide") {
+      if (normalizedPath === "/hide") {
         // Get squirrelId from query string
         const id = url.searchParams.get("squirrelId");
 
@@ -227,8 +231,8 @@ export default {
       }
 
 
-      // Handle /api/leaderboard routes (MVP 8)
-      if (pathname.startsWith("/api/leaderboard")) {
+      // Handle /leaderboard routes (MVP 8)
+      if (normalizedPath.startsWith("/leaderboard")) {
         const leaderboard = getObjectInstance(env, "leaderboard", "global");
         const response = await leaderboard.fetch(request);
 
@@ -243,7 +247,7 @@ export default {
       }
 
       // MVP 13: Handle all /admin routes - forward to ForestManager
-      if (pathname.startsWith("/admin/")) {
+      if (normalizedPath.startsWith("/admin/")) {
         const forest = getObjectInstance(env, "forest", "daily-forest");
         return await forest.fetch(request);
       }
