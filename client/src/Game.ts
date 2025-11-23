@@ -7584,10 +7584,15 @@ export class Game {
           console.log('ℹ️ Leaderboard is empty - no scores reported yet.');
           leaderboardData = [];
         } else {
+          // MVP 16: Determine effective player ID (username for authenticated, squirrelId for guests)
+          const effectivePlayerId = (this.username && this.username !== 'Anonymous')
+            ? this.username
+            : this.playerId;
+
           // MVP 16: Include authentication fields in leaderboard data
           leaderboardData = data.leaderboard.map((entry: any) => ({
             playerId: entry.playerId,
-            displayName: entry.playerId === this.playerId
+            displayName: entry.playerId === effectivePlayerId
               ? (this.username ? `You (${this.username})` : 'You')
               : entry.playerId, // Show full player ID/username
             score: entry.score,
