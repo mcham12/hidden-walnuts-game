@@ -4742,7 +4742,7 @@ export class Game {
 
   /**
    * Respawn with a new character selection
-   * Reloads the character model and triggers respawn
+   * Updates the selected character and triggers respawn
    */
   private async respawnWithNewCharacter(characterId: string): Promise<void> {
     console.log(`🎭 Respawning with new character: ${characterId}`);
@@ -4759,33 +4759,39 @@ export class Game {
       this.deathCharacterGrid = null;
     }
 
-    // Store current position before reloading character
-    const currentPosition = this.character ? {
-      x: this.character.position.x,
-      y: this.character.position.y,
-      z: this.character.position.z
-    } : null;
+    // Update selected character ID for next spawn
+    this.selectedCharacterId = characterId;
+
+    // Save to localStorage
+    try {
+      localStorage.setItem('last_character_id', characterId);
+    } catch (e) {
+      console.error('Failed to save character selection:', e);
+    }
+
+    // Remove old character from scene
+    if (this.character) {
+      this.scene.remove(this.character);
+      this.character = null;
+    }
+
+    // Reset mixer
+    if (this.mixer) {
+      this.mixer = null;
+    }
 
     try {
-      // Update selected character ID (loadCharacter uses this.selectedCharacterId)
-      this.selectedCharacterId = characterId;
-
-      // Reload character model with new selection
+      // Load new character model
       await this.loadCharacter();
 
-      // Restore position if we had one
-      if (currentPosition && this.character) {
-        this.character.position.set(currentPosition.x, currentPosition.y, currentPosition.z);
-      }
-
-      // Trigger normal respawn logic (health reset, server notification, etc.)
+      // Trigger normal respawn logic (health reset, teleport, server notification)
       this.respawn();
 
       console.log(`✅ Successfully changed to character: ${characterId}`);
     } catch (error) {
       console.error('Failed to load new character:', error);
 
-      // Still trigger respawn with old character
+      // Try to reload the old character or respawn anyway
       this.respawn();
     }
   }
