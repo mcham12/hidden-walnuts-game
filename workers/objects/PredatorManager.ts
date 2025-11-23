@@ -245,9 +245,15 @@ export class PredatorManager {
         break;
     }
 
-    // Update position based on velocity
-    predator.position.x += predator.velocity.x * delta;
-    predator.position.z += predator.velocity.z * delta;
+    // Update position based on velocity with collision detection
+    if (isAerial) {
+      // Aerial predators: No collision, fly freely
+      predator.position.x += predator.velocity.x * delta;
+      predator.position.z += predator.velocity.z * delta;
+    } else {
+      // Ground predators (wildebeest): Apply collision detection
+      this.updateGroundPredatorMovement(predator, delta, getTerrainHeight);
+    }
 
     // Industry-standard aerial/ground movement patterns
     if (isAerial) {
@@ -584,7 +590,7 @@ export class PredatorManager {
 
       // If another predator is targeting/attacking someone, mark them as taken
       if ((otherPredator.state === 'targeting' || otherPredator.state === 'attacking')
-          && otherPredator.targetId) {
+        && otherPredator.targetId) {
         targetedIds.add(otherPredator.targetId);
       }
     });
@@ -722,5 +728,90 @@ export class PredatorManager {
    */
   clearAll(): void {
     this.predators.clear();
+  }
+
+  /**
+   * Update ground predator movement with collision detection
+   * Copied from NPCManager.updateMovement() - uses same collision system as NPCs
+   */
+  private updateGroundPredatorMovement(
+    predator: Predator,
+    delta: number,
+    getTerrainHeight: (x: number, z: number) => number
+  ): void {
+    // Calculate proposed new position
+    const newX = predator.position.x + predator.velocity.x * delta;
+    const newZ = predator.position.z + predator.velocity.z * delta;
+
+    // Check for collisions with solid obstacles (trees, rocks)
+    const PREDATOR_RADIUS = 1.0; // Wildebeest are larger than NPCs
+    let closestObstacle: { x: number; z: number } | null = null;
+    let closestDistSq = Infinity;
+
+    // Check landmark trees (same coordinates as NPCs use)
+    // IMPORTANT: These coordinates MUST match client/src/Game.ts createLandmark() calls
+    const landmarks = [
+      { x: 0, z: 0 },     // Origin
+      { x: 0, z: -80 },   // North
+      { x: 0, z: 80 },    // South
+      { x: 80, z: 0 },    // East
+      { x: -80, z: 0 }    // West
+    ];
+    const LANDMARK_RADIUS = 0.8; // Landmark trees are larger
+    const LANDMARK_COLLISION_DISTANCE = LANDMARK_RADIUS + PREDATOR_RADIUS;
+
+    for (const landmark of landmarks) {
+      const dx = newX - landmark.x;
+      const dz = newZ - landmark.z;
+      const distSq = dx * dx + dz * dz;
+
+      if (distSq < LANDMARK_COLLISION_DISTANCE * LANDMARK_COLLISION_DISTANCE && distSq < closestDistSq) {
+        closestDistSq = distSq;
+        closestObstacle = landmark;
+      }
+    }
+
+    // Apply collision avoidance (same sliding logic as NPCs)
+    if (closestObstacle) {
+      // Calculate vector from obstacle to predator (push away)
+      const pushX = newX - closestObstacle.x;
+      const pushZ = newZ - closestObstacle.z;
+      const pushDist = Math.sqrt(pushX * pushX + pushZ * pushZ);
+
+      if (pushDist > 0.01) {
+        // Normalize push vector
+        const pushDirX = pushX / pushDist;
+        const pushDirZ = pushZ / pushDist;
+
+        // Calculate sliding direction (perpendicular to push direction)
+        // This allows predators to slide around obstacles smoothly
+        const slideX = -pushDirZ; // Perpendicular vector
+        const slideZ = pushDirX;
+
+        // Project original velocity onto slide direction
+        const velocityDot = predator.velocity.x * slideX + predator.velocity.z * slideZ;
+
+        // Try sliding along obstacle
+        const slideAmount = Math.abs(velocityDot) * delta;
+        const slideDirX = Math.sign(velocityDot) * slideX;
+        const slideDirZ = Math.sign(velocityDot) * slideZ;
+
+        // Apply slide movement (50% of original speed when sliding)
+        predator.position.x += slideDirX * slideAmount * 0.5;
+        predator.position.z += slideDirZ * slideAmount * 0.5;
+
+        // Also push slightly away from obstacle to prevent getting stuck
+        predator.position.x += pushDirX * 0.1;
+        predator.position.z += pushDirZ * 0.1;
+      }
+    } else {
+      // No collision - apply movement normally
+      predator.position.x = newX;
+      predator.position.z = newZ;
+    }
+
+    // Update Y position (terrain following)
+    const terrainY = getTerrainHeight(predator.position.x, predator.position.z);
+    predator.position.y = terrainY + 1.0; // 1 unit above terrain
   }
 }
