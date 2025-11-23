@@ -7659,15 +7659,18 @@ export class Game {
       if (!playerInTop10) {
         // Fetch specific player rank from API
         try {
-          // Use window.location.origin for API URL if not defined
-          const apiBase = window.location.origin;
           const type = this.currentLeaderboardTab || 'weekly';
 
-          // MVP 16: Use username if available (authenticated), otherwise squirrelId
-          // This matches ForestManager logic where authenticated users are stored by username
-          const idToFetch = this.username || this.playerId;
+          // MVP 16: Use username for authenticated players to match server-side ID
+          // This fixes the bug where authenticated players weren't finding their rank
+          // because the client was querying with squirrelId but server stored under username
+          const effectivePlayerId = (this.username && this.username !== 'Anonymous')
+            ? this.username
+            : this.playerId;
 
-          const rankResponse = await fetch(`${apiBase}/api/leaderboard/player?playerId=${idToFetch}&type=${type}`);
+          console.log(`🏆 [Leaderboard] Fetching player rank for ID: ${effectivePlayerId} (Username: ${this.username}, Auth: ${isAuthenticated()})`);
+
+          const rankResponse = await fetch(`${apiUrl}/api/leaderboard/player?playerId=${effectivePlayerId}&type=${this.currentLeaderboardTab}`);
           if (rankResponse.ok) {
             const playerEntry = await rankResponse.json();
 
