@@ -558,31 +558,32 @@ export class Game {
         return;
       }
 
-      this.character = characterModel;
-      this.character.scale.set(char.scale, char.scale, char.scale);
-      this.character.position.set(0, 0, 0);
-      this.character.rotation.y = Math.PI;
-      this.character.castShadow = true;
-      this.scene.add(this.character);
+      // Use local variable to prevent race condition with update loop
+      // Don't assign to this.character until fully ready
+      const newCharacter = characterModel;
+      newCharacter.scale.set(char.scale, char.scale, char.scale);
+      newCharacter.position.set(0, 0, 0);
+      newCharacter.rotation.y = Math.PI;
+      newCharacter.castShadow = true;
 
       // MVP 5.5: Add local player collision
       if (this.collisionSystem) {
         this.collisionSystem.addPlayerCollider(
           this.playerId,
-          this.character.position,
+          newCharacter.position,
           this.characterCollisionRadius // MVP 9: Use calculated radius
         );
       }
 
       // INDUSTRY STANDARD: Animation mixer on character model
-      this.mixer = new THREE.AnimationMixer(this.character);
+      const newMixer = new THREE.AnimationMixer(newCharacter);
 
       // INDUSTRY STANDARD: Parallel animation loading with caching and validation
       const animationPromises = Object.entries(char.animations).map(async ([name, path]) => {
         try {
           const clip = await this.loadCachedAnimation(path);
           if (clip) {
-            this.actions[name] = this.mixer!.clipAction(clip);
+            this.actions[name] = newMixer.clipAction(clip);
             return { name, success: true };
           } else {
             console.error(`❌ Failed to load animation ${name}: clip not found`);
@@ -609,8 +610,8 @@ export class Game {
 
       // Use model's actual bounding box for accurate ground positioning and collision
       // INDUSTRY STANDARD: Update transforms before calculating bounds
-      this.character.updateMatrixWorld(true);
-      const box = new THREE.Box3().setFromObject(this.character);
+      newCharacter.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(newCharacter);
       const size = box.getSize(new THREE.Vector3());
 
       // INDUSTRY STANDARD: Ground offset = distance from pivot to feet (no margin needed)
@@ -623,6 +624,11 @@ export class Game {
       // 0.35 = tighter fit around actual character mesh (proven in Unity/Three.js games)
       this.characterCollisionRadius = Math.max(size.x, size.z) * 0.35;
 
+      // CRITICAL: Only now assign to class properties and add to scene
+      // This prevents the update loop from seeing a half-loaded character at (0,0,0)
+      this.character = newCharacter;
+      this.mixer = newMixer;
+      this.scene.add(this.character);
 
       this.setAction('idle');
       // MVP 6: DON'T position character here - wait for spawn position from server
