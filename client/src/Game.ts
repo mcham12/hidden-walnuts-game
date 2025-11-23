@@ -4784,15 +4784,58 @@ export class Game {
       // Load new character model
       await this.loadCharacter();
 
-      // Trigger normal respawn logic (health reset, teleport, server notification)
-      this.respawn();
+      // Don't call respawn() - it causes rotation issues
+      // Instead, manually reset health and position
+      this.health = this.MAX_HEALTH;
+      this.isDead = false;
+
+      // Teleport to random spawn position (same as respawn() does)
+      if (this.character) {
+        const spawnX = (Math.random() - 0.5) * 300; // -150 to 150
+        const spawnZ = (Math.random() - 0.5) * 300; // -150 to 150
+        const spawnY = getTerrainHeight(spawnX, spawnZ) + 2; // 2 units above ground
+
+        this.character.position.set(spawnX, spawnY, spawnZ);
+        this.velocity.set(0, 0, 0);
+
+        // Reset animation state
+        this.resetAnimationState();
+
+        // Notify server of respawn with new position
+        this.sendMessage({
+          type: 'player_respawn',
+          position: {
+            x: this.character.position.x,
+            y: this.character.position.y,
+            z: this.character.position.z
+          }
+        });
+      }
+
+      // Hide death overlay
+      const deathOverlay = document.getElementById('death-overlay');
+      if (deathOverlay) {
+        deathOverlay.classList.add('hidden');
+      }
+
+      // Hide content panels
+      const anonymousContent = document.getElementById('death-content-anonymous');
+      const signedInContent = document.getElementById('death-content-signedin');
+      if (anonymousContent) anonymousContent.classList.add('hidden');
+      if (signedInContent) signedInContent.classList.add('hidden');
 
       console.log(`✅ Successfully changed to character: ${characterId}`);
     } catch (error) {
       console.error('Failed to load new character:', error);
 
-      // Try to reload the old character or respawn anyway
-      this.respawn();
+      // On error, just hide overlay and reset health
+      this.health = this.MAX_HEALTH;
+      this.isDead = false;
+
+      const deathOverlay = document.getElementById('death-overlay');
+      if (deathOverlay) {
+        deathOverlay.classList.add('hidden');
+      }
     }
   }
 
