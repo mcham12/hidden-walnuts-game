@@ -7589,7 +7589,7 @@ export class Game {
             playerId: entry.playerId,
             displayName: entry.playerId === this.playerId
               ? (this.username ? `You (${this.username})` : 'You')
-              : entry.playerId.substring(0, 8), // Show first 8 chars of player ID
+              : entry.playerId, // Show full player ID/username
             score: entry.score,
             isAuthenticated: entry.isAuthenticated || false, // MVP 16: Auth status
             emailVerified: entry.emailVerified || false, // MVP 16: Verification status
