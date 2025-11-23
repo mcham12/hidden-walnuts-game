@@ -67,7 +67,10 @@ export default {
 
         // Forward the WebSocket request to the ForestManager DO
         const forest = getObjectInstance(env, "forest", "daily-forest");
-        return forest.fetch(request);
+        // Rewrite URL to strip /api prefix so DO sees expected path
+        const newUrl = new URL(request.url);
+        newUrl.pathname = normalizedPath;
+        return forest.fetch(new Request(newUrl, request));
       }
 
       // MVP 16: Handle /auth/* routes (authentication system)
@@ -127,7 +130,7 @@ export default {
           // Create new URL with action parameter
           const newUrl = new URL(request.url);
           newUrl.searchParams.set('action', doAction);
-          newUrl.pathname = '/api/identity';
+          newUrl.pathname = '/api/identity'; // PlayerIdentity doesn't check path, but keeping it consistent
 
           // Recreate request with modified URL and original body
           const newRequest = new Request(newUrl, {
@@ -178,7 +181,10 @@ export default {
         const stub = env.PLAYER_IDENTITY.get(id);
 
         // Forward request to PlayerIdentity DO
-        const response = await stub.fetch(request);
+        // Rewrite URL to strip /api prefix
+        const newUrl = new URL(request.url);
+        newUrl.pathname = normalizedPath;
+        const response = await stub.fetch(new Request(newUrl, request));
 
         // Add CORS headers
         return new Response(response.body, {
@@ -193,7 +199,10 @@ export default {
       // Handle /join route
       if (normalizedPath === "/join") {
         const forest = getObjectInstance(env, "forest", "daily-forest");
-        const response = await forest.fetch(request);
+        // Rewrite URL to strip /api prefix
+        const newUrl = new URL(request.url);
+        newUrl.pathname = normalizedPath;
+        const response = await forest.fetch(new Request(newUrl, request));
 
         // Add CORS headers
         return new Response(response.body, {
@@ -234,7 +243,10 @@ export default {
       // Handle /leaderboard routes (MVP 8)
       if (normalizedPath.startsWith("/leaderboard")) {
         const leaderboard = getObjectInstance(env, "leaderboard", "global");
-        const response = await leaderboard.fetch(request);
+        // Rewrite URL to strip /api prefix
+        const newUrl = new URL(request.url);
+        newUrl.pathname = normalizedPath;
+        const response = await leaderboard.fetch(new Request(newUrl, request));
 
         // Add CORS headers
         return new Response(response.body, {
@@ -249,7 +261,10 @@ export default {
       // MVP 13: Handle all /admin routes - forward to ForestManager
       if (normalizedPath.startsWith("/admin/")) {
         const forest = getObjectInstance(env, "forest", "daily-forest");
-        return await forest.fetch(request);
+        // Rewrite URL to strip /api prefix
+        const newUrl = new URL(request.url);
+        newUrl.pathname = normalizedPath;
+        return await forest.fetch(new Request(newUrl, request));
       }
 
       // Handle not found case
