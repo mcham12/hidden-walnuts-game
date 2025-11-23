@@ -4747,6 +4747,16 @@ export class Game {
   private async respawnWithNewCharacter(characterId: string): Promise<void> {
     console.log(`🎭 Respawning with new character: ${characterId}`);
 
+    // CRITICAL: Clear any existing respawn timers to prevent double-respawn
+    if (this.respawnTimerId) {
+      clearTimeout(this.respawnTimerId);
+      this.respawnTimerId = null;
+    }
+    if (this.respawnCountdownInterval) {
+      clearInterval(this.respawnCountdownInterval);
+      this.respawnCountdownInterval = null;
+    }
+
     // Hide death overlay immediately
     const deathOverlay = document.getElementById('death-overlay');
     if (deathOverlay) {
