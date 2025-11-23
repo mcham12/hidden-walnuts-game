@@ -4779,6 +4779,9 @@ export class Game {
       this.deathCharacterGrid = null;
     }
 
+    // Clean up death enticement preview
+    this.cleanupDeathEnticementCharacter();
+
     // Update selected character ID for next spawn
     this.selectedCharacterId = characterId;
 
@@ -4816,7 +4819,17 @@ export class Game {
         const spawnY = getTerrainHeight(spawnX, spawnZ) + 2; // 2 units above ground
 
         this.character.position.set(spawnX, spawnY, spawnZ);
+        // Explicitly reset rotation to ensure consistent orientation
+        this.character.rotation.set(0, Math.PI, 0);
         this.velocity.set(0, 0, 0);
+
+        // Snap camera to new position immediately to prevent "upside down" flips during lerp
+        const offset = new THREE.Vector3(0, 0.6, -0.9).applyQuaternion(this.character.quaternion);
+        const targetCameraPosition = this.character.position.clone().add(offset);
+        this.camera.position.copy(targetCameraPosition);
+
+        const lookAtTarget = this.character.position.clone().add(new THREE.Vector3(0, 0.5, 0));
+        this.camera.lookAt(lookAtTarget);
 
         // Reset animation state
         this.resetAnimationState();
