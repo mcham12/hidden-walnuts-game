@@ -791,18 +791,6 @@ export class SettingsManager {
     return field;
   }
 
-  /**
-   * MVP 16: Generate guest username
-   */
-  private generateGuestUsername(): string {
-    // Get or generate guest ID
-    let guestId = localStorage.getItem('guest_player_id');
-    if (!guestId) {
-      guestId = Math.random().toString(36).substring(2, 8).toUpperCase();
-      localStorage.setItem('guest_player_id', guestId);
-    }
-    return `Player_${guestId}`;
-  }
 
   /**
    * MVP 16: Handle logout
