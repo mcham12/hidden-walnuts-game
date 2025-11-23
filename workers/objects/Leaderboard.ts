@@ -245,10 +245,20 @@ export default class Leaderboard {
       if (!record.characterId) record.characterId = 'squirrel'; // Default character
 
       // MVP 9: Update both weekly and all-time leaderboards
-      // Weekly leaderboard (resets every Monday)
-      this.scores.set(record.playerId, record);
-      await this.storage.put(record.playerId, record);
+      // Update weekly leaderboard
+      if (!existingRecord || record.score > existingRecord.score) {
+        this.scores.set(record.playerId, record);
+        await this.storage.put(record.playerId, record);
+      } else {
+        // Existing score is better, but update metadata
+        existingRecord.isAuthenticated = record.isAuthenticated;
+        existingRecord.emailVerified = record.emailVerified;
+        existingRecord.characterId = record.characterId;
+        existingRecord.updatedAt = now;
 
+        this.scores.set(record.playerId, existingRecord);
+        await this.storage.put(record.playerId, existingRecord);
+      }
       // All-time leaderboard (never resets)
       const existingAllTimeRecord = this.alltimeScores.get(record.playerId);
       if (!existingAllTimeRecord || record.score > existingAllTimeRecord.score) {

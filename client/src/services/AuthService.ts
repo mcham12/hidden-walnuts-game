@@ -136,12 +136,17 @@ export interface LogoutResponse {
  */
 export async function signup(data: SignupRequest): Promise<SignupResponse> {
   try {
-    const response = await fetch(`${API_URL}/auth/signup`, {
+    const response = await fetch(`${API_URL}/api/auth/signup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ...data, origin: window.location.origin }),
+      body: JSON.stringify({
+        username: data.username,
+        email: data.email,
+        password: data.password,
+        origin: window.location.origin // MVP 16: Send client origin for verification link
+      }),
     });
 
     const result = await response.json();

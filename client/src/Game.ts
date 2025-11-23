@@ -7606,8 +7606,8 @@ export class Game {
       // Clear existing entries
       leaderboardList.innerHTML = '';
 
-      // MVP 16: Add "Top 10 - Verified Players Only" label for weekly leaderboard
-      if (leaderboardType === 'weekly') {
+      // MVP 16: Add "Top 10 - Authenticated Players Only" label for All-Time leaderboard
+      if (leaderboardType === 'alltime') {
         const labelEl = document.createElement('div');
         labelEl.style.cssText = `
           font-size: 11px;
@@ -7617,7 +7617,7 @@ export class Game {
           font-weight: 600;
           text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
           `;
-        labelEl.textContent = 'Top 10 - Verified Players Only';
+        labelEl.textContent = 'Top 10 - Authenticated Players Only';
         leaderboardList.appendChild(labelEl);
       }
 

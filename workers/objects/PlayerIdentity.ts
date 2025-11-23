@@ -239,8 +239,15 @@ export class PlayerIdentity extends DurableObject {
       // MVP 16: Migrate existing users - add default values if missing
       if (data.emailVerified === undefined) data.emailVerified = false;
       if (data.isAuthenticated === undefined) data.isAuthenticated = false;
-      if (!data.unlockedCharacters) data.unlockedCharacters = ['squirrel'];
+      if (!data.unlockedCharacters) {
+        data.unlockedCharacters = ['squirrel'];
+      }
       if (!data.authTokens) data.authTokens = [];
+
+      // Enforce entitlements (remove goat if unverified, add if verified)
+      if (this.enforceCharacterEntitlements(data)) {
+        await this.ctx.storage.put('player', data);
+      }
 
       // Username exists! Link this sessionToken if not already linked
       if (!data.sessionTokens.includes(sessionToken)) {
@@ -742,6 +749,11 @@ export class PlayerIdentity extends DurableObject {
         }, { status: 401 });
       }
 
+      // Enforce entitlements (remove goat if unverified, add if verified)
+      if (this.enforceCharacterEntitlements(data)) {
+        await this.ctx.storage.put('player', data);
+      }
+
       // MVP 16: Generate JWT tokens for session management
       const tokenId = generateTokenId();
       const deviceInfo = request.headers.get('User-Agent') || 'Unknown';
@@ -1126,7 +1138,12 @@ export class PlayerIdentity extends DurableObject {
         return Response.json({ error: 'Refresh token expired' }, { status: 401 });
       }
 
-      // Generate new token pair
+      // Enforce entitlements (remove goat if unverified, add if verified)
+      if (this.enforceCharacterEntitlements(data)) {
+        await this.ctx.storage.put('player', data);
+      }
+
+      // Generate new JWT tokens
       const newTokenId = generateTokenId();
       const deviceInfo = request.headers.get('User-Agent') || 'Unknown';
 
@@ -1381,5 +1398,30 @@ export class PlayerIdentity extends DurableObject {
       console.error('Resend verification error:', error);
       return Response.json({ error: 'Failed to resend verification email' }, { status: 500 });
     }
+  }
+  /**
+   * Enforce character entitlements based on verification status
+   * Removes 'goat' if unverified, adds it if verified
+   * Returns true if data was modified
+   */
+  private enforceCharacterEntitlements(data: PlayerIdentityData): boolean {
+    let modified = false;
+
+    // Goat is exclusively for verified users
+    if (data.emailVerified) {
+      // Should have goat
+      if (!data.unlockedCharacters.includes('goat')) {
+        data.unlockedCharacters.push('goat');
+        modified = true;
+      }
+    } else {
+      // Should NOT have goat
+      if (data.unlockedCharacters.includes('goat')) {
+        data.unlockedCharacters = data.unlockedCharacters.filter(c => c !== 'goat');
+        modified = true;
+      }
+    }
+
+    return modified;
   }
 }
