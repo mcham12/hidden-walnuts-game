@@ -144,9 +144,10 @@ export default class Leaderboard {
 
       const type = url.searchParams.get("type") || "weekly";
       const scoresMap = type === "alltime" ? this.alltimeScores : this.scores;
+      const requireAuth = type === "alltime";
 
       const playerRecord = scoresMap.get(playerId);
-      const rank = this.getPlayerRank(playerId, scoresMap);
+      const rank = this.getPlayerRank(playerId, scoresMap, { requireAuth });
 
       // MVP 16: Include authentication info in player rank response
       return new Response(JSON.stringify({
@@ -625,14 +626,19 @@ export default class Leaderboard {
   }
 
   // Get a player's current rank
-  private getPlayerRank(playerId: string, scoresMap: Map<string, ScoreRecord> = this.scores): number {
-    const playerRecord = scoresMap.get(playerId);
-    if (!playerRecord) {
-      return -1; // Player not found
+  private getPlayerRank(
+    playerId: string,
+    scoresMap: Map<string, ScoreRecord> = this.scores,
+    options?: { requireAuth?: boolean }
+  ): number {
+    let players = Array.from(scoresMap.values());
+
+    // Apply authentication filter if required
+    if (options?.requireAuth) {
+      players = players.filter(p => p.isAuthenticated);
     }
 
-    const sortedScores = Array.from(scoresMap.values())
-      .sort((a, b) => b.score - a.score);
+    const sortedScores = players.sort((a, b) => b.score - a.score);
 
     const rank = sortedScores.findIndex(record => record.playerId === playerId);
     return rank >= 0 ? rank + 1 : -1;
