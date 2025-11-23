@@ -2990,10 +2990,9 @@ export default class ForestManager extends DurableObject {
       const leaderboard = this.env.LEADERBOARD.get(leaderboardId);
 
       // Prepare score record
-      // MVP 16: Use username for authenticated players, squirrelId for guests
-      // FIX: Don't use "Anonymous" as ID, fall back to squirrelId
-      const shouldUseUsername = playerConnection.isAuthenticated &&
-        playerConnection.username &&
+      // MVP 16: Use username for all players (authenticated AND guests), only fall back to squirrelId if missing
+      // This ensures guest users show as "guest23" instead of "player_xxx" on leaderboard
+      const shouldUseUsername = playerConnection.username &&
         playerConnection.username !== 'Anonymous';
 
       const scoreRecord = {

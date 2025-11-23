@@ -447,7 +447,7 @@ export class SettingsManager {
       font-size: 14px;
       color: #ccc;
     `;
-    guestUsername.textContent = `Playing as: ${this.generateGuestUsername()}`;
+    guestUsername.textContent = `Playing as: ${localStorage.getItem('hw_username') || 'Guest'}`;
 
     header.appendChild(guestIcon);
     header.appendChild(guestTitle);
