@@ -2012,7 +2012,8 @@ export default class ForestManager extends DurableObject {
 
       // MVP 9: Only report to leaderboard if score > 0 (don't report initial joins)
       // This prevents overwriting existing scores with 0 on rejoin
-      if (playerConnection.score > 0) {
+      // MVP 16: ALWAYS report for authenticated players to ensure metadata (badges) is updated
+      if (playerConnection.score > 0 || playerConnection.isAuthenticated) {
         await this.reportScoreToLeaderboard(playerConnection);
       }
 
