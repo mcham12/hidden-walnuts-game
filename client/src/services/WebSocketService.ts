@@ -27,6 +27,7 @@ export class WebSocketService {
   // Connection state
   public isConnected: boolean = false;
   public isConnecting: boolean = false;
+  private accessToken: string | null = null;
 
   // Event handlers
   public onConnected?: () => void;
@@ -45,6 +46,10 @@ export class WebSocketService {
     private serverUrl: string = 'ws://localhost:8787'
   ) { }
 
+  setAccessToken(token: string | null): void {
+    this.accessToken = token;
+  }
+
   // Connect to WebSocket server
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -57,7 +62,11 @@ export class WebSocketService {
 
 
       try {
-        this.socket = new WebSocket(`${this.serverUrl}/ws?squirrelId=${this.squirrelId}&characterId=${this.characterId}`);
+        let url = `${this.serverUrl}/ws?squirrelId=${this.squirrelId}&characterId=${this.characterId}`;
+        if (this.accessToken) {
+          url += `&accessToken=${this.accessToken}`;
+        }
+        this.socket = new WebSocket(url);
 
         this.socket.onopen = () => {
           this.isConnected = true;

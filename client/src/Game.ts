@@ -509,8 +509,7 @@ export class Game {
       this.authModal = new AuthModal({
         onAuthSuccess: (userData) => {
           console.log('✅ User authenticated:', userData);
-          // Reload page to refresh character availability
-          window.location.reload();
+          this.handleAuthSuccess(userData);
         },
         onClose: () => {
           console.log('🚪 Auth modal closed');
@@ -1665,6 +1664,73 @@ export class Game {
     // Smooth look-at target
     const lookAtTarget = this.character.position.clone().add(new THREE.Vector3(0, 0.5, 0));
     this.camera.lookAt(lookAtTarget);
+  }
+
+  // MVP 16: Handle seamless authentication success
+  private async handleAuthSuccess(userData: any) {
+    console.log('✅ Handling auth success seamlessly:', userData);
+
+    // 1. Update local user state
+    this.username = userData.username;
+
+    // 2. Reconnect WebSocket to authenticate session
+    await this.reconnectWebSocket();
+
+    // 3. Update UI elements
+
+    // Refresh death overlay (toggles sign-up/logged-in views)
+    this.showDeathOverlay();
+
+    // Reset death character grid so it re-initializes with new unlocked characters next time it's opened
+    if (this.deathCharacterGrid) {
+      this.deathCharacterGrid.destroy();
+      this.deathCharacterGrid = null;
+    }
+
+    const characterGridContainer = document.getElementById('death-character-grid-container');
+    const changeCharacterBtn = document.getElementById('death-change-character-btn');
+
+    if (characterGridContainer) {
+      characterGridContainer.classList.add('hidden');
+    }
+    if (changeCharacterBtn) {
+      changeCharacterBtn.textContent = 'Change Character';
+    }
+
+    // Update main menu profile if visible
+    const loginBtn = document.getElementById('login-button');
+    const signupBtn = document.getElementById('signup-button');
+    const userProfile = document.getElementById('user-profile');
+
+    if (loginBtn) loginBtn.style.display = 'none';
+    if (signupBtn) signupBtn.style.display = 'none';
+    if (userProfile) {
+      userProfile.style.display = 'flex';
+      const nameEl = userProfile.querySelector('.profile-username');
+      if (nameEl) nameEl.textContent = this.username;
+    }
+
+    // Show success message
+    this.toastManager.success(`Welcome back, ${this.username}!`);
+  }
+
+  // MVP 16: Reconnect WebSocket with new credentials
+  private async reconnectWebSocket() {
+    console.log('🔄 Reconnecting WebSocket...');
+
+    if (this.websocket) {
+      // Remove listeners to prevent auto-reconnect logic from interfering
+      this.websocket.onclose = null;
+      this.websocket.onerror = null;
+      this.websocket.close();
+      this.websocket = null;
+    }
+
+    // Reset connection attempts
+    this.connectionAttempts = 0;
+
+    // Connect again (will pick up new token from localStorage)
+    await this.connectWebSocket();
   }
 
   // Multiplayer methods
