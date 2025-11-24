@@ -95,7 +95,9 @@ export class Game {
   private websocket: WebSocket | null = null;
   private playerId: string = '';
   private remotePlayers: Map<string, THREE.Group> = new Map();
+
   private connectionStatusElement: HTMLElement | null = null;
+  private settingsManager!: SettingsManager; // MVP 16: Reference to settings manager for UI updates
 
   // Entity interpolation with velocity-based extrapolation - industry standard for smooth multiplayer
   private remotePlayerBuffers: Map<string, Array<{ position: THREE.Vector3; quaternion: THREE.Quaternion; velocity?: THREE.Vector3; timestamp: number }>> = new Map();
@@ -345,6 +347,7 @@ export class Game {
     try {
       // MVP 5: Set audio manager (reuse from main.ts with preloaded sounds)
       this.audioManager = audioManager;
+      this.settingsManager = settingsManager; // MVP 16: Store reference
 
       // MVP 5: Apply initial mouse sensitivity from settings
       this.mouseSensitivity = settingsManager.getMouseSensitivity();
@@ -1712,6 +1715,11 @@ export class Game {
 
     // Show success message
     this.toastManager.success(`Welcome back, ${this.username}!`);
+
+    // 4. Refresh Settings UI (Account tab)
+    if (this.settingsManager) {
+      this.settingsManager.refreshAccountInfo();
+    }
   }
 
   // MVP 16: Reconnect WebSocket with new credentials

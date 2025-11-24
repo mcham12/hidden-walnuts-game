@@ -393,6 +393,13 @@ export class SettingsManager {
   }
 
   /**
+   * MVP 16: Refresh account info (called after seamless signup/login)
+   */
+  public refreshAccountInfo(): void {
+    this.populateAccountInfo();
+  }
+
+  /**
    * MVP 16: Populate Account tab with user info or guest CTA
    */
   private populateAccountInfo(): void {
