@@ -1734,6 +1734,43 @@ export class Game {
       this.websocket = null;
     }
 
+    // MVP 16 FIX: Clear local state to prevent duplicates (zombie NPCs/players)
+    // 1. Clear NPCs
+    this.npcs.forEach((mesh) => {
+      this.scene.remove(mesh);
+    });
+    this.npcs.clear();
+    this.npcMixers.clear();
+    this.npcActions.clear();
+    this.npcCurrentAnimations.clear();
+    this.npcNameLabels.forEach((label) => {
+      if (label.parentNode) label.parentNode.removeChild(label);
+    });
+    this.npcNameLabels.clear();
+    this.npcHealthBars.forEach((bar) => {
+      if (bar.container.parentNode) bar.container.parentNode.removeChild(bar.container);
+    });
+    this.npcHealthBars.clear();
+    this.npcInterpolationBuffers.clear();
+    this.npcPendingUpdates.clear();
+
+    // 2. Clear Remote Players
+    this.remotePlayers.forEach((mesh) => {
+      this.scene.remove(mesh);
+    });
+    this.remotePlayers.clear();
+    this.remotePlayerMixers.clear();
+    this.remotePlayerActions.clear();
+    this.remotePlayerNameLabels.forEach((label) => {
+      if (label.parentNode) label.parentNode.removeChild(label);
+    });
+    this.remotePlayerNameLabels.clear();
+    this.remotePlayerHealthBars.forEach((bar) => {
+      if (bar.container.parentNode) bar.container.parentNode.removeChild(bar.container);
+    });
+    this.remotePlayerHealthBars.clear();
+    this.remotePlayerBuffers.clear();
+
     // Reset connection attempts
     this.connectionAttempts = 0;
 
