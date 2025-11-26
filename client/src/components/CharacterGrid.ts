@@ -123,20 +123,41 @@ export class CharacterGrid {
         }
       }
 
-      /* iPhone Landscape (≤932px width, ≤500px height): Vertical grid (4 columns) */
+      /* iPhone Landscape (≤932px width, ≤500px height): Responsive compact grid */
       @media (max-width: 932px) and (max-height: 500px) and (orientation: landscape) {
         .character-grid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 12px;
+          grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+          gap: 10px;
           padding-bottom: 0;
           overflow-x: visible;
         }
+        
         .character-grid .character-card {
           min-width: 0;
           width: 100%;
+          padding: 8px !important;
+          min-height: 110px !important;
         }
-        /* Reset scrollbar styles as we are not scrolling horizontally anymore */
+
+        /* Compact 3D preview */
+        .character-grid .character-card > div[id^="char-preview-"] {
+          height: 70px !important;
+          margin-bottom: 2px !important;
+        }
+
+        /* Compact name */
+        .character-grid .character-card > div:nth-child(2) {
+          font-size: 12px !important;
+        }
+
+        /* Compact status icon */
+        .character-grid .character-card > div:nth-child(3) {
+          font-size: 18px !important;
+          margin-top: 2px !important;
+        }
+
+        /* Reset scrollbar styles */
         .character-grid::-webkit-scrollbar {
           display: none;
         }

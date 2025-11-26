@@ -1614,7 +1614,8 @@
     /* Responsive: Death Screen - iPhone Landscape */
     @media (max-height: 500px) and (orientation: landscape) {
       .death-unified-content {
-        padding: 10px 15px;
+        padding: 10px 15px 40px 15px;
+        /* Added bottom padding */
         max-height: 85vh;
         display: flex;
         flex-direction: column;
@@ -1623,6 +1624,7 @@
         -webkit-overflow-scrolling: touch;
         overflow-y: auto !important;
         pointer-events: auto !important;
+        box-sizing: border-box;
       }
 
       .death-top-section {
