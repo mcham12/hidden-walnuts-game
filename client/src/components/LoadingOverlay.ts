@@ -187,7 +187,7 @@ export class LoadingOverlay {
    */
   public async showComplete(): Promise<void> {
     if (this.loadingText) {
-      this.loadingText.textContent = 'Forest ready! 🌰';
+      this.loadingText.textContent = 'Forest ready!';
     }
     await new Promise(resolve => setTimeout(resolve, 1000));
   }

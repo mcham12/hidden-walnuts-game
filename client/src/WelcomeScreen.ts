@@ -355,7 +355,7 @@ export class WelcomeScreen {
   public async finishLoading(): Promise<void> {
     const loadingText = document.getElementById('card-loading-text');
     if (loadingText) {
-      loadingText.textContent = 'Forest ready! 🌰';
+      loadingText.textContent = 'Forest ready!';
     }
     // Increased from 800ms to 1500ms to give more time before transition
     await new Promise(resolve => setTimeout(resolve, 1500));
