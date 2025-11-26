@@ -8076,7 +8076,11 @@ export class Game {
    * Send a chat message (broadcasts to all players)
    */
   private sendChatMessage(message: string): void {
+    console.log(`💬 [sendChatMessage] Attempting to send: "${message}"`);
+    console.log(`   [sendChatMessage] Connected: ${this.isConnected}, WebSocket: ${!!this.websocket}`);
+
     if (!this.isConnected || !this.websocket) {
+      console.warn('⚠️ [sendChatMessage] Cannot send - not connected');
       return;
     }
 
@@ -8098,7 +8102,11 @@ export class Game {
    * Send an emote (triggers character animation, broadcasts to all players)
    */
   private sendEmote(emote: string): void {
+    console.log(`😊 [sendEmote] Attempting to send: "${emote}"`);
+    console.log(`   [sendEmote] Connected: ${this.isConnected}, WebSocket: ${!!this.websocket}`);
+
     if (!this.isConnected || !this.websocket) {
+      console.warn('⚠️ [sendEmote] Cannot send - not connected');
       return;
     }
 
