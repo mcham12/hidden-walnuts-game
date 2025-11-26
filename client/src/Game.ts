@@ -7999,9 +7999,11 @@ export class Game {
   private initChatAndEmotes(): void {
     // MVP 16: Guard against double-initialization (prevents duplicate event listeners)
     if (this.chatEmotesInitialized) {
-
+      console.log('⚠️ [initChatAndEmotes] Already initialized, skipping');
       return;
     }
+
+    console.log('💬 [initChatAndEmotes] Initializing chat and emotes...');
 
     const quickChatDiv = document.getElementById('quick-chat');
     const emotesDiv = document.getElementById('emotes');
@@ -8016,40 +8018,58 @@ export class Game {
       return;
     }
 
-
-
     // Show UI elements
     quickChatDiv.classList.remove('hidden');
     emotesDiv.classList.remove('hidden');
+    console.log('✅ [initChatAndEmotes] UI elements revealed');
 
     // Setup quick chat buttons
     const chatButtons = document.querySelectorAll('.chat-button');
+    console.log(`💬 [initChatAndEmotes] Found ${chatButtons.length} chat buttons`);
 
     chatButtons.forEach((button) => {
-      button.addEventListener('click', () => {
+      // Handle both click and touchstart to ensure responsiveness
+      const handleChat = (e: Event) => {
+        e.preventDefault(); // Prevent double-firing and default behavior
+        e.stopPropagation(); // Prevent event from reaching game canvas
 
         const message = (button as HTMLElement).getAttribute('data-message');
+        console.log(`💬 [Chat] Button clicked: "${message}"`);
+
         if (message) {
           this.sendChatMessage(message);
         }
-      });
+      };
+
+      button.addEventListener('click', handleChat);
+      button.addEventListener('touchstart', handleChat, { passive: false });
     });
 
     // Setup emote buttons
     const emoteButtons = document.querySelectorAll('.emote-button');
+    console.log(`😊 [initChatAndEmotes] Found ${emoteButtons.length} emote buttons`);
 
     emoteButtons.forEach((button) => {
-      button.addEventListener('click', () => {
+      // Handle both click and touchstart to ensure responsiveness
+      const handleEmote = (e: Event) => {
+        e.preventDefault(); // Prevent double-firing and default behavior
+        e.stopPropagation(); // Prevent event from reaching game canvas
 
         const emote = (button as HTMLElement).getAttribute('data-emote');
+        console.log(`😊 [Emote] Button clicked: "${emote}"`);
+
         if (emote) {
           this.sendEmote(emote);
         }
-      });
+      };
+
+      button.addEventListener('click', handleEmote);
+      button.addEventListener('touchstart', handleEmote, { passive: false });
     });
 
     // MVP 16: Mark as initialized to prevent duplicate calls
     this.chatEmotesInitialized = true;
+    console.log('✅ [initChatAndEmotes] Initialization complete');
   }
 
   /**
