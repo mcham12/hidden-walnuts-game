@@ -1611,6 +1611,64 @@
       }
     }
 
+    /* Responsive: Death Screen - iPhone Landscape */
+    @media (max-height: 500px) and (orientation: landscape) {
+      .death-unified-content {
+        padding: 15px;
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .death-top-section {
+        margin-bottom: 10px;
+      }
+
+      .death-title {
+        font-size: 24px;
+      }
+
+      .death-score {
+        font-size: 14px;
+      }
+
+      .death-middle-section {
+        flex-direction: row;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .respawn-timer-compact {
+        flex: 1;
+      }
+
+      .death-enticement-panel {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .enticement-title {
+        font-size: 16px;
+      }
+
+      /* Make 3D preview smaller in landscape */
+      #death-enticement-character-container-anon,
+      #death-enticement-character-container-signedin {
+        height: 80px !important;
+        margin: 5px auto !important;
+      }
+
+      .enticement-buttons {
+        margin: 5px 0;
+      }
+
+      .death-action-btn {
+        padding: 10px 20px;
+        font-size: 14px;
+      }
+    }
+
     /* MVP 5: Toast Notification System */
     #toast-container {
       position: fixed;

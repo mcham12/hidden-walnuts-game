@@ -4714,11 +4714,16 @@ export class Game {
    * Opens SIGNUP modal (not login) - after signup, page reloads and user sees character grid
    */
   private handleDeathSignIn(): void {
+    // MVP 16: Pause respawn timer so user has time to sign up
+    if (!this.respawnPaused) {
+      this.toggleRespawnPause();
+    }
 
     // Open AuthModal in signup mode
     if (this.authModal) {
       this.authModal.open('signup');
     } else {
+      console.error('❌ AuthModal not initialized');
     }
   }
 
