@@ -126,8 +126,8 @@ export class CharacterGrid {
       @media (max-width: 932px) and (max-height: 500px) and (orientation: landscape) {
         .character-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-          gap: 12px;
+          grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+          gap: 16px;
           padding-bottom: 0;
           overflow-x: visible;
         }
