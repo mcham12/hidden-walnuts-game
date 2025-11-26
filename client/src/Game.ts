@@ -1832,6 +1832,7 @@ export class Game {
       this.websocket.onopen = () => {
         clearTimeout(connectionTimeout);
         this.connectionAttempts = 0; // Reset on successful connection
+        this.isConnected = true; // MVP 16 FIX: Mark as connected
 
         // MVP 5: Update connection status
         this.updateConnectionStatus('connected');
