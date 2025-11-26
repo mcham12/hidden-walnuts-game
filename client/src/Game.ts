@@ -4686,10 +4686,14 @@ export class Game {
       } else {
       }
 
-      // Wire up buttons
+      // Wire up Sign In button with defensive check
       const signinBtn = document.getElementById('death-signin-btn');
       if (signinBtn) {
-        signinBtn.onclick = () => this.handleDeathSignIn();
+        // Remove any existing listeners to prevent duplicates
+        signinBtn.onclick = null;
+        signinBtn.addEventListener('click', () => this.handleDeathSignIn());
+      } else {
+        console.warn('⚠️ death-signin-btn element not found');
       }
 
       // Initialize 3D character preview

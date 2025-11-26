@@ -80,8 +80,7 @@ export class CharacterGrid {
         width: 100%;
         padding: 20px;
         box-sizing: border-box;
-        overflow-y: auto;
-        max-height: 80vh;
+        /* Removed max-height and overflow-y to prevent nested scrolling */
         -webkit-overflow-scrolling: touch;
       }
 
@@ -127,8 +126,8 @@ export class CharacterGrid {
       @media (max-width: 932px) and (max-height: 500px) and (orientation: landscape) {
         .character-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-          gap: 10px;
+          grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+          gap: 12px;
           padding-bottom: 0;
           overflow-x: visible;
         }
