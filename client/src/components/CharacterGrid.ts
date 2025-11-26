@@ -123,33 +123,22 @@ export class CharacterGrid {
         }
       }
 
-      /* iPhone Landscape (≤932px width, ≤500px height): 2 rows, horizontal scroll */
+      /* iPhone Landscape (≤932px width, ≤500px height): Vertical grid (4 columns) */
       @media (max-width: 932px) and (max-height: 500px) and (orientation: landscape) {
         .character-grid {
-          display: flex;
-          flex-wrap: nowrap;
-          overflow-x: auto;
-          grid-template-columns: none;
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
           gap: 12px;
-          padding-bottom: 10px;
+          padding-bottom: 0;
+          overflow-x: visible;
         }
         .character-grid .character-card {
-          min-width: 120px;
-          flex-shrink: 0;
+          min-width: 0;
+          width: 100%;
         }
+        /* Reset scrollbar styles as we are not scrolling horizontally anymore */
         .character-grid::-webkit-scrollbar {
-          height: 8px;
-        }
-        .character-grid::-webkit-scrollbar-track {
-          background: rgba(0, 0, 0, 0.1);
-          border-radius: 4px;
-        }
-        .character-grid::-webkit-scrollbar-thumb {
-          background: rgba(255, 215, 0, 0.5);
-          border-radius: 4px;
-        }
-        .character-grid::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 215, 0, 0.7);
+          display: none;
         }
       }
 

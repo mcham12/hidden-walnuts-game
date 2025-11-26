@@ -2992,9 +2992,8 @@
           <!-- Character Grid Container (Hidden by default) -->
           <div id="death-character-grid-container" class="hidden" style="
             margin-top: 20px;
-            max-height: 60vh;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
+            /* MVP 16 FIX: Remove max-height to allow full expansion in scrollable parent */
+            overflow-y: visible;
           ">
             <!-- CharacterGrid will be rendered here -->
           </div>
