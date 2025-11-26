@@ -80,8 +80,15 @@ export class CharacterGrid {
         width: 100%;
         padding: 20px;
         box-sizing: border-box;
-        /* Removed max-height and overflow-y to prevent nested scrolling */
+        overflow-y: auto;
+        max-height: 80vh;
         -webkit-overflow-scrolling: touch;
+      }
+
+      /* Override for death overlay context - let parent handle scrolling */
+      #death-character-grid-container .character-grid-container {
+        overflow-y: visible;
+        max-height: none;
       }
 
       .character-grid {
