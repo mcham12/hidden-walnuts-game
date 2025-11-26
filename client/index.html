@@ -1614,32 +1614,63 @@
     /* Responsive: Death Screen - iPhone Landscape */
     @media (max-height: 500px) and (orientation: landscape) {
       .death-unified-content {
-        padding: 15px;
+        padding: 10px 15px;
         max-height: 85vh;
         display: flex;
         flex-direction: column;
+        /* CRITICAL: Re-enable scrolling for this element */
+        touch-action: pan-y !important;
+        -webkit-overflow-scrolling: touch;
+        overflow-y: auto !important;
+        pointer-events: auto !important;
       }
 
       .death-top-section {
-        margin-bottom: 10px;
+        margin-bottom: 5px;
       }
 
       .death-title {
-        font-size: 24px;
+        font-size: 20px;
       }
 
       .death-score {
-        font-size: 14px;
+        font-size: 12px;
+        margin: 2px 0 0 0;
+      }
+
+      .death-skip-btn-unified {
+        padding: 8px 16px;
+        font-size: 12px;
       }
 
       .death-middle-section {
         flex-direction: row;
         gap: 10px;
         align-items: center;
+        margin: 5px 0;
+        padding: 10px;
+      }
+
+      .death-char-emoji {
+        font-size: 40px;
+      }
+
+      .respawn-label {
+        font-size: 14px;
+        margin: 0 0 5px 0;
+      }
+
+      .respawn-progress-container {
+        height: 16px;
       }
 
       .respawn-timer-compact {
         flex: 1;
+      }
+
+      .death-bottom-section {
+        margin-top: 5px;
+        padding-top: 5px;
       }
 
       .death-enticement-panel {
@@ -1649,23 +1680,26 @@
       }
 
       .enticement-title {
-        font-size: 16px;
+        font-size: 14px;
+        margin: 0 0 5px 0;
       }
 
       /* Make 3D preview smaller in landscape */
       #death-enticement-character-container-anon,
       #death-enticement-character-container-signedin {
-        height: 80px !important;
-        margin: 5px auto !important;
+        height: 60px !important;
+        margin: 0 auto !important;
       }
 
       .enticement-buttons {
         margin: 5px 0;
+        gap: 10px;
       }
 
       .death-action-btn {
-        padding: 10px 20px;
-        font-size: 14px;
+        padding: 8px 16px;
+        font-size: 12px;
+        min-width: 120px;
       }
     }
 
