@@ -2679,6 +2679,98 @@ export default class ForestManager extends DurableObject {
         }
         break;
 
+      case 'player_died':
+        // MVP 8: Handle client-reported death (e.g. falling off map or client-side kill detection)
+        // This ensures penalties/rewards are applied even if server didn't detect the kill
+
+        // Validate killer exists if provided
+        let killerConnection: PlayerConnection | undefined;
+        if (data.killerId) {
+          killerConnection = this.activePlayers.get(data.killerId);
+        }
+
+        // Apply death penalty (-5 points)
+        playerConnection.score = Math.max(0, playerConnection.score - 5);
+        playerConnection.combatStats.deaths += 1;
+
+        // Award killer points (+5 points) if it was another player
+        if (killerConnection && killerConnection.squirrelId !== playerConnection.squirrelId) {
+          killerConnection.score += 5;
+          killerConnection.combatStats.knockouts += 1;
+          killerConnection.combatStats.hits += 1; // Assume at least one hit caused it
+
+          // Update killer's score
+          this.sendMessage(killerConnection.socket, {
+            type: 'score_update',
+            score: killerConnection.score
+          });
+          await this.reportScoreToLeaderboard(killerConnection);
+        }
+
+        // Update victim's score
+        this.sendMessage(playerConnection.socket, {
+          type: 'score_update',
+          score: playerConnection.score
+        });
+        await this.reportScoreToLeaderboard(playerConnection);
+
+        // Handle walnut drops (server-authoritative)
+        // Client sends 'walnuts' count, but we should verify against server state if possible
+        // For now, trust the server's inventory count for this player
+        const walnutsToDrop = playerConnection.walnutInventory;
+
+        if (walnutsToDrop > 0) {
+          try {
+            // Create dropped walnuts at death position
+            for (let i = 0; i < walnutsToDrop; i++) {
+              const walnutId = `death-drop-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+              const walnut: Walnut = {
+                id: walnutId,
+                ownerId: 'game', // Dropped walnuts are neutral
+                origin: 'game',
+                hiddenIn: 'ground',
+                location: {
+                  x: (data.position?.x || playerConnection.position.x) + (Math.random() - 0.5) * 2,
+                  y: (data.position?.y || playerConnection.position.y) + 0.5,
+                  z: (data.position?.z || playerConnection.position.z) + (Math.random() - 0.5) * 2
+                },
+                found: false,
+                timestamp: Date.now()
+              };
+
+              this.mapState.push(walnut);
+
+              // Broadcast dropped walnut
+              this.broadcastToAll({
+                type: 'walnut_dropped',
+                walnutId: walnut.id,
+                position: walnut.location
+              });
+            }
+
+            await this.storage.put('mapState', this.mapState);
+            playerConnection.walnutInventory = 0;
+
+            // Sync inventory with client
+            this.sendMessage(playerConnection.socket, {
+              type: 'inventory_update',
+              walnutCount: 0
+            });
+
+          } catch (error) {
+            console.error(`❌ Failed to drop walnuts for ${playerConnection.username}:`, error);
+          }
+        }
+
+        // Broadcast death event to everyone (including victim)
+        this.broadcastToAll({
+          type: 'player_death',
+          victimId: playerConnection.squirrelId,
+          killerId: data.killerId,
+          deathPosition: data.position || playerConnection.position
+        });
+        break;
+
       default:
         // Broadcast other messages
         this.broadcastToOthers(playerConnection.squirrelId, data);
