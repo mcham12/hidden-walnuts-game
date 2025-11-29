@@ -6753,7 +6753,7 @@ export class Game {
 
       // Only draw if within minimap bounds
       if (pos.x >= 0 && pos.x <= size && pos.y >= 0 && pos.y <= size) {
-        ctx.fillStyle = '#888888';
+        ctx.fillStyle = '#00ff00'; // Green for human players
         ctx.beginPath();
         ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
         ctx.fill();
@@ -6764,17 +6764,13 @@ export class Game {
       }
     }
 
-    // MVP 7: Draw NPCs on minimap (cyan/yellow gradient)
+    // MVP 7: Draw NPCs on minimap (Gray for bots)
     for (const [_npcId, npc] of this.npcs) {
       const pos = worldToMinimap(npc.position.x, npc.position.z);
 
       // Only draw if within minimap bounds
       if (pos.x >= 0 && pos.x <= size && pos.y >= 0 && pos.y <= size) {
-        // Draw gradient circle for NPCs (cyan to yellow)
-        const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 5);
-        gradient.addColorStop(0, '#00FFFF'); // Cyan center
-        gradient.addColorStop(1, '#FFFF00'); // Yellow edge
-        ctx.fillStyle = gradient;
+        ctx.fillStyle = '#888888'; // Gray for NPCs
         ctx.beginPath();
         ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
         ctx.fill();
