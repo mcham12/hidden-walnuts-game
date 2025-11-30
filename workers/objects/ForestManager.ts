@@ -133,6 +133,7 @@ export default class ForestManager extends DurableObject {
   predatorManager: PredatorManager;
   private lastPredatorUpdate: number = 0;
   private readonly PREDATOR_UPDATE_INTERVAL = 100; // 100ms = 10 updates/sec (predators need responsive AI)
+  private targetPredatorCount: number = 2; // Default target count for auto-spawn
 
   // MVP 9: Tree walnut drop system
   // Purpose: Replenish walnut pool when players/NPCs consume walnuts for health
@@ -1109,6 +1110,10 @@ export default class ForestManager extends DurableObject {
       let spawned = 0;
       let despawned = 0;
 
+      // Persist target count for auto-spawn on player join
+      this.targetPredatorCount = targetCount;
+      await this.storage.put('targetPredatorCount', targetCount);
+
       // Predator type rotation: cardinal, toucan, wildebeest
       const predatorTypes: Array<'cardinal' | 'toucan' | 'wildebeest'> = ['cardinal', 'toucan', 'wildebeest'];
 
@@ -2022,14 +2027,14 @@ export default class ForestManager extends DurableObject {
       await this.ensureAlarmScheduled();
 
       // BUGFIX: Spawn initial predators when first player joins after idle period
-      // If no predators exist and we now have active players, spawn 1-2 predators
+      // Respect the target count set via admin endpoint (default: 2)
       const currentPredatorCount = this.predatorManager.getCount();
       if (currentPredatorCount === 0 && activeCount > 0) {
         const getTerrainHeight = (_x: number, _z: number) => 0; // Flat terrain for server-side spawning
         const predatorTypes: Array<'cardinal' | 'toucan' | 'wildebeest'> = ['cardinal', 'toucan', 'wildebeest'];
 
-        // Spawn 1-2 predators based on player count (1 for solo, 2 for 2+ players)
-        const spawnCount = activeCount >= 2 ? 2 : 1;
+        // Spawn predators up to target count
+        const spawnCount = this.targetPredatorCount;
         for (let i = 0; i < spawnCount; i++) {
           const type = predatorTypes[i % predatorTypes.length];
           this.predatorManager.spawnPredator(type, getTerrainHeight);
@@ -3164,6 +3169,12 @@ export default class ForestManager extends DurableObject {
     // Only initialize once per DO instance
     if (this.isInitialized) {
       return;
+    }
+
+    // Load persisted target predator count (default: 2)
+    const savedTargetCount = await this.storage.get<number>('targetPredatorCount');
+    if (typeof savedTargetCount === 'number') {
+      this.targetPredatorCount = savedTargetCount;
     }
 
     console.log('🌍 SERVER: Initializing world...');
