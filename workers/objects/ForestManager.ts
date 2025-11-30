@@ -3172,7 +3172,7 @@ export default class ForestManager extends DurableObject {
     }
 
     // Load persisted target predator count (default: 2)
-    const savedTargetCount = await this.storage.get<number>('targetPredatorCount');
+    const savedTargetCount = await this.storage.get('targetPredatorCount');
     if (typeof savedTargetCount === 'number') {
       this.targetPredatorCount = savedTargetCount;
     }
