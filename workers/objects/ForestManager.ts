@@ -363,8 +363,8 @@ export default class ForestManager extends DurableObject {
 
     // MVP 5.8: Check player disconnects every 10 seconds
     const DISCONNECT_CHECK_INTERVAL = 10000; // 10 seconds
-    const DISCONNECT_TIMEOUT = 60 * 1000; // 60 seconds
-    const REMOVAL_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+    const DISCONNECT_TIMEOUT = 30 * 1000; // 30 seconds (industry standard)
+    const REMOVAL_TIMEOUT = 2 * 60 * 1000; // 2 minutes (industry standard)
 
     // Only check disconnects every 10 seconds (not every 100ms)
     if (now - this.lastDisconnectCheck >= DISCONNECT_CHECK_INTERVAL) {
