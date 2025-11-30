@@ -2021,6 +2021,21 @@ export default class ForestManager extends DurableObject {
       // MVP 5.8: Ensure alarm is scheduled for disconnect checking
       await this.ensureAlarmScheduled();
 
+      // BUGFIX: Spawn initial predators when first player joins after idle period
+      // If no predators exist and we now have active players, spawn 1-2 predators
+      const currentPredatorCount = this.predatorManager.getCount();
+      if (currentPredatorCount === 0 && activeCount > 0) {
+        const getTerrainHeight = (_x: number, _z: number) => 0; // Flat terrain for server-side spawning
+        const predatorTypes: Array<'cardinal' | 'toucan' | 'wildebeest'> = ['cardinal', 'toucan', 'wildebeest'];
+
+        // Spawn 1-2 predators based on player count (1 for solo, 2 for 2+ players)
+        const spawnCount = activeCount >= 2 ? 2 : 1;
+        for (let i = 0; i < spawnCount; i++) {
+          const type = predatorTypes[i % predatorTypes.length];
+          this.predatorManager.spawnPredator(type, getTerrainHeight);
+        }
+      }
+
       // Setup message handlers
       socket.onmessage = async (event) => {
         try {
