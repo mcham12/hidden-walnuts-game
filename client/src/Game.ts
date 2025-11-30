@@ -1073,17 +1073,7 @@ export class Game {
       });
     }
 
-    // Debug: Wire up die button
-    const dieButton = document.getElementById('mobile-die-btn');
-    if (dieButton) {
-      dieButton.addEventListener('click', () => {
-        // Haptic feedback on mobile
-        if (navigator.vibrate) {
-          navigator.vibrate(100);
-        }
-        this.triggerSelfDestruct();
-      });
-    }
+
 
     // CRITICAL: Initialize button states immediately (don't wait for server)
     this.updateMobileButtons();
