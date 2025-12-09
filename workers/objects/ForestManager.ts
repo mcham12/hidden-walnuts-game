@@ -2236,6 +2236,11 @@ export default class ForestManager extends DurableObject {
         // MVP 7.1: Rate limit walnut hiding
         if (!this.checkMessageRateLimit(playerConnection.squirrelId, 'walnutHide')) {
           console.warn(`🚫 Walnut hide rate limit exceeded for ${playerConnection.squirrelId}`);
+          this.sendMessage(playerConnection.socket, {
+            type: 'hide_rejected',
+            reason: 'rate_limit',
+            walnutId: data.walnutId // MVP 16: Return ID so client can cleanup
+          });
           return;
         }
 

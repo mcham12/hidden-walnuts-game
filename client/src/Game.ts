@@ -2298,6 +2298,37 @@ export class Game {
         }
         break;
 
+
+      case 'hide_rejected':
+        // MVP 16: Server rejected hide (e.g. rate limit). Rollback optimistic update.
+        if (data.walnutId) {
+          console.warn(`⚠️ Hide rejected by server: ${data.reason}`);
+
+          // Remove from local map and scene
+          const walnutGroup = this.walnuts.get(data.walnutId);
+          if (walnutGroup) {
+            this.scene.remove(walnutGroup);
+            this.walnuts.delete(data.walnutId);
+
+            // Remove label
+            const label = this.walnutLabels.get(data.walnutId);
+            if (label) {
+              label.remove();
+              this.walnutLabels.delete(data.walnutId);
+            }
+
+            // Despawn VFX (particles) is not easily reversible, but acceptable minor glitch
+
+            // Notify user
+            if (data.reason === 'rate_limit') {
+              this.toastManager.error("You're hiding walnuts too fast! Slow down.", 3000);
+            } else if (data.reason === 'no_walnuts') {
+              this.toastManager.error("You don't have any walnuts!", 3000);
+            }
+          }
+        }
+        break;
+
       case 'heartbeat':
         // Heartbeat response - connection is alive
         break;
