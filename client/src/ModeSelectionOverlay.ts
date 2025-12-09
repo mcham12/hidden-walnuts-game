@@ -1,4 +1,5 @@
 import { TipsManager } from './TipsManager';
+import { TouchControls } from './TouchControls';
 
 
 export class ModeSelectionOverlay {
@@ -227,40 +228,42 @@ export class ModeSelectionOverlay {
     gridContainer.appendChild(tipsContainer);
 
     // Controls Overview (Right/Bottom)
-    // Desktop View
-    const desktopControls = document.createElement('div');
-    desktopControls.className = 'desktop-controls';
-    desktopControls.style.cssText = `
+    const controlsContainer = document.createElement('div');
+    controlsContainer.style.cssText = `
       background: rgba(255, 255, 255, 0.1);
       border-radius: 15px;
       padding: 20px;
       text-align: left;
     `;
-    desktopControls.innerHTML = `
-      <h3 style="text-align: center; margin-top: 0; margin-bottom: 15px;">🎮 Controls</h3>
-      <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; font-size: 0.9rem;">
-        <span style="background: #333; padding: 2px 6px; border-radius: 4px;">WASD / Arrows</span> <span>Move</span>
-        <span style="background: #333; padding: 2px 6px; border-radius: 4px;">Space</span> <span>Jump</span>
-        <span style="background: #333; padding: 2px 6px; border-radius: 4px;">Shift</span> <span>Sprint</span>
-        <span style="background: #333; padding: 2px 6px; border-radius: 4px;">P / F</span> <span>Wait / Debug</span>
-        <span style="background: #333; padding: 2px 6px; border-radius: 4px;">Click</span> <span>Throw Walnut</span>
-        <span style="background: #333; padding: 2px 6px; border-radius: 4px;">?</span> <span>Help</span>
-      </div>
-    `;
-    gridContainer.appendChild(desktopControls);
 
-    // Mobile View (Hint only)
-    const mobileControls = document.createElement('div');
-    mobileControls.className = 'mobile-controls-hint';
-    mobileControls.innerHTML = `
-      <h3 style="margin-top: 0;">📱 Mobile Controls</h3>
-      <p style="font-size: 0.95rem;">
-        <strong>Move:</strong> Drag anywhere on screen<br>
-        <strong>Look:</strong> Two-finger drag<br>
-        <strong>Interect:</strong> Tap buttons
-      </p>
-    `;
-    gridContainer.appendChild(mobileControls);
+    // MVP 16: Use authoritative platform detection to match TutorialOverlay ("?")
+    const isMobile = TouchControls.isMobile();
+
+    if (isMobile) {
+      // Mobile View
+      controlsContainer.innerHTML = `
+        <h3 style="margin-top: 0;">📱 Mobile Controls</h3>
+        <p style="font-size: 0.95rem;">
+          <strong>Move:</strong> Drag anywhere on screen<br>
+          <strong>Look:</strong> Two-finger drag<br>
+          <strong>Actions:</strong> Tap 🎯 🌳 🍴 buttons
+        </p>
+      `;
+    } else {
+      // Desktop View
+      controlsContainer.innerHTML = `
+        <h3 style="text-align: center; margin-top: 0; margin-bottom: 15px;">🎮 Controls</h3>
+        <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; font-size: 0.9rem;">
+          <span style="background: #333; padding: 2px 6px; border-radius: 4px;">WASD / Arrows</span> <span>Move</span>
+          <span style="background: #333; padding: 2px 6px; border-radius: 4px;">T / Space</span> <span>Throw Walnut</span>
+          <span style="background: #333; padding: 2px 6px; border-radius: 4px;">H</span> <span>Hide Walnut</span>
+          <span style="background: #333; padding: 2px 6px; border-radius: 4px;">E</span> <span>Eat Walnut</span>
+          <span style="background: #333; padding: 2px 6px; border-radius: 4px;">?</span> <span>Help</span>
+        </div>
+      `;
+    }
+
+    gridContainer.appendChild(controlsContainer);
 
     content.appendChild(gridContainer);
     this.container.appendChild(content);
