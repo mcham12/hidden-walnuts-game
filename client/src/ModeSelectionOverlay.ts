@@ -1,9 +1,14 @@
+import { TipsManager } from './TipsManager';
+import { TouchControls } from './TouchControls';
+
 export class ModeSelectionOverlay {
   private container: HTMLElement;
   private onSelect: (mode: 'standard' | 'carefree') => void;
+  private tipsManager: TipsManager;
 
   constructor(onSelect: (mode: 'standard' | 'carefree') => void) {
     this.onSelect = onSelect;
+    this.tipsManager = new TipsManager();
     this.container = document.createElement('div');
     this.container.id = 'mode-selection-overlay';
 
@@ -38,6 +43,7 @@ export class ModeSelectionOverlay {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 20px;
+        text-align: left;
       }
 
       .mobile-controls-hint {
@@ -75,6 +81,7 @@ export class ModeSelectionOverlay {
           font-size: 1.2rem !important;
         }
 
+        /* Hide desktop controls description on mobile to save space */
         .desktop-controls {
           display: none !important;
         }
@@ -98,6 +105,10 @@ export class ModeSelectionOverlay {
         h1 {
           width: 100%;
           font-size: 1.5rem;
+        }
+
+        .mode-grid {
+             width: 100%;
         }
       }
     `;
@@ -130,6 +141,37 @@ export class ModeSelectionOverlay {
     title.textContent = 'Welcome to Hidden Walnuts!';
     content.appendChild(title);
 
+    // 1. Mode Selection (NOW AT TOP)
+    const modesContainer = document.createElement('div');
+    modesContainer.style.cssText = `
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap; /* Wrap on very small screens */
+    `;
+
+    // Standard Mode Button
+    const standardBtn = this.createModeButton(
+      '🏆 STANDARD',
+      'Compete! Predators attack. Ranks matter.',
+      '#4CAF50', // Green
+      () => this.selectMode('standard')
+    );
+
+    // Carefree Mode Button
+    const carefreeBtn = this.createModeButton(
+      '🧘 CAREFREE',
+      'Relax. No attacks. Just vibes.',
+      '#2196F3', // Blue
+      () => this.selectMode('carefree')
+    );
+
+    modesContainer.appendChild(standardBtn);
+    modesContainer.appendChild(carefreeBtn);
+    content.appendChild(modesContainer);
+
+    // 2. Info Grid (Tips & Controls) - NOW BELOW BUTTONS
     const gridContainer = document.createElement('div');
     gridContainer.className = 'mode-grid';
 
@@ -155,7 +197,11 @@ export class ModeSelectionOverlay {
     tipContent.id = 'tip-content';
     tipContent.style.fontSize = '1.1rem';
     tipContent.style.lineHeight = '1.4';
-    tipContent.textContent = this.getRandomTip();
+
+    // Initial Tip
+    const initialTip = this.tipsManager.getRandomTip();
+    tipContent.textContent = initialTip ? `${initialTip.emoji || '💡'} ${initialTip.text}` : 'Loading tips...';
+
     tipsContainer.appendChild(tipContent);
 
     const nextTipBtn = document.createElement('button');
@@ -172,7 +218,10 @@ export class ModeSelectionOverlay {
       align-self: center;
     `;
     nextTipBtn.onclick = () => {
-      tipContent.textContent = this.getRandomTip();
+      const tip = this.tipsManager.getRandomTip();
+      if (tip) {
+        tipContent.textContent = `${tip.emoji || '💡'} ${tip.text}`;
+      }
     };
     tipsContainer.appendChild(nextTipBtn);
     gridContainer.appendChild(tipsContainer);
@@ -190,12 +239,12 @@ export class ModeSelectionOverlay {
     desktopControls.innerHTML = `
       <h3 style="text-align: center; margin-top: 0; margin-bottom: 15px;">🎮 Controls</h3>
       <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; font-size: 0.9rem;">
-        <span style="background: #333; padding: 2px 6px; border-radius: 4px;">WASD</span> <span>Move</span>
+        <span style="background: #333; padding: 2px 6px; border-radius: 4px;">WASD / Arrows</span> <span>Move</span>
         <span style="background: #333; padding: 2px 6px; border-radius: 4px;">Space</span> <span>Jump</span>
         <span style="background: #333; padding: 2px 6px; border-radius: 4px;">Shift</span> <span>Sprint</span>
-        <span style="background: #333; padding: 2px 6px; border-radius: 4px;">Click</span> <span>Throw</span>
-        <span style="background: #333; padding: 2px 6px; border-radius: 4px;">E</span> <span>Eat</span>
-        <span style="background: #333; padding: 2px 6px; border-radius: 4px;">C</span> <span>Emotes</span>
+        <span style="background: #333; padding: 2px 6px; border-radius: 4px;">P / F</span> <span>Wait / Debug</span>
+        <span style="background: #333; padding: 2px 6px; border-radius: 4px;">Click</span> <span>Throw Walnut</span>
+        <span style="background: #333; padding: 2px 6px; border-radius: 4px;">?</span> <span>Help</span>
       </div>
     `;
     gridContainer.appendChild(desktopControls);
@@ -205,42 +254,15 @@ export class ModeSelectionOverlay {
     mobileControls.className = 'mobile-controls-hint';
     mobileControls.innerHTML = `
       <h3 style="margin-top: 0;">📱 Mobile Controls</h3>
-      <p style="font-size: 0.95rem;">Use the on-screen joysticks to move and look. Tap buttons to jump and throw!</p>
+      <p style="font-size: 0.95rem;">
+        <strong>Move:</strong> Drag anywhere on screen<br>
+        <strong>Look:</strong> Two-finger drag<br>
+        <strong>Interect:</strong> Tap buttons
+      </p>
     `;
     gridContainer.appendChild(mobileControls);
 
     content.appendChild(gridContainer);
-
-    // Mode Selection (Bottom)
-    const modesContainer = document.createElement('div');
-    modesContainer.style.cssText = `
-      display: flex;
-      gap: 15px;
-      justify-content: center;
-      margin-top: 10px;
-      flex-wrap: wrap; /* Wrap on very small screens */
-    `;
-
-    // Standard Mode Button
-    const standardBtn = this.createModeButton(
-      '🏆 STANDARD',
-      'Compete! Predators attack. Ranks matter.',
-      '#4CAF50', // Green
-      () => this.selectMode('standard')
-    );
-
-    // Carefree Mode Button
-    const carefreeBtn = this.createModeButton(
-      '🧘 CAREFREE',
-      'Relax. No attacks. Just vibes.',
-      '#2196F3', // Blue
-      () => this.selectMode('carefree')
-    );
-
-    modesContainer.appendChild(standardBtn);
-    modesContainer.appendChild(carefreeBtn);
-    content.appendChild(modesContainer);
-
     this.container.appendChild(content);
   }
 
@@ -281,18 +303,6 @@ export class ModeSelectionOverlay {
     btn.ontouchend = () => btn.style.transform = 'translateY(0)';
 
     return btn;
-  }
-
-  private getRandomTip(): string {
-    const tips = [
-      "Use trees to hide from ground predators (Wildebeest)!",
-      "Aim your throws slightly above distant targets.",
-      "Eating walnuts heals you - keep a stash!",
-      "Higher ranks attract more aggressive predators.",
-      "Golden walnuts are worth 5 points!",
-      "Hold Shift to sprint, but watch your footing.",
-    ];
-    return tips[Math.floor(Math.random() * tips.length)];
   }
 
   private selectMode(mode: 'standard' | 'carefree'): void {
