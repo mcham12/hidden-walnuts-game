@@ -3090,6 +3090,8 @@ export default class ForestManager extends DurableObject {
   // MVP 8: Report player score to leaderboard
   // MVP 9: Also update SquirrelSession for score persistence
   private async reportScoreToLeaderboard(playerConnection: any): Promise<void> {
+    // MVP 15 FIX: Global guard - Carefree players NEVER report score or rank up
+    if (playerConnection.isCarefree) return;
     try {
       // MVP 9: Update SquirrelSession for score persistence across reconnects
       const squirrelSessionId = this.env.SQUIRREL.idFromName(playerConnection.squirrelId);
@@ -3553,7 +3555,8 @@ export default class ForestManager extends DurableObject {
         position: player.position,
         inventory: player.walnutInventory,
         score: player.score, // MVP 12: For rank-based targeting
-        isPlayer: true // MVP 12: Distinguish players from NPCs
+        isPlayer: true, // MVP 12: Distinguish players from NPCs
+        isCarefree: player.isCarefree // MVP 15: Pass carefree status to AI so they ignore these players
       });
     });
 
