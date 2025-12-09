@@ -11,7 +11,7 @@ export class ModeSelectionOverlay {
     const style = document.createElement('style');
     style.textContent = `
       #mode-selection-overlay {
-        font-family: 'Fredoka One', cursive, sans-serif;
+        font-family: 'Arial', sans-serif;
         color: white;
         padding: 20px;
         box-sizing: border-box;
