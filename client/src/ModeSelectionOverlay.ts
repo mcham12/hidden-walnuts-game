@@ -1,5 +1,5 @@
 import { TipsManager } from './TipsManager';
-import { TouchControls } from './TouchControls';
+
 
 export class ModeSelectionOverlay {
   private container: HTMLElement;
