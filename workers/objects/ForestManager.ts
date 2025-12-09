@@ -56,8 +56,12 @@ interface PlayerConnection {
 
   // MVP 14: Tree growing bonus tracking
   treesGrownCount: number; // Cumulative count of trees grown from player's hidden walnuts
-  bonusMilestones: Set<number>; // Track awarded bonuses to prevent duplicates (e.g., Set{20, 40})
+  bonusMilestones: Set<number>; // Track awarded bonuses to prevent awarded duplicate (e.g., Set{20, 40})
+
+  // MVP 15: Game Modes
+  isCarefree: boolean; // True if player is in "Carefree" mode (no aggression, no rank up)
 }
+
 
 interface Walnut {
   id: string;
@@ -1939,7 +1943,9 @@ export default class ForestManager extends DurableObject {
         titleName: 'Rookie',
         // MVP 14: Tree growing bonus tracking
         treesGrownCount: 0,
-        bonusMilestones: new Set<number>()
+        bonusMilestones: new Set<number>(),
+        // MVP 15: Carefree Mode (default off)
+        isCarefree: false
       };
 
       // MVP 9: Check for recent disconnect and restore score (.io game pattern)
@@ -2019,7 +2025,8 @@ export default class ForestManager extends DurableObject {
       // MVP 9: Only report to leaderboard if score > 0 (don't report initial joins)
       // This prevents overwriting existing scores with 0 on rejoin
       // MVP 16: ALWAYS report for authenticated players to ensure metadata (badges) is updated
-      if (playerConnection.score > 0 || playerConnection.isAuthenticated) {
+      // MVP 15: Carefree Mode - Do NOT report score to leaderboard
+      if ((playerConnection.score > 0 || playerConnection.isAuthenticated) && !playerConnection.isCarefree) {
         await this.reportScoreToLeaderboard(playerConnection);
       }
 
@@ -2191,8 +2198,30 @@ export default class ForestManager extends DurableObject {
           animationStartTime: data.animationStartTime, // TIME-BASED SYNC: Forward animation start time
           velocity: data.velocity, // Forward velocity for extrapolation
           moveType: data.moveType, // Forward movement type for animation sync
-          timestamp: data.timestamp // Forward client timestamp for latency compensation
+
+          timestamp: data.timestamp, // Forward client timestamp for latency compensation
+          isCarefree: playerConnection.isCarefree // MVP 15: Broadcast carefree status
         });
+        break;
+
+      case "set_carefree_mode":
+        // MVP 15: Toggle Carefree Mode
+        if (typeof data.enabled === 'boolean') {
+          playerConnection.isCarefree = data.enabled;
+
+          // Broadcast mode change to others (so they know why this player is ignored/safe)
+          this.broadcastToOthers(playerConnection.squirrelId, {
+            type: 'player_update',
+            squirrelId: playerConnection.squirrelId,
+            isCarefree: playerConnection.isCarefree
+          });
+
+          // Confirm to client
+          this.sendMessage(playerConnection.socket, {
+            type: 'carefree_mode_updated',
+            enabled: playerConnection.isCarefree
+          });
+        }
         break;
 
       case "heartbeat":
@@ -2329,10 +2358,13 @@ export default class ForestManager extends DurableObject {
           });
 
           // MVP 8: Report updated score to leaderboard
-          await this.reportScoreToLeaderboard(playerConnection);
+          // MVP 15: Carefree Mode - Do NOT report score to competitive leaderboard
+          if (!playerConnection.isCarefree) {
+            await this.reportScoreToLeaderboard(playerConnection);
+          }
 
-          // MVP 16: Sync persistent stats if authenticated AND verified
-          if (playerConnection.isAuthenticated && playerConnection.emailVerified) {
+          // MVP 16: Sync persistent stats if authenticated AND verified AND not in Carefree mode
+          if (playerConnection.isAuthenticated && playerConnection.emailVerified && !playerConnection.isCarefree) {
             const playerIdentityId = this.env.PLAYER_IDENTITY.idFromName(playerConnection.username);
             const playerIdentity = this.env.PLAYER_IDENTITY.get(playerIdentityId);
             // Fire and forget

@@ -23,10 +23,11 @@ import { CharacterRegistry, type CharacterDefinition } from './services/Characte
 import { CharacterGrid } from './components/CharacterGrid.js'; // Character selection grid
 import { CharacterPreview3D } from './components/CharacterPreview3D.js'; // MVP 16: 3D character previews
 import { TutorialOverlay } from './TutorialOverlay.js';
-import { getPlayerTitle } from '@shared/PlayerRanks';
+import { getPlayerTitle, shouldPredatorsTargetPlayer } from '@shared/PlayerRanks';
 import { TipsManager } from './TipsManager.js'; // MVP 14: Contextual tips
 import { OverlayManager, OverlayPriority } from './OverlayManager.js'; // MVP 14: Overlay queue
 import { TipCard } from './TipCard.js'; // MVP 14 Phase 9: Dismissible tips
+import { ModeSelectionOverlay } from './ModeSelectionOverlay.js'; // MVP 15: Game Mode Selection
 
 interface Character {
   id: string;
@@ -314,7 +315,12 @@ export class Game {
   private settingsInitialized = false;
 
   // MVP 14: Contextual tips system
-  private tipsManager: TipsManager = new TipsManager();
+  private tipsManager: TipsManager = new TipsManager(); // MVP 14: Use TipsManager instead of direct overlays where suitable
+
+  // MVP 15: Game Modes
+  public isCarefree: boolean = false; // Public so ModeSelectionOverlay can access/set it
+  private isGameStarted: boolean = false; // Pauses game loop until mode selected
+
 
   // MVP 14 Phase 9: Dismissible tip cards (separate from toasts)
   private tipCard: TipCard = new TipCard();
@@ -533,6 +539,27 @@ export class Game {
       // IMPORTANT: Only passive toasts, no action buttons during gameplay
       this.enticementService = new EnticementService(this.toastManager);
       this.enticementService.start();
+
+      // MVP 15: Initialize Mode Selection Overlay
+      new ModeSelectionOverlay((mode) => {
+        console.log(`🎮 Game Mode Selected: ${mode}`);
+        this.isGameStarted = true;
+        this.isCarefree = (mode === 'carefree');
+
+        // Send mode to server
+        if (this.isCarefree) {
+          this.sendMessage({
+            type: 'set_carefree_mode',
+            enabled: true
+          });
+          this.toastManager.info('Carefree Mode: Activated! Relax and enjoy.', 4000);
+        } else {
+          this.toastManager.info('Standard Mode: Good luck out there!', 3000);
+        }
+
+        // Play start sound
+        this.audioManager.playSound('ui', 'game_start');
+      });
 
       window.addEventListener('resize', this.onResize.bind(this));
     } catch (error) {
@@ -1159,16 +1186,30 @@ export class Game {
       this.lastFpsUpdate = currentTime;
     }
 
-    // Update player physics
-    // MVP 6: Only update player AND camera after spawn position received (prevents race condition)
-    // Don't update camera before spawn position arrives - prevents upside-down flash when character teleports
-    if (this.character && this.spawnPositionReceived) {
-      this.updatePlayer(delta);
-      this.updateCamera();
-      // MVP 5.5: Update camera shake effect
-      this.updateCameraShake(delta);
+    // MVP 15: Game Mode Selection - Logic Split
+    // If game started: Update player physics and camera as normal
+    // If NOT started: Rotate camera slowly for ambiance, but SKIP player physics
+    if (this.isGameStarted) {
+      // Update player physics
+      // MVP 6: Only update player AND camera after spawn position received (prevents race condition)
+      // Don't update camera before spawn position arrives - prevents upside-down flash when character teleports
+      if (this.character && this.spawnPositionReceived) {
+        this.updatePlayer(delta);
+        this.updateCamera();
+        // MVP 5.5: Update camera shake effect
+        this.updateCameraShake(delta);
+      }
+    } else {
+      // Game NOT started - Idle Camera Animation
+      if (this.camera) {
+        const idleTime = performance.now() * 0.0001;
+        this.camera.position.x = Math.sin(idleTime) * 20;
+        this.camera.position.z = Math.cos(idleTime) * 20;
+        this.camera.lookAt(0, 5, 0);
+      }
     }
-    // If character exists but spawn position not received yet, do nothing - let camera stay at initial position
+
+
 
     // Update animations
     if (this.mixer) {
@@ -2083,6 +2124,11 @@ export class Game {
           const currentTitle = getPlayerTitle(this.playerScore);
           this.playerTitleName = currentTitle.name;
         }
+
+        // MVP 15: Initialize carefree mode from server
+        if (typeof data.isCarefree === 'boolean') {
+          this.isCarefree = data.isCarefree;
+        }
         break;
 
       case 'walnut_hidden':
@@ -2554,6 +2600,17 @@ export class Game {
           this.toastManager.warning('Throw on cooldown!');
         } else if (data.reason === 'no_ammo') {
           this.toastManager.warning('No walnuts to throw!');
+        }
+        break;
+
+      case 'carefree_mode_updated': // 4. Handle carefree_mode_updated message
+        if (typeof data.isCarefree === 'boolean') {
+          this.isCarefree = data.isCarefree;
+          if (this.isCarefree) {
+            this.toastManager.info('Carefree Mode: Predators will ignore you!');
+          } else {
+            this.toastManager.info('Carefree Mode: Off. Predators may now target you.');
+          }
         }
         break;
 
@@ -3724,8 +3781,14 @@ export class Game {
           }
           const cooldowns = this.predatorSoundCooldowns.get(data.id)!;
 
-          // Play "nearby" sound if predator is close
-          if (distance < NEARBY_DISTANCE && now - cooldowns.nearby > NEARBY_SOUND_COOLDOWN) {
+          // MVP 12: Play "nearby" sound if:
+          // 1. Predator is close
+          // 2. Cooldown expired
+          // 3. Player is a valid target (Rank > Apprentice) OR override for testing
+          // 4. Player is NOT in Carefree mode
+          const isTargetable = shouldPredatorsTargetPlayer(this.playerScore) && !this.isCarefree;
+
+          if (isTargetable && distance < NEARBY_DISTANCE && now - cooldowns.nearby > NEARBY_SOUND_COOLDOWN) {
             const soundName = isAerial ? 'flying_predator_nearby' : 'ground_predator_nearby';
             this.audioManager.playSound('combat', soundName);
 

@@ -42,7 +42,9 @@ interface PlayerData {
   username: string;
   score?: number; // MVP 12: Player score (for rank-based targeting)
   spawnTime?: number; // MVP 12: NPC spawn time (for time-based targeting)
+
   isPlayer?: boolean; // MVP 12: Distinguish players from NPCs
+  isCarefree?: boolean; // MVP 15: Carefree mode (ignored by predators)
 }
 
 export class PredatorManager {
@@ -598,6 +600,9 @@ export class PredatorManager {
     targets.forEach(target => {
       // Skip targets already being attacked by another predator
       if (targetedIds.has(target.id)) return;
+
+      // MVP 15: Ignore carefree players
+      if (target.isCarefree) return;
 
       // Calculate distance
       const dx = target.position.x - predator.position.x;

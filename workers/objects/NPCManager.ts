@@ -63,6 +63,7 @@ interface PlayerConnection {
   characterId: string;
   titleId?: string; // MVP 12: Player's rank title for aggression scaling
   score?: number; // MVP 12: Player score (fallback if titleId not available)
+  isCarefree?: boolean; // MVP 15: Carefree mode (ignored by NPCs)
 }
 
 interface Walnut {
@@ -430,7 +431,7 @@ export class NPCManager {
     // MVP 8 FIX: Check if too close to current target - back off to prevent harassment loops
     if (npc.targetEntityId) {
       const target = this.forestManager.activePlayers.get(npc.targetEntityId) ||
-                     this.npcs.get(npc.targetEntityId);
+        this.npcs.get(npc.targetEntityId);
       if (target) {
         const distanceToTarget = this.getDistance2D(npc.position, target.position);
         // If within 3 units of target, switch to WANDER to create separation
@@ -586,6 +587,7 @@ export class NPCManager {
     // MVP 12: Filter players by rank - only approach players with aggression multiplier > 0
     const targetablePlayers = nearbyPlayers.filter(player => {
       if (player.score === undefined) return true; // Default to targetable if no score data
+      if (player.isCarefree) return false; // MVP 15: Ignore carefree players
       const playerTitle = getPlayerTitle(player.score);
       return playerTitle.npcAggressionMultiplier > 0; // Only target Slick+ (0.0 = protected)
     });
@@ -695,6 +697,7 @@ export class NPCManager {
     // MVP 12: Filter players by rank - only throw at players with aggression multiplier > 0
     const targetablePlayers = nearbyPlayers.filter(player => {
       if (player.score === undefined) return true; // Default to targetable if no score data
+      if (player.isCarefree) return false; // MVP 15: Ignore carefree players
       const playerTitle = getPlayerTitle(player.score);
       return playerTitle.npcAggressionMultiplier > 0; // Only target Slick+ (0.0 = protected)
     });
