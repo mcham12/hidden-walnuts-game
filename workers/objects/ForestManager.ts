@@ -60,6 +60,13 @@ interface PlayerConnection {
 
   // MVP 15: Game Modes
   isCarefree: boolean; // True if player is in "Carefree" mode (no aggression, no rank up)
+  scoreBeforeCarefree?: number; // Score snapshot when entering Carefree (for restoration)
+  modeSwitchHistory?: Array<{
+    timestamp: number;
+    fromMode: 'standard' | 'carefree';
+    toMode: 'standard' | 'carefree';
+    scoreAtSwitch: number;
+  }>; // Track mode switches for analytics
 }
 
 
@@ -2205,21 +2212,83 @@ export default class ForestManager extends DurableObject {
         break;
 
       case "set_carefree_mode":
-        // MVP 15: Toggle Carefree Mode
+        // MVP 15: Toggle Carefree Mode with score freeze/restore
         if (typeof data.enabled === 'boolean') {
-          playerConnection.isCarefree = data.enabled;
+          const entering = data.enabled && !playerConnection.isCarefree;
+          const exiting = !data.enabled && playerConnection.isCarefree;
+
+          if (entering) {
+            // ENTERING CAREFREE MODE - Save current score
+            playerConnection.scoreBeforeCarefree = playerConnection.score;
+            playerConnection.isCarefree = true;
+
+            // Track mode switch
+            if (!playerConnection.modeSwitchHistory) {
+              playerConnection.modeSwitchHistory = [];
+            }
+            playerConnection.modeSwitchHistory.push({
+              timestamp: Date.now(),
+              fromMode: 'standard',
+              toMode: 'carefree',
+              scoreAtSwitch: playerConnection.score
+            });
+
+            this.sendMessage(playerConnection.socket, {
+              type: 'carefree_mode_updated',
+              isCarefree: true,
+              message: 'Carefree Mode: Your competitive score is paused'
+            });
+
+          } else if (exiting) {
+            // EXITING CAREFREE MODE - Restore saved score
+            const savedScore = playerConnection.scoreBeforeCarefree;
+
+            if (typeof savedScore === 'number') {
+              // Restore score
+              playerConnection.score = savedScore;
+              delete playerConnection.scoreBeforeCarefree;
+
+              // Recalculate rank from restored score
+              const { getPlayerTitle } = await import('../shared/PlayerRanks.js');
+              const title = getPlayerTitle(playerConnection.score);
+              playerConnection.titleId = title.id;
+              playerConnection.titleName = title.name;
+
+              // Track mode switch
+              if (!playerConnection.modeSwitchHistory) {
+                playerConnection.modeSwitchHistory = [];
+              }
+              playerConnection.modeSwitchHistory.push({
+                timestamp: Date.now(),
+                fromMode: 'carefree',
+                toMode: 'standard',
+                scoreAtSwitch: playerConnection.score
+              });
+
+              // Notify client of score restoration
+              this.sendMessage(playerConnection.socket, {
+                type: 'score_restored',
+                score: playerConnection.score,
+                rank: title.name,
+                titleId: title.id,
+                message: 'Standard Mode: Your competitive score has been restored'
+              });
+            }
+
+            playerConnection.isCarefree = false;
+
+            // Also send standard carefree_mode_updated for backward compatibility
+            this.sendMessage(playerConnection.socket, {
+              type: 'carefree_mode_updated',
+              isCarefree: false
+            });
+          }
 
           // Broadcast mode change to others (so they know why this player is ignored/safe)
           this.broadcastToOthers(playerConnection.squirrelId, {
-            type: 'player_update',
+            type: 'player_mode_changed',
             squirrelId: playerConnection.squirrelId,
             isCarefree: playerConnection.isCarefree
-          });
-
-          // Confirm to client
-          this.sendMessage(playerConnection.socket, {
-            type: 'carefree_mode_updated',
-            enabled: playerConnection.isCarefree
           });
         }
         break;

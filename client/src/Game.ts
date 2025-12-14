@@ -557,10 +557,12 @@ export class Game {
           this.toastManager.info('Standard Mode: Good luck out there!', 3000);
         }
 
+        // Initialize mode indicator in HUD
+        this.updateModeIndicator();
+
         // Play start sound
         this.audioManager.playSound('ui', 'game_start');
       });
-
       window.addEventListener('resize', this.onResize.bind(this));
     } catch (error) {
       console.error('❌ Error during initialization:', error);
@@ -2634,13 +2636,37 @@ export class Game {
         }
         break;
 
-      case 'carefree_mode_updated': // 4. Handle carefree_mode_updated message
+      case 'carefree_mode_updated':
         if (typeof data.isCarefree === 'boolean') {
           this.isCarefree = data.isCarefree;
-          if (this.isCarefree) {
+
+          // Update UI indicators
+          this.updateModeIndicator();
+          this.updateScoreDisplay();
+
+          // Show toast message (use custom message if provided)
+          if (data.message) {
+            this.toastManager.info(data.message, 4000);
+          } else if (this.isCarefree) {
             this.toastManager.info('Carefree Mode: Predators will ignore you!');
           } else {
             this.toastManager.info('Carefree Mode: Off. Predators may now target you.');
+          }
+        }
+        break;
+
+      case 'score_restored':
+        // Server restored competitive score when exiting Carefree mode
+        if (typeof data.score === 'number') {
+          this.playerScore = data.score;
+          this.updateScoreDisplay();
+
+          if (data.rank) {
+            this.playerTitleName = data.rank;
+          }
+
+          if (data.message) {
+            this.toastManager.success(data.message, 5000);
           }
         }
         break;
@@ -5870,6 +5896,72 @@ export class Game {
 
     // MVP 5.7: Update mobile buttons
     this.updateMobileButtons();
+  }
+
+  /**
+   * Update score display with visual feedback for Carefree mode
+   */
+  private updateScoreDisplay(): void {
+    const playerScoreSpan = document.getElementById('player-score');
+    if (playerScoreSpan) {
+      playerScoreSpan.textContent = `${Math.floor(this.displayedScore)} `;
+
+      if (this.isCarefree) {
+        playerScoreSpan.style.opacity = '0.5';
+        playerScoreSpan.style.filter = 'grayscale(50%)';
+        playerScoreSpan.title = 'Score not tracked in Carefree mode';
+      } else {
+        playerScoreSpan.style.opacity = '1';
+        playerScoreSpan.style.filter = 'none';
+        playerScoreSpan.title = '';
+      }
+    }
+
+    const playerTitleSpan = document.getElementById('player-title');
+    if (playerTitleSpan) {
+      const characterName = this.getCharacterName(this.selectedCharacterId);
+      if (this.isCarefree) {
+        playerTitleSpan.textContent = `${this.playerTitleName} ${characterName} (Paused) `;
+        playerTitleSpan.style.opacity = '0.6';
+        playerTitleSpan.title = 'Rank frozen in Carefree mode';
+      } else {
+        playerTitleSpan.textContent = `${this.playerTitleName} ${characterName} `;
+        playerTitleSpan.style.opacity = '1';
+        playerTitleSpan.title = '';
+      }
+    }
+  }
+
+  /**
+   * Update or create mode indicator in HUD
+   */
+  private updateModeIndicator(): void {
+    let indicator = document.getElementById('mode-indicator');
+
+    if (!indicator) {
+      // Create indicator if it doesn't exist
+      indicator = document.createElement('div');
+      indicator.id = 'mode-indicator';
+      document.body.appendChild(indicator);
+    }
+
+    indicator.style.cssText = `
+      position: fixed;
+      top: 70px;
+      right: 10px;
+      padding: 6px 12px;
+      background: ${this.isCarefree ? 'rgba(33, 150, 243, 0.9)' : 'rgba(76, 175, 80, 0.9)'};
+      border: 2px solid ${this.isCarefree ? '#2196F3' : '#4CAF50'};
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: white;
+      z-index: 100;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      display: block;
+      font-family: Arial, sans-serif;
+    `;
+    indicator.textContent = this.isCarefree ? '🧘 Carefree' : '🏆 Standard';
   }
 
   /**
