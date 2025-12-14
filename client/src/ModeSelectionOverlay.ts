@@ -510,8 +510,14 @@ export class ModeSelectionOverlay {
 
     container.innerHTML = `
       <div class="tip-category-icon">${tip.emoji || '💡'}</div>
-      <div style="font-size: 1.05rem; line-height: 1.4;">${tip.text}</div>
+      <div style="font-size: 1.05rem; line-height: 1.4; color: white;">${tip.text}</div>
     `;
+
+    // Ensure visibility
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.justifyContent = 'center';
+    container.style.alignItems = 'center';
   }
 
   private animateTipUpdate(container: HTMLElement): void {
