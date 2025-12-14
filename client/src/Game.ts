@@ -4821,6 +4821,160 @@ export class Game {
     if (scoreValue) {
       scoreValue.textContent = Math.floor(this.playerScore).toString();
     }
+
+    // Setup mode selection buttons
+    this.setupDeathModeSelection();
+  }
+
+  /**
+   * Setup mode selection buttons in death overlay
+   */
+  private setupDeathModeSelection(): void {
+    const carefreeBtn = document.getElementById('death-mode-carefree');
+    const standardBtn = document.getElementById('death-mode-standard');
+
+    if (!carefreeBtn || !standardBtn) return;
+
+    // Set initial active state based on current mode
+    if (this.isCarefree) {
+      carefreeBtn.classList.add('active');
+      standardBtn.classList.remove('active');
+    } else {
+      standardBtn.classList.add('active');
+      carefreeBtn.classList.remove('active');
+    }
+
+    // Remove existing listeners
+    carefreeBtn.onclick = null;
+    standardBtn.onclick = null;
+
+    // Add click handlers
+    carefreeBtn.addEventListener('click', () => {
+      if (!this.isCarefree) {
+        this.requestModeSwitch('carefree', carefreeBtn, standardBtn);
+      }
+    });
+
+    standardBtn.addEventListener('click', () => {
+      if (this.isCarefree) {
+        this.requestModeSwitch('standard', standardBtn, carefreeBtn);
+      }
+    });
+  }
+
+  /**
+   * Request mode switch with confirmation dialog
+   */
+  private requestModeSwitch(mode: 'carefree' | 'standard', activeBtn: HTMLElement, inactiveBtn: HTMLElement): void {
+    const enteringCarefree = (mode === 'carefree');
+
+    if (enteringCarefree) {
+      this.showModeConfirmation(
+        'Switch to Carefree Mode?',
+        'Your competitive score will be paused. You can return to Standard mode anytime.',
+        () => this.executeModeSwitch(mode, activeBtn, inactiveBtn)
+      );
+    } else {
+      this.showModeConfirmation(
+        'Return to Standard Mode?',
+        'Your competitive score will be restored. Predators will target you again!',
+        () => this.executeModeSwitch(mode, activeBtn, inactiveBtn)
+      );
+    }
+  }
+
+  /**
+   * Execute the mode switch
+   */
+  private executeModeSwitch(mode: 'carefree' | 'standard', activeBtn: HTMLElement, inactiveBtn: HTMLElement): void {
+    this.isCarefree = (mode === 'carefree');
+
+    // Update button states
+    activeBtn.classList.add('active');
+    inactiveBtn.classList.remove('active');
+
+    // Send to server
+    if (this.websocket?.readyState === WebSocket.OPEN) {
+      this.websocket.send(JSON.stringify({
+        type: 'set_carefree_mode',
+        enabled: this.isCarefree
+      }));
+    }
+
+    // Update UI (will be handled by server response)
+    this.updateModeIndicator();
+    this.updateScoreDisplay();
+  }
+
+  /**
+   * Show mode switch confirmation dialog
+   */
+  private showModeConfirmation(title: string, message: string, onConfirm: () => void): void {
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10001;
+    `;
+
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+      background: rgba(40, 40, 40, 0.98);
+      border: 3px solid #FFD700;
+      border-radius: 16px;
+      padding: 30px;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    `;
+
+    dialog.innerHTML = `
+      <h2 style="color: #FFD700; margin: 0 0 15px 0;">${title}</h2>
+      <p style="color: white; margin-bottom: 25px; line-height: 1.5;">${message}</p>
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button id="mode-confirm-yes" style="
+          padding: 10px 24px;
+          background: #4CAF50;
+          border: none;
+          border-radius: 8px;
+          color: white;
+          font-weight: bold;
+          cursor: pointer;
+          font-size: 1rem;
+        ">Confirm</button>
+        <button id="mode-confirm-no" style="
+          padding: 10px 24px;
+          background: rgba(255,255,255,0.1);
+          border: 2px solid rgba(255,255,255,0.3);
+          border-radius: 8px;
+          color: white;
+          font-weight: bold;
+          cursor: pointer;
+          font-size: 1rem;
+        ">Cancel</button>
+      </div>
+    `;
+
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    // Event listeners
+    document.getElementById('mode-confirm-yes')?.addEventListener('click', () => {
+      onConfirm();
+      overlay.remove();
+    });
+
+    document.getElementById('mode-confirm-no')?.addEventListener('click', () => {
+      overlay.remove();
+    });
   }
 
   /**

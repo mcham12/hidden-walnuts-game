@@ -114,6 +114,42 @@ export class ModeSelectionOverlay {
         }
       }
 
+      /* iOS Safe-Area Support (notch/Dynamic Island) */
+      @supports (padding: env(safe-area-inset-left)) {
+        #mode-selection-overlay {
+          padding-left: max(20px, env(safe-area-inset-left));
+          padding-right: max(20px, env(safe-area-inset-right));
+          padding-top: max(20px, env(safe-area-inset-top));
+          padding-bottom: max(20px, env(safe-area-inset-bottom));
+        }
+        
+        .mode-content {
+          padding-left: max(15px, env(safe-area-inset-left));
+          padding-right: max(15px, env(safe-area-inset-right));
+        }
+      }
+
+      /* iPad Optimization */
+      @media (max-width: 1024px) and (min-width: 768px) {
+        .mode-content {
+          max-width: 700px;
+        }
+      }
+
+      /* Fix Landscape Overflow */
+      @media (max-height: 600px) and (orientation: landscape) {
+        .tips-container,
+        .control-item {
+          font-size: 0.85rem;
+        }
+        .mode-grid {
+          gap: 10px;
+        }
+        h1 {
+          font-size: 1.3rem;
+        }
+      }
+
       /* Controls Styling */
       .control-item {
         margin: 8px 0;
