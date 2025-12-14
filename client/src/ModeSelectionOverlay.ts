@@ -6,6 +6,7 @@ export class ModeSelectionOverlay {
   private container: HTMLElement;
   private onSelect: (mode: 'standard' | 'carefree') => void;
   private tipsManager: TipsManager;
+  private tipInterval: number | undefined;
 
   constructor(onSelect: (mode: 'standard' | 'carefree') => void) {
     this.onSelect = onSelect;
@@ -150,6 +151,65 @@ export class ModeSelectionOverlay {
         margin: 0 1px;
         font-size: 0.75rem;
       }
+      /* Tip Carousel Styling */
+      .tips-container {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 180px; /* Slight Increase */
+        position: relative;
+        overflow: hidden;
+      }
+
+      .tip-card {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        padding: 15px;
+        margin-top: 5px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        animation: fadeInRight 0.5s ease-out;
+      }
+      
+      @keyframes fadeInRight {
+        from { opacity: 0; transform: translateX(20px); }
+        to { opacity: 1; transform: translateX(0); }
+      }
+
+      .tip-category-icon {
+        font-size: 2rem;
+        margin-bottom: 8px;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      }
+
+      .tip-progress-bar {
+        height: 4px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 2px;
+        margin-top: 15px;
+        overflow: hidden;
+        width: 100%;
+      }
+      
+      .tip-progress-fill {
+        height: 100%;
+        background: #FFD700;
+        width: 0%;
+        animation: progressFill 8s linear infinite; /* Match JS interval */
+      }
+
+      @keyframes progressFill {
+        from { width: 0%; }
+        to { width: 100%; }
+      }
     `;
     document.head.appendChild(style);
 
@@ -193,7 +253,7 @@ export class ModeSelectionOverlay {
     // Standard Mode Button
     const standardBtn = this.createModeButton(
       'STANDARD',
-      'Compete! Predators attack. Ranks matter.',
+      'After leveling up, NPCs and Predators will start to attack!',
       '#4CAF50', // Green
       () => this.selectMode('standard')
     );
@@ -216,15 +276,7 @@ export class ModeSelectionOverlay {
 
     // Tips Carousel (Left/Top)
     const tipsContainer = document.createElement('div');
-    tipsContainer.style.cssText = `
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 15px;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      min-height: 150px;
-    `;
+    tipsContainer.className = 'tips-container';
 
     const tipTitle = document.createElement('h3');
     tipTitle.textContent = 'Pro Tips';
@@ -232,38 +284,27 @@ export class ModeSelectionOverlay {
     tipTitle.style.marginTop = '0';
     tipsContainer.appendChild(tipTitle);
 
-    const tipContent = document.createElement('div');
-    tipContent.id = 'tip-content';
-    tipContent.style.fontSize = '1.1rem';
-    tipContent.style.lineHeight = '1.4';
+    const tipCardWrapper = document.createElement('div');
+    tipCardWrapper.id = 'tip-card-wrapper';
+    tipCardWrapper.style.flex = '1';
+    tipCardWrapper.style.display = 'flex';
+    tipsContainer.appendChild(tipCardWrapper);
 
-    // Initial Tip
-    const initialTip = this.tipsManager.getRandomTip();
-    tipContent.textContent = initialTip ? initialTip.text : 'Loading tips...';
+    // Progress Bar
+    const progressBar = document.createElement('div');
+    progressBar.className = 'tip-progress-bar';
+    progressBar.innerHTML = '<div class="tip-progress-fill"></div>';
+    tipsContainer.appendChild(progressBar);
 
-    tipsContainer.appendChild(tipContent);
-
-    const nextTipBtn = document.createElement('button');
-    nextTipBtn.textContent = 'Next Tip';
-    nextTipBtn.style.cssText = `
-      margin-top: 15px;
-      background: transparent;
-      border: 2px solid rgba(255,255,255,0.3);
-      color: white;
-      padding: 8px 15px; /* Larger touch target */
-      border-radius: 20px;
-      cursor: pointer;
-      font-family: inherit;
-      align-self: center;
-    `;
-    nextTipBtn.onclick = () => {
-      const tip = this.tipsManager.getRandomTip();
-      if (tip) {
-        tipContent.textContent = tip.text;
-      }
-    };
-    tipsContainer.appendChild(nextTipBtn);
     gridContainer.appendChild(tipsContainer);
+
+    // Initialize first tip
+    this.rotateTip(tipCardWrapper);
+
+    // Start auto-rotation
+    this.tipInterval = window.setInterval(() => {
+      this.rotateTip(tipCardWrapper);
+    }, 8000) as unknown as number;
 
     // Controls Overview (Right/Bottom)
     const controlsContainer = document.createElement('div');
@@ -408,7 +449,37 @@ export class ModeSelectionOverlay {
     return btn;
   }
 
+  private rotateTip(wrapper: HTMLElement): void {
+    const tip = this.tipsManager.getRandomTip();
+    if (!tip) return;
+
+    // Create new card
+    const card = document.createElement('div');
+    card.className = 'tip-card';
+    card.innerHTML = `
+      <div class="tip-category-icon">${tip.emoji || '💡'}</div>
+      <div style="font-size: 1.05rem; line-height: 1.4;">${tip.text}</div>
+    `;
+
+    // Clear old card
+    wrapper.innerHTML = '';
+    wrapper.appendChild(card);
+
+    // Reset Animation on Progress Bar (hacky but effective for simple CSS loop)
+    const bar = this.container.querySelector('.tip-progress-fill') as HTMLElement;
+    if (bar) {
+      bar.style.animation = 'none';
+      bar.offsetHeight; /* trigger reflow */
+      bar.style.animation = 'progressFill 8s linear infinite';
+    }
+  }
+
   private selectMode(mode: 'standard' | 'carefree'): void {
+    // Clear interval
+    if (this.tipInterval) {
+      clearInterval(this.tipInterval);
+    }
+
     // Animate out
     this.container.style.opacity = '0';
     this.container.style.transition = 'opacity 0.5s';
