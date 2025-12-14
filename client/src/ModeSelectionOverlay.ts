@@ -202,9 +202,10 @@ export class ModeSelectionOverlay {
       .tip-progress-fill {
         height: 100%;
         background: #FFD700;
-        width: 0%;
+        width: 100%; /* Must be 100% for scaleX to work */
         animation: progressFill 8s linear infinite;
         transform-origin: left;
+        transform: scaleX(0); /* Start at 0 */
       }
 
       @keyframes progressFill {
