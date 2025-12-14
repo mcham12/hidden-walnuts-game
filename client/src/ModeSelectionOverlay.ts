@@ -203,12 +203,22 @@ export class ModeSelectionOverlay {
         height: 100%;
         background: #FFD700;
         width: 0%;
-        animation: progressFill 8s linear infinite; /* Match JS interval */
+        animation: progressFill 8s linear infinite;
+        transform-origin: left;
       }
 
       @keyframes progressFill {
-        from { width: 0%; }
-        to { width: 100%; }
+        from { transform: scaleX(0); }
+        to { transform: scaleX(1); }
+      }
+      
+      /* Content Animation Classes */
+      .tip-content-fade {
+        transition: opacity 0.3s ease-in-out;
+        opacity: 1;
+      }
+      .tip-content-hidden {
+        opacity: 0;
       }
     `;
     document.head.appendChild(style);
@@ -266,8 +276,8 @@ export class ModeSelectionOverlay {
       () => this.selectMode('carefree')
     );
 
-    modesContainer.appendChild(standardBtn);
     modesContainer.appendChild(carefreeBtn);
+    modesContainer.appendChild(standardBtn);
     content.appendChild(modesContainer);
 
     // 2. Info Grid (Tips & Controls) - NOW BELOW BUTTONS
@@ -279,16 +289,22 @@ export class ModeSelectionOverlay {
     tipsContainer.className = 'tips-container';
 
     const tipTitle = document.createElement('h3');
-    tipTitle.textContent = 'Pro Tips';
+    tipTitle.textContent = 'Tips';
     tipTitle.style.marginBottom = '10px';
     tipTitle.style.marginTop = '0';
     tipsContainer.appendChild(tipTitle);
 
-    const tipCardWrapper = document.createElement('div');
-    tipCardWrapper.id = 'tip-card-wrapper';
-    tipCardWrapper.style.flex = '1';
-    tipCardWrapper.style.display = 'flex';
-    tipsContainer.appendChild(tipCardWrapper);
+    // Static Card Container
+    const tipCard = document.createElement('div');
+    tipCard.className = 'tip-card';
+
+    // Content wrapper for animation
+    const tipContent = document.createElement('div');
+    tipContent.className = 'tip-content-fade'; // Start visible
+    tipContent.style.textAlign = 'center';
+
+    tipCard.appendChild(tipContent);
+    tipsContainer.appendChild(tipCard);
 
     // Progress Bar
     const progressBar = document.createElement('div');
@@ -298,13 +314,15 @@ export class ModeSelectionOverlay {
 
     gridContainer.appendChild(tipsContainer);
 
-    // Initialize first tip
-    this.rotateTip(tipCardWrapper);
+    // Initialize first tip immediately
+    this.updateTipContent(tipContent);
 
     // Start auto-rotation
     this.tipInterval = window.setInterval(() => {
-      this.rotateTip(tipCardWrapper);
+      this.animateTipUpdate(tipContent);
     }, 8000) as unknown as number;
+
+
 
     // Controls Overview (Right/Bottom)
     const controlsContainer = document.createElement('div');
@@ -449,29 +467,34 @@ export class ModeSelectionOverlay {
     return btn;
   }
 
-  private rotateTip(wrapper: HTMLElement): void {
+  private updateTipContent(container: HTMLElement): void {
     const tip = this.tipsManager.getRandomTip();
     if (!tip) return;
 
-    // Create new card
-    const card = document.createElement('div');
-    card.className = 'tip-card';
-    card.innerHTML = `
+    container.innerHTML = `
       <div class="tip-category-icon">${tip.emoji || '💡'}</div>
       <div style="font-size: 1.05rem; line-height: 1.4;">${tip.text}</div>
     `;
+  }
 
-    // Clear old card
-    wrapper.innerHTML = '';
-    wrapper.appendChild(card);
+  private animateTipUpdate(container: HTMLElement): void {
+    // 1. Fade out
+    container.classList.add('tip-content-hidden');
 
-    // Reset Animation on Progress Bar (hacky but effective for simple CSS loop)
-    const bar = this.container.querySelector('.tip-progress-fill') as HTMLElement;
-    if (bar) {
-      bar.style.animation = 'none';
-      bar.offsetHeight; /* trigger reflow */
-      bar.style.animation = 'progressFill 8s linear infinite';
-    }
+    // 2. Wait for fade out, update text, fade in
+    setTimeout(() => {
+      this.updateTipContent(container);
+      container.classList.remove('tip-content-hidden');
+
+      // Reset Progress Bar
+      const bar = this.container.querySelector('.tip-progress-fill') as HTMLElement;
+      if (bar) {
+        // Reset animation
+        bar.style.animation = 'none';
+        bar.offsetHeight; /* trigger reflow */
+        bar.style.animation = 'progressFill 8s linear infinite';
+      }
+    }, 300); // 300ms matches transition duration
   }
 
   private selectMode(mode: 'standard' | 'carefree'): void {
