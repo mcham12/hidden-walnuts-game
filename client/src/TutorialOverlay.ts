@@ -45,8 +45,8 @@ export class TutorialOverlay {
     // Setup event listeners
     this.setupEventListeners();
 
-    // Auto-show for new players
-    this.checkFirstTimeUser();
+    // REMOVED: Auto-show for new players - tutorial is now only shown via "?" button
+    // Controls are already explained in ModeSelectionOverlay at game startup
   }
 
   /**
@@ -531,15 +531,6 @@ export class TutorialOverlay {
   /**
    * Check if this is first-time user
    */
-  private checkFirstTimeUser(): void {
-    if (!this.hasSeenTutorial()) {
-      // Auto-show for new players after short delay
-      setTimeout(() => {
-        this.show();
-      }, 1000); // 1 second delay
-    }
-  }
-
   /**
    * Check localStorage for tutorial status
    */
