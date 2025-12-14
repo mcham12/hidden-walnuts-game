@@ -112,6 +112,44 @@ export class ModeSelectionOverlay {
              width: 100%;
         }
       }
+
+      /* Controls Styling */
+      .control-item {
+        margin: 8px 0;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .control-icon {
+        font-size: 1.4rem;
+        min-width: 25px;
+        text-align: center;
+      }
+      .control-text {
+        flex: 1;
+      }
+      .control-label {
+        font-size: 0.9rem;
+        font-weight: bold;
+        color: #FFD700;
+        margin: 0 0 2px 0;
+      }
+      .control-desc {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.9);
+        margin: 0;
+        line-height: 1.3;
+      }
+      .control-key {
+        display: inline-block;
+        padding: 1px 4px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        border-radius: 3px;
+        font-weight: bold;
+        margin: 0 1px;
+        font-size: 0.75rem;
+      }
     `;
     document.head.appendChild(style);
 
@@ -154,7 +192,7 @@ export class ModeSelectionOverlay {
 
     // Standard Mode Button
     const standardBtn = this.createModeButton(
-      '🏆 STANDARD',
+      'STANDARD',
       'Compete! Predators attack. Ranks matter.',
       '#4CAF50', // Green
       () => this.selectMode('standard')
@@ -162,7 +200,7 @@ export class ModeSelectionOverlay {
 
     // Carefree Mode Button
     const carefreeBtn = this.createModeButton(
-      '🧘 CAREFREE',
+      'CAREFREE',
       'Relax. No attacks. Just vibes.',
       '#2196F3', // Blue
       () => this.selectMode('carefree')
@@ -189,7 +227,7 @@ export class ModeSelectionOverlay {
     `;
 
     const tipTitle = document.createElement('h3');
-    tipTitle.textContent = '💡 Pro Tips';
+    tipTitle.textContent = 'Pro Tips';
     tipTitle.style.marginBottom = '10px';
     tipTitle.style.marginTop = '0';
     tipsContainer.appendChild(tipTitle);
@@ -201,12 +239,12 @@ export class ModeSelectionOverlay {
 
     // Initial Tip
     const initialTip = this.tipsManager.getRandomTip();
-    tipContent.textContent = initialTip ? `${initialTip.emoji || '💡'} ${initialTip.text}` : 'Loading tips...';
+    tipContent.textContent = initialTip ? initialTip.text : 'Loading tips...';
 
     tipsContainer.appendChild(tipContent);
 
     const nextTipBtn = document.createElement('button');
-    nextTipBtn.textContent = 'Next Tip ➡️';
+    nextTipBtn.textContent = 'Next Tip';
     nextTipBtn.style.cssText = `
       margin-top: 15px;
       background: transparent;
@@ -221,7 +259,7 @@ export class ModeSelectionOverlay {
     nextTipBtn.onclick = () => {
       const tip = this.tipsManager.getRandomTip();
       if (tip) {
-        tipContent.textContent = `${tip.emoji || '💡'} ${tip.text}`;
+        tipContent.textContent = tip.text;
       }
     };
     tipsContainer.appendChild(nextTipBtn);
@@ -239,26 +277,88 @@ export class ModeSelectionOverlay {
     // MVP 16: Use authoritative platform detection to match TutorialOverlay ("?")
     const isMobile = TouchControls.isMobile();
 
+    controlsContainer.innerHTML = `
+      <h3 style="margin-top: 0; margin-bottom: 10px;">Controls</h3>
+    `;
+
     if (isMobile) {
       // Mobile View
-      controlsContainer.innerHTML = `
-        <h3 style="margin-top: 0;">📱 Mobile Controls</h3>
-        <p style="font-size: 0.95rem;">
-          <strong>Move:</strong> Drag anywhere on screen<br>
-          <strong>Look:</strong> Two-finger drag<br>
-          <strong>Actions:</strong> Tap 🎯 🌳 🍴 buttons
-        </p>
+      controlsContainer.innerHTML += `
+        <div class="control-item">
+          <div class="control-icon">👆</div>
+          <div class="control-text">
+            <div class="control-label">MOVE</div>
+            <div class="control-desc">Drag anywhere on screen</div>
+          </div>
+        </div>
+        <div class="control-item">
+          <div class="control-icon">🟤</div>
+          <div class="control-text">
+            <div class="control-label">GET WALNUT</div>
+            <div class="control-desc">Walk near</div>
+          </div>
+        </div>
+        <div class="control-item">
+          <div class="control-icon">🎯</div>
+          <div class="control-text">
+            <div class="control-label">THROW</div>
+            <div class="control-desc">Tap Button</div>
+          </div>
+        </div>
+        <div class="control-item">
+          <div class="control-icon">🌳</div>
+          <div class="control-text">
+            <div class="control-label">HIDE</div>
+            <div class="control-desc">Tap Button</div>
+          </div>
+        </div>
+        <div class="control-item">
+          <div class="control-icon">🍴</div>
+          <div class="control-text">
+            <div class="control-label">EAT</div>
+            <div class="control-desc">Tap Button</div>
+          </div>
+        </div>
       `;
     } else {
       // Desktop View
-      controlsContainer.innerHTML = `
-        <h3 style="text-align: center; margin-top: 0; margin-bottom: 15px;">🎮 Controls</h3>
-        <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; font-size: 0.9rem;">
-          <span style="background: #333; padding: 2px 6px; border-radius: 4px;">WASD / Arrows</span> <span>Move</span>
-          <span style="background: #333; padding: 2px 6px; border-radius: 4px;">T / Space</span> <span>Throw Walnut</span>
-          <span style="background: #333; padding: 2px 6px; border-radius: 4px;">H</span> <span>Hide Walnut</span>
-          <span style="background: #333; padding: 2px 6px; border-radius: 4px;">E</span> <span>Eat Walnut</span>
-          <span style="background: #333; padding: 2px 6px; border-radius: 4px;">?</span> <span>Help</span>
+      controlsContainer.innerHTML += `
+        <div class="control-item">
+          <div class="control-icon">🚶</div>
+          <div class="control-text">
+            <div class="control-label">MOVE</div>
+            <div class="control-desc">
+              <span class="control-key">W</span><span class="control-key">A</span><span class="control-key">S</span><span class="control-key">D</span>
+            </div>
+          </div>
+        </div>
+        <div class="control-item">
+          <div class="control-icon">🟤</div>
+          <div class="control-text">
+            <div class="control-label">GET WALNUT</div>
+            <div class="control-desc">Walk near</div>
+          </div>
+        </div>
+        <div class="control-item">
+          <div class="control-icon">🎯</div>
+          <div class="control-text">
+            <div class="control-label">THROW WALNUT</div>
+            <div class="control-desc"><span class="control-key">T</span> or <span class="control-key">SPACE</span></div>
+          </div>
+        </div>
+        <div class="control-item">
+          <div class="control-icon">🌳</div>
+          <div class="control-text">
+            <div class="control-label">HIDE WALNUT</div>
+            <div class="control-desc"><span class="control-key">H</span></div>
+          </div>
+        </div>
+        <div class="control-item">
+          <div class="control-icon">🍴</div>
+          <div class="control-text">
+            <div class="control-label">EAT WALNUT</div>
+            <div class="control-desc"><span class="control-key">E</span></div>
+          </div>
         </div>
       `;
     }
