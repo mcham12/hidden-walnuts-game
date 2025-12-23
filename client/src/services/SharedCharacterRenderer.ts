@@ -66,16 +66,21 @@ export class SharedCharacterRenderer {
         const scene = new THREE.Scene();
 
         // Setup camera
+        const width = canvas2d.clientWidth || 200;
+        const height = canvas2d.clientHeight || 200;
+        const aspect = width / height;
+
         const cameraDistance = options.cameraDistance || 2;
-        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-        camera.position.set(0, 0.8, cameraDistance);
+        const camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+        // MATCH ORIGINAL CharacterPreview3D: position(0, 1, dist), lookAt(0, 0.5, 0)
+        camera.position.set(0, 1, cameraDistance);
         camera.lookAt(0, 0.5, 0);
 
         // Setup lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
-        directionalLight.position.set(5, 10, 7.5);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 10, 5);
         scene.add(directionalLight);
 
         const view: PreviewView = {
@@ -96,6 +101,11 @@ export class SharedCharacterRenderer {
         };
 
         this.views.set(viewId, view);
+
+        // Start loop if this is the first view
+        if (this.views.size === 1 && !this.animationId) {
+            this.startAnimationLoop();
+        }
 
         // Load character model
         await this.loadCharacterModel(view);
@@ -157,6 +167,12 @@ export class SharedCharacterRenderer {
             });
             view.scene.clear();
             this.views.delete(viewId);
+
+            // Stop loop if no more views
+            if (this.views.size === 0 && this.animationId) {
+                cancelAnimationFrame(this.animationId);
+                this.animationId = null;
+            }
         }
     }
 

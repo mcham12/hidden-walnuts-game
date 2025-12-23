@@ -201,6 +201,7 @@ async function main() {
         }
 
         await welcomeScreen.hide();
+        welcomeScreen.destroy();
         username = storedUsername;
       } else {
         // Username doesn't exist on server anymore - prompt for new username
@@ -222,6 +223,7 @@ async function main() {
         storeUsername(username);
 
         await welcomeScreen.hide();
+        welcomeScreen.destroy();
       }
     } else {
       // No stored username (new user or private browsing) - prompt for username
@@ -248,6 +250,7 @@ async function main() {
       storeUsername(username);
 
       await welcomeScreen.hide();
+      welcomeScreen.destroy();
     }
 
     // MVP 6: STEP 2 - Character selection (skip if returning user with saved character)

@@ -146,12 +146,24 @@ export class CharacterCard {
     // Append to container
     this.container.appendChild(this.card);
 
-    // Register with shared renderer
-    this.initSharedPreview();
+    // Register with shared renderer after a short delay to ensure DOM layout is complete
+    requestAnimationFrame(() => this.initSharedPreview());
   }
 
   private async initSharedPreview(): Promise<void> {
     if (!this.canvas2d) return;
+
+    // Set internal resolution based on actual display size for correct aspect ratio
+    const dpr = window.devicePixelRatio || 1;
+    const rect = this.canvas2d.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      this.canvas2d.width = rect.width * dpr;
+      this.canvas2d.height = rect.height * dpr;
+    } else {
+      // Fallback
+      this.canvas2d.width = 400;
+      this.canvas2d.height = 240;
+    }
 
     const randomRotation = Math.random() * Math.PI * 2;
     await SharedCharacterRenderer.getInstance().register(
