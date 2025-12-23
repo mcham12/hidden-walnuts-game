@@ -475,92 +475,50 @@ export class ModeSelectionOverlay {
     const isMobile = TouchControls.isMobile();
 
     const grid = document.createElement('div');
+    // V2: Structured Grid - 1 Col Mobile (List), 2 Col Desktop
     grid.style.cssText = `
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 15px;
+        grid-template-columns: ${isMobile ? '1fr' : '1fr 1fr'}; 
+        gap: 12px;
         padding: 20px;
       `;
 
-    if (isMobile) {
-      grid.innerHTML = `
-        <div class="control-item">
-          <div class="control-icon">👆</div>
-          <div class="control-text">
-            <div class="control-label">MOVE</div>
-            <div class="control-desc">Drag screen</div>
-          </div>
-        </div>
-        <div class="control-item">
-          <div class="control-icon">🟤</div>
-          <div class="control-text">
-            <div class="control-label">GET WALNUT</div>
-            <div class="control-desc">Walk near</div>
-          </div>
-        </div>
-        <div class="control-item">
-          <div class="control-icon">🎯</div>
-          <div class="control-text">
-            <div class="control-label">THROW</div>
-            <div class="control-desc">Tap Button</div>
-          </div>
-        </div>
-        <div class="control-item">
-          <div class="control-icon">🌳</div>
-          <div class="control-text">
-            <div class="control-label">HIDE</div>
-            <div class="control-desc">Tap Button</div>
-          </div>
-        </div>
-        <div class="control-item">
-          <div class="control-icon">🍴</div>
-          <div class="control-text">
-            <div class="control-label">EAT</div>
-            <div class="control-desc">Tap Button</div>
-          </div>
-        </div>
-      `;
-    } else {
-      grid.innerHTML = `
-        <div class="control-item">
-          <div class="control-icon">🚶</div>
-          <div class="control-text">
-            <div class="control-label">MOVE</div>
-            <div class="control-desc">
-              <span class="control-key">W</span><span class="control-key">A</span><span class="control-key">S</span><span class="control-key">D</span>
+    const createControlRow = (icon: string, label: string, keyHTML: string) => {
+      return `
+            <div class="control-row" style="
+                display: flex;
+                align-items: center;
+                background: rgba(255,255,255,0.05);
+                padding: 10px 15px;
+                border-radius: 12px;
+                border: 1px solid rgba(255,255,255,0.05);
+            ">
+                <div style="font-size: 1.5rem; margin-right: 15px;">${icon}</div>
+                <div style="flex: 1;">
+                    <div style="font-weight: bold; font-size: 0.9rem; color: #FFD700;">${label}</div>
+                </div>
+                <div style="opacity: 0.9;">${keyHTML}</div>
             </div>
-          </div>
-        </div>
-        <div class="control-item">
-          <div class="control-icon">🟤</div>
-          <div class="control-text">
-            <div class="control-label">GET WALNUT</div>
-            <div class="control-desc">Walk near</div>
-          </div>
-        </div>
-        <div class="control-item">
-          <div class="control-icon">🎯</div>
-          <div class="control-text">
-            <div class="control-label">THROW</div>
-            <div class="control-desc"><span class="control-key">T</span> / <span class="control-key">SPACE</span></div>
-          </div>
-        </div>
-        <div class="control-item">
-          <div class="control-icon">🌳</div>
-          <div class="control-text">
-            <div class="control-label">HIDE</div>
-            <div class="control-desc"><span class="control-key">H</span></div>
-          </div>
-        </div>
-        <div class="control-item">
-          <div class="control-icon">🍴</div>
-          <div class="control-text">
-            <div class="control-label">EAT</div>
-            <div class="control-desc"><span class="control-key">E</span></div>
-          </div>
-        </div>
-      `;
+          `;
+    };
+
+    let html = '';
+
+    if (isMobile) {
+      html += createControlRow('👆', 'MOVE', '<span class="control-desc">Drag Screen</span>');
+      html += createControlRow('🟤', 'GET WALNUT', '<span class="control-desc">Walk Near</span>');
+      html += createControlRow('🎯', 'THROW', '<span class="control-desc">Tap Button</span>');
+      html += createControlRow('🌳', 'HIDE', '<span class="control-desc">Tap Button</span>');
+      html += createControlRow('🍴', 'EAT', '<span class="control-desc">Tap Button</span>');
+    } else {
+      html += createControlRow('🚶', 'MOVE', '<span class="control-key">W</span><span class="control-key">A</span><span class="control-key">S</span><span class="control-key">D</span>');
+      html += createControlRow('🟤', 'GET WALNUT', '<span class="control-desc">Walk Near</span>');
+      html += createControlRow('🎯', 'THROW', '<span class="control-key">T</span> or <span class="control-key">SPACE</span>');
+      html += createControlRow('🌳', 'HIDE', '<span class="control-key">H</span>');
+      html += createControlRow('🍴', 'EAT', '<span class="control-key">E</span>');
     }
+
+    grid.innerHTML = html;
     container.appendChild(grid);
   }
 
