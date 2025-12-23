@@ -20,7 +20,7 @@ import { CharacterCard, type CharacterCardData } from './CharacterCard';
 import { getCurrentUser, isAuthenticated } from '../services/AuthService';
 import { CharacterRegistry } from '../services/CharacterRegistry';
 import { CharacterPreviewModal } from './CharacterPreviewModal';
-import { EmailVerificationOverlay } from './EmailVerificationOverlay';
+
 
 export interface CharacterGridOptions {
   onCharacterSelect?: (characterId: string) => void;
@@ -420,16 +420,13 @@ export class CharacterGrid {
       characterId,
       isAvailable,
       isAuthenticated: userIsAuthenticated,
-      isEmailVerified: user?.emailVerified,
+      isEmailVerified: true, // Auto-verified
       onSelect: (id) => this.handleCharacterSelect(id),
       onSignUp: () => this.options.onSignUpClick?.(),
       onVerify: () => {
-        if (user?.email) {
-          new EmailVerificationOverlay({
-            email: user.email,
-            onPlayAsGuest: () => { /* Close overlay */ }
-          });
-        }
+        // Verification is now automatic, this callback shouldn't really be hit 
+        // in the new flow, but if it is, we just do nothing or maybe log it.
+        console.log('Verification requested but accounts are auto-verified.');
       }
     });
   }

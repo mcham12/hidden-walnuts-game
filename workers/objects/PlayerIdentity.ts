@@ -527,17 +527,13 @@ export class PlayerIdentity extends DurableObject {
       // Hash password (this takes ~200-300ms)
       const passwordHash = await PasswordUtils.hashPassword(password);
 
-      // Generate email verification token
-      const verificationToken = TokenGenerator.generateVerificationToken();
-      const verificationExpiry = TokenGenerator.generateExpiry(24); // 24 hours
-
       // Create or update player data
       const data: PlayerIdentityData = existing || {
         username,
         sessionTokens: [],
         created: Date.now(),
         lastSeen: Date.now(),
-        emailVerified: false,
+        emailVerified: true, // MVP 16 Refactor: Auto-verify email (Fun & Free)
         isAuthenticated: false,
         unlockedCharacters: ['squirrel'],
         authTokens: [],
@@ -549,9 +545,10 @@ export class PlayerIdentity extends DurableObject {
       // Add authentication fields
       data.email = email.toLowerCase().trim(); // Normalize email
       data.passwordHash = passwordHash;
-      data.emailVerificationToken = verificationToken;
-      data.emailVerificationExpiry = verificationExpiry;
+      data.emailVerificationToken = undefined; // No verification needed
+      data.emailVerificationExpiry = undefined;
       data.isAuthenticated = true;
+      data.emailVerified = true; // Ensure it's set
       data.accountCreated = Date.now();
       data.lastSeen = Date.now();
 
@@ -569,12 +566,8 @@ export class PlayerIdentity extends DurableObject {
         'goat'
       ];
 
-      // If upgrading from Quick Play with a valid character, keep it.
-      // Otherwise, default to 'squirrel' for new authenticated users.
-      if (data.lastCharacterId && data.unlockedCharacters.includes(data.lastCharacterId)) {
-        // Keep existing character if it's now unlocked
-      } else {
-        // Default to squirrel for new users or if previous character not in unlocked list
+      // Default to squirrel for new users
+      if (!data.lastCharacterId) {
         data.lastCharacterId = 'squirrel';
       }
 
@@ -596,7 +589,7 @@ export class PlayerIdentity extends DurableObject {
           username: data.username,
           email: data.email,
           isAuthenticated: data.isAuthenticated,
-          emailVerified: data.emailVerified,
+          emailVerified: true, // Auto-verified
           unlockedCharacters: data.unlockedCharacters
         },
         tokenId,
@@ -628,7 +621,7 @@ export class PlayerIdentity extends DurableObject {
         throw new Error('Failed to register user index. Please try again.');
       }
 
-      // Send verification email
+      // Send welcome email instead of verification email
       let emailError: string | undefined;
       if (this.env.SMTP_USER && this.env.SMTP_PASSWORD) {
         const emailService = new EmailService({
@@ -636,42 +629,14 @@ export class PlayerIdentity extends DurableObject {
           smtpPassword: this.env.SMTP_PASSWORD
         });
 
-        // Determine client origin for verification link
-        // 1. Use origin from body (explicitly passed by client)
-        // 2. Use Origin header (if valid CORS request)
-        // 3. Fallback to production URL
-        let origin = 'https://hiddenwalnuts.com';
-
-        if (bodyOrigin) {
-          origin = bodyOrigin;
-        } else {
-          const originHeader = request.headers.get('Origin');
-          if (originHeader && originHeader !== 'null') {
-            origin = originHeader;
-          }
-        }
-
-        // Prevent using worker URL as origin
-        if (origin.includes('workers.dev')) {
-          // If we somehow got the worker URL, force fallback unless it's the preview environment we want
-          // But generally we want the client URL. 
-          // If the user IS testing on a worker preview URL, we might want to allow it if it was passed in body.
-          // But request.url origin is DEFINITELY wrong as it points to the API.
-          // Let's trust bodyOrigin if provided, otherwise fallback.
-          if (!bodyOrigin) {
-            origin = 'https://hiddenwalnuts.com';
-          }
-        }
-
-        const emailResult = await emailService.sendVerificationEmail(
+        // Send welcome email directly
+        const emailResult = await emailService.sendWelcomeEmail(
           data.email!,
-          data.username,
-          verificationToken,
-          origin
+          data.username
         );
 
         if (!emailResult.success) {
-          console.error('Failed to send verification email:', emailResult.error);
+          console.error('Failed to send welcome email:', emailResult.error);
           emailError = emailResult.error;
         }
       } else {
@@ -682,8 +647,8 @@ export class PlayerIdentity extends DurableObject {
         success: true,
         username: data.username,
         email: data.email,
-        emailVerified: data.emailVerified,
-        verificationToken, // Return token for debugging (remove in production)
+        emailVerified: true,
+        verificationToken: undefined, // No token needed
         unlockedCharacters: data.unlockedCharacters,
         lastCharacterId: data.lastCharacterId,
         // JWT tokens
@@ -1326,7 +1291,7 @@ export class PlayerIdentity extends DurableObject {
   private async handleResendVerification(request: Request): Promise<Response> {
     try {
       const body = await request.json() as { email: string; origin?: string };
-      const { email, origin: bodyOrigin } = body;
+      const { email } = body;
 
       if (!email) {
         return Response.json({ error: 'Missing email' }, { status: 400 });
@@ -1342,61 +1307,18 @@ export class PlayerIdentity extends DurableObject {
         });
       }
 
-      if (data.emailVerified) {
-        return Response.json({
-          success: true,
-          message: 'Email is already verified.'
-        });
-      }
-
-      // Generate new token
-      const verificationToken = TokenGenerator.generateVerificationToken();
-      const verificationExpiry = TokenGenerator.generateExpiry(24); // 24 hours
-
-      data.emailVerificationToken = verificationToken;
-      data.emailVerificationExpiry = verificationExpiry;
-
-      await this.ctx.storage.put('player', data);
-
-      // Send email
-      if (this.env.SMTP_USER && this.env.SMTP_PASSWORD) {
-        const emailService = new EmailService({
-          smtpUser: this.env.SMTP_USER,
-          smtpPassword: this.env.SMTP_PASSWORD
-        });
-
-        // Determine client origin for verification link
-        let origin = 'https://hiddenwalnuts.com';
-
-        if (bodyOrigin) {
-          origin = bodyOrigin;
-        } else {
-          const originHeader = request.headers.get('Origin');
-          if (originHeader && originHeader !== 'null') {
-            origin = originHeader;
-          }
-        }
-
-        const emailResult = await emailService.sendVerificationEmail(
-          data.email,
-          data.username,
-          verificationToken,
-          origin
-        );
-
-        if (!emailResult.success) {
-          console.error('Failed to send verification email:', emailResult.error);
-          return Response.json({
-            success: false,
-            error: 'Email delivery failed',
-            message: emailResult.error || 'Unknown email error'
-          }, { status: 500 });
-        }
+      // Fun & Free Update: Accounts are auto-verified now.
+      // If for some reason it's not verified, verify it now.
+      if (!data.emailVerified) {
+        data.emailVerified = true;
+        data.emailVerificationToken = undefined;
+        data.emailVerificationExpiry = undefined;
+        await this.ctx.storage.put('player', data);
       }
 
       return Response.json({
         success: true,
-        message: 'Verification email sent.'
+        message: 'Account is already verified.'
       });
     } catch (error) {
       console.error('Resend verification error:', error);

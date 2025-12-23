@@ -26,89 +26,6 @@ export class EmailService {
   }
 
   /**
-   * Send email verification link
-   * @param email - Recipient email
-   * @param username - User's username
-   * @param token - Verification token (UUID)
-   */
-  async sendVerificationEmail(
-    email: string,
-    username: string,
-    token: string,
-    baseUrl: string
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
-      const verificationUrl = `${baseUrl}/verify?token=${token}&email=${encodeURIComponent(email)}`;
-
-      await this.transporter.sendMail({
-        from: this.fromAddress,
-        to: email,
-        subject: 'Verify your Hidden Walnuts account',
-        html: `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <style>
-              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background-color: #2E7D32; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
-              .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 5px 5px; }
-              .button { display: inline-block; padding: 12px 30px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-              .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h1>Welcome to Hidden Walnuts!</h1>
-              </div>
-              <div class="content">
-                <h2>Hi ${username},</h2>
-                <p>Thanks for signing up! Click the button below to verify your email address and unlock one more free character: the Goat!</p>
-
-                <div style="text-align: center;">
-                  <a href="${verificationUrl}" class="button">Verify Email Address</a>
-                </div>
-
-                <p>This verification link expires in 24 hours.</p>
-
-                <p style="color: #666; font-size: 14px;">
-                  If you didn't create this account, you can safely ignore this email.
-                </p>
-
-                <p style="color: #666; font-size: 12px; margin-top: 30px;">
-                  Or copy and paste this link into your browser:<br>
-                  <a href="${verificationUrl}">${verificationUrl}</a>
-                </p>
-              </div>
-              <div class="footer">
-                <p>Happy walnut hunting!</p>
-                <p>The Hidden Walnuts Team</p>
-                <p style="margin-top: 20px; font-size: 11px; color: #999;">
-                  You received this email because you signed up for Hidden Walnuts.
-                  <br>
-                  <a href="https://game.hiddenwalnuts.com" style="color: #999;">game.hiddenwalnuts.com</a>
-                </p>
-              </div>
-            </div>
-          </body>
-          </html>
-        `
-      });
-
-
-      return { success: true };
-
-    } catch (error) {
-      console.error('Failed to send verification email:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  }
-
-  /**
    * Send password reset link
    * @param email - Recipient email
    * @param username - User's username
@@ -195,7 +112,7 @@ export class EmailService {
   }
 
   /**
-   * Send welcome email (after verification)
+   * Send welcome email (generic welcome)
    * @param email - Recipient email
    * @param username - User's username
    */
@@ -228,27 +145,22 @@ export class EmailService {
                 <h1>Welcome, ${username}!</h1>
               </div>
               <div class="content">
-                <h2>Your account is verified!</h2>
-                <p>You now have access to all these features:</p>
+                <h2>Thanks for joining Hidden Walnuts!</h2>
+                <p>We're excited to have you in the forest. Your account allows you to sync your progress, save your high scores, and access all characters.</p>
 
                 <div class="features">
-                  <h3>✅ Your Unlocked Benefits:</h3>
+                  <h3>✅ Saved to the Cloud:</h3>
                   <ul>
-                    <li><strong>6 Characters</strong> - Squirrel, Hare, Goat, Chipmunk, Turkey, Mallard</li>
                     <li><strong>Cross-Device Sync</strong> - Play on desktop, tablet, or phone seamlessly</li>
                     <li><strong>Hall of Fame</strong> - Compete for all-time glory on the leaderboard</li>
                     <li><strong>Progress Tracking</strong> - Your stats are saved forever</li>
-                    <li><strong>Verified Badge</strong> - Show off your 🔒 badge on leaderboards</li>
+                    <li><strong>Full Roster Access</strong> - Every character is available to you!</li>
                   </ul>
                 </div>
 
                 <div style="text-align: center;">
                   <a href="https://game.hiddenwalnuts.com" class="button">Start Playing Now!</a>
                 </div>
-
-                <p style="margin-top: 30px;">
-                  <strong>What's next?</strong> Premium characters (Lynx, Bear, Moose, Badger) coming soon in future updates!
-                </p>
               </div>
               <div class="footer">
                 <p>Happy walnut hunting!</p>
