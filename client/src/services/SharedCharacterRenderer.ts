@@ -1,0 +1,211 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { CharacterRegistry } from './CharacterRegistry';
+
+interface PreviewView {
+    characterId: string;
+    canvas2d: HTMLCanvasElement;
+    ctx2d: CanvasRenderingContext2D;
+    scene: THREE.Scene;
+    camera: THREE.PerspectiveCamera;
+    model: THREE.Group | null;
+    mixer: THREE.AnimationMixer | null;
+    options: {
+        rotationSpeed: number;
+        autoRotate: boolean;
+        cameraDistance: number;
+        showAnimation: boolean;
+        initialRotation?: number;
+    };
+}
+
+/**
+ * SharedCharacterRenderer - MVP 16 Stability Fix
+ * Uses a single WebGLRenderer to render multiple characters and blit them to 2D canvases.
+ * This prevents "Too many active WebGL contexts" errors.
+ */
+export class SharedCharacterRenderer {
+    private static instance: SharedCharacterRenderer;
+    private renderer: THREE.WebGLRenderer;
+    private views: Map<string, PreviewView> = new Map();
+    private animationId: number | null = null;
+    private loader: GLTFLoader;
+
+    private constructor() {
+        this.renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true,
+            preserveDrawingBuffer: true // Required for copying to 2D canvas
+        });
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.renderer.setSize(200, 200); // Internal buffer size
+        this.loader = new GLTFLoader();
+        this.startAnimationLoop();
+    }
+
+    public static getInstance(): SharedCharacterRenderer {
+        if (!SharedCharacterRenderer.instance) {
+            SharedCharacterRenderer.instance = new SharedCharacterRenderer();
+        }
+        return SharedCharacterRenderer.instance;
+    }
+
+    /**
+     * Register a new character preview
+     */
+    public async register(
+        viewId: string,
+        characterId: string,
+        canvas2d: HTMLCanvasElement,
+        options: any = {}
+    ): Promise<void> {
+        const ctx2d = canvas2d.getContext('2d');
+        if (!ctx2d) return;
+
+        // Create scene and camera
+        const scene = new THREE.Scene();
+
+        // Setup camera
+        const cameraDistance = options.cameraDistance || 2;
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+        camera.position.set(0, 0.8, cameraDistance);
+        camera.lookAt(0, 0.5, 0);
+
+        // Setup lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        directionalLight.position.set(5, 10, 7.5);
+        scene.add(directionalLight);
+
+        const view: PreviewView = {
+            characterId,
+            canvas2d,
+            ctx2d,
+            scene,
+            camera,
+            model: null,
+            mixer: null,
+            options: {
+                rotationSpeed: options.rotationSpeed || 0.005,
+                autoRotate: options.autoRotate !== false,
+                cameraDistance,
+                showAnimation: options.showAnimation !== false,
+                initialRotation: options.initialRotation || 0
+            }
+        };
+
+        this.views.set(viewId, view);
+
+        // Load character model
+        await this.loadCharacterModel(view);
+    }
+
+    private async loadCharacterModel(view: PreviewView): Promise<void> {
+        const character = CharacterRegistry.getCharacterById(view.characterId);
+        if (!character) return;
+
+        try {
+            const gltf = await this.loader.loadAsync(character.modelPath);
+            view.model = gltf.scene;
+
+            if (character.scale) {
+                view.model.scale.setScalar(character.scale);
+            }
+
+            // Center model
+            const box = new THREE.Box3().setFromObject(view.model);
+            const center = box.getCenter(new THREE.Vector3());
+            view.model.position.sub(center);
+            view.model.position.y = 0;
+
+            if (view.options.initialRotation) {
+                view.model.rotation.y = view.options.initialRotation;
+            }
+
+            view.scene.add(view.model);
+
+            // Animation
+            if (view.options.showAnimation && character.animations?.idle) {
+                const animGltf = await this.loader.loadAsync(character.animations.idle);
+                if (animGltf.animations.length > 0) {
+                    view.mixer = new THREE.AnimationMixer(view.model);
+                    view.mixer.clipAction(animGltf.animations[0]).play();
+                }
+            }
+        } catch (error) {
+            console.error(`Error loading model for ${view.characterId}:`, error);
+        }
+    }
+
+    /**
+     * Unregister and cleanup a preview
+     */
+    public unregister(viewId: string): void {
+        const view = this.views.get(viewId);
+        if (view) {
+            // Cleanup scene objects
+            view.scene.traverse((obj) => {
+                if (obj instanceof THREE.Mesh) {
+                    obj.geometry.dispose();
+                    if (Array.isArray(obj.material)) {
+                        obj.material.forEach(m => m.dispose());
+                    } else {
+                        obj.material.dispose();
+                    }
+                }
+            });
+            view.scene.clear();
+            this.views.delete(viewId);
+        }
+    }
+
+    private startAnimationLoop(): void {
+        const animate = () => {
+            this.animationId = requestAnimationFrame(animate);
+            this.render();
+        };
+        animate();
+    }
+
+    private render(): void {
+        const delta = 0.016; // ~60fps
+
+        this.views.forEach((view) => {
+            if (!view.model) return;
+
+            // Update animation
+            if (view.mixer) {
+                view.mixer.update(delta);
+            }
+
+            // Rotate
+            if (view.options.autoRotate) {
+                view.model.rotation.y += view.options.rotationSpeed;
+            }
+
+            // Prepare renderer for this view
+            const width = view.canvas2d.width;
+            const height = view.canvas2d.height;
+            if (this.renderer.domElement.width !== width || this.renderer.domElement.height !== height) {
+                this.renderer.setSize(width, height, false);
+            }
+
+            // Render scene
+            this.renderer.render(view.scene, view.camera);
+
+            // Copy to 2D canvas
+            view.ctx2d.clearRect(0, 0, width, height);
+            view.ctx2d.drawImage(this.renderer.domElement, 0, 0);
+        });
+    }
+
+    public destroy(): void {
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
+        this.renderer.dispose();
+        this.renderer.forceContextLoss();
+        this.views.clear();
+    }
+}

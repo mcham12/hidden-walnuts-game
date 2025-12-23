@@ -28,20 +28,21 @@ export interface CharacterCardOptions {
   onClick?: (characterId: string) => void;
   onPreview?: (characterId: string) => void;
 }
+import { SharedCharacterRenderer } from '../services/SharedCharacterRenderer';
 
 export class CharacterCard {
   private container: HTMLElement;
   private data: CharacterCardData;
   private options: CharacterCardOptions;
   private card: HTMLElement | null = null;
-  // REMOVED: private preview3D: CharacterPreview3D | null = null;
-  private previewContainerId: string;
+  private canvas2d: HTMLCanvasElement | null = null;
+  private viewId: string;
 
   constructor(container: HTMLElement, data: CharacterCardData, options: CharacterCardOptions = {}) {
     this.container = container;
     this.data = data;
     this.options = options;
-    this.previewContainerId = `char-preview-${data.id}-${Date.now()}`;
+    this.viewId = `card-view-${data.id}-${Math.random().toString(36).substr(2, 9)}`;
     this.render();
   }
 
@@ -78,22 +79,18 @@ export class CharacterCard {
       this.card.style.boxShadow = '0 8px 24px rgba(255, 215, 0, 0.6)';
     }
 
-    // Static Character Emoji Container (Replaces 3D Preview)
-    const previewContainer = document.createElement('div');
-    previewContainer.id = this.previewContainerId;
-    previewContainer.style.cssText = `
+    // 2D Canvas for 3D Preview (Blitted from shared renderer)
+    this.canvas2d = document.createElement('canvas');
+    this.canvas2d.width = 200;
+    this.canvas2d.height = 200;
+    this.canvas2d.style.cssText = `
       width: 100%;
       height: 120px;
       margin-bottom: 4px;
       border-radius: 8px;
       overflow: hidden;
       background: rgba(0, 0, 0, 0.2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 72px; 
     `;
-    previewContainer.textContent = this.getCharacterEmoji(this.data.id);
 
     // Character name
     const name = document.createElement('div');
@@ -134,7 +131,7 @@ export class CharacterCard {
     }
 
     // Assemble card
-    this.card.appendChild(previewContainer);
+    this.card.appendChild(this.canvas2d);
     this.card.appendChild(name);
     this.card.appendChild(status);
 
@@ -148,33 +145,34 @@ export class CharacterCard {
 
     // Append to container
     this.container.appendChild(this.card);
+
+    // Register with shared renderer
+    this.initSharedPreview();
   }
 
-  /**
-   * Get emoji for character
-   */
-  private getCharacterEmoji(id: string): string {
-    const emojis: Record<string, string> = {
-      'squirrel': '🐿️',
-      'hare': '🐇',
-      'goat': '🐐',
-      'chipmunk': '🐿️',
-      'turkey': '🦃',
-      'mallard': '🦆',
-      'lynx': '🐈',
-      'bear': '🐻',
-      'moose': '🫎',
-      'badger': '🦡',
-      'skunk': '🦨'
-    };
-    return emojis[id] || '🐾';
+  private async initSharedPreview(): Promise<void> {
+    if (!this.canvas2d) return;
+
+    const randomRotation = Math.random() * Math.PI * 2;
+    await SharedCharacterRenderer.getInstance().register(
+      this.viewId,
+      this.data.id,
+      this.canvas2d,
+      {
+        rotationSpeed: 0.003,
+        autoRotate: true,
+        showAnimation: true,
+        cameraDistance: 2,
+        initialRotation: randomRotation
+      }
+    );
   }
 
   /**
    * Cleanup and destroy the card
    */
   public destroy(): void {
-    // No WebGL cleanup needed!
+    SharedCharacterRenderer.getInstance().unregister(this.viewId);
     if (this.card) {
       this.card.remove();
       this.card = null;
