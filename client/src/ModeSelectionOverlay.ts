@@ -287,14 +287,14 @@ export class ModeSelectionOverlay {
     title.textContent = 'Welcome to Hidden Walnuts!';
     content.appendChild(title);
 
-    // 1. Mode Selection (NOW AT TOP)
+    // 1. Mode Selection
     const modesContainer = document.createElement('div');
     modesContainer.style.cssText = `
       display: flex;
       gap: 15px;
       justify-content: center;
       margin-bottom: 10px;
-      flex-wrap: wrap; /* Wrap on very small screens */
+      flex-wrap: wrap;
     `;
 
     // Standard Mode Button
@@ -317,7 +317,7 @@ export class ModeSelectionOverlay {
     modesContainer.appendChild(standardBtn);
     content.appendChild(modesContainer);
 
-    // 2. Info Grid (Tips & Controls) - NOW BELOW BUTTONS
+    // 2. Info Grid (Tips & Controls)
     const gridContainer = document.createElement('div');
     gridContainer.className = 'mode-grid';
 
@@ -325,41 +325,42 @@ export class ModeSelectionOverlay {
     const tipsContainer = document.createElement('div');
     tipsContainer.className = 'tips-container';
 
+    // MVP 17: Improve tips UX - Carousel with dots
     const tipTitle = document.createElement('h3');
-    tipTitle.textContent = 'Tips';
-    tipTitle.style.marginBottom = '10px';
+    tipTitle.textContent = 'Did you know?';
+    tipTitle.style.marginBottom = '15px';
     tipTitle.style.marginTop = '0';
+    tipTitle.style.color = '#FFD700'; // Make title pop a bit more
     tipsContainer.appendChild(tipTitle);
 
     // Static Card Container
     const tipCard = document.createElement('div');
     tipCard.className = 'mode-tip-card';
+    tipCard.style.position = 'relative';
 
     // Content wrapper for animation
     const tipContent = document.createElement('div');
-    tipContent.className = 'tip-content-fade'; // Start visible
+    tipContent.className = 'tip-content-fade';
     tipContent.style.textAlign = 'center';
 
     tipCard.appendChild(tipContent);
     tipsContainer.appendChild(tipCard);
 
-    // Progress Bar
-    const progressBar = document.createElement('div');
-    progressBar.className = 'tip-progress-bar';
-    progressBar.innerHTML = '<div class="tip-progress-fill"></div>';
-    tipsContainer.appendChild(progressBar);
+    // MVP 17: Pagination Dots
+    const paginationContainer = document.createElement('div');
+    paginationContainer.className = 'tips-pagination';
+    paginationContainer.style.cssText = `
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 15px;
+    `;
+    tipsContainer.appendChild(paginationContainer);
 
     gridContainer.appendChild(tipsContainer);
 
-    // Initialize first tip immediately
-    this.updateTipContent(tipContent);
-
-    // Start auto-rotation
-    this.tipInterval = window.setInterval(() => {
-      this.animateTipUpdate(tipContent);
-    }, 8000) as unknown as number;
-
-
+    // Initialize carousel
+    this.initCarousel(tipContent, paginationContainer);
 
     // Controls Overview (Right/Bottom)
     const controlsContainer = document.createElement('div');
@@ -460,9 +461,109 @@ export class ModeSelectionOverlay {
     }
 
     gridContainer.appendChild(controlsContainer);
-
     content.appendChild(gridContainer);
     this.container.appendChild(content);
+  }
+
+  // MVP 17: Carousel Logic
+  private carouselTips: any[] = [];
+  private currentTipIndex: number = 0;
+  private carouselInterval: number | undefined;
+
+  private initCarousel(contentEl: HTMLElement, paginationEl: HTMLElement): void {
+    // 1. Pick 5 random unique tips
+    const allTips = this.tipsManager.getAllTips();
+    // Shuffle array
+    for (let i = allTips.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allTips[i], allTips[j]] = [allTips[j], allTips[i]];
+    }
+    this.carouselTips = allTips.slice(0, 5);
+    this.currentTipIndex = 0;
+
+    // 2. Create Dots
+    this.renderDots(paginationEl);
+
+    // 3. Show first tip
+    this.updateCarouselDisplay(contentEl, paginationEl);
+
+    // 4. Start Auto-rotation
+    this.startCarousel(contentEl, paginationEl);
+  }
+
+  private renderDots(container: HTMLElement): void {
+    container.innerHTML = '';
+    this.carouselTips.forEach((_, index) => {
+      const dot = document.createElement('div');
+      dot.className = 'tip-dot';
+      dot.style.cssText = `
+        width: 8px;
+        height: 8px;
+        background-color: rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      `;
+      // Allow manual navigation
+      dot.onclick = () => {
+        this.currentTipIndex = index;
+        // Find content element relative to container - hacky but effective
+        const contentEl = container.parentElement?.querySelector('.mode-tip-card > div') as HTMLElement;
+        if (contentEl) {
+          this.updateCarouselDisplay(contentEl, container);
+          this.resetCarouselTimer(contentEl, container);
+        }
+      };
+      container.appendChild(dot);
+    });
+  }
+
+  private updateCarouselDisplay(contentEl: HTMLElement, paginationEl: HTMLElement): void {
+    const tip = this.carouselTips[this.currentTipIndex];
+    if (!tip) return;
+
+    // Fade Out
+    contentEl.style.opacity = '0';
+    contentEl.style.transform = 'translateY(5px)';
+    contentEl.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+
+    setTimeout(() => {
+      // Update Content
+      contentEl.innerHTML = `
+        <div class="tip-category-icon" style="font-size: 2.5rem; margin-bottom: 10px;">${tip.emoji || '💡'}</div>
+        <div style="font-size: 1.1rem; line-height: 1.5; color: white;">${tip.text}</div>
+      `;
+
+      // Update Dots
+      const dots = paginationEl.querySelectorAll('.tip-dot');
+      dots.forEach((dot, idx) => {
+        const el = dot as HTMLElement;
+        if (idx === this.currentTipIndex) {
+          el.style.backgroundColor = '#FFD700'; // Active Gold
+          el.style.transform = 'scale(1.3)';
+        } else {
+          el.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+          el.style.transform = 'scale(1)';
+        }
+      });
+
+      // Fade In
+      contentEl.style.opacity = '1';
+      contentEl.style.transform = 'translateY(0)';
+    }, 300);
+  }
+
+  private startCarousel(contentEl: HTMLElement, paginationEl: HTMLElement): void {
+    if (this.carouselInterval) clearInterval(this.carouselInterval);
+
+    this.carouselInterval = window.setInterval(() => {
+      this.currentTipIndex = (this.currentTipIndex + 1) % this.carouselTips.length;
+      this.updateCarouselDisplay(contentEl, paginationEl);
+    }, 6000) as unknown as number; // 6 seconds per tip
+  }
+
+  private resetCarouselTimer(contentEl: HTMLElement, paginationEl: HTMLElement): void {
+    this.startCarousel(contentEl, paginationEl);
   }
 
   private createModeButton(title: string, desc: string, color: string, onClick: () => void): HTMLElement {
@@ -504,46 +605,14 @@ export class ModeSelectionOverlay {
     return btn;
   }
 
-  private updateTipContent(container: HTMLElement): void {
-    const tip = this.tipsManager.getRandomTip();
-    if (!tip) return;
-
-    container.innerHTML = `
-      <div class="tip-category-icon">${tip.emoji || '💡'}</div>
-      <div style="font-size: 1.05rem; line-height: 1.4; color: white;">${tip.text}</div>
-    `;
-
-    // Ensure visibility
-    container.style.display = 'flex';
-    container.style.flexDirection = 'column';
-    container.style.justifyContent = 'center';
-    container.style.alignItems = 'center';
-  }
-
-  private animateTipUpdate(container: HTMLElement): void {
-    // 1. Fade out
-    container.classList.add('tip-content-hidden');
-
-    // 2. Wait for fade out, update text, fade in
-    setTimeout(() => {
-      this.updateTipContent(container);
-      container.classList.remove('tip-content-hidden');
-
-      // Reset Progress Bar
-      const bar = this.container.querySelector('.tip-progress-fill') as HTMLElement;
-      if (bar) {
-        // Reset animation
-        bar.style.animation = 'none';
-        bar.offsetHeight; /* trigger reflow */
-        bar.style.animation = 'progressFill 8s linear infinite';
-      }
-    }, 300); // 300ms matches transition duration
-  }
-
   private selectMode(mode: 'standard' | 'carefree'): void {
     // Clear interval
     if (this.tipInterval) {
       clearInterval(this.tipInterval);
+    }
+
+    if (this.carouselInterval) {
+      clearInterval(this.carouselInterval);
     }
 
     // Animate out
