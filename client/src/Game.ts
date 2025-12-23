@@ -19,7 +19,7 @@ import { EnticementService } from './services/EnticementService.js'; // MVP 16: 
 import { AuthModal } from './components/AuthModal.js'; // MVP 16: Authentication modal
 import { SessionExpiredBanner } from './components/SessionExpiredBanner.js'; // MVP 16: Session expiry
 import { isAuthenticated, getCurrentUser } from './services/AuthService.js'; // MVP 16: Auth state checking
-import { CharacterRegistry, type CharacterDefinition } from './services/CharacterRegistry.js'; // MVP 16: Character availability
+import { CharacterRegistry } from './services/CharacterRegistry.js'; // MVP 16: Character availability
 import { CharacterGrid } from './components/CharacterGrid.js'; // Character selection grid
 import { CharacterPreview3D } from './components/CharacterPreview3D.js'; // MVP 16: 3D character previews
 import { TutorialOverlay } from './TutorialOverlay.js';
@@ -4638,182 +4638,20 @@ export class Game {
    * MVP 16: Show appropriate death overlay content based on authentication status
    * New unified design: show appropriate content panel within single overlay
    */
+  /**
+   * MVP 16: Show death overlay with simplified Fun & Free UI
+   */
   private showDeathOverlay(): void {
-    // MVP 16: Check if user is authenticated using official AuthService
-    // FIXED: Previously used wrong localStorage key 'auth_token', now uses isAuthenticated()
-    const isAuth = isAuthenticated();
-
-
-
-
-    const signedInContent = document.getElementById('death-content-signedin');
-    const anonymousContent = document.getElementById('death-content-anonymous');
-
-    // CRITICAL: Always hide both first, then show the correct one
-    if (anonymousContent) {
-      anonymousContent.classList.add('hidden');
-    }
-    if (signedInContent) {
-      signedInContent.classList.add('hidden');
+    const deathContentMain = document.getElementById('death-content-main');
+    if (deathContentMain) {
+      deathContentMain.classList.remove('hidden');
     }
 
-    if (isAuth) {
-      // Show signed-in content panel
-
-
-      if (signedInContent) {
-        signedInContent.classList.remove('hidden');
-      } else {
-      }
-
-      // TODO: Fetch and update player rank from leaderboard
-      const playerRank = document.getElementById('player-rank');
-      if (playerRank) {
-        playerRank.textContent = '42'; // Placeholder
-      }
-
-      // MVP 16: Populate grid with locked premium characters
-      const lockedCharsGrid = document.getElementById('death-locked-chars-grid');
-      if (lockedCharsGrid) {
-        // Get locked characters (premium characters not yet unlocked by this user)
-        // TODO(MONETIZATION): When payment system is implemented:
-        //   1. Fetch user's purchased characters from server (e.g., /api/user/purchases)
-        //   2. Pass purchased character IDs to getLockedCharacters() as unlockedCharacters param
-        //   3. This will filter out already-purchased characters from the grid
-        //   4. Only show characters the user HASN'T purchased yet
-        // For now: Empty array means all premium characters show as locked/purchasable
-        const unlockedCharacters: string[] = []; // Placeholder - will be populated from server
-        const lockedChars = CharacterRegistry.getLockedCharacters(true, unlockedCharacters);
-
-        // Clear existing content
-        lockedCharsGrid.innerHTML = '';
-
-        // Create a card for each locked character
-        lockedChars.forEach(char => {
-          const card = document.createElement('div');
-          card.style.cssText = `
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 165, 0, 0.5);
-            border-radius: 8px;
-            padding: 10px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-          `;
-          card.onmouseover = () => {
-            card.style.background = 'rgba(255, 165, 0, 0.2)';
-            card.style.borderColor = 'rgba(255, 165, 0, 0.8)';
-          };
-          card.onmouseout = () => {
-            card.style.background = 'rgba(255, 255, 255, 0.1)';
-            card.style.borderColor = 'rgba(255, 165, 0, 0.5)';
-          };
-
-          // Character emoji (map from character data)
-          const emojiMap: Record<string, string> = {
-            'lynx': '🐱',
-            'bear': '🐻',
-            'moose': '🦌',
-            'badger': '🦡'
-          };
-          const emoji = emojiMap[char.id] || '🐾';
-
-          card.innerHTML = '<div style="font-size: 32px; margin-bottom: 5px;">' + emoji + '</div>' +
-            '<div style="font-weight: bold; color: #fff;">' + char.name + '</div>' +
-            '<div style="font-size: 12px; color: #aaa;">$' + (char.price || 0) + '</div>';
-
-          card.onclick = () => this.handleBuyPremiumCharacter(char.id);
-          lockedCharsGrid.appendChild(card);
-        });
-      }
-
-      // Initialize 3D character preview
-      this.initDeathEnticementCharacter();
-
-      // Setup "Change Character" button for authenticated users
-      const changeCharacterBtn = document.getElementById('death-change-character-btn');
-      const characterGridContainer = document.getElementById('death-character-grid-container');
-
-      if (changeCharacterBtn && characterGridContainer) {
-        changeCharacterBtn.onclick = () => {
-          // Toggle character grid visibility
-          const isHidden = characterGridContainer.classList.contains('hidden');
-
-          if (isHidden) {
-            // Show character grid
-            characterGridContainer.classList.remove('hidden');
-            changeCharacterBtn.textContent = '✖️ Close';
-
-            // Auto-pause respawn countdown to give user time to browse
-            if (!this.respawnPaused) {
-              this.toggleRespawnPause();
-            }
-
-            // Initialize CharacterGrid if not already done
-            if (!this.deathCharacterGrid) {
-              this.deathCharacterGrid = new CharacterGrid(characterGridContainer, {
-                selectedCharacterId: this.selectedCharacterId,
-                onCharacterSelect: (characterId: string) => {
-
-
-                  // Update selected character
-                  this.selectedCharacterId = characterId;
-
-                  // Save to localStorage
-                  try {
-                    localStorage.setItem('last_character_id', characterId);
-                  } catch (e) {
-                  }
-
-                  // Hide character grid
-                  characterGridContainer.classList.add('hidden');
-                  changeCharacterBtn.textContent = '🎭 Change Character';
-
-                  // Trigger respawn with new character
-                  this.respawnWithNewCharacter(characterId);
-                }
-              });
-            }
-          } else {
-            // Hide character grid
-            characterGridContainer.classList.add('hidden');
-            changeCharacterBtn.textContent = '🎭 Change Character';
-
-            // Resume countdown if it was paused
-            if (this.respawnPaused) {
-              this.toggleRespawnPause();
-            }
-          }
-        };
-      }
-
-    } else {
-      // Show anonymous content panel
-
-
-      if (anonymousContent) {
-        anonymousContent.classList.remove('hidden');
-      } else {
-      }
-
-      // Wire up Sign In button with defensive check
-      const signinBtn = document.getElementById('death-signin-btn');
-      if (signinBtn) {
-        // Remove any existing listeners to prevent duplicates
-        signinBtn.onclick = null;
-        signinBtn.addEventListener('click', () => this.handleDeathSignIn());
-      } else {
-        console.warn('⚠️ death-signin-btn element not found');
-      }
-
-      // Initialize 3D character preview
-      this.initDeathEnticementCharacter();
-    }
-
-    // Show the overlay
-    const overlay = document.getElementById('death-overlay');
-    if (overlay) {
-      overlay.classList.remove('hidden');
+    // TODO: Fetch and update player rank from leaderboard
+    const playerRank = document.getElementById('player-rank');
+    if (playerRank) {
+      // In a real implementation this would fetch from Leaderboard
+      playerRank.textContent = '42'; // Placeholder
     }
 
     // Update score
@@ -4822,8 +4660,71 @@ export class Game {
       scoreValue.textContent = Math.floor(this.playerScore).toString();
     }
 
-    // Setup mode selection buttons
+    // Initialize unified 3D character preview (Just for fun!)
+    this.initDeathEnticementCharacter();
+
+    // Setup "Change Character" button
+    const changeCharacterBtn = document.getElementById('death-change-character-btn');
+    const characterGridContainer = document.getElementById('death-character-grid-container');
+
+    if (changeCharacterBtn && characterGridContainer) {
+      changeCharacterBtn.onclick = () => {
+        // Toggle character grid visibility
+        const isHidden = characterGridContainer.classList.contains('hidden');
+
+        if (isHidden) {
+          // Show character grid
+          characterGridContainer.classList.remove('hidden');
+          changeCharacterBtn.textContent = '✖️ Close';
+
+          // Auto-pause respawn countdown to give user time to browse
+          if (!this.respawnPaused) {
+            this.toggleRespawnPause();
+          }
+
+          // Initialize CharacterGrid if not already done
+          if (!this.deathCharacterGrid) {
+            this.deathCharacterGrid = new CharacterGrid(characterGridContainer, {
+              selectedCharacterId: this.selectedCharacterId,
+              onCharacterSelect: (characterId: string) => {
+                // Update selected character
+                this.selectedCharacterId = characterId;
+
+                // Save to localStorage
+                try {
+                  localStorage.setItem('last_character_id', characterId);
+                } catch (e) {
+                  console.error('Failed to save character preference', e);
+                }
+
+                // Update UI visually
+                this.updateCharacterSelectionUI();
+
+                // Show toast
+                this.toastManager.show('Character selected for next spawn!', { type: 'success' });
+
+                // Trigger respawn with new character
+                this.respawnWithNewCharacter(characterId);
+              }
+            });
+          }
+        } else {
+          // Hide character grid
+          characterGridContainer.classList.add('hidden');
+          changeCharacterBtn.textContent = '🎭 Change Character';
+        }
+      };
+    }
+
     this.setupDeathModeSelection();
+  }
+
+  /**
+   * Update character selection UI (HUD etc)
+   */
+  private updateCharacterSelectionUI(): void {
+    // Placeholder for future UI updates
+    // For now, the change is handled by the respawn logic
   }
 
   /**
@@ -4977,73 +4878,25 @@ export class Game {
     });
   }
 
-  /**
-   * MVP 16: Handle Sign In from death screen
-   * Opens SIGNUP modal (not login) - after signup, page reloads and user sees character grid
-   */
-  private handleDeathSignIn(): void {
-    // MVP 16: Pause respawn timer so user has time to sign up
-    if (!this.respawnPaused) {
-      this.toggleRespawnPause();
-    }
 
-    // Open AuthModal in signup mode
-    if (this.authModal) {
-      this.authModal.open('signup');
-    } else {
-      console.error('❌ AuthModal not initialized');
-    }
-  }
 
   /**
-   * MVP 16: Initialize 3D character enticement on death screen
-   * Shows a random character rotating in 3D based on auth state
+   * MVP 16: Initialize 3D character preview on death screen
+   * Shows a random character just for fun/visual appeal
    */
   private async initDeathEnticementCharacter(): Promise<void> {
     // Cleanup any existing preview
     this.cleanupDeathEnticementCharacter();
 
-    const isAuth = isAuthenticated();
-    const user = getCurrentUser();
-    let targetContainerId = '';
-    let characterToShow: CharacterDefinition | null = null;
+    // Use unified container ID
+    const targetContainerId = 'death-character-preview';
 
-    if (isAuth) {
-      // SIGNED IN: Show random unowned PREMIUM character
-      targetContainerId = 'death-enticement-character-container-signedin';
+    // Pick ANY random character to show off
+    const allCharacters = CharacterRegistry.getAllCharacters();
+    if (allCharacters.length === 0) return;
 
-      // Get all premium characters
-      const allCharacters = CharacterRegistry.getAllCharacters();
-      const premiumCharacters = allCharacters.filter(char => char.tier === 'premium');
-
-      // Filter out ones already owned
-      const ownedCharIds = user?.unlockedCharacters || [];
-      const unownedPremium = premiumCharacters.filter(char => !ownedCharIds.includes(char.id));
-
-      if (unownedPremium.length > 0) {
-        characterToShow = unownedPremium[Math.floor(Math.random() * unownedPremium.length)];
-      } else {
-        // If they own all premium characters, show a random premium one anyway (or maybe a future one?)
-        // For now, just show a random premium one to keep the vibe
-        characterToShow = premiumCharacters[Math.floor(Math.random() * premiumCharacters.length)];
-      }
-    } else {
-      // ANONYMOUS: Show random FREE character
-      targetContainerId = 'death-enticement-character-container-anon';
-
-      const allCharacters = CharacterRegistry.getAllCharacters();
-      const freeCharacters = allCharacters.filter(char => char.tier === 'free');
-
-      if (freeCharacters.length > 0) {
-        characterToShow = freeCharacters[Math.floor(Math.random() * freeCharacters.length)];
-      }
-    }
-
-    if (!characterToShow) {
-      return;
-    }
-
-
+    // Random pick
+    const characterToShow = allCharacters[Math.floor(Math.random() * allCharacters.length)];
 
     // Initialize 3D preview
     this.deathEnticementPreview = new CharacterPreview3D(
@@ -5074,23 +4927,7 @@ export class Game {
   // Removed unused handleBuyCharacter method
 
 
-  /**
-   * MVP 16: Handle Buy Premium Character (signed-in users)
-   * TODO(MONETIZATION): Implement payment flow
-   *   1. Open payment modal (Stripe/PayPal)
-   *   2. On success: POST /api/purchases { characterId, transactionId }
-   *   3. Server validates payment and adds character to user's purchased characters
-   *   4. Update local state (reload character grid or update directly)
-   *   5. Show success message and unlock character immediately
-   */
-  private handleBuyPremiumCharacter(characterId?: string): void {
 
-    // Will be wired to payment system - Stripe/PayPal integration
-    // For now, just log the purchase intent
-    if (characterId) {
-
-    }
-  }
 
   // Removed unused handleWatchAd method
 

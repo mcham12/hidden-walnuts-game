@@ -104,12 +104,12 @@ export default class Leaderboard {
       let totalPlayers;
 
       if (type === "alltime") {
-        // Hall of Fame: Authenticated players ONLY
-        topPlayers = this.getTopPlayers(limit, this.alltimeScores, { requireAuth: true });
-        totalPlayers = Array.from(this.alltimeScores.values()).filter(r => r.isAuthenticated).length;
+        // Hall of Fame: Open to ALL players (Fun & Free)
+        topPlayers = this.getTopPlayers(limit, this.alltimeScores);
+        totalPlayers = this.alltimeScores.size;
       } else if (type === "weekly") {
-        // Weekly leaderboard: Top 10 restricted to authenticated players
-        topPlayers = this.getTopPlayers(limit, this.scores, { authOnlyForTopN: 10 });
+        // Weekly leaderboard: Open to ALL players
+        topPlayers = this.getTopPlayers(limit, this.scores);
         totalPlayers = this.scores.size;
       } else {
         // Daily leaderboard: All players (no filtering)
@@ -144,10 +144,10 @@ export default class Leaderboard {
 
       const type = url.searchParams.get("type") || "weekly";
       const scoresMap = type === "alltime" ? this.alltimeScores : this.scores;
-      const requireAuth = type === "alltime";
+      // const requireAuth = type === "alltime"; // Removed auth requirement
 
       const playerRecord = scoresMap.get(playerId);
-      const rank = this.getPlayerRank(playerId, scoresMap, { requireAuth });
+      const rank = this.getPlayerRank(playerId, scoresMap); // Open to all
 
       // MVP 16: Include authentication info in player rank response
       return new Response(JSON.stringify({

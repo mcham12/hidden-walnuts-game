@@ -143,7 +143,7 @@ export class WelcomeOverlay {
       color: rgba(255, 255, 255, 0.9);
       font-weight: 500;
     `;
-    subtitle.textContent = 'Your account is verified! Here\'s what you\'ve unlocked:';
+    subtitle.textContent = 'Welcome to the forest! Here\'s what\'s waiting for you:';
 
     // Benefits list
     const benefits = document.createElement('div');
@@ -156,11 +156,10 @@ export class WelcomeOverlay {
     `;
 
     const benefitsList = [
-      { icon: '🦊', text: '6 free characters to choose from' },
-      { icon: '☁️', text: 'Progress synced across all devices' },
-      { icon: '🏆', text: 'Access to Hall of Fame leaderboard' },
-      { icon: '✅', text: 'Verified badge on your profile' },
-      { icon: '📊', text: 'Track your stats and achievements' }
+      { icon: '🦊', text: 'All characters unlocked & free!' },
+      { icon: '🏆', text: 'Compete on global leaderboards' },
+      { icon: '🌍', text: 'Explore a massive squirrel world' },
+      { icon: '🥜', text: 'Collect walnuts & survive!' }
     ];
 
     benefitsList.forEach(benefit => {

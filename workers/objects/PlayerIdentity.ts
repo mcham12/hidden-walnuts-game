@@ -319,7 +319,7 @@ export class PlayerIdentity extends DurableObject {
       // MVP 16: Default values for no-auth users
       emailVerified: false,
       isAuthenticated: false,
-      unlockedCharacters: ['squirrel'], // No-auth users get only Squirrel
+      unlockedCharacters: ['squirrel', 'hare', 'chipmunk', 'turkey', 'mallard', 'lynx', 'bear', 'moose', 'badger', 'goat'], // No-auth users get ALL characters now
       authTokens: [],
       score: 0,
       titleId: 'rookie',
@@ -555,14 +555,18 @@ export class PlayerIdentity extends DurableObject {
       data.accountCreated = Date.now();
       data.lastSeen = Date.now();
 
-      // Unlock free characters (Immediate access to 4 characters)
-      // Goat is reserved as a "Verified Bonus"
+      // Unlock ALL characters (Fun & Free goal)
       data.unlockedCharacters = [
         'squirrel',
         'hare',
         'chipmunk',
         'turkey',
-        'mallard'
+        'mallard',
+        'lynx',
+        'bear',
+        'moose',
+        'badger',
+        'goat'
       ];
 
       // If upgrading from Quick Play with a valid character, keep it.
@@ -1407,17 +1411,23 @@ export class PlayerIdentity extends DurableObject {
   private enforceCharacterEntitlements(data: PlayerIdentityData): boolean {
     let modified = false;
 
-    // Goat is exclusively for verified users
-    if (data.emailVerified) {
-      // Should have goat
-      if (!data.unlockedCharacters.includes('goat')) {
-        data.unlockedCharacters.push('goat');
-        modified = true;
-      }
-    } else {
-      // Should NOT have goat
-      if (data.unlockedCharacters.includes('goat')) {
-        data.unlockedCharacters = data.unlockedCharacters.filter(c => c !== 'goat');
+    // Fun & Free: EVERYONE gets ALL characters
+    const allCharacters = [
+      'squirrel',
+      'hare',
+      'chipmunk',
+      'turkey',
+      'mallard',
+      'lynx',
+      'bear',
+      'moose',
+      'badger',
+      'goat'
+    ];
+
+    for (const charId of allCharacters) {
+      if (!data.unlockedCharacters.includes(charId)) {
+        data.unlockedCharacters.push(charId);
         modified = true;
       }
     }

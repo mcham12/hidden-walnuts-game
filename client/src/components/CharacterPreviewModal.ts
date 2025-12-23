@@ -201,20 +201,9 @@ export class CharacterPreviewModal {
       font-weight: 700;
     `;
 
-    if (this.options.isAvailable) {
-      tierLabel.textContent = 'Status';
-      tierValue.textContent = '✅ Available';
-    } else if (character.tier === 'premium') {
-      tierLabel.textContent = 'Premium Character';
-      tierValue.textContent = `💎 $${character.price?.toFixed(2) || '1.99'}`;
-    } else {
-      tierLabel.textContent = 'Status';
-      if (this.options.isAuthenticated && !this.options.isEmailVerified) {
-        tierValue.textContent = '🔒 Locked - Verify Email to Unlock!';
-      } else {
-        tierValue.textContent = '🔒 Locked - Sign up to unlock!';
-      }
-    }
+    // Fun & Free: All characters unlocked!
+    tierLabel.textContent = 'Status';
+    tierValue.textContent = '✅ Available';
 
     tierElement.appendChild(tierLabel);
     tierElement.appendChild(tierValue);
@@ -227,10 +216,9 @@ export class CharacterPreviewModal {
       flex-wrap: wrap;
     `;
 
-    if (this.options.isAvailable) {
-      // Select button for available characters
-      const selectButton = document.createElement('button');
-      selectButton.style.cssText = `
+    // Fun & Free: Select button for ALL characters
+    const selectButton = document.createElement('button');
+    selectButton.style.cssText = `
         flex: 1;
         min-width: 200px;
         height: 50px;
@@ -244,105 +232,20 @@ export class CharacterPreviewModal {
         transition: transform 0.2s, box-shadow 0.2s;
         box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
       `;
-      selectButton.textContent = 'Select Character';
-      selectButton.addEventListener('mouseenter', () => {
-        selectButton.style.transform = 'scale(1.05)';
-        selectButton.style.boxShadow = '0 6px 16px rgba(255, 215, 0, 0.6)';
-      });
-      selectButton.addEventListener('mouseleave', () => {
-        selectButton.style.transform = 'scale(1)';
-        selectButton.style.boxShadow = '0 4px 12px rgba(255, 215, 0, 0.4)';
-      });
-      selectButton.addEventListener('click', () => {
-        this.options.onSelect?.(this.options.characterId);
-        this.close();
-      });
-      buttonsContainer.appendChild(selectButton);
-    } else if (character.tier === 'premium') {
-      // Coming soon button for premium
-      const premiumButton = document.createElement('button');
-      premiumButton.style.cssText = `
-        flex: 1;
-        min-width: 200px;
-        height: 50px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-size: 16px;
-        font-weight: 700;
-        cursor: not-allowed;
-        opacity: 0.8;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      `;
-      premiumButton.textContent = `Coming Soon!`;
-      buttonsContainer.appendChild(premiumButton);
-    } else {
-      // Locked free characters
-      // If authenticated but not verified, show "Verify Email"
-      if (this.options.isAuthenticated && !this.options.isEmailVerified) {
-        const verifyButton = document.createElement('button');
-        verifyButton.style.cssText = `
-          flex: 1;
-          min-width: 200px;
-          height: 50px;
-          background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-          color: #2c5f2d;
-          border: none;
-          border-radius: 8px;
-          font-size: 16px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: transform 0.2s, box-shadow 0.2s;
-          box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
-        `;
-        verifyButton.textContent = 'Verify Email to Unlock!';
-        verifyButton.addEventListener('mouseenter', () => {
-          verifyButton.style.transform = 'scale(1.05)';
-          verifyButton.style.boxShadow = '0 6px 16px rgba(255, 215, 0, 0.6)';
-        });
-        verifyButton.addEventListener('mouseleave', () => {
-          verifyButton.style.transform = 'scale(1)';
-          verifyButton.style.boxShadow = '0 4px 12px rgba(255, 215, 0, 0.4)';
-        });
-        verifyButton.addEventListener('click', () => {
-          this.options.onVerify?.();
-          this.close();
-        });
-        buttonsContainer.appendChild(verifyButton);
-      } else {
-        // Not authenticated, show "Sign Up"
-        const signupButton = document.createElement('button');
-        signupButton.style.cssText = `
-          flex: 1;
-          min-width: 200px;
-          height: 50px;
-          background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-          color: #2c5f2d;
-          border: none;
-          border-radius: 8px;
-          font-size: 16px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: transform 0.2s, box-shadow 0.2s;
-          box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
-        `;
-        signupButton.textContent = 'Sign Up to Unlock Free!';
-        signupButton.addEventListener('mouseenter', () => {
-          signupButton.style.transform = 'scale(1.05)';
-          signupButton.style.boxShadow = '0 6px 16px rgba(255, 215, 0, 0.6)';
-        });
-        signupButton.addEventListener('mouseleave', () => {
-          signupButton.style.transform = 'scale(1)';
-          signupButton.style.boxShadow = '0 4px 12px rgba(255, 215, 0, 0.4)';
-        });
-        signupButton.addEventListener('click', () => {
-          this.options.onSignUp?.();
-          this.close();
-        });
-        buttonsContainer.appendChild(signupButton);
-      }
-    }
+    selectButton.textContent = 'Select Character';
+    selectButton.addEventListener('mouseenter', () => {
+      selectButton.style.transform = 'scale(1.05)';
+      selectButton.style.boxShadow = '0 6px 16px rgba(255, 215, 0, 0.6)';
+    });
+    selectButton.addEventListener('mouseleave', () => {
+      selectButton.style.transform = 'scale(1)';
+      selectButton.style.boxShadow = '0 4px 12px rgba(255, 215, 0, 0.4)';
+    });
+    selectButton.addEventListener('click', () => {
+      this.options.onSelect?.(this.options.characterId);
+      this.close();
+    });
+    buttonsContainer.appendChild(selectButton);
 
     // Assemble info section
     infoSection.appendChild(nameElement);

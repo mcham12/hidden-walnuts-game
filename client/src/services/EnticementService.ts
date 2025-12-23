@@ -38,6 +38,11 @@ export class EnticementService {
    * Only shows for no-auth users
    */
   start(): void {
+    // FUN & FREE UPDATE: Enticements disabled.
+    // We no longer push users to sign up. If they want to sync progress, they can find the button in settings.
+    return;
+
+    /*
     // Don't show enticements if user is already authenticated
     if (isAuthenticated()) {
 
@@ -48,6 +53,7 @@ export class EnticementService {
     if (this.shouldShowEnticement()) {
       this.showNextEnticement();
     }
+    */
 
     // Set up interval to check every minute
     this.intervalId = window.setInterval(() => {

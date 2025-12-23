@@ -3030,27 +3030,10 @@
 
       <!-- Bottom Section: Enticement (visible from start) -->
       <div class="death-bottom-section">
-        <!-- Anonymous Users Content -->
-        <div id="death-content-anonymous" class="death-enticement-panel hidden">
-          <h3 class="enticement-title">Sign in to get 6 Free characters + Leaderboard access!</h3>
+        <div id="death-content-main" class="death-enticement-panel">
+          <h3 class="enticement-title">Choose Your Character!</h3>
 
-          <div id="death-enticement-character-container-anon"
-            style="height: 120px; width: 200px; margin: 10px auto; display: flex; justify-content: center; align-items: center;">
-            <!-- 3D character will be rendered here by Game.ts -->
-          </div>
-
-          <div class="enticement-buttons">
-            <button id="death-signin-btn" class="death-action-btn signin-btn">
-              🟢 SIGN IN
-            </button>
-          </div>
-        </div>
-
-        <!-- Signed-In Users Content -->
-        <div id="death-content-signedin" class="death-enticement-panel hidden">
-          <h3 class="enticement-title">Premium characters coming soon!</h3>
-
-          <div id="death-enticement-character-container-signedin"
+          <div id="death-character-preview"
             style="height: 120px; width: 200px; margin: 10px auto; display: flex; justify-content: center; align-items: center;">
             <!-- 3D character will be rendered here by Game.ts -->
           </div>
@@ -3060,7 +3043,7 @@
             🏆 Your Rank: #<span id="player-rank">--</span>
           </p>
 
-          <!-- Change Character Button (Authenticated Users Only) -->
+          <!-- Change Character Button -->
           <div style="text-align: center; margin-top: 15px;">
             <button id="death-change-character-btn" class="death-action-btn" style="
               background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
