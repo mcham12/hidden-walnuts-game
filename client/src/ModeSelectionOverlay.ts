@@ -293,7 +293,7 @@ export class ModeSelectionOverlay {
       display: flex;
       gap: 15px;
       justify-content: center;
-      margin-bottom: 20px;
+      margin-bottom: 25px;
       flex-wrap: wrap;
     `;
 
@@ -315,42 +315,58 @@ export class ModeSelectionOverlay {
     modesContainer.appendChild(standardBtn);
     content.appendChild(modesContainer);
 
-    // 2. Tabbed Info Card (Unifies Tips & Controls)
+    // 2. Info Card (Unifies Tips & Controls)
     const infoCard = document.createElement('div');
     infoCard.style.cssText = `
       background: rgba(0, 0, 0, 0.6);
-      border-radius: 15px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      height: 320px; /* Fixed height for consistency */
+      height: 380px; /* Slightly taller for breathing room */
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
     `;
 
-    // Tab Headers
+    // 3. Compact Toggle Header
     const tabsHeader = document.createElement('div');
     tabsHeader.style.cssText = `
       display: flex;
+      justify-content: center;
+      padding: 15px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(0, 0, 0, 0.3);
+      background: rgba(0,0,0,0.2);
     `;
 
-    const createTabBtn = (text: string, isActive: boolean, onClick: () => void) => {
+    const pillContainer = document.createElement('div');
+    pillContainer.style.cssText = `
+      display: inline-flex; /* Compact */
+      background: #000;
+      border-radius: 50px;
+      padding: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+    `;
+
+    const createPillBtn = (text: string, isActive: boolean, onClick: () => void) => {
       const btn = document.createElement('div');
       btn.textContent = text;
       btn.style.cssText = `
-        flex: 1;
-        padding: 15px;
-        text-align: center;
+        padding: 8px 24px;
         cursor: pointer;
-        font-weight: bold;
-        color: ${isActive ? '#FFD700' : 'rgba(255, 255, 255, 0.6)'};
-        background: ${isActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent'};
-        border-bottom: 3px solid ${isActive ? '#FFD700' : 'transparent'};
-        transition: all 0.2s;
+        font-weight: 800;
+        font-size: 0.8rem;
+        border-radius: 40px;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         text-transform: uppercase;
-        letter-spacing: 1px;
-        font-size: 0.9rem;
+        letter-spacing: 0.5px;
+        user-select: none;
+        min-width: 100px;
+        text-align: center;
+        ${isActive ?
+          `background: #FFF; color: #000; box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);` :
+          `background: transparent; color: rgba(255, 255, 255, 0.5);`
+        }
       `;
       btn.onclick = onClick;
       return btn;
@@ -380,8 +396,7 @@ export class ModeSelectionOverlay {
     // Render Controls (Default Tab)
     this.renderControls(controlsContent);
 
-    // Render Tips (Hidden by default)
-    // Structure for tips
+    // Render Tips
     const tipsWrapper = document.createElement('div');
     tipsWrapper.style.width = '100%';
     tipsWrapper.className = 'tips-container'; // Reuse class for styling if needed
@@ -415,55 +430,32 @@ export class ModeSelectionOverlay {
     tipsWrapper.appendChild(paginationContainer);
     tipsContent.appendChild(tipsWrapper);
 
-    // Initialize carousel (it runs even if hidden, which is fine)
     this.initCarousel(tipContentFade, paginationContainer);
 
 
-    // Tab Logic
-    const controlsTab = createTabBtn('Controls', true, () => {
-      // Switch UI
-      updateTabUI(true);
-      controlsContent.style.display = 'block';
-      tipsContent.style.display = 'none';
-      content.querySelector('.tab-help-text')!.textContent = 'How to play';
-    });
+    // Tab Switching Logic
+    let controlsBtn: HTMLElement;
+    let tipsBtn: HTMLElement;
 
-    const tipsTab = createTabBtn('Did You Know?', false, () => {
-      // Switch UI
-      updateTabUI(false);
-      controlsContent.style.display = 'none';
-      tipsContent.style.display = 'flex';
-      content.querySelector('.tab-help-text')!.textContent = 'Game Tips';
-    });
+    const updatePills = (isControls: boolean) => {
+      const resetStyle = `padding: 8px 24px; cursor: pointer; font-weight: 800; font-size: 0.8rem; border-radius: 40px; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); text-transform: uppercase; letter-spacing: 0.5px; user-select: none; min-width: 100px; text-align: center; background: transparent; color: rgba(255, 255, 255, 0.5);`;
+      const activeStyle = `padding: 8px 24px; cursor: pointer; font-weight: 800; font-size: 0.8rem; border-radius: 40px; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); text-transform: uppercase; letter-spacing: 0.5px; user-select: none; min-width: 100px; text-align: center; background: #FFF; color: #000; box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);`;
 
-    const updateTabUI = (isControls: boolean) => {
-      controlsTab.style.color = isControls ? '#FFD700' : 'rgba(255, 255, 255, 0.6)';
-      controlsTab.style.borderBottomColor = isControls ? '#FFD700' : 'transparent';
-      controlsTab.style.background = isControls ? 'rgba(255, 255, 255, 0.05)' : 'transparent';
+      controlsBtn.style.cssText = isControls ? activeStyle : resetStyle;
+      tipsBtn.style.cssText = !isControls ? activeStyle : resetStyle;
 
-      tipsTab.style.color = !isControls ? '#FFD700' : 'rgba(255, 255, 255, 0.6)';
-      tipsTab.style.borderBottomColor = !isControls ? '#FFD700' : 'transparent';
-      tipsTab.style.background = !isControls ? 'rgba(255, 255, 255, 0.05)' : 'transparent';
+      controlsContent.style.display = isControls ? 'block' : 'none';
+      tipsContent.style.display = isControls ? 'none' : 'flex';
     };
 
-    tabsHeader.appendChild(controlsTab);
-    tabsHeader.appendChild(tipsTab);
+    controlsBtn = createPillBtn('Controls', true, () => updatePills(true));
+    tipsBtn = createPillBtn('Tips', false, () => updatePills(false)); // Shortened text for compact toggle
+
+    pillContainer.appendChild(controlsBtn);
+    pillContainer.appendChild(tipsBtn);
+    tabsHeader.appendChild(pillContainer);
 
     infoCard.appendChild(tabsHeader);
-
-    // Help Text (Small header for content area)
-    const helpTextInfo = document.createElement('div');
-    helpTextInfo.className = 'tab-help-text';
-    helpTextInfo.textContent = 'How to play';
-    helpTextInfo.style.cssText = `
-        padding: 10px 20px 0;
-        font-size: 0.8rem;
-        color: rgba(255,255,255,0.5);
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    `;
-    infoCard.appendChild(helpTextInfo);
-
     infoCard.appendChild(controlsContent);
     infoCard.appendChild(tipsContent);
 
@@ -471,11 +463,12 @@ export class ModeSelectionOverlay {
     this.container.appendChild(content);
   }
 
+
   private renderControls(container: HTMLElement): void {
     const isMobile = TouchControls.isMobile();
 
     const grid = document.createElement('div');
-    // V2: Structured Grid - 1 Col Mobile (List), 2 Col Desktop
+    // V3: Structured Grid with Left Alignment
     grid.style.cssText = `
         display: grid;
         grid-template-columns: ${isMobile ? '1fr' : '1fr 1fr'}; 
@@ -489,15 +482,15 @@ export class ModeSelectionOverlay {
                 display: flex;
                 align-items: center;
                 background: rgba(255,255,255,0.05);
-                padding: 10px 15px;
+                padding: 12px 20px;
                 border-radius: 12px;
                 border: 1px solid rgba(255,255,255,0.05);
             ">
-                <div style="font-size: 1.5rem; margin-right: 15px;">${icon}</div>
-                <div style="flex: 1;">
-                    <div style="font-weight: bold; font-size: 0.9rem; color: #FFD700;">${label}</div>
+                <div style="font-size: 1.5rem; margin-right: 20px; width: 30px; text-align: center;">${icon}</div>
+                <div style="flex: 1; text-align: left;">
+                    <div style="font-weight: 800; font-size: 0.9rem; color: #FFF; letter-spacing: 0.5px;">${label}</div>
                 </div>
-                <div style="opacity: 0.9;">${keyHTML}</div>
+                <div style="opacity: 0.8; font-size: 0.85rem;">${keyHTML}</div>
             </div>
           `;
     };
@@ -505,15 +498,15 @@ export class ModeSelectionOverlay {
     let html = '';
 
     if (isMobile) {
-      html += createControlRow('👆', 'MOVE', '<span class="control-desc">Drag Screen</span>');
-      html += createControlRow('🟤', 'GET WALNUT', '<span class="control-desc">Walk Near</span>');
-      html += createControlRow('🎯', 'THROW', '<span class="control-desc">Tap Button</span>');
-      html += createControlRow('🌳', 'HIDE', '<span class="control-desc">Tap Button</span>');
-      html += createControlRow('🍴', 'EAT', '<span class="control-desc">Tap Button</span>');
+      html += createControlRow('👆', 'MOVE', 'Drag Screen');
+      html += createControlRow('🟤', 'GET WALNUT', 'Walk Near');
+      html += createControlRow('🎯', 'THROW', 'Tap Button');
+      html += createControlRow('🌳', 'HIDE', 'Tap Button');
+      html += createControlRow('🍴', 'EAT', 'Tap Button');
     } else {
       html += createControlRow('🚶', 'MOVE', '<span class="control-key">W</span><span class="control-key">A</span><span class="control-key">S</span><span class="control-key">D</span>');
-      html += createControlRow('🟤', 'GET WALNUT', '<span class="control-desc">Walk Near</span>');
-      html += createControlRow('🎯', 'THROW', '<span class="control-key">T</span> or <span class="control-key">SPACE</span>');
+      html += createControlRow('🟤', 'GET WALNUT', 'Walk Near');
+      html += createControlRow('🎯', 'THROW', '<span class="control-key">T</span> / <span class="control-key">SPACE</span>');
       html += createControlRow('🌳', 'HIDE', '<span class="control-key">H</span>');
       html += createControlRow('🍴', 'EAT', '<span class="control-key">E</span>');
     }
