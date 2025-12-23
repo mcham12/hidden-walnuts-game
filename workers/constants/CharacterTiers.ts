@@ -12,15 +12,14 @@ export const FREE_AUTH_CHARACTERS = [
   'goat',
   'chipmunk',
   'turkey',
-  'mallard'
-];
-
-export const PREMIUM_CHARACTERS = [
+  'mallard',
   'lynx',
   'bear',
   'moose',
   'badger'
 ];
+
+export const PREMIUM_CHARACTERS: string[] = [];
 
 export const FUTURE_PREMIUM_CHARACTERS = [
   'skunk' // Seasonal/event character (MVP 17+)

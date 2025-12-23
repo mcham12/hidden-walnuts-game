@@ -36,8 +36,7 @@
   {
     "id": "lynx",
     "name": "Lynx",
-    "tier": "premium",
-    "price": 1.99,
+    "tier": "free",
     "modelPath": "/assets/models/characters/Lynx_LOD0.glb",
     "animations": {
       "idle": "/assets/models/characters/Animations/Single/Lynx_Idle_A.glb",
@@ -139,8 +138,7 @@
   {
     "id": "moose",
     "name": "Moose",
-    "tier": "premium",
-    "price": 1.99,
+    "tier": "free",
     "modelPath": "/assets/models/characters/Moose_LOD0.glb",
     "animations": {
       "idle": "/assets/models/characters/Animations/Single/Moose_Idle_A.glb",
@@ -174,8 +172,7 @@
   {
     "id": "bear",
     "name": "Bear",
-    "tier": "premium",
-    "price": 1.99,
+    "tier": "free",
     "modelPath": "/assets/models/characters/Bear_LOD0.glb",
     "animations": {
       "idle": "/assets/models/characters/Animations/Single/Bear_Idle_A.glb",
@@ -243,8 +240,7 @@
   {
     "id": "badger",
     "name": "Badger",
-    "tier": "premium",
-    "price": 1.99,
+    "tier": "free",
     "modelPath": "/assets/models/characters/Badger_LOD0.glb",
     "animations": {
       "idle": "/assets/models/characters/Animations/Single/Badger_Idle_A.glb",
