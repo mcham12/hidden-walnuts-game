@@ -27,9 +27,11 @@ interface ScoreRecord {
   lastScoreIncrease?: number; // For rate limiting
 
   // MVP 16: Authentication fields
+  // MVP 16: Authentication fields
   isAuthenticated?: boolean; // true if has email/password account
   emailVerified?: boolean; // true if email verified
   characterId?: string; // Character used by player
+  displayName?: string; // MVP 17: Visual name (decoupled from unique playerId)
 }
 
 interface LeaderboardMetadata {
@@ -44,6 +46,7 @@ interface LeaderboardArchive {
   playerCount: number;
   topPlayers: Array<{
     playerId: string;
+    displayName?: string;
     score: number;
     walnuts: { hidden: number; found: number };
     rank: number;
@@ -159,7 +162,8 @@ export default class Leaderboard {
         // Authentication fields
         isAuthenticated: playerRecord?.isAuthenticated || false,
         emailVerified: playerRecord?.emailVerified || false,
-        characterId: playerRecord?.characterId || 'squirrel'
+        characterId: playerRecord?.characterId || 'squirrel',
+        displayName: playerRecord?.displayName || playerId
       }), {
         headers: { "Content-Type": "application/json" }
       });
@@ -254,6 +258,7 @@ export default class Leaderboard {
         existingRecord.isAuthenticated = record.isAuthenticated;
         existingRecord.emailVerified = record.emailVerified;
         existingRecord.characterId = record.characterId;
+        existingRecord.displayName = record.displayName; // Update display name
         existingRecord.updatedAt = now;
 
         this.scores.set(record.playerId, existingRecord);
@@ -271,6 +276,7 @@ export default class Leaderboard {
         existingAllTimeRecord.isAuthenticated = record.isAuthenticated;
         existingAllTimeRecord.emailVerified = record.emailVerified;
         existingAllTimeRecord.characterId = record.characterId;
+        existingAllTimeRecord.displayName = record.displayName; // Update display name
         existingAllTimeRecord.updatedAt = now; // Update timestamp to show activity
 
         // We don't change the score, but we save the updated metadata
@@ -595,6 +601,7 @@ export default class Leaderboard {
     isAuthenticated?: boolean;
     emailVerified?: boolean;
     characterId?: string;
+    displayName?: string;
   }> {
     let players = Array.from(scoresMap.values());
 
@@ -629,7 +636,8 @@ export default class Leaderboard {
       rank: index + 1,
       isAuthenticated: record.isAuthenticated,
       emailVerified: record.emailVerified,
-      characterId: record.characterId
+      characterId: record.characterId,
+      displayName: record.displayName || record.playerId
     }));
 
     return sortedPlayers;

@@ -8020,7 +8020,7 @@ export class Game {
             playerId: entry.playerId,
             displayName: entry.playerId === effectivePlayerId
               ? (this.username ? `You (${this.username})` : 'You')
-              : entry.playerId, // Show full player ID/username
+              : (entry.displayName || entry.playerId), // MVP 17: Show display name
             score: entry.score,
             isAuthenticated: entry.isAuthenticated || false, // MVP 16: Auth status
             emailVerified: entry.emailVerified || false, // MVP 16: Verification status

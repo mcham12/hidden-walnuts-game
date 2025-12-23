@@ -3210,13 +3210,18 @@ export default class ForestManager extends DurableObject {
       const leaderboard = this.env.LEADERBOARD.get(leaderboardId);
 
       // Prepare score record
-      // MVP 16: Use username for all players (authenticated AND guests), only fall back to squirrelId if missing
-      // This ensures guest users show as "guest23" instead of "player_xxx" on leaderboard
-      const shouldUseUsername = playerConnection.username &&
+      // MVP 16/17: Leaderboard ID logic
+      // - Authenticated users: Use username (consistent across devices)
+      // - Guests: Use squirrelId (unique per session/device) to prevent merging
+      // - ALL users: Send username as displayName for visual presentation
+
+      const shouldUseUsernameAsId = playerConnection.isAuthenticated &&
+        playerConnection.username &&
         playerConnection.username !== 'Anonymous';
 
       const scoreRecord = {
-        playerId: shouldUseUsername ? playerConnection.username : playerConnection.squirrelId,
+        playerId: shouldUseUsernameAsId ? playerConnection.username : playerConnection.squirrelId,
+        displayName: playerConnection.username || 'Anonymous', // MVP 17: Visual name
         score: playerConnection.score,
         walnuts: {
           hidden: 0, // TODO: Track these stats
