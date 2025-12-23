@@ -11,7 +11,7 @@
  * - Click handlers for selection and unlock prompts
  */
 
-import { CharacterPreview3D } from './CharacterPreview3D';
+
 
 export interface CharacterCardData {
   id: string;
@@ -34,7 +34,7 @@ export class CharacterCard {
   private data: CharacterCardData;
   private options: CharacterCardOptions;
   private card: HTMLElement | null = null;
-  private preview3D: CharacterPreview3D | null = null;
+  // REMOVED: private preview3D: CharacterPreview3D | null = null;
   private previewContainerId: string;
 
   constructor(container: HTMLElement, data: CharacterCardData, options: CharacterCardOptions = {}) {
@@ -78,7 +78,7 @@ export class CharacterCard {
       this.card.style.boxShadow = '0 8px 24px rgba(255, 215, 0, 0.6)';
     }
 
-    // 3D Character preview container
+    // Static Character Emoji Container (Replaces 3D Preview)
     const previewContainer = document.createElement('div');
     previewContainer.id = this.previewContainerId;
     previewContainer.style.cssText = `
@@ -88,7 +88,12 @@ export class CharacterCard {
       border-radius: 8px;
       overflow: hidden;
       background: rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 72px; 
     `;
+    previewContainer.textContent = this.getCharacterEmoji(this.data.id);
 
     // Character name
     const name = document.createElement('div');
@@ -143,44 +148,33 @@ export class CharacterCard {
 
     // Append to container
     this.container.appendChild(this.card);
-
-    // Initialize 3D preview after DOM is ready
-    setTimeout(() => this.init3DPreview(), 100);
   }
 
   /**
-   * Initialize 3D character preview
+   * Get emoji for character
    */
-  private async init3DPreview(): Promise<void> {
-    try {
-      // Generate random initial rotation between 0 and 2π radians (0-360 degrees)
-      const randomRotation = Math.random() * Math.PI * 2;
-
-      this.preview3D = new CharacterPreview3D(
-        this.previewContainerId,
-        this.data.id,
-        {
-          rotationSpeed: 0.003,
-          autoRotate: true,
-          showAnimation: true,
-          cameraDistance: 2,
-          initialRotation: randomRotation
-        }
-      );
-      await this.preview3D.init();
-    } catch (error) {
-      console.error(`Failed to initialize 3D preview for ${this.data.id}:`, error);
-    }
+  private getCharacterEmoji(id: string): string {
+    const emojis: Record<string, string> = {
+      'squirrel': '🐿️',
+      'hare': '🐇',
+      'goat': '🐐',
+      'chipmunk': '🐿️',
+      'turkey': '🦃',
+      'mallard': '🦆',
+      'lynx': '🐈',
+      'bear': '🐻',
+      'moose': '🫎',
+      'badger': '🦡',
+      'skunk': '🦨'
+    };
+    return emojis[id] || '🐾';
   }
 
   /**
    * Cleanup and destroy the card
    */
   public destroy(): void {
-    if (this.preview3D) {
-      this.preview3D.destroy();
-      this.preview3D = null;
-    }
+    // No WebGL cleanup needed!
     if (this.card) {
       this.card.remove();
       this.card = null;
