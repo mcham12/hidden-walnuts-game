@@ -7,7 +7,7 @@ import { LoadingOverlay } from './components/LoadingOverlay'; // NEW: Simple loa
 import { SettingsManager } from './SettingsManager';
 import { TouchControls } from './TouchControls';
 import { SessionManager } from './SessionManager'; // MVP 6: Player identity
-import { restoreSession, startTokenRefreshTimer, isAuthenticated, clearAuth, getCurrentUser } from './services/AuthService'; // MVP 16: Session persistence
+import { restoreSession, startTokenRefreshTimer, clearAuth, getCurrentUser } from './services/AuthService'; // MVP 16: Session persistence
 import { AuthModal } from './components/AuthModal'; // MVP 16: Authentication modals
 import { CharacterGrid } from './components/CharacterGrid'; // MVP 16: Character selection
 import { CharacterRegistry } from './services/CharacterRegistry'; // MVP 16: Character data
@@ -190,10 +190,18 @@ async function main() {
       if (result.exists) {
         // Username exists on server - show welcome back and link sessionToken
         welcomeScreen = new WelcomeScreen();
-        await welcomeScreen.showWelcomeBack(storedUsername);
+        const welcomeBackResult = await welcomeScreen.showWelcomeBack(storedUsername);
+
+        // MVP 16: Handle character switching request
+        if (welcomeBackResult.switchCharacter) {
+          console.log('🎭 [main.ts] User requested character switch');
+          savedCharacterId = undefined; // Clear saved ID to trigger selection flow
+        } else {
+          savedCharacterId = result.characterId;
+        }
+
         await welcomeScreen.hide();
         username = storedUsername;
-        savedCharacterId = result.characterId;
       } else {
         // Username doesn't exist on server anymore - prompt for new username
         welcomeScreen = new WelcomeScreen();
@@ -265,16 +273,13 @@ async function main() {
     let selectedCharacterId: string;
 
     // Check if user has saved character
-    if (!isAuthenticated()) {
-      // Guest player - ALWAYS force Squirrel, ignore saved character
-      selectedCharacterId = 'squirrel';
-      console.log('🐿️ Guest player detected - forcing Squirrel character');
-    } else if (savedCharacterId) {
-      // Returning AUTHENTICATED user with saved character - skip selection!
+    if (savedCharacterId) {
+      // Returning user with saved character - skip selection!
       selectedCharacterId = savedCharacterId;
     } else {
-      // MVP 16: Authenticated user with no saved character - show CharacterGrid
+      // No saved character - show CharacterGrid (for both Guest and Auth users)
       const selectDiv = document.getElementById('character-select') as HTMLDivElement;
+
 
       // Show character selection container
       selectDiv.classList.remove('hidden');

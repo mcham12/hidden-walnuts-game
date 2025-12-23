@@ -495,8 +495,8 @@ export class WelcomeScreen {
    * MVP 16 FIX: Wait for Turnstile verification before showing message
    * This prevents destroying the Turnstile widget before it completes
    */
-  async showWelcomeBack(username: string): Promise<void> {
-    if (!this.container) return;
+  async showWelcomeBack(username: string): Promise<{ switchCharacter: boolean }> {
+    if (!this.container) return { switchCharacter: false };
 
     // Show container with original content (including Turnstile) but make card invisible
     this.container.style.opacity = '0';
@@ -533,32 +533,111 @@ export class WelcomeScreen {
     // NOW it's safe to replace the HTML
     const welcomeContent = this.container.querySelector('.welcome-content');
     if (welcomeContent) {
+      // MVP 16: Enhanced Welcome Back with Change Character option
       welcomeContent.innerHTML = `
-        <div class="welcome-text">
-          <h1 class="welcome-title">Welcome Back!</h1>
-          <p class="welcome-tagline">Hey <strong>${username}</strong>, ready for more adventure?</p>
+        <div class="welcome-card" style="
+          max-width: 450px;
+          text-align: center;
+          padding: 40px;
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          animation: fadeScaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        ">
+          <h1 class="welcome-title" style="margin:0; font-size: 32px; color: #FFD700; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Welcome Back!</h1>
+          <p class="welcome-tagline" style="margin:0; font-size: 18px; color: #FFE4B5;">
+            Hey <strong>${username}</strong>, ready for more?
+          </p>
+
+          <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 12px; width: 100%;">
+            <button id="welcome-continue-button" class="card-button-primary" style="width: 100%; max-width: none;">
+              RESUME GAME
+            </button>
+
+            <button id="welcome-change-char-button" style="
+              background: rgba(255, 255, 255, 0.1);
+              border: 2px solid rgba(255, 215, 0, 0.3);
+              color: #FFE4B5;
+              padding: 12px;
+              border-radius: 12px;
+              font-weight: bold;
+              cursor: pointer;
+              transition: all 0.2s;
+              font-size: 14px;
+            ">
+              🎭 Change Character
+            </button>
+          </div>
+          
+          <div style="font-size: 12px; color: rgba(255,228,181,0.6); margin-top: 5px;">
+            Auto-starting in <span id="welcome-countdown">2</span>...
+          </div>
         </div>
-        <button id="welcome-continue-button" class="welcome-button">
-          Continue to Forest
-        </button>
+        <style>
+          @keyframes fadeScaleIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+          }
+          #welcome-change-char-button:hover {
+            background: rgba(255, 215, 0, 0.15);
+            border-color: #FFD700;
+            color: #FFD700;
+          }
+        </style>
       `;
     }
 
     // Re-enable pointer events
     this.container.style.pointerEvents = 'auto';
 
-    // Auto-continue after 2 seconds OR click button
+    // Auto-continue logic with cancellation
     return new Promise((resolve) => {
-      const button = document.getElementById('welcome-continue-button');
+      const continueButton = document.getElementById('welcome-continue-button');
+      const changeCharButton = document.getElementById('welcome-change-char-button');
+      const countdownSpan = document.getElementById('welcome-countdown');
+      let countdown = 2; // match HTML
 
-      const continueToGame = () => {
-        clearTimeout(timeout);
-        button?.removeEventListener('click', continueToGame);
-        resolve();
+      let timeout: number | null = null;
+      let interval: number | null = null;
+
+      const cleanup = () => {
+        if (timeout) clearTimeout(timeout);
+        if (interval) clearInterval(interval);
+        continueButton?.removeEventListener('click', handleContinue);
+        changeCharButton?.removeEventListener('click', handleChangeChar);
       };
 
-      const timeout = setTimeout(continueToGame, 2000);
-      button?.addEventListener('click', continueToGame);
+      const handleContinue = () => {
+        console.log('👆 [WelcomeScreen] User clicked Continue');
+        cleanup();
+        resolve({ switchCharacter: false });
+      };
+
+      const handleChangeChar = () => {
+        console.log('🎭 [WelcomeScreen] User clicked Change Character');
+        cleanup();
+        resolve({ switchCharacter: true }); // Signal to switch character
+      };
+
+      // Setup click handlers
+      continueButton?.addEventListener('click', handleContinue);
+      changeCharButton?.addEventListener('click', handleChangeChar);
+
+      // Start countdown
+      const startCountdown = () => {
+        interval = window.setInterval(() => {
+          countdown--;
+          if (countdownSpan) countdownSpan.textContent = countdown.toString();
+
+          if (countdown <= 0) {
+            cleanup();
+            console.log('⏰ [WelcomeScreen] Auto-continue triggered');
+            resolve({ switchCharacter: false });
+          }
+        }, 1000);
+      };
+
+      startCountdown();
     });
   }
 

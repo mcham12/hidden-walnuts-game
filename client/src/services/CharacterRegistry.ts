@@ -125,9 +125,9 @@ export class CharacterRegistry {
 
     const tier = character.tier;
 
-    // No-auth users: only squirrel
+    // No-auth users: squirrel AND free characters
     if (!isAuthenticated) {
-      return tier === 'no-auth';
+      return tier === 'no-auth' || tier === 'free';
     }
 
     // Authenticated users: no-auth + free characters + unlocked premium
@@ -165,8 +165,8 @@ export class CharacterRegistry {
     this.ensureLoaded();
 
     if (!isAuthenticated) {
-      // No-auth users see all premium + free characters as locked
-      return this.characters.filter(char => char.tier !== 'no-auth' && char.tier !== 'future');
+      // No-auth users see all premium characters as locked (free are available)
+      return this.characters.filter(char => char.tier === 'premium');
     }
 
     // Authenticated users see only premium characters they haven't unlocked
