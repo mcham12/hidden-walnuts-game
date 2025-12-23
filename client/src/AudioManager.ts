@@ -159,6 +159,12 @@ export class AudioManager {
       volume: 0.6,
     });
 
+    // MVP 16: Game start sound (reuse score pop for positive feedback)
+    this.loadSound('game_start', {
+      src: ['/sounds/mixkit-arcade-mechanical-bling-210.wav'],
+      volume: 0.7,
+    });
+
     // Jump sound
     this.loadSound('jump', {
       src: ['/sounds/mixkit-player-jumping-in-a-video-game-2043.wav'],

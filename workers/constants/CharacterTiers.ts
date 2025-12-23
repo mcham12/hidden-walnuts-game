@@ -51,13 +51,11 @@ export function isCharacterAvailable(
 ): boolean {
   const tier = getCharacterTier(characterId);
 
-  // No-auth users: only squirrel
-  if (!isAuthenticated) {
-    return tier === 'no-auth';
-  }
-
-  // Authenticated users: free characters + unlocked premium
+  // Fun & Free: Allow guests to play ALL free characters
   if (tier === 'free' || tier === 'no-auth') return true;
+
+  // Authenticated users: unlocked premium (if we ever have them)
+  if (isAuthenticated && tier === 'premium' && unlockedCharacters.includes(characterId)) return true;
   if (tier === 'premium' && unlockedCharacters.includes(characterId)) return true;
 
   return false;

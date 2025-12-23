@@ -8476,8 +8476,7 @@ export class Game {
 
     const settingsToggle = document.getElementById('settings-toggle') as HTMLButtonElement;
     const settingsOverlay = document.getElementById('settings-overlay') as HTMLDivElement;
-    const settingsApply = document.getElementById('settings-apply') as HTMLButtonElement;
-    const settingsCancel = document.getElementById('settings-cancel') as HTMLButtonElement;
+    const settingsClose = document.getElementById('settings-close-btn') as HTMLButtonElement;
 
     // MVP 16: Defensive null checks with logging
     if (!settingsToggle) {
@@ -8488,12 +8487,8 @@ export class Game {
       console.error('❌ [initSettingsMenu] Settings overlay not found in DOM');
       return;
     }
-    if (!settingsApply) {
-      console.error('❌ [initSettingsMenu] Settings apply button not found in DOM');
-      return;
-    }
-    if (!settingsCancel) {
-      console.error('❌ [initSettingsMenu] Settings cancel button not found in DOM');
+    if (!settingsClose) {
+      console.error('❌ [initSettingsMenu] Settings close button not found in DOM');
       return;
     }
 
@@ -8502,7 +8497,7 @@ export class Game {
     // Show settings toggle button when game starts
     settingsToggle.classList.remove('hidden');
 
-    // Tab switching
+    // Tab switching (Legacy support if tabs exist)
     const tabs = document.querySelectorAll('.settings-tab');
     tabs.forEach(tab => {
       tab.addEventListener('click', (e) => {
@@ -8515,7 +8510,7 @@ export class Game {
 
         // Add active class to clicked tab and corresponding content
         tabButton.classList.add('active');
-        const content = document.getElementById(`${tabName} -tab`);
+        const content = document.getElementById(`${tabName}-tab`);
         if (content) {
           content.classList.add('active');
         }
@@ -8534,9 +8529,9 @@ export class Game {
     // Update volume displays and AudioManager
     const updateVolume = (type: 'master' | 'sfx' | 'ambient', value: number) => {
       const percentage = Math.round(value);
-      const valueSpan = document.getElementById(`${type} -volume - value`);
+      const valueSpan = document.getElementById(`${type}-volume-value`);
       if (valueSpan) {
-        valueSpan.textContent = `${percentage}% `;
+        valueSpan.textContent = `${percentage}%`;
       }
       this.audioManager.setVolume(type, value / 100);
     };
@@ -8574,7 +8569,7 @@ export class Game {
         const value = parseFloat((e.target as HTMLInputElement).value);
         const valueSpan = document.getElementById('sensitivity-value');
         if (valueSpan) {
-          valueSpan.textContent = `${Math.round(value)}% `;
+          valueSpan.textContent = `${Math.round(value)}%`;
         }
         // Apply sensitivity to controls (value is 25-200, convert to multiplier)
         this.mouseSensitivity = value / 100;
@@ -8583,13 +8578,11 @@ export class Game {
 
     // Show/hide settings menu
     const showSettings = () => {
-
       settingsOverlay.classList.remove('hidden');
       this.audioManager.playSound('ui', 'button_click');
     };
 
     const hideSettings = () => {
-
       settingsOverlay.classList.add('hidden');
       this.audioManager.playSound('ui', 'button_click');
     };
@@ -8599,13 +8592,8 @@ export class Game {
       showSettings();
     });
 
-    // Apply button pointerdown
-    settingsApply.addEventListener('click', () => {
-      hideSettings();
-    });
-
-    // Cancel button pointerdown
-    settingsCancel.addEventListener('click', () => {
+    // Close button pointerdown
+    settingsClose.addEventListener('click', () => {
       hideSettings();
     });
 
