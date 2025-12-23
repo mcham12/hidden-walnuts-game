@@ -207,11 +207,29 @@ export class CharacterPreview3D {
       this.mixer = null;
     }
 
-    // Remove character from scene
-    if (this.character && this.scene) {
-      this.scene.remove(this.character);
-      this.character = null;
+    // Traverse and dispose all scene objects
+    if (this.scene) {
+      this.scene.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          if (object.geometry) {
+            object.geometry.dispose();
+          }
+          if (object.material) {
+            if (Array.isArray(object.material)) {
+              object.material.forEach(material => material.dispose());
+            } else {
+              object.material.dispose();
+            }
+          }
+        }
+      });
+
+      this.scene.clear();
+      this.scene = null;
     }
+
+    this.character = null;
+    this.camera = null;
 
     // Dispose renderer
     if (this.renderer) {
@@ -219,13 +237,12 @@ export class CharacterPreview3D {
       if (container && this.renderer.domElement.parentElement === container) {
         container.removeChild(this.renderer.domElement);
       }
+
+      // Force context loss to prevent "Too many active WebGL contexts"
       this.renderer.dispose();
+      this.renderer.forceContextLoss();
       this.renderer = null;
     }
-
-    // Clear scene
-    this.scene = null;
-    this.camera = null;
 
     // Remove resize listener
     window.removeEventListener('resize', this.handleResize);

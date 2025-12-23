@@ -340,10 +340,15 @@ export class CharacterPreviewModal {
     document.head.appendChild(style);
   }
 
+  private boundResizeHandler: (() => void) | null = null;
+
   /**
    * Initialize 3D character preview
    */
   private async init3DPreview(container: HTMLElement): Promise<void> {
+    // Prevent multiple initializations
+    if (this.renderer) return;
+
     // Create scene
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x1a3a1b);
@@ -355,7 +360,7 @@ export class CharacterPreviewModal {
     this.camera.lookAt(0, 0.5, 0);
 
     // Create renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setSize(container.clientWidth, container.clientHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(this.renderer.domElement);
@@ -379,14 +384,14 @@ export class CharacterPreviewModal {
     this.animate();
 
     // Handle window resize
-    const handleResize = () => {
+    this.boundResizeHandler = () => {
       if (!this.camera || !this.renderer || !container) return;
       const aspect = container.clientWidth / container.clientHeight;
       this.camera.aspect = aspect;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(container.clientWidth, container.clientHeight);
     };
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', this.boundResizeHandler);
   }
 
   /**
@@ -490,33 +495,44 @@ export class CharacterPreviewModal {
       this.mixer = null;
     }
 
-    if (this.characterModel) {
-      this.characterModel.traverse((child) => {
+    if (this.scene) {
+      this.scene.traverse((child) => {
         if (child instanceof THREE.Mesh) {
-          child.geometry.dispose();
-          if (Array.isArray(child.material)) {
-            child.material.forEach(material => material.dispose());
-          } else {
-            child.material.dispose();
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach(material => material.dispose());
+            } else {
+              child.material.dispose();
+            }
           }
         }
       });
+      this.scene.clear();
       this.characterModel = null;
     }
 
     if (this.renderer) {
       this.renderer.dispose();
+      this.renderer.forceContextLoss();
       this.renderer = null;
     }
 
     this.scene = null;
     this.camera = null;
 
+    // Remove resize listener
+    if (this.boundResizeHandler) {
+      window.removeEventListener('resize', this.boundResizeHandler);
+      this.boundResizeHandler = null;
+    }
+
     // Fade out and remove overlay
     if (this.overlay) {
       this.overlay.style.animation = 'fadeOut 0.3s ease';
       setTimeout(() => {
         this.overlay?.remove();
+        this.overlay = null; // Break reference
       }, 300);
     }
 
