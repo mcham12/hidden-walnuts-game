@@ -76,6 +76,9 @@ export class SharedCharacterRenderer {
         camera.position.set(0, 1, cameraDistance);
         camera.lookAt(0, 0.5, 0);
 
+        // MATCH ORIGINAL: Transparent background
+        scene.background = null;
+
         // Setup lights
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
@@ -123,11 +126,8 @@ export class SharedCharacterRenderer {
                 view.model.scale.setScalar(character.scale);
             }
 
-            // Center model
-            const box = new THREE.Box3().setFromObject(view.model);
-            const center = box.getCenter(new THREE.Vector3());
-            view.model.position.sub(center);
-            view.model.position.y = 0;
+            // MATCH ORIGINAL CharacterPreview3D: simple 0,0,0 position
+            view.model.position.set(0, 0, 0);
 
             if (view.options.initialRotation) {
                 view.model.rotation.y = view.options.initialRotation;
