@@ -200,7 +200,7 @@ export class ModeSelectionOverlay {
         overflow: hidden;
       }
 
-      .tip-card {
+      .mode-tip-card {
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
         border: 1px solid rgba(255, 255, 255, 0.2);
         border-radius: 10px;
@@ -333,7 +333,7 @@ export class ModeSelectionOverlay {
 
     // Static Card Container
     const tipCard = document.createElement('div');
-    tipCard.className = 'tip-card';
+    tipCard.className = 'mode-tip-card';
 
     // Content wrapper for animation
     const tipContent = document.createElement('div');
