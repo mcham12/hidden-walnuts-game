@@ -8037,21 +8037,6 @@ export class Game {
       // Clear existing entries
       leaderboardList.innerHTML = '';
 
-      // MVP 16: Add "Top 10 - Authenticated Players Only" label for All-Time leaderboard
-      if (leaderboardType === 'alltime') {
-        const labelEl = document.createElement('div');
-        labelEl.style.cssText = `
-          font-size: 11px;
-          color: #FFD700;
-          text-align: center;
-          margin: -10px 0 10px 0;
-          font-weight: 600;
-          text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-          `;
-        labelEl.textContent = 'Top 10 - Authenticated Players Only';
-        leaderboardList.appendChild(labelEl);
-      }
-
       // Add entries (top 10)
       const top10 = leaderboardData.slice(0, 10);
       let playerInTop10 = false;
@@ -8071,8 +8056,8 @@ export class Game {
           // Green checkmark for verified email users
           badge = '<span style="color: #2ecc71; font-weight: bold;" title="Verified Email">✓</span> ';
         } else if (entry.isAuthenticated) {
-          // Gray lock for authenticated but unverified users
-          badge = '<span style="color: #95a5a6;" title="Signed In (Unverified)">🔒</span> ';
+          // Cloud icon for authenticated users (Cloud Saved)
+          badge = '<span style="color: #3498db;" title="Cloud Saved">☁️</span> ';
         }
         // No badge for guest players
 

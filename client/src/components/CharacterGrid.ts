@@ -363,20 +363,14 @@ export class CharacterGrid {
 
     if (!isAuthenticated) {
       // No-auth CTA
-      textElement.textContent = '🌟 Sign up to unlock characters!';
+      textElement.textContent = '☁️ Save your progress to the cloud';
 
       const signupBtn = document.createElement('button');
       signupBtn.className = 'btn-primary';
-      signupBtn.textContent = 'Sign Up';
+      signupBtn.textContent = 'Save Progress';
       signupBtn.addEventListener('click', () => this.options.onSignUpClick?.());
 
-      const loginBtn = document.createElement('button');
-      loginBtn.className = 'btn-secondary';
-      loginBtn.textContent = 'Log In';
-      loginBtn.addEventListener('click', () => this.options.onLoginClick?.());
-
       buttonsElement.appendChild(signupBtn);
-      buttonsElement.appendChild(loginBtn);
     } else {
       // Authenticated CTA
       textElement.textContent = 'Premium characters coming soon!';

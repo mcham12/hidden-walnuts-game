@@ -460,7 +460,7 @@ export class SettingsManager {
     header.appendChild(guestTitle);
     header.appendChild(guestUsername);
 
-    // Benefits section
+    // Simplified Benefits section
     const benefitsTitle = document.createElement('div');
     benefitsTitle.style.cssText = `
       font-size: 16px;
@@ -469,7 +469,7 @@ export class SettingsManager {
       margin-bottom: 12px;
       text-align: center;
     `;
-    benefitsTitle.textContent = '✨ Sign Up Free to Get:';
+    benefitsTitle.textContent = '☁️ Save Your Progress';
 
     const benefitsList = document.createElement('div');
     benefitsList.style.cssText = `
@@ -477,39 +477,11 @@ export class SettingsManager {
       flex-direction: column;
       gap: 10px;
       margin-bottom: 20px;
+      text-align: center;
+      color: #ccc;
+      font-size: 14px;
     `;
-
-    const benefits = [
-      { emoji: '🐿️', text: 'Unlock 6 free characters' },
-      { emoji: '☁️', text: 'Sync progress across devices' },
-      { emoji: '🏆', text: 'Compete in Hall of Fame' },
-      { emoji: '📊', text: 'Track your progress & stats' },
-      { emoji: '✅', text: 'Get verified player badge' }
-    ];
-
-    benefits.forEach(benefit => {
-      const item = document.createElement('div');
-      item.style.cssText = `
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px;
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 6px;
-        font-size: 14px;
-      `;
-
-      const emoji = document.createElement('span');
-      emoji.style.fontSize = '24px';
-      emoji.textContent = benefit.emoji;
-
-      const text = document.createElement('span');
-      text.textContent = benefit.text;
-
-      item.appendChild(emoji);
-      item.appendChild(text);
-      benefitsList.appendChild(item);
-    });
+    benefitsList.textContent = 'Create an account to sync your progress across devices and never lose your stats.';
 
     // CTA buttons
     const buttonsContainer = document.createElement('div');
@@ -535,7 +507,7 @@ export class SettingsManager {
       transition: transform 0.2s, box-shadow 0.2s;
       box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
     `;
-    signupButton.textContent = '🔐 Sign Up Free';
+    signupButton.textContent = '🔐 Sign Up';
     signupButton.addEventListener('click', () => {
       this.close();
       this.onSignUpClick?.();

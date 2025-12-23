@@ -226,7 +226,7 @@ export class CharacterCard {
     if (this.data.tier === 'premium') {
       return '💎';
     }
-    return '🔒';
+    return ''; // No lock icon, just dimmed
   }
 
   /**
@@ -236,7 +236,7 @@ export class CharacterCard {
     if (this.data.tier === 'premium') {
       return 'Premium Character - Coming Soon!';
     }
-    return 'Sign Up to Unlock';
+    return 'Create account to use';
   }
 
   /**

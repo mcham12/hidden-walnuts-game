@@ -133,7 +133,7 @@ export class VerifyEmailPage {
           <div style="font-size: 72px; margin-bottom: 20px; animation: checkmark 0.5s ease;">✅</div>
           <h2 style="margin: 0 0 12px 0; font-size: 28px; color: #2ecc71; font-weight: 700;">Email Verified!</h2>
           <p style="margin: 0 0 20px 0; color: #bdc3c7; font-size: 16px; line-height: 1.6;">
-            Your account has been successfully verified. You now have access to all authenticated features!
+            Your account has been successfully verified. Your progress will now be safely synced to the cloud!
           </p>
           <p style="margin: 0; color: #95a5a6; font-size: 14px;">
             Redirecting you to the game...

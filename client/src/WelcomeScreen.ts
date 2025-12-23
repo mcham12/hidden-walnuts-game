@@ -88,10 +88,9 @@ export class WelcomeScreen {
 
             <!-- Auth Links -->
             <div class="card-auth-links">
-              <p class="card-auth-cta">🌟 Sign up for 6 FREE characters!</p>
               <div class="card-auth-buttons">
                 <button id="welcome-signup-link" class="card-auth-link card-auth-link-signup">
-                  Sign Up Free
+                  Sign Up
                 </button>
                 <button id="welcome-login-link" class="card-auth-link card-auth-link-login">
                   Log In

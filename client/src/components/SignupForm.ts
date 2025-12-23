@@ -66,13 +66,10 @@ export class SignupForm {
           border-radius: 8px;
           margin-bottom: 24px;
         ">
-          <h4 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 600;">Create a Free Account</h4>
-          <ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.8;">
-            <li>Unlock 5 free characters (+ Goat when verified)</li>
-            <li>Sync progress across devices</li>
-            <li>Join the Hall of Fame</li>
-            <li>Get verified badge on leaderboard</li>
-          </ul>
+          <h4 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">Save Cloud Progress</h4>
+          <p style="margin: 0; font-size: 14px; line-height: 1.5;">
+            Create an account to sync your progress across devices.
+          </p>
         </div>
 
         <!-- Error Message -->
