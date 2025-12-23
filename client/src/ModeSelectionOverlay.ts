@@ -287,17 +287,16 @@ export class ModeSelectionOverlay {
     title.textContent = 'Welcome to Hidden Walnuts!';
     content.appendChild(title);
 
-    // 1. Mode Selection
+    // 1. Mode Selection Buttons
     const modesContainer = document.createElement('div');
     modesContainer.style.cssText = `
       display: flex;
       gap: 15px;
       justify-content: center;
-      margin-bottom: 10px;
+      margin-bottom: 20px;
       flex-wrap: wrap;
     `;
 
-    // Standard Mode Button
     const standardBtn = this.createModeButton(
       'STANDARD',
       'After leveling up, NPCs and Predators will start to attack!',
@@ -305,7 +304,6 @@ export class ModeSelectionOverlay {
       () => this.selectMode('standard')
     );
 
-    // Carefree Mode Button
     const carefreeBtn = this.createModeButton(
       'CAREFREE',
       'Relax. No attacks. Just vibes.',
@@ -317,75 +315,180 @@ export class ModeSelectionOverlay {
     modesContainer.appendChild(standardBtn);
     content.appendChild(modesContainer);
 
-    // 2. Info Grid (Tips & Controls)
-    const gridContainer = document.createElement('div');
-    gridContainer.className = 'mode-grid';
+    // 2. Tabbed Info Card (Unifies Tips & Controls)
+    const infoCard = document.createElement('div');
+    infoCard.style.cssText = `
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 320px; /* Fixed height for consistency */
+    `;
 
-    // Tips Carousel (Left/Top)
-    const tipsContainer = document.createElement('div');
-    tipsContainer.className = 'tips-container';
+    // Tab Headers
+    const tabsHeader = document.createElement('div');
+    tabsHeader.style.cssText = `
+      display: flex;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(0, 0, 0, 0.3);
+    `;
 
-    // MVP 17: Improve tips UX - Carousel with dots
-    const tipTitle = document.createElement('h3');
-    tipTitle.textContent = 'Did you know?';
-    tipTitle.style.marginBottom = '15px';
-    tipTitle.style.marginTop = '0';
-    tipTitle.style.color = '#FFD700'; // Make title pop a bit more
-    tipsContainer.appendChild(tipTitle);
+    const createTabBtn = (text: string, isActive: boolean, onClick: () => void) => {
+      const btn = document.createElement('div');
+      btn.textContent = text;
+      btn.style.cssText = `
+        flex: 1;
+        padding: 15px;
+        text-align: center;
+        cursor: pointer;
+        font-weight: bold;
+        color: ${isActive ? '#FFD700' : 'rgba(255, 255, 255, 0.6)'};
+        background: ${isActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent'};
+        border-bottom: 3px solid ${isActive ? '#FFD700' : 'transparent'};
+        transition: all 0.2s;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 0.9rem;
+      `;
+      btn.onclick = onClick;
+      return btn;
+    };
 
-    // Static Card Container
+    // Tab Content Containers
+    const controlsContent = document.createElement('div');
+    controlsContent.className = 'tab-content';
+    controlsContent.style.cssText = `
+      flex: 1;
+      padding: 0;
+      overflow-y: auto;
+      display: block; /* Default active */
+    `;
+
+    const tipsContent = document.createElement('div');
+    tipsContent.className = 'tab-content';
+    tipsContent.style.cssText = `
+      flex: 1;
+      padding: 20px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    `;
+
+    // Render Controls (Default Tab)
+    this.renderControls(controlsContent);
+
+    // Render Tips (Hidden by default)
+    // Structure for tips
+    const tipsWrapper = document.createElement('div');
+    tipsWrapper.style.width = '100%';
+    tipsWrapper.className = 'tips-container'; // Reuse class for styling if needed
+
     const tipCard = document.createElement('div');
     tipCard.className = 'mode-tip-card';
-    tipCard.style.position = 'relative';
+    tipCard.style.cssText = `
+      background: transparent; 
+      box-shadow: none; 
+      border: none;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
 
-    // Content wrapper for animation
-    const tipContent = document.createElement('div');
-    tipContent.className = 'tip-content-fade';
-    tipContent.style.textAlign = 'center';
+    const tipContentFade = document.createElement('div');
+    tipContentFade.className = 'tip-content-fade';
+    tipContentFade.style.textAlign = 'center';
+    tipCard.appendChild(tipContentFade);
+    tipsWrapper.appendChild(tipCard);
 
-    tipCard.appendChild(tipContent);
-    tipsContainer.appendChild(tipCard);
-
-    // MVP 17: Pagination Dots
     const paginationContainer = document.createElement('div');
     paginationContainer.className = 'tips-pagination';
     paginationContainer.style.cssText = `
       display: flex;
       justify-content: center;
       gap: 8px;
-      margin-top: 15px;
+      margin-top: 10px;
     `;
-    tipsContainer.appendChild(paginationContainer);
+    tipsWrapper.appendChild(paginationContainer);
+    tipsContent.appendChild(tipsWrapper);
 
-    gridContainer.appendChild(tipsContainer);
+    // Initialize carousel (it runs even if hidden, which is fine)
+    this.initCarousel(tipContentFade, paginationContainer);
 
-    // Initialize carousel
-    this.initCarousel(tipContent, paginationContainer);
 
-    // Controls Overview (Right/Bottom)
-    const controlsContainer = document.createElement('div');
-    controlsContainer.style.cssText = `
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 15px;
-      padding: 20px;
-      text-align: left;
+    // Tab Logic
+    const controlsTab = createTabBtn('Controls', true, () => {
+      // Switch UI
+      updateTabUI(true);
+      controlsContent.style.display = 'block';
+      tipsContent.style.display = 'none';
+      content.querySelector('.tab-help-text')!.textContent = 'How to play';
+    });
+
+    const tipsTab = createTabBtn('Did You Know?', false, () => {
+      // Switch UI
+      updateTabUI(false);
+      controlsContent.style.display = 'none';
+      tipsContent.style.display = 'flex';
+      content.querySelector('.tab-help-text')!.textContent = 'Game Tips';
+    });
+
+    const updateTabUI = (isControls: boolean) => {
+      controlsTab.style.color = isControls ? '#FFD700' : 'rgba(255, 255, 255, 0.6)';
+      controlsTab.style.borderBottomColor = isControls ? '#FFD700' : 'transparent';
+      controlsTab.style.background = isControls ? 'rgba(255, 255, 255, 0.05)' : 'transparent';
+
+      tipsTab.style.color = !isControls ? '#FFD700' : 'rgba(255, 255, 255, 0.6)';
+      tipsTab.style.borderBottomColor = !isControls ? '#FFD700' : 'transparent';
+      tipsTab.style.background = !isControls ? 'rgba(255, 255, 255, 0.05)' : 'transparent';
+    };
+
+    tabsHeader.appendChild(controlsTab);
+    tabsHeader.appendChild(tipsTab);
+
+    infoCard.appendChild(tabsHeader);
+
+    // Help Text (Small header for content area)
+    const helpTextInfo = document.createElement('div');
+    helpTextInfo.className = 'tab-help-text';
+    helpTextInfo.textContent = 'How to play';
+    helpTextInfo.style.cssText = `
+        padding: 10px 20px 0;
+        font-size: 0.8rem;
+        color: rgba(255,255,255,0.5);
+        text-transform: uppercase;
+        letter-spacing: 1px;
     `;
+    infoCard.appendChild(helpTextInfo);
 
-    // MVP 16: Use authoritative platform detection to match TutorialOverlay ("?")
+    infoCard.appendChild(controlsContent);
+    infoCard.appendChild(tipsContent);
+
+    content.appendChild(infoCard);
+    this.container.appendChild(content);
+  }
+
+  private renderControls(container: HTMLElement): void {
     const isMobile = TouchControls.isMobile();
 
-    controlsContainer.innerHTML = `
-      <h3 style="margin-top: 0; margin-bottom: 10px;">Controls</h3>
-    `;
+    const grid = document.createElement('div');
+    grid.style.cssText = `
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 15px;
+        padding: 20px;
+      `;
 
     if (isMobile) {
-      // Mobile View
-      controlsContainer.innerHTML += `
+      grid.innerHTML = `
         <div class="control-item">
           <div class="control-icon">👆</div>
           <div class="control-text">
             <div class="control-label">MOVE</div>
-            <div class="control-desc">Drag anywhere on screen</div>
+            <div class="control-desc">Drag screen</div>
           </div>
         </div>
         <div class="control-item">
@@ -418,8 +521,7 @@ export class ModeSelectionOverlay {
         </div>
       `;
     } else {
-      // Desktop View
-      controlsContainer.innerHTML += `
+      grid.innerHTML = `
         <div class="control-item">
           <div class="control-icon">🚶</div>
           <div class="control-text">
@@ -439,31 +541,29 @@ export class ModeSelectionOverlay {
         <div class="control-item">
           <div class="control-icon">🎯</div>
           <div class="control-text">
-            <div class="control-label">THROW WALNUT</div>
-            <div class="control-desc"><span class="control-key">T</span> or <span class="control-key">SPACE</span></div>
+            <div class="control-label">THROW</div>
+            <div class="control-desc"><span class="control-key">T</span> / <span class="control-key">SPACE</span></div>
           </div>
         </div>
         <div class="control-item">
           <div class="control-icon">🌳</div>
           <div class="control-text">
-            <div class="control-label">HIDE WALNUT</div>
+            <div class="control-label">HIDE</div>
             <div class="control-desc"><span class="control-key">H</span></div>
           </div>
         </div>
         <div class="control-item">
           <div class="control-icon">🍴</div>
           <div class="control-text">
-            <div class="control-label">EAT WALNUT</div>
+            <div class="control-label">EAT</div>
             <div class="control-desc"><span class="control-key">E</span></div>
           </div>
         </div>
       `;
     }
-
-    gridContainer.appendChild(controlsContainer);
-    content.appendChild(gridContainer);
-    this.container.appendChild(content);
+    container.appendChild(grid);
   }
+
 
   // MVP 17: Carousel Logic
   private carouselTips: any[] = [];
