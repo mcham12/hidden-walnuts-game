@@ -4621,7 +4621,7 @@ export class Game {
         this.respawnTimerId = null;
       }
       // Update button text
-      pauseButton.innerHTML = '▶️ RESUME';
+      pauseButton.innerHTML = 'RESUME';
 
     } else {
       // RESUME: Restart auto-respawn timer with remaining time
@@ -4629,7 +4629,7 @@ export class Game {
         this.respawn();
       }, this.respawnTimeRemaining);
       // Update button text
-      pauseButton.innerHTML = '⏸️ PAUSE';
+      pauseButton.innerHTML = 'PAUSE';
 
     }
   }
@@ -4891,12 +4891,11 @@ export class Game {
     // Use unified container ID
     const targetContainerId = 'death-character-preview';
 
-    // Pick ANY random character to show off
+    // Use current character instead of random
     const allCharacters = CharacterRegistry.getAllCharacters();
-    if (allCharacters.length === 0) return;
+    const characterToShow = CharacterRegistry.getCharacterById(this.selectedCharacterId) || allCharacters[0];
 
-    // Random pick
-    const characterToShow = allCharacters[Math.floor(Math.random() * allCharacters.length)];
+    if (!characterToShow) return;
 
     // Initialize 3D preview
     this.deathEnticementPreview = new CharacterPreview3D(
