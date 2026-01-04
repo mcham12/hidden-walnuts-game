@@ -504,7 +504,7 @@ export class ModeSelectionOverlay {
       html += createControlRow('🌳', 'HIDE', 'Tap Button');
       html += createControlRow('🍴', 'EAT', 'Tap Button');
     } else {
-      html += createControlRow('🚶', 'MOVE', '<span class="control-key">W</span><span class="control-key">A</span><span class="control-key">S</span><span class="control-key">D</span>');
+      html += createControlRow('🚶', 'MOVE', '<span class="control-key">W</span><span class="control-key">A</span><span class="control-key">S</span><span class="control-key">D</span> / <span class="control-key">ARROWS</span>');
       html += createControlRow('🟤', 'GET WALNUT', 'Walk Near');
       html += createControlRow('🎯', 'THROW', '<span class="control-key">T</span> / <span class="control-key">SPACE</span>');
       html += createControlRow('🌳', 'HIDE', '<span class="control-key">H</span>');

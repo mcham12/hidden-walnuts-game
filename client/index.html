@@ -167,6 +167,49 @@
       letter-spacing: 1px;
     }
 
+    .death-mode-section {
+      margin: 10px 0;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .death-mode-btn {
+      flex: 1;
+      padding: 15px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      color: white;
+      transition: all 0.2s;
+      min-width: 140px;
+      box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    #death-mode-standard {
+      background: #4CAF50;
+    }
+
+    #death-mode-carefree {
+      background: #2196F3;
+    }
+
+    .death-mode-btn:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.1);
+    }
+
+    .death-mode-btn:active {
+      transform: translateY(1px);
+    }
+
+    .death-mode-btn.active {
+      box-shadow: 0 0 15px #FFD700;
+      border: 2px solid #FFD700;
+    }
+
     #character-select select {
       width: 100%;
       padding: 14px;
@@ -1348,33 +1391,37 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.85);
       z-index: 5000;
       display: flex;
       align-items: center;
       justify-content: center;
       pointer-events: none;
-      /* CRITICAL: Disabled by default to prevent blocking UI controls */
       opacity: 0;
       transition: opacity 0.5s ease;
+      backdrop-filter: blur(5px);
     }
 
     #death-overlay:not(.hidden) {
       opacity: 1;
       pointer-events: auto;
-      /* CRITICAL: Only enable when actually visible */
     }
 
     .death-unified-content {
-      background: linear-gradient(135deg, rgba(139, 69, 19, 0.95), rgba(101, 67, 33, 0.95));
+      background: rgba(40, 40, 40, 0.95);
+      border: 4px solid #8B4513;
       border-radius: 20px;
       padding: 30px;
       max-width: 700px;
       width: 90%;
       max-height: 90vh;
       overflow-y: auto;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-      border: 3px solid rgba(255, 215, 0, 0.3);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      font-family: 'Arial', sans-serif;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
     }
 
     /* Top Section: Score + Skip Button */
@@ -1413,23 +1460,39 @@
     }
 
     .death-skip-btn-unified {
-      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+      background: #8B4513;
       color: white;
       border: none;
       padding: 14px 28px;
-      border-radius: 30px;
+      border-radius: 15px;
       font-size: 16px;
       font-weight: bold;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
-      transition: all 0.3s ease;
+      box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+      transition: all 0.2s ease;
       font-family: 'Arial', sans-serif;
       white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
     .death-skip-btn-unified:hover {
-      transform: translateY(-2px) scale(1.05);
-      box-shadow: 0 6px 16px rgba(40, 167, 69, 0.6);
+      transform: translateY(-2px);
+      filter: brightness(1.1);
+    }
+
+    .death-skip-btn-unified:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    #death-skip-button {
+      background: #4CAF50;
+      /* Match Standard mode green */
+    }
+
+    #death-pause-button {
+      background: #666;
     }
 
     /* Middle Section */
@@ -1438,10 +1501,11 @@
       gap: 20px;
       align-items: center;
       justify-content: center;
-      margin: 20px 0;
+      margin: 10px 0;
       padding: 20px;
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .death-animation-compact {
@@ -1587,6 +1651,23 @@
 
     /* Responsive: Mobile Portrait */
     @media (max-width: 430px) and (orientation: portrait) {
+      .death-unified-content {
+        width: 100%;
+        border-radius: 20px 20px 0 0;
+        padding: 20px;
+        max-height: 85dvh;
+      }
+
+      .death-top-section {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .death-middle-section {
+        flex-direction: column;
+        gap: 15px;
+      }
+
       .death-mode-btn {
         min-width: 120px;
         font-size: 0.9rem;
@@ -1596,6 +1677,20 @@
 
     /* Responsive: Mobile Landscape */
     @media (max-height: 500px) and (orientation: landscape) {
+      .death-unified-content {
+        padding: 15px;
+        gap: 12px;
+      }
+
+      .death-title {
+        font-size: 24px;
+      }
+
+      .death-middle-section {
+        padding: 10px;
+        margin: 5px 0;
+      }
+
       .death-mode-section {
         margin: 10px 0 !important;
         padding: 10px !important;
@@ -2986,41 +3081,42 @@
       <div class="death-top-section">
         <div class="death-score-display" style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
           <h1 class="death-title">OH NUTS!</h1>
-          <p class="death-score" style="margin: 0;">Your score: <span id="death-score-value">0</span></p>
+          <p class="death-score" style="margin: 0;">SCORE: <span id="death-score-value">0</span></p>
         </div>
       </div>
 
       <!-- Middle Section: Respawn Timer + Control Buttons -->
       <div class="death-middle-section">
         <div class="respawn-timer-compact">
-          <p class="respawn-label">RESPAWNING IN: <span id="respawn-countdown">10</span>s</p>
+          <p class="respawn-label">RESPAWN IN: <span id="respawn-countdown">10</span>s</p>
           <div class="respawn-progress-container">
             <div id="respawn-progress-bar" class="respawn-progress-bar"></div>
           </div>
         </div>
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <div style="display: flex; gap: 10px; margin-top: 15px; width: 100%;">
           <button id="death-pause-button" class="death-skip-btn-unified" style="flex: 1;">
-            ⏸️ PAUSE
+            PAUSE
           </button>
           <button id="death-skip-button" class="death-skip-btn-unified" style="flex: 1;">
-            ⏩ RESPAWN NOW
+            RESPAWN
           </button>
         </div>
       </div>
 
       <!-- Mode Selection Section (NEW) -->
-      <div class="death-mode-section"
-        style="margin: 20px 0; padding: 15px; background: rgba(255, 215, 0, 0.1); border-radius: 12px; border: 2px solid rgba(255, 215, 0, 0.3);">
-        <h3 style="margin: 0 0 15px 0; font-size: 1.1rem; color: #FFD700; text-align: center;">Respawn Mode</h3>
+      <div class="death-mode-section">
+        <h3
+          style="margin: 0 0 15px 0; font-size: 1.1rem; color: #FFD700; text-align: center; text-transform: uppercase; letter-spacing: 1px;">
+          Respawn Mode</h3>
         <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
           <button id="death-mode-carefree" class="death-mode-btn">
-            🧘 Carefree
+            Carefree
             <span style="display: block; font-size: 0.75rem;opacity: 0.8; margin-top: 4px;">
               Relax & explore
             </span>
           </button>
           <button id="death-mode-standard" class="death-mode-btn">
-            🏆 Standard
+            Standard
             <span style="display: block; font-size: 0.75rem; opacity: 0.8; margin-top: 4px;">
               Compete & climb
             </span>
@@ -3040,7 +3136,7 @@
 
           <!-- Leaderboard rank below character -->
           <p style="text-align: center; color: #FFD700; font-weight: bold; margin-top: 10px;">
-            🏆 Your Rank: #<span id="player-rank">--</span>
+            Your Rank: #<span id="player-rank">--</span>
           </p>
 
           <!-- Change Character Button -->
@@ -3058,17 +3154,15 @@
               transition: transform 0.2s, box-shadow 0.2s;
               min-height: 44px;
               min-width: 44px;
+              text-transform: uppercase;
+              letter-spacing: 1px;
             ">
-              🎭 Change Character
+              Change Character
             </button>
           </div>
 
           <!-- Character Grid Container (Hidden by default) -->
-          <div id="death-character-grid-container" class="hidden" style="
-            margin-top: 20px;
-            /* MVP 16 FIX: Remove max-height to allow full expansion in scrollable parent */
-            overflow-y: visible;
-          ">
+          <div id="death-character-grid-container" class="hidden">
             <!-- CharacterGrid will be rendered here -->
           </div>
         </div>
