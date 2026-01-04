@@ -37,7 +37,7 @@ export class SharedCharacterRenderer {
             alpha: true,
             preserveDrawingBuffer: true // Required for copying to 2D canvas
         });
-        this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.renderer.setPixelRatio(1); // Handle DPI manually via canvas sizes
         this.renderer.setSize(200, 200); // Internal buffer size
         this.loader = new GLTFLoader();
         this.startAnimationLoop();
@@ -76,8 +76,8 @@ export class SharedCharacterRenderer {
         camera.position.set(0, 1, cameraDistance);
         camera.lookAt(0, 0.5, 0);
 
-        // MATCH ORIGINAL: Transparent background
-        scene.background = null;
+        // MATCH ORIGINAL: Dark forest background (but semi-transparent if alpha is true)
+        scene.background = new THREE.Color(0x1a3a1b);
 
         // Setup lights
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -122,11 +122,8 @@ export class SharedCharacterRenderer {
             const gltf = await this.loader.loadAsync(character.modelPath);
             view.model = gltf.scene;
 
-            if (character.scale) {
-                view.model.scale.setScalar(character.scale);
-            }
-
-            // MATCH ORIGINAL CharacterPreview3D: simple 0,0,0 position
+            // MATCH ORIGINAL CharacterPreview3D: fixed scale 1.0 and 0,0,0 position
+            view.model.scale.setScalar(1.0);
             view.model.position.set(0, 0, 0);
 
             if (view.options.initialRotation) {
