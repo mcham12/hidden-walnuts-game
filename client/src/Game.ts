@@ -4711,7 +4711,7 @@ export class Game {
         } else {
           // Hide character grid
           characterGridContainer.classList.add('hidden');
-          changeCharacterBtn.textContent = '🎭 Change Character';
+          changeCharacterBtn.textContent = 'Change Character';
         }
       };
     }

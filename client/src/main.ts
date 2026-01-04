@@ -194,7 +194,7 @@ async function main() {
 
         // MVP 16: Handle character switching request
         if (welcomeBackResult.switchCharacter) {
-          console.log('🎭 [main.ts] User requested character switch');
+          console.log('[main.ts] User requested character switch');
           savedCharacterId = undefined; // Clear saved ID to trigger selection flow
         } else {
           savedCharacterId = result.characterId;
@@ -318,7 +318,7 @@ async function main() {
 
     // NEW TWO-OVERLAY ARCHITECTURE
     // STEP 3A: Hide welcome screen
-    console.log('🎭 [main.ts] Hiding welcome screen...');
+    console.log('[main.ts] Hiding welcome screen...');
     await welcomeScreen.hide();
 
     // STEP 3B: Show loading overlay
@@ -379,7 +379,7 @@ async function main() {
     await loadingOverlay.showComplete();
 
     // Hide loading overlay
-    console.log('🎭 [main.ts] Hiding loading overlay...');
+    console.log('[main.ts] Hiding loading overlay...');
     await loadingOverlay.hide();
 
     // MVP 16: Ensure DOM fully ready before showing UI

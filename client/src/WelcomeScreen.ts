@@ -565,7 +565,7 @@ export class WelcomeScreen {
               transition: all 0.2s;
               font-size: 14px;
             ">
-              🎭 Change Character
+              Change Character
             </button>
           </div>
           
@@ -614,7 +614,7 @@ export class WelcomeScreen {
       };
 
       const handleChangeChar = () => {
-        console.log('🎭 [WelcomeScreen] User clicked Change Character');
+        console.log('[WelcomeScreen] User clicked Change Character');
         cleanup();
         resolve({ switchCharacter: true }); // Signal to switch character
       };
