@@ -2308,84 +2308,38 @@
         right: 5px;
       }
 
-      /* Mobile-friendly buttons (larger touch targets) - FIX OVERLAP */
+      /* Mobile-friendly buttons - consistent base styles */
+      #settings-toggle,
       #leaderboard-toggle,
-      #settings-toggle {
+      #help-toggle {
         padding: 10px 14px;
         font-size: 14px;
         min-height: 48px;
-        min-width: 100px;
-      }
-
-      /* FIX: Prevent button overlap - stack with proper spacing */
-      /* Settings button below minimap */
-      #settings-toggle {
-        top: 130px;
-        /* Below minimap (120px height + 10px gap) */
-        right: 5px;
-        bottom: auto;
-      }
-
-      /* Mobile action buttons (Hide/Throw/Eat) - ensure enough space from bottom */
-      #mobile-actions {
-        bottom: 20px;
-        right: 5px;
-        gap: 8px;
-        /* Reduce gap between buttons */
-      }
-
-      /* iPad: Leaderboard button - directly under Settings per user request */
-      #leaderboard-toggle {
-        top: 183px;
-        /* 130px (settings top) + 48px (settings height) + 5px (gap) */
-        bottom: auto;
-        right: 5px;
-        padding: 10px 14px;
-        /* Same as Settings */
-        font-size: 14px;
-        /* Same as Settings */
-        min-height: 48px;
-        /* Same as Settings */
-        min-width: 100px;
-        /* Same as Settings */
+        min-width: 120px;
+        /* Ensure uniform width in stack */
+        width: auto;
+        right: auto;
+        left: 5px;
       }
 
       /* Mobile: Settings button - below HUD on left */
       #settings-toggle {
-        top: 100px;
+        top: 105px;
         /* Below mobile HUD */
-        left: 5px;
-        right: auto;
-        padding: 10px 14px;
-        font-size: 14px;
-        min-height: 48px;
-        min-width: 100px;
       }
 
       /* Leaderboard button - below Settings on left */
       #leaderboard-toggle {
-        top: 153px;
-        /* 100px + 48px + 5px gap */
-        left: 5px;
-        right: auto;
+        top: 158px;
+        /* 105px + 48px + 5px gap */
         bottom: auto;
-        padding: 10px 14px;
-        font-size: 14px;
-        min-height: 48px;
-        min-width: 100px;
       }
 
       /* Help button - below Leaderboard on left */
       #help-toggle {
-        top: 206px;
-        /* 153px + 48px + 5px gap */
-        left: 5px;
-        right: auto;
+        top: 211px;
+        /* 158px + 48px + 5px gap */
         bottom: auto;
-        padding: 10px 14px;
-        font-size: 14px;
-        min-height: 48px;
-        min-width: 100px;
         background: rgba(44, 95, 45, 0.9);
         color: white;
         border: none;
@@ -2593,26 +2547,30 @@
         right: auto;
         padding: 4px 8px;
         font-size: 10px;
-        min-width: 70px;
+        min-width: 85px;
+        /* Increased from 70px to match text width */
         min-height: 24px;
       }
 
       /* Leaderboard button - TOP row after Settings */
       #leaderboard-toggle {
         top: max(5px, env(safe-area-inset-top));
-        left: calc(max(5px, env(safe-area-inset-left)) + 210px + 75px);
+        left: calc(max(5px, env(safe-area-inset-left)) + 210px + 90px);
+        /* Increased gap */
         right: auto;
         bottom: auto;
         padding: 4px 8px;
         font-size: 10px;
-        min-width: 70px;
+        min-width: 100px;
+        /* Increased from 70px */
         min-height: 24px;
       }
 
       /* Help button - TOP row after Leaderboard */
       #help-toggle {
         top: max(5px, env(safe-area-inset-top));
-        left: calc(max(5px, env(safe-area-inset-left)) + 210px + 75px + 75px);
+        left: calc(max(5px, env(safe-area-inset-left)) + 210px + 90px + 105px);
+        /* Increased gap */
         right: auto;
         bottom: auto;
         padding: 4px 8px;
