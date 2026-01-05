@@ -328,6 +328,28 @@ export class Game {
   // MVP 14: Overlay queue manager (prevents conflicts)
   private overlayManager: OverlayManager = new OverlayManager();
 
+  // PERFORMANCE FIX: Cached DOM references and dirty tracking to prevent redundant HUD updates
+  private hudElements: {
+    walnutCount: HTMLElement | null;
+    playerScore: HTMLElement | null;
+    playerTitle: HTMLElement | null;
+    hideBtn: HTMLButtonElement | null;
+    hideCount: HTMLElement | null;
+    throwBtn: HTMLButtonElement | null;
+    throwCount: HTMLElement | null;
+    eatBtn: HTMLButtonElement | null;
+    eatCount: HTMLElement | null;
+  } = {
+      walnutCount: null, playerScore: null, playerTitle: null,
+      hideBtn: null, hideCount: null, throwBtn: null, throwCount: null, eatBtn: null, eatCount: null
+    };
+  private hudLastValues = {
+    walnutInventory: -1,
+    displayedScore: -1,
+    playerTitle: '',
+    health: -1
+  };
+
   // MVP 12: Rank overlay system (full-screen announcements)
   private rankOverlay: RankOverlay = new RankOverlay();
 
@@ -5862,30 +5884,49 @@ export class Game {
 
   /**
    * MVP 3: Update walnut HUD display
+   * PERFORMANCE FIX: Uses cached DOM elements and dirty checking to prevent redundant updates
    */
   private updateWalnutHUD(): void {
-    const walnutCountSpan = document.getElementById('walnut-count');
-    const playerScoreSpan = document.getElementById('player-score');
-    const playerTitleSpan = document.getElementById('player-title');
-
-    if (walnutCountSpan) {
-      // MVP 8: Display unified walnut inventory
-      walnutCountSpan.textContent = `${this.walnutInventory} `;
+    // Cache DOM elements on first call to avoid lookups every frame
+    if (!this.hudElements.walnutCount) {
+      this.hudElements.walnutCount = document.getElementById('walnut-count');
+      this.hudElements.playerScore = document.getElementById('player-score');
+      this.hudElements.playerTitle = document.getElementById('player-title');
+      this.hudElements.hideBtn = document.getElementById('mobile-hide-btn') as HTMLButtonElement;
+      this.hudElements.hideCount = document.getElementById('mobile-hide-count');
+      this.hudElements.throwBtn = document.getElementById('mobile-throw-btn') as HTMLButtonElement;
+      this.hudElements.throwCount = document.getElementById('mobile-throw-count');
+      this.hudElements.eatBtn = document.getElementById('mobile-eat-btn') as HTMLButtonElement;
+      this.hudElements.eatCount = document.getElementById('mobile-eat-count');
     }
 
-    if (playerScoreSpan) {
-      // MVP 5: Display animated score with tweening
-      playerScoreSpan.textContent = `${Math.floor(this.displayedScore)} `;
+    // Only update DOM when values actually change
+    const flooredScore = Math.floor(this.displayedScore);
+    const characterName = this.getCharacterName(this.selectedCharacterId);
+    const titleText = `${this.playerTitleName} ${characterName} `;
+
+    if (this.hudLastValues.walnutInventory !== this.walnutInventory) {
+      this.hudLastValues.walnutInventory = this.walnutInventory;
+      if (this.hudElements.walnutCount) {
+        this.hudElements.walnutCount.textContent = `${this.walnutInventory} `;
+      }
+      // Mobile buttons also depend on inventory - update them
+      this.updateMobileButtons();
     }
 
-    if (playerTitleSpan) {
-      // MVP 12: Display player title + character (e.g., "Ninja Squirrel")
-      const characterName = this.getCharacterName(this.selectedCharacterId);
-      playerTitleSpan.textContent = `${this.playerTitleName} ${characterName} `;
+    if (this.hudLastValues.displayedScore !== flooredScore) {
+      this.hudLastValues.displayedScore = flooredScore;
+      if (this.hudElements.playerScore) {
+        this.hudElements.playerScore.textContent = `${flooredScore} `;
+      }
     }
 
-    // MVP 5.7: Update mobile buttons
-    this.updateMobileButtons();
+    if (this.hudLastValues.playerTitle !== titleText) {
+      this.hudLastValues.playerTitle = titleText;
+      if (this.hudElements.playerTitle) {
+        this.hudElements.playerTitle.textContent = titleText;
+      }
+    }
   }
 
   /**
@@ -5956,34 +5997,31 @@ export class Game {
 
   /**
    * MVP 5.7: Update mobile button states (Hide, Throw, Eat)
-   * COPY PATTERN FROM WORKING BUTTONS: Just change opacity, no disabled state
+   * PERFORMANCE FIX: Uses cached DOM elements from hudElements
    */
   private updateMobileButtons(): void {
-    // Update HIDE button
-    const hideButton = document.getElementById('mobile-hide-btn') as HTMLButtonElement;
-    const hideCountSpan = document.getElementById('mobile-hide-count');
-    if (hideButton && hideCountSpan) {
-      hideCountSpan.textContent = `(${this.walnutInventory})`;
-      // Just change opacity - keep button always clickable like emote buttons
-      hideButton.style.opacity = this.walnutInventory <= 0 ? '0.4' : '1';
+    const inventory = this.walnutInventory;
+    const countText = `(${inventory})`;
+    const dimOpacity = inventory <= 0 ? '0.4' : '1';
+
+    // Update HIDE button (uses cached elements)
+    if (this.hudElements.hideBtn && this.hudElements.hideCount) {
+      this.hudElements.hideCount.textContent = countText;
+      this.hudElements.hideBtn.style.opacity = dimOpacity;
     }
 
-    // Update THROW button
-    const throwButton = document.getElementById('mobile-throw-btn') as HTMLButtonElement;
-    const throwCountSpan = document.getElementById('mobile-throw-count');
-    if (throwButton && throwCountSpan) {
-      throwCountSpan.textContent = `(${this.walnutInventory})`;
-      throwButton.style.opacity = this.walnutInventory <= 0 ? '0.4' : '1';
+    // Update THROW button (uses cached elements)
+    if (this.hudElements.throwBtn && this.hudElements.throwCount) {
+      this.hudElements.throwCount.textContent = countText;
+      this.hudElements.throwBtn.style.opacity = dimOpacity;
     }
 
-    // MVP 8 Phase 3: Update EAT button
-    const eatButton = document.getElementById('mobile-eat-btn') as HTMLButtonElement;
-    const eatCountSpan = document.getElementById('mobile-eat-count');
-    if (eatButton && eatCountSpan) {
-      eatCountSpan.textContent = `(${this.walnutInventory})`;
+    // MVP 8 Phase 3: Update EAT button (uses cached elements)
+    if (this.hudElements.eatBtn && this.hudElements.eatCount) {
+      this.hudElements.eatCount.textContent = countText;
       // Dim if no walnuts OR already at full health
-      const canEat = this.walnutInventory > 0 && this.health < this.MAX_HEALTH;
-      eatButton.style.opacity = canEat ? '1' : '0.4';
+      const canEat = inventory > 0 && this.health < this.MAX_HEALTH;
+      this.hudElements.eatBtn.style.opacity = canEat ? '1' : '0.4';
     }
   }
 

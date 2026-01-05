@@ -40,7 +40,8 @@ export class SharedCharacterRenderer {
         this.renderer.setPixelRatio(1); // Handle DPI manually via canvas sizes
         this.renderer.setSize(200, 200); // Internal buffer size
         this.loader = new GLTFLoader();
-        this.startAnimationLoop();
+        // PERFORMANCE FIX: Don't start animation loop here - register() handles it correctly
+        // when the first view is added. Starting it in constructor is wasteful.
     }
 
     public static getInstance(): SharedCharacterRenderer {
