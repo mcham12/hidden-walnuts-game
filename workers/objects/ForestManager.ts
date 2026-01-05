@@ -2400,7 +2400,10 @@ export default class ForestManager extends DurableObject {
           // MVP 14 FIX: Award correct points based on walnut type
           // Golden walnuts (isGolden=true) = 5 points, buried = 3 points, others = 1 point
           const points = walnut.isGolden ? 5 : (walnut.hiddenIn === 'buried' ? 3 : 1);
-          playerConnection.score += points;
+          // MVP 15: Only increase competitive score if NOT in Carefree mode
+          if (!playerConnection.isCarefree) {
+            playerConnection.score += points;
+          }
 
           // Persist updated mapState
           await this.storage.put('mapState', this.mapState);
@@ -2673,7 +2676,9 @@ export default class ForestManager extends DurableObject {
         }
 
         // Award +2 points for successful hit
-        playerConnection.score += 2;
+        if (!playerConnection.isCarefree) {
+          playerConnection.score += 2;
+        }
         playerConnection.combatStats.hits += 1;
 
         // MVP 13: Track hits
@@ -2795,7 +2800,9 @@ export default class ForestManager extends DurableObject {
 
           // Award points if wildebeest was driven away
           if (hitResult.fleeing) {
-            playerConnection.score += 10; // Reward for driving away predator
+            if (!playerConnection.isCarefree) {
+              playerConnection.score += 10; // Reward for driving away predator
+            }
             await this.reportScoreToLeaderboard(playerConnection);
             this.sendMessage(playerConnection.socket, {
               type: 'score_update',
@@ -2821,7 +2828,9 @@ export default class ForestManager extends DurableObject {
 
         // Award killer points (+5 points) if it was another player
         if (killerConnection && killerConnection.squirrelId !== playerConnection.squirrelId) {
-          killerConnection.score += 5;
+          if (!killerConnection.isCarefree) {
+            killerConnection.score += 5;
+          }
           killerConnection.combatStats.knockouts += 1;
           killerConnection.combatStats.hits += 1; // Assume at least one hit caused it
 
@@ -2910,7 +2919,9 @@ export default class ForestManager extends DurableObject {
   private async handlePlayerDeath(victim: PlayerConnection, killer: PlayerConnection): Promise<void> {
 
     // Award knockout points to killer (+5)
-    killer.score += 5;
+    if (!killer.isCarefree) {
+      killer.score += 5;
+    }
     killer.combatStats.knockouts += 1;
 
     // Apply death penalty to victim (-2)
@@ -3058,7 +3069,9 @@ export default class ForestManager extends DurableObject {
     // Check if reached threshold and hasn't received this bonus yet
     if (count === threshold && !player.bonusMilestones.has(threshold)) {
       player.bonusMilestones.add(threshold);
-      player.score += this.treeGrowingBonus.pointsAwarded;
+      if (!player.isCarefree) {
+        player.score += this.treeGrowingBonus.pointsAwarded;
+      }
 
       console.log(`🎉 ${player.username} earned tree growing bonus! ${count} trees grown, +${this.treeGrowingBonus.pointsAwarded} points`);
 
@@ -3882,7 +3895,9 @@ export default class ForestManager extends DurableObject {
     // Award points to owner (only if player is online)
     const ownerPlayer = this.activePlayers.get(walnut.ownerId);
     if (ownerPlayer) {
-      ownerPlayer.score += this.treeGrowthConfig.pointsAwarded; // MVP 13: Configurable points
+      if (!ownerPlayer.isCarefree) {
+        ownerPlayer.score += this.treeGrowthConfig.pointsAwarded; // MVP 13: Configurable points
+      }
 
       // MVP 14: Increment tree growing counter (check bonus AFTER tree_grown broadcast)
       ownerPlayer.treesGrownCount++;

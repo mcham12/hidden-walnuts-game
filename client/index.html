@@ -6,6 +6,9 @@
   <meta name="viewport"
     content="viewport-fit=cover, width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Hidden Walnuts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;701;800&display=swap" rel="stylesheet">
   <style>
     /* CRITICAL: Prevent iOS Safari white space issues - Use CSS variable set by JS */
     :root {
@@ -65,57 +68,240 @@
       display: none;
     }
 
-    /* MVP 5.8: Character Selection - Forest Theme (matches Welcome Screen) */
+    /* MVP 5.8: Updated Settings Overlay - Forest Dark Theme */
     #settings-overlay {
       position: fixed;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      /* Semi-transparent backdrop for click-to-dismiss */
-      z-index: 2000;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 9000;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      backdrop-filter: blur(5px);
+    }
+
+    #settings-overlay:not(.hidden) {
+      opacity: 1;
+      pointer-events: auto;
     }
 
     #settings-menu {
-      background: rgba(139, 69, 19, 0.95);
-      backdrop-filter: blur(5px);
-      border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-      max-width: 500px;
-      width: 100%;
-      max-height: 80vh;
+      background: rgba(40, 40, 40, 0.95);
+      border: 4px solid #8B4513;
+      border-radius: 20px;
+      padding: 30px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      font-family: 'Inter', sans-serif;
+      color: white;
       display: flex;
       flex-direction: column;
-      position: relative;
-      /* Prevent clicks from bubbling to overlay */
-      pointer-events: auto;
-      border: 2px solid rgba(255, 215, 0, 0.3);
+      gap: 20px;
+      border: 4px solid #8B4513;
+    }
+
+    #settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+      padding-bottom: 15px;
+    }
+
+    #settings-header h2 {
+      margin: 0;
+      color: #FFD700;
+      font-size: 28px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+
+    #settings-close-btn {
+      background: none;
+      border: none;
+      color: #FFD700;
+      font-size: 32px;
+      cursor: pointer;
+      line-height: 1;
+      transition: transform 0.2s, color 0.2s;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #settings-close-btn:hover {
+      transform: scale(1.1);
+      color: #fff;
     }
 
     .settings-section {
-      margin-bottom: 24px;
-      padding-bottom: 24px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .settings-section:last-child {
-      border-bottom: none;
-      margin-bottom: 0;
-      padding-bottom: 0;
+      margin-bottom: 10px;
     }
 
     .section-title {
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 700;
       color: #FFD700;
-      margin: 0 0 16px 0;
+      margin: 0 0 15px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255, 215, 0, 0.15);
       padding-bottom: 8px;
-      border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+    }
+
+    .setting-group {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 15px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      border: 1px solid rgba(139, 69, 19, 0.3);
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .setting-group:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(139, 69, 19, 0.6);
+    }
+
+    .setting-group label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #FFE4B5;
+    }
+
+    /* Premium Range Slider Styling */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      background: #2c3e2d;
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      background: #FFD700;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+      border: 2px solid #8B4513;
+      transition: transform 0.1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+    }
+
+    /* Premium Checkbox Styling */
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      accent-color: #FFD700;
+      cursor: pointer;
+    }
+
+    .settings-group-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .settings-button-full {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      font-family: 'Inter', sans-serif;
+      margin-top: 10px;
+    }
+
+    .settings-button-full.secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: #FFD700;
+      border: 1px solid rgba(255, 215, 0, 0.3);
+    }
+
+    .settings-button-full.secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: #FFD700;
+      transform: translateY(-2px);
+    }
+
+    .account-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .slider-value {
+      color: #FFD700;
+      font-weight: 800;
+      min-width: 45px;
+      text-align: right;
+    }
+
+    .btn-gold {
+      background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+      color: #2c5f2d;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .btn-gold:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(255, 215, 0, 0.6);
+      filter: brightness(1.1);
+    }
+
+    .btn-gold:active {
+      transform: translateY(0);
     }
 
     #character-select {
@@ -506,6 +692,7 @@
       pointer-events: auto;
       touch-action: manipulation;
       -webkit-appearance: none;
+      appearance: none;
     }
 
     #leaderboard-toggle:hover {
@@ -549,6 +736,7 @@
       pointer-events: auto;
       touch-action: manipulation;
       -webkit-appearance: none;
+      appearance: none;
     }
 
     .chat-button:hover {
@@ -588,6 +776,7 @@
       pointer-events: auto;
       touch-action: manipulation;
       -webkit-appearance: none;
+      appearance: none;
     }
 
     .emote-button:hover {
@@ -639,161 +828,41 @@
     }
 
     /* MVP 5: Settings Menu Styles */
-    /* MVP 9: Compact Settings Panel (matches Leaderboard style) */
-    #settings-overlay {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      width: 280px;
-      /* Use dvh for iOS dynamic viewport height compatibility */
-      max-height: calc(100dvh - 100px);
-      /* Leave space for other UI elements */
-      background: rgba(44, 95, 45, 0.95);
-      color: white;
-      padding: 15px;
-      border-radius: 8px;
-      font-family: 'Arial', sans-serif;
-      font-size: 13px;
-      z-index: 2500;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      /* Prevent body scroll */
-      -webkit-overflow-scrolling: touch;
-      /* Smooth scrolling on iOS */
-    }
-
-    /* ... (scrollbar styles unchanged) ... */
-
     /* MVP 9: Settings Panel Responsive Styles */
-    /* iPad Landscape - Move to left side to avoid minimap/leaderboard overlap */
-    @media (max-width: 1024px) and (orientation: landscape) {
-      #settings-overlay {
-        top: 10px;
-        left: 10px;
-        right: auto;
-        width: 260px;
-        max-height: calc(100dvh - 40px);
-      }
-    }
+    @media (max-width: 768px) {
 
-    /* iPad Portrait - Increase size slightly */
-    @media (max-width: 768px) and (orientation: portrait) {
-      #settings-overlay {
-        top: 60px;
-        /* Move down to avoid top-right controls */
-        right: 10px;
-        width: 300px;
-        max-height: calc(100dvh - 100px);
-      }
-    }
-
-    /* iPhone Portrait - Full width at bottom (Bottom Sheet) */
-    @media (max-width: 430px) and (orientation: portrait) {
-      #settings-overlay {
-        top: auto;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        width: 100%;
-        max-height: 85dvh;
-        border-radius: 16px 16px 0 0;
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
-      }
-
-      #settings-header {
-        padding: 20px 20px 16px 20px;
-        padding-top: calc(20px + env(safe-area-inset-top, 0px));
+      .death-unified-content,
+      #settings-menu {
+        padding: 20px;
+        width: 95%;
       }
 
       #settings-header h2 {
         font-size: 22px;
       }
+    }
 
-      #settings-close-btn {
-        font-size: 32px;
-        width: 36px;
-        height: 36px;
+    /* iPhone Portrait - Bottom Sheet */
+    @media (max-width: 430px) and (orientation: portrait) {
+      #settings-overlay {
+        align-items: flex-end;
       }
 
-      #settings-body {
-        padding: 16px 20px;
-        padding-bottom: calc(20px + env(safe-area-inset-bottom));
-      }
-
-      .settings-tabs {
-        margin-bottom: 16px;
-      }
-
-      .setting-group {
-        margin-bottom: 16px;
-        padding: 10px;
-      }
-
-      .controls-grid {
-        grid-template-columns: 1fr;
+      #settings-menu {
+        max-height: 85dvh;
+        border-radius: 20px 20px 0 0;
+        border-bottom: none;
+        width: 100%;
+        padding-bottom: env(safe-area-inset-bottom, 20px);
       }
     }
 
-    /* iPhone Landscape - Compact left sidebar */
+    /* iPhone Landscape */
     @media (max-height: 500px) and (orientation: landscape) {
-      #settings-overlay {
-        top: 0;
-        left: 0;
-        bottom: 0;
-        right: auto;
-        width: 300px;
-        max-height: 100dvh;
-        height: 100dvh;
-        border-radius: 0 12px 12px 0;
-        padding: 0;
-        font-size: 11px;
-      }
-
-      #settings-header {
-        padding: 8px 12px;
-        padding-left: calc(12px + env(safe-area-inset-left, 0px));
-      }
-
-      #settings-header h2 {
-        font-size: 14px;
-      }
-
-      #settings-body {
-        padding: 12px;
-        padding-left: calc(12px + env(safe-area-inset-left, 0px));
-        /* CRITICAL: Enable scrolling in landscape */
-        height: calc(100dvh - 50px);
-        /* Subtract header height */
-        overflow-y: auto;
-      }
-
-      .settings-tabs {
-        margin-bottom: 12px;
-      }
-
-      .settings-tab {
-        padding: 4px 6px;
-        font-size: 10px;
-      }
-
-      .setting-group {
-        margin-bottom: 10px;
-        padding: 8px;
-      }
-
-      .setting-group label {
-        font-size: 11px;
-        margin-bottom: 4px;
-      }
-
-      .slider-value {
-        font-size: 10px;
-      }
-
-      .settings-button {
-        padding: 6px 10px;
-        font-size: 11px;
+      #settings-menu {
+        max-width: 80%;
+        max-height: 95vh;
+        padding: 15px;
       }
     }
 
@@ -817,6 +886,7 @@
       pointer-events: auto;
       touch-action: manipulation;
       -webkit-appearance: none;
+      appearance: none;
     }
 
     #settings-toggle:hover {
@@ -2005,49 +2075,6 @@
       border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     }
 
-    #settings-header {
-      background: rgba(0, 0, 0, 0.3);
-      padding: 16px 20px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    #settings-header h2 {
-      margin: 0;
-      font-size: 20px;
-      color: #FFD700;
-      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-    }
-
-    #settings-close-btn {
-      background: none;
-      border: none;
-      color: #bcaaa4;
-      font-size: 28px;
-      cursor: pointer;
-      padding: 0;
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 4px;
-      transition: all 0.2s;
-      line-height: 1;
-    }
-
-    #settings-close-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: #fff;
-    }
-
     #settings-body {
       padding: 16px;
       overflow-y: auto;
@@ -2795,6 +2822,7 @@
       touch-action: manipulation;
       /* Optimize touch response */
       -webkit-appearance: none;
+      appearance: none;
     }
 
     .mobile-action-btn:active {
@@ -3140,23 +3168,8 @@
           </p>
 
           <!-- Change Character Button -->
-          <div style="text-align: center; margin-top: 15px;">
-            <button id="death-change-character-btn" class="death-action-btn" style="
-              background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-              color: #2c5f2d;
-              border: none;
-              padding: 12px 24px;
-              border-radius: 8px;
-              font-weight: 700;
-              font-size: 14px;
-              cursor: pointer;
-              box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
-              transition: transform 0.2s, box-shadow 0.2s;
-              min-height: 44px;
-              min-width: 44px;
-              text-transform: uppercase;
-              letter-spacing: 1px;
-            ">
+          <div class="settings-group-stack" style="align-items: center; margin-top: 15px;">
+            <button id="death-change-character-btn" class="btn-gold">
               Change Character
             </button>
           </div>
@@ -3209,7 +3222,7 @@
   <div id="settings-overlay" class="hidden">
     <div id="settings-menu">
       <div id="settings-header">
-        <h2>⚙️ Settings</h2>
+        <h2>Settings</h2>
         <!-- Close button for easier access -->
         <button id="settings-close-btn">×</button>
       </div>
@@ -3219,10 +3232,10 @@
 
         <!-- Audio Settings -->
         <div class="settings-section">
-          <h3 class="section-title">🔊 Audio</h3>
+          <h3 class="section-title">Audio</h3>
           <div class="setting-group">
             <label>
-              <span>🔇 Master Volume</span>
+              <span>Master Volume</span>
               <span class="slider-value" id="master-volume-value">100%</span>
             </label>
             <input type="range" id="master-volume" min="0" max="100" value="100">
@@ -3230,7 +3243,7 @@
 
           <div class="setting-group">
             <label>
-              <span>🎵 Music & Ambient</span>
+              <span>Music & Ambient</span>
               <span class="slider-value" id="ambient-volume-value">50%</span>
             </label>
             <input type="range" id="ambient-volume" min="0" max="100" value="50">
@@ -3238,7 +3251,7 @@
 
           <div class="setting-group">
             <label>
-              <span>💥 Sound Effects</span>
+              <span>Sound Effects</span>
               <span class="slider-value" id="sfx-volume-value">70%</span>
             </label>
             <input type="range" id="sfx-volume" min="0" max="100" value="70">
@@ -3247,26 +3260,24 @@
           <div class="setting-group">
             <label class="checkbox-label">
               <input type="checkbox" id="mute-toggle">
-              <span>🔇 Mute All Audio</span>
+              <span>Mute All Audio</span>
             </label>
           </div>
         </div>
 
         <!-- Tips Section -->
         <div class="settings-section">
-          <h3 class="section-title">💡 Tips</h3>
-          <div id="tips-container" style="display: flex; flex-direction: column; gap: 12px;">
+          <h3 class="section-title">Tips</h3>
+          <div id="tips-container" class="settings-group-stack">
             <!-- Tips populated by JS -->
           </div>
-          <button id="reset-tips-btn" class="settings-button secondary" style="width: 100%; margin-top: 12px;">Reset
-            Seen
-            Tips</button>
+          <button id="reset-tips-btn" class="settings-button-full secondary">Reset Seen Tips</button>
         </div>
 
         <!-- Account Section -->
         <div class="settings-section">
-          <h3 class="section-title">👤 Account</h3>
-          <div id="account-container" style="display: flex; flex-direction: column; gap: 16px;">
+          <h3 class="section-title">Account</h3>
+          <div id="account-container" class="account-stack">
             <!-- Account info populated by JS -->
           </div>
         </div>
