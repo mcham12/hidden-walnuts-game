@@ -5870,8 +5870,8 @@ export class Game {
           latencySpan.textContent = `${Math.round(this.networkLatency)} ms`;
         }
 
-        // MVP 3: Update walnut HUD
-        this.updateWalnutHUD();
+        // REMOVED: Duplicate updateWalnutHUD call - already called in main animate() loop
+        // This was causing HUD updates to run twice per frame
       } catch (error) {
         // Ignore debug update errors
       }
