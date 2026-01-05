@@ -894,8 +894,37 @@
       transform: translateY(-1px);
     }
 
-    #settings-toggle.hidden {
+    #settings-toggle.hidden,
+    #help-toggle.hidden {
       display: none;
+    }
+
+    #help-toggle {
+      position: fixed;
+      top: 10px;
+      right: 605px;
+      /* next to leaderboard-toggle (475px + 125px + 5px) */
+      background: rgba(44, 95, 45, 0.9);
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Arial', sans-serif;
+      font-size: 14px;
+      font-weight: bold;
+      z-index: 1001;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      transition: all 0.2s;
+      pointer-events: auto;
+      touch-action: manipulation;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    #help-toggle:hover {
+      background: rgba(44, 95, 45, 1);
+      transform: translateY(-1px);
     }
 
     /* MVP 5: Loading Progress Bar */
@@ -2319,6 +2348,36 @@
         /* Same as Settings */
       }
 
+      /* Help button - directly under Leaderboard */
+      #help-toggle {
+        top: 236px;
+        /* 183px (leaderboard top) + 48px (leaderboard height) + 5px (gap) */
+        bottom: auto;
+        right: 5px;
+        padding: 10px 14px;
+        font-size: 14px;
+        min-height: 48px;
+        min-width: 100px;
+        background: rgba(44, 95, 45, 0.9);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-family: 'Arial', sans-serif;
+        font-weight: bold;
+        z-index: 1001;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        transition: all 0.2s;
+        pointer-events: auto;
+        touch-action: manipulation;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+
+      #help-toggle:active {
+        background: rgba(44, 95, 45, 1);
+      }
+
       /* Make leaderboard responsive */
       #leaderboard {
         right: 5px;
@@ -2510,6 +2569,33 @@
         font-size: 10px;
         min-width: 70px;
         min-height: 24px;
+      }
+
+      /* Help button - TOP, next to Leaderboard button */
+      #help-toggle {
+        top: max(5px, env(safe-area-inset-top));
+        left: calc(max(5px, env(safe-area-inset-left)) + 200px + 70px + 5px + 70px + 5px);
+        /* After HUD + Settings + Leaderboard */
+        right: auto;
+        bottom: auto;
+        padding: 4px 8px;
+        font-size: 10px;
+        min-width: 60px;
+        min-height: 24px;
+        background: rgba(44, 95, 45, 0.9);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-family: 'Arial', sans-serif;
+        font-weight: bold;
+        z-index: 1001;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        transition: all 0.2s;
+        pointer-events: auto;
+        touch-action: manipulation;
+        -webkit-appearance: none;
+        appearance: none;
       }
 
       /* Hide/Throw/Eat buttons - moved lower and more left per user request */
@@ -3218,6 +3304,7 @@
   </div>
   <!-- MVP 5: Settings Menu -->
   <button id="settings-toggle" class="hidden">⚙️ Settings</button>
+  <button id="help-toggle" class="hidden">❓ Help</button>
   <!-- MVP 5: Settings Menu Overlay -->
   <div id="settings-overlay" class="hidden">
     <div id="settings-menu">

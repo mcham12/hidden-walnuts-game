@@ -40,7 +40,7 @@ export class TutorialOverlay {
     // Add to DOM
     this.overlay.appendChild(this.contentDiv);
     document.body.appendChild(this.overlay);
-    document.body.appendChild(this.buttonDiv);
+    // document.body.appendChild(this.buttonDiv); // Button now in index.html
 
     // Setup event listeners
     this.setupEventListeners();
@@ -203,6 +203,7 @@ export class TutorialOverlay {
         position: fixed;
         top: 10px;
         right: 220px; /* Left of minimap (minimap at right: 10px, width: 200px) */
+        display: none !important; /* HIJACKED: Button now in index.html */
         z-index: 1001; /* MVP 14 Phase 9: Below toasts (10000) and tips */
         background: rgba(255, 215, 0, 0.9);
         border: 2px solid #FFD700;
@@ -474,9 +475,18 @@ export class TutorialOverlay {
    * Create floating tutorial button
    */
   private createButton(): HTMLDivElement {
-    const button = document.createElement('div');
-    button.className = 'hw-tutorial-button';
-    button.textContent = '?'; // Consistent across all platforms
+    // const button = document.createElement('div');
+    const button = document.getElementById('help-toggle') as HTMLDivElement;
+    if (!button) {
+      console.warn('⚠️ [TutorialOverlay] help-toggle button not found in index.html');
+      // Fallback to creating one if it doesn't exist (safety)
+      const fallback = document.createElement('div');
+      fallback.className = 'hw-tutorial-button';
+      fallback.textContent = '?';
+      return fallback;
+    }
+    // button.className = 'hw-tutorial-button';
+    // button.textContent = '?'; // Consistent across all platforms
     button.setAttribute('aria-label', 'How to Play');
     button.setAttribute('role', 'button');
     button.setAttribute('tabindex', '0');

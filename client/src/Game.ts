@@ -7874,6 +7874,12 @@ export class Game {
     // Initialize new tutorial overlay system
     // Industry standard: Don't pause multiplayer games - overlay is enough visual feedback
     this.tutorialOverlay = new TutorialOverlay();
+
+    // Show toggle button when game starts
+    const helpToggle = document.getElementById('help-toggle');
+    if (helpToggle) {
+      helpToggle.classList.remove('hidden');
+    }
   }
 
   // MVP 4: Leaderboard system methods
