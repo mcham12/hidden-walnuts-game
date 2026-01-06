@@ -111,20 +111,21 @@
     /* MVP 17: Container for top-left HUD buttons */
     #hud-top-left {
       position: fixed;
-      top: 10px;
-      left: 10px;
-      /* Aligned with walnut HUD? Walnut HUD is top:10, left:10. Overlap? */
-      /* Actually Walnut HUD is at top:10, left:10. We should position this BELOW it or TO THE RIGHT. */
-      /* Walnut HUD is about 200px wide? Or fluid. Let's stack them below Walnut HUD for safety, or check line 524 */
-      /* Line 524 says: #walnut-hud { top: 10px; left: 10px; ... } */
-      /* So we should push this down. Let's say top 70px */
-      top: 70px;
+      top: 160px;
+      /* Moved down to avoid overlapping Walnut HUD */
       left: 10px;
       display: flex;
       flex-direction: row;
-      /* Default desktop row */
       gap: 10px;
       z-index: 1001;
+    }
+
+    /* Mobile responsive: stack vertically */
+    @media (max-width: 768px) {
+      #hud-top-left {
+        flex-direction: column;
+        top: 160px;
+      }
     }
 
     #hud-top-left button {
