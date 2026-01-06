@@ -22,12 +22,16 @@ import { isAuthenticated, getCurrentUser } from './services/AuthService.js'; // 
 import { CharacterRegistry } from './services/CharacterRegistry.js'; // MVP 16: Character availability
 import { CharacterGrid } from './components/CharacterGrid.js'; // Character selection grid
 import { CharacterPreview3D } from './components/CharacterPreview3D.js'; // MVP 16: 3D character previews
+import { AccessoryFactory } from './services/AccessoryFactory.js'; // MVP 17: Visual accessories
+import { AccessoryRegistry } from './services/AccessoryRegistry.js'; // MVP 17: Visual accessories
+
 import { TutorialOverlay } from './TutorialOverlay.js';
 import { getPlayerTitle, shouldPredatorsTargetPlayer } from '@shared/PlayerRanks';
 import { TipsManager } from './TipsManager.js'; // MVP 14: Contextual tips
 import { OverlayManager, OverlayPriority } from './OverlayManager.js'; // MVP 14: Overlay queue
 import { TipCard } from './TipCard.js'; // MVP 14 Phase 9: Dismissible tips
 import { ModeSelectionOverlay } from './ModeSelectionOverlay.js'; // MVP 15: Game Mode Selection
+import { WardrobeOverlay } from './WardrobeOverlay.js'; // MVP 17: Wardrobe UI
 
 interface Character {
   id: string;
@@ -69,6 +73,8 @@ export class Game {
   // PHASE 3 CLEANUP: isEatingWalnut and isStunned removed - now handled by animState.blocksMovement
   private characters: Character[] = [];
   public selectedCharacterId = 'squirrel';
+  public selectedAccessoryId = localStorage.getItem('selectedAccessoryId') || 'none'; // MVP 17: Load saved accessory
+
   public sessionToken: string = ''; // MVP 6: Player session token
   public username: string = ''; // MVP 6: Player username
   public turnstileToken: string | null = null; // MVP 7.1: Cloudflare Turnstile bot protection token
@@ -370,6 +376,9 @@ export class Game {
   private touchControls: TouchControls | null = null;
   private wasTouchActive: boolean = false; // Track if touch was active last frame
 
+  // MVP 17: Wardrobe Overlay
+  private wardrobeOverlay: WardrobeOverlay | null = null;
+
 
   async init(canvas: HTMLCanvasElement, audioManager: AudioManager, settingsManager: SettingsManager) {
     try {
@@ -527,6 +536,9 @@ export class Game {
       // MVP 5: Initialize settings menu
       this.initSettingsMenu();
 
+      // MVP 17: Initialize Wardrobe
+      this.initWardrobeMenu();
+
       // Setup multiplayer connection (walnuts will be loaded from server)
       await this.setupMultiplayer();
 
@@ -682,6 +694,9 @@ export class Game {
       this.character = newCharacter;
       this.mixer = newMixer;
       this.scene.add(this.character);
+
+      // MVP 17: Attach accessory
+      await this.attachAccessory(this.character, this.selectedCharacterId, this.selectedAccessoryId);
 
       this.setAction('idle');
       // MVP 6: DON'T position character here - wait for spawn position from server
@@ -967,6 +982,14 @@ export class Game {
       // Debug: Self Destruct with K key
       if (e.key === 'k' || e.key === 'K') {
         this.triggerSelfDestruct();
+      }
+
+      // MVP 17: Wardrobe with B key
+      if (e.key === 'b' || e.key === 'B') {
+        const btn = document.getElementById('wardrobe-toggle');
+        if (btn && !btn.classList.contains('hidden')) {
+          btn.click();
+        }
       }
 
       // Debug scene contents with I key (Info)
@@ -1870,7 +1893,7 @@ export class Game {
 
     // MVP 6: Include sessionToken and username in WebSocket URL
     const wsUrl = apiUrl.replace('http:', 'ws:').replace('https:', 'wss:') +
-      `/ws?squirrelId=${this.playerId}&characterId=${this.selectedCharacterId}&sessionToken=${this.sessionToken}&username=${encodeURIComponent(this.username)}${accessTokenParam}${turnstileParam}`;
+      `/ws?squirrelId=${this.playerId}&characterId=${this.selectedCharacterId}&accessoryId=${this.selectedAccessoryId}&sessionToken=${this.sessionToken}&username=${encodeURIComponent(this.username)}${accessTokenParam}${turnstileParam}`;
 
 
     try {
@@ -2262,7 +2285,7 @@ export class Game {
           for (const player of data.players) {
             if (this.validatePlayerData(player) && player.squirrelId !== this.playerId) {
               // MVP 6: Pass username when creating remote player
-              this.createRemotePlayer(player.squirrelId, player.position, player.rotationY, player.characterId, player.username);
+              this.createRemotePlayer(player.squirrelId, player.position, player.rotationY, player.characterId, player.username, player.accessoryId);
             }
           }
         }
@@ -2270,7 +2293,7 @@ export class Game {
 
       case 'player_joined':
         if (this.validatePlayerData(data) && data.squirrelId !== this.playerId) {
-          this.createRemotePlayer(data.squirrelId, data.position, data.rotationY, data.characterId, data.username);
+          this.createRemotePlayer(data.squirrelId, data.position, data.rotationY, data.characterId, data.username, data.accessoryId);
 
           // MVP 6: Show player joined toast with format "username - Character"
           const characterName = data.characterId ? this.getCharacterName(data.characterId) : 'Player';
@@ -2715,7 +2738,47 @@ export class Game {
     return char ? char.name : characterId.charAt(0).toUpperCase() + characterId.slice(1);
   }
 
-  private async createRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, characterId?: string, username?: string): Promise<void> {
+  // MVP 17: Helper to attach accessories to characters
+  // MVP 17: Helper to attach accessories to characters
+  private async attachAccessory(model: THREE.Group, characterId: string, accessoryId: string = 'none') {
+    if (!accessoryId || accessoryId === 'none') return;
+
+    // Improved Head Bone finding logic
+    let headBone: THREE.Object3D | undefined;
+    model.traverse((child) => {
+      if (headBone) return;
+      const name = child.name.toLowerCase();
+      // Common bone names in various rigs
+      if (child.type === 'Bone' && (
+        name === 'head' ||
+        name === 'righead' ||
+        name === 'bip001_head' ||
+        name === 'mixamorig:head' ||
+        name === 'def_head' ||
+        name === 'body' ||
+        name.includes('head') // Fallback
+      )) {
+        headBone = child;
+      }
+    });
+
+    if (!headBone) {
+      console.warn(`Could not find head bone for character ${characterId}`);
+      return;
+    }
+
+    const accessory = await AccessoryFactory.createAccessory(accessoryId);
+    if (accessory) {
+      const offsets = AccessoryRegistry.getOffset(characterId, accessoryId);
+      accessory.position.set(offsets.position.x, offsets.position.y, offsets.position.z);
+      accessory.rotation.set(offsets.rotation.x, offsets.rotation.y, offsets.rotation.z);
+      accessory.scale.setScalar(offsets.scale);
+
+      headBone.add(accessory);
+    }
+  }
+
+  private async createRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, characterId?: string, username?: string, accessoryId: string = 'none'): Promise<void> {
     if (this.remotePlayers.has(playerId)) {
       // Player already exists, just update position
       this.updateRemotePlayer(playerId, position, rotationY, undefined, undefined, undefined);
@@ -2794,6 +2857,9 @@ export class Game {
       remoteCharacter.userData.collisionRadius = collisionRadius;
       remoteCharacter.userData.size = size;
       remoteCharacter.userData.groundOffset = remoteGroundOffset;
+
+      // MVP 17: Attach accessory
+      await this.attachAccessory(remoteCharacter, remoteCharacterId, accessoryId);
 
       // STANDARD: Position character on ground using raycasting
       const groundY = this.positionRemotePlayerOnGround(remoteCharacter, position.x, position.z);
@@ -8510,6 +8576,49 @@ export class Game {
   /**
    * Initialize the settings menu system
    */
+  /**
+   * MVP 17: Initialize Wardrobe UI
+   */
+  private initWardrobeMenu(): void {
+    const toggleBtn = document.getElementById('wardrobe-toggle');
+    if (!toggleBtn) return;
+
+    toggleBtn.classList.remove('hidden');
+
+    this.wardrobeOverlay = new WardrobeOverlay(
+      (accessoryId) => {
+        console.log('Selected accessory:', accessoryId);
+        this.selectedAccessoryId = accessoryId;
+        // Save to local storage
+        localStorage.setItem('selectedAccessoryId', accessoryId);
+
+        // Send to server
+        this.sendMessage({
+          type: 'update_accessory',
+          accessoryId: accessoryId
+        });
+
+        // Play sound
+        this.audioManager.playSound('ui', 'button_click');
+      },
+      () => {
+        // On Close
+        this.audioManager.playSound('ui', 'button_click');
+      }
+    );
+
+    toggleBtn.addEventListener('click', () => {
+      // Check if overlay initialized and character loaded
+      if (this.wardrobeOverlay && this.character) {
+        // determine character ID (fallback to squirrel if needed)
+        // Accessing private/local storage is safest for MVP
+        const charId = localStorage.getItem('selectedCharacterId') || 'squirrel';
+        this.wardrobeOverlay.show(charId, this.selectedAccessoryId);
+        this.audioManager.playSound('ui', 'button_click');
+      }
+    });
+  }
+
   private initSettingsMenu(): void {
     // MVP 16: Guard against double-initialization (prevents duplicate event listeners)
     if (this.settingsInitialized) {

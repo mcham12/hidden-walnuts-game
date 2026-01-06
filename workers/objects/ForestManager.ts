@@ -21,6 +21,7 @@ interface PlayerConnection {
   rotationY: number;
   lastActivity: number;
   characterId: string;
+  accessoryId: string; // MVP 17: Visual accessory ID
 
   // MVP 5.8: Session management
   isDisconnected: boolean;
@@ -498,6 +499,7 @@ export default class ForestManager extends DurableObject {
       const sessionToken = url.searchParams.get("sessionToken") || ""; // MVP 6: Player session
       const username = url.searchParams.get("username") || "Anonymous"; // MVP 6: Player username
       const turnstileToken = url.searchParams.get("turnstileToken"); // MVP 7.1: Bot protection
+      const accessoryId = url.searchParams.get("accessoryId") || "none"; // MVP 17: Visual accessory
 
       if (!squirrelId) {
         return new Response("Missing squirrelId", { status: 400 });
@@ -632,7 +634,7 @@ export default class ForestManager extends DurableObject {
       server.accept();
       server.accept();
       server.accept();
-      await this.setupPlayerConnection(squirrelId, characterId, server, sessionToken, username, isAuthenticated, emailVerified, persistedStats);
+      await this.setupPlayerConnection(squirrelId, characterId, server, sessionToken, username, isAuthenticated, emailVerified, persistedStats, accessoryId);
 
       return new Response(null, {
         status: 101,
@@ -1775,7 +1777,8 @@ export default class ForestManager extends DurableObject {
     username: string,
     isAuthenticated: boolean,
     emailVerified: boolean,
-    persistedStats?: { score: number, titleId: string, titleName: string }
+    persistedStats?: { score: number, titleId: string, titleName: string },
+    accessoryId: string = "none"
   ): Promise<void> {
     // MVP 5.8: Check if player is reconnecting (still in active players but disconnected)
     const existingPlayer = this.activePlayers.get(squirrelId);
@@ -1882,7 +1885,8 @@ export default class ForestManager extends DurableObject {
         squirrelId,
         position: existingPlayer.position,
         rotationY: existingPlayer.rotationY,
-        characterId: existingPlayer.characterId
+        characterId: existingPlayer.characterId,
+        accessoryId: existingPlayer.accessoryId // MVP 17
       });
     } else {
       // MVP 6: Check if there's already a player with this username (private browsing duplicate bug)
@@ -1920,6 +1924,7 @@ export default class ForestManager extends DurableObject {
         rotationY: Math.PI, // Face north (-Z direction)
         lastActivity: Date.now(),
         characterId,
+        accessoryId,
         // MVP 5.8: Session management
         isDisconnected: false,
         disconnectedAt: null,
@@ -2143,7 +2148,8 @@ export default class ForestManager extends DurableObject {
         position: playerConnection.position,
         rotationY: playerConnection.rotationY,
         characterId: playerConnection.characterId,
-        username: playerConnection.username // MVP 6: Send username
+        username: playerConnection.username, // MVP 6: Send username
+        accessoryId: playerConnection.accessoryId // MVP 17
       });
     }
   }
@@ -3103,7 +3109,8 @@ export default class ForestManager extends DurableObject {
         position: player.position,
         rotationY: player.rotationY,
         characterId: player.characterId,
-        username: player.username // MVP 6: Include username
+        username: player.username, // MVP 6: Include username
+        accessoryId: player.accessoryId // MVP 17
       }));
 
     if (existingPlayers.length > 0) {

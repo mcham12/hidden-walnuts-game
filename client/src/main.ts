@@ -12,6 +12,7 @@ import { AuthModal } from './components/AuthModal'; // MVP 16: Authentication mo
 import { CharacterGrid } from './components/CharacterGrid'; // MVP 16: Character selection
 import { CharacterRegistry } from './services/CharacterRegistry'; // MVP 16: Character data
 import { VerifyEmailPage } from './pages/VerifyEmail'; // MVP 16: Email verification
+import { AccessoryTweakerPage } from './pages/AccessoryTweakerPage'; // Accessory Tool
 
 // MVP 6: API URL from environment (for worker communication)
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -135,6 +136,11 @@ async function main() {
     // MVP 16: Check for email verification route
     if (VerifyEmailPage.handleVerificationRoute()) {
       return; // Stop game initialization if verifying email
+    }
+
+    // Accessory Tweaker Tool (Internal)
+    if (AccessoryTweakerPage.handleRoute()) {
+      return;
     }
 
     // MVP 16: STEP 0 - Load character registry (required for character selection and game)

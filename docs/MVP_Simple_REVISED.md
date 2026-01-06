@@ -531,15 +531,47 @@ TBD
 ---
 
 
-## 🚫 MVP 17: Monetization phase 1 (CANCELLED)
+## 🎩 MVP 17: Character Accessories (Fun Fashion)
 
-**Goal**: ~~Monetize the game~~ **CANCELLED** - Game will remain 100% Free-to-Play.
+**Goal**: Allow players to express themselves with purely cosmetic accessories (Hats, Glasses, etc.) available to everyone immediately. This enhances the "fun" factor and social sharing potential.
+
+### Vision
+- **Immediate Fun**: No unlocking required. Every player (Guest or Auth) can wear a Top Hat or Sunglasses from day one.
+- **Visual Variety**: Break the visual monotony of identical squirrels.
+- **Social Spark**: "Look at my cool hat!" encourages emotes and interaction.
+
+### High-Level Implementation Plan
+
+#### 1. Data Structure (`AccessoryRegistry.ts`)
+- Define accessories (ID, model path, name).
+- Define `AccessoryOffsets`: Per-character transform adjustments (Position, Rotation, Scale).
+- **Crucial Workflow**: Use the **Internal Tweaker Tool** (`/tweaker`) to visually tune these offsets for each Character/Accessory pair and generate the config JSON.
+
+#### 2. Technical Core
+- **Client**: Update `SharedCharacterRenderer` and `Game.ts` to attach accessory meshes to the `Head` bone.
+- **Networking**: Add `accessoryId` to `PlayerState` schema (schema evolution required).
+- **Persistence**: Save `accessoryId` in `localStorage` (Guest) and KV (Auth).
+
+#### 3. UX / UI
+- **Start Screen / Death Screen**: Add "Accessories" tab or toggle in the existing `CharacterGrid`.
+- **In-Game**: Add a bright "Wardrobe" button (hanger icon) to the HUD (near Emotes) to quick-swap accessories without dying.
+- **Settings**: Tweaker tool is invalid here; this needs a user-friendly grid.
+
+#### 4. Initial Content (The "Starter Pack")
+- **Top Hat**: Classic.
+- **Sunglasses**: Cool factor.
+- **Leaf Mask**: Nature theme.
+- **Safety Cone**: Silly fun.
 
 ### Tasks
-- ~~Research technical options and perform recommendation (e.g. Stripe, etc)~~
-- ~~Prioritize monetization options in the Monetization md doc~~
-- ~~develop a detailed monetization implementation plan and document in the monetization md doc~~
-- ~~implement top x options, based on feasibility~~
+- [ ] Create `mvp-17` branch.
+- [ ] Define `AccessoryRegistry` and import models.
+- [ ] Update `PlayerState` schema for networking.
+- [ ] Implement `AccessorySystem` in ECS or update `RenderSystem`.
+- [ ] Update `CharacterGrid` UI to support accessory selection.
+- [ ] Implement In-Game Wardrobe UI.
+- [ ] **Content**: Use `/tweaker` to configure `Top Hat` for all 10 characters.
+
 
 
 ## 🧹 MVP 18: Code Cleanup & Optimization

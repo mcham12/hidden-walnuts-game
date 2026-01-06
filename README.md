@@ -278,6 +278,14 @@ Push to mvp-* → Preview deployment
 - **Seasonal content**: Limited-time characters and events
 - **No Monetization**: 100% Free-to-play experience
 - **Analytics**: Player behavior tracking and insights
+- **Internal Tools**: [Accessory Tweaker](/tweaker) for character customization
+
+## Development Documentation
+
+For detailed technical documentation, please refer to:
+- [INTERNAL_TOOLS.md](docs/INTERNAL_TOOLS.md) - Internal utilities (Accessory Tweaker, Admin APIs)
+- [MVP_Simple_REVISED.md](docs/MVP_Simple_REVISED.md) - Project roadmap and MVP tracking
+- [gamecontent.md](docs/gamecontent.md) - Gameplay mechanics reference
 
 ## Architecture Philosophy
 

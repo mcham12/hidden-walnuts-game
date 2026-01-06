@@ -64,6 +64,40 @@
       display: none !important;
     }
 
+    #wardrobe-toggle {
+      position: fixed;
+      top: 20px;
+      right: 250px;
+      /* Left of Help */
+      background: rgba(40, 40, 40, 0.9);
+      color: white;
+      border: 2px solid #8B4513;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-family: 'Arial', sans-serif;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: transform 0.2s, background 0.2s;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    #wardrobe-toggle:hover {
+      transform: scale(1.05);
+      background: rgba(60, 60, 60, 0.95);
+    }
+
+    #wardrobe-toggle:active {
+      transform: scale(0.95);
+    }
+
+    #wardrobe-toggle.hidden {
+      display: none !important;
+    }
+
     #gameCanvas.hidden {
       display: none;
     }
@@ -3300,6 +3334,7 @@
   <!-- MVP 5: Settings Menu -->
   <button id="settings-toggle" class="hidden">⚙️ Settings</button>
   <button id="help-toggle" class="hidden">❓ Help</button>
+  <button id="wardrobe-toggle" class="hidden">🎒 Wardrobe</button>
   <!-- MVP 5: Settings Menu Overlay -->
   <div id="settings-overlay" class="hidden">
     <div id="settings-menu">
