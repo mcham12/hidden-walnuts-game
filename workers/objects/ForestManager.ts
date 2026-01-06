@@ -2212,10 +2212,23 @@ export default class ForestManager extends DurableObject {
           animationStartTime: data.animationStartTime, // TIME-BASED SYNC: Forward animation start time
           velocity: data.velocity, // Forward velocity for extrapolation
           moveType: data.moveType, // Forward movement type for animation sync
-
+          accessoryId: playerConnection.accessoryId, // MVP 17: Sync accessory to other players
           timestamp: data.timestamp, // Forward client timestamp for latency compensation
           isCarefree: playerConnection.isCarefree // MVP 15: Broadcast carefree status
         });
+        break;
+
+      case "update_accessory":
+        // MVP 17: Player changed their accessory via Wardrobe
+        if (data.accessoryId !== undefined) {
+          playerConnection.accessoryId = data.accessoryId;
+          // Broadcast immediately so other players see the change
+          this.broadcastToOthers(playerConnection.squirrelId, {
+            type: 'player_accessory_changed',
+            squirrelId: playerConnection.squirrelId,
+            accessoryId: data.accessoryId
+          });
+        }
         break;
 
       case "set_carefree_mode":

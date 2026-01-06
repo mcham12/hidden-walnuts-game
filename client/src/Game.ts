@@ -2397,6 +2397,17 @@ export class Game {
         }
         break;
 
+      case 'player_accessory_changed':
+        // MVP 17: Remote player changed their accessory
+        if (data.squirrelId && data.squirrelId !== this.playerId) {
+          const remotePlayer = this.remotePlayers.get(data.squirrelId);
+          if (remotePlayer) {
+            const charId = remotePlayer.userData.characterId || 'squirrel';
+            this.attachAccessory(remotePlayer, charId, data.accessoryId);
+          }
+        }
+        break;
+
       case 'npc_spawned':
         // MVP 7: NPC spawned on server, create NPC entity on client
         if (data.npc && data.npc.id) {
