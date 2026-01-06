@@ -2,6 +2,7 @@ import * as THREE from 'three';
 // Test comment for IDE integration
 // Additional test comment for IDE integration
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { createTerrain, setTerrainMesh } from './terrain.js';
 import { createForestFromServer, bushPositions } from './forest.js';
 import { getTerrainHeight } from './terrain.js';
@@ -5826,58 +5827,20 @@ export class Game {
   private async loadCachedAsset(modelPath: string): Promise<THREE.Group | null> {
     if (Game.assetCache.has(modelPath)) {
       const cachedModel = Game.assetCache.get(modelPath)!;
-      return this.cloneGLTF(cachedModel); // Proper GLTF cloning for SkinnedMesh
+      return SkeletonUtils.clone(cachedModel) as THREE.Group;
     }
 
     try {
       const gltf = await Game.gltfLoader.loadAsync(modelPath);
       Game.assetCache.set(modelPath, gltf.scene); // Store original scene
-      return this.cloneGLTF(gltf.scene); // Return proper clone
+      return SkeletonUtils.clone(gltf.scene) as THREE.Group;
     } catch (error) {
       console.error(`❌ Failed to load model ${modelPath}: `, error);
       return null;
     }
   }
 
-  // INDUSTRY STANDARD: Proper GLTF scene cloning for animated models
-  private cloneGLTF(gltfScene: THREE.Object3D): THREE.Group {
-    const clonedScene = gltfScene.clone();
 
-    // CRITICAL: Fix SkinnedMesh references after cloning
-    const skinnedMeshes: { [key: string]: THREE.SkinnedMesh } = {};
-
-    // First pass: collect all SkinnedMeshes
-    gltfScene.traverse((node) => {
-      if ((node as THREE.SkinnedMesh).isSkinnedMesh) {
-        skinnedMeshes[node.name] = node as THREE.SkinnedMesh;
-      }
-    });
-
-    // Second pass: fix skeleton references in cloned SkinnedMeshes
-    clonedScene.traverse((node) => {
-      if ((node as THREE.SkinnedMesh).isSkinnedMesh) {
-        const skinnedMesh = node as THREE.SkinnedMesh;
-        const originalMesh = skinnedMeshes[node.name];
-
-        if (originalMesh && originalMesh.skeleton) {
-          // Find corresponding bones in cloned hierarchy
-          const bones: THREE.Bone[] = [];
-          for (const originalBone of originalMesh.skeleton.bones) {
-            const clonedBone = clonedScene.getObjectByName(originalBone.name) as THREE.Bone;
-            if (clonedBone) {
-              bones.push(clonedBone);
-            }
-          }
-
-          if (bones.length > 0) {
-            skinnedMesh.bind(new THREE.Skeleton(bones, originalMesh.skeleton.boneInverses));
-          }
-        }
-      }
-    });
-
-    return clonedScene as THREE.Group;
-  }
 
   private async loadCachedAnimation(animPath: string): Promise<THREE.AnimationClip | null> {
     if (Game.animationCache.has(animPath)) {
