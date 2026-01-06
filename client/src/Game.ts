@@ -8684,8 +8684,8 @@ export class Game {
       // Check if overlay initialized and character loaded
       if (this.wardrobeOverlay && this.character) {
         // determine character ID (fallback to squirrel if needed)
-        // Accessing private/local storage is safest for MVP
-        const charId = localStorage.getItem('selectedCharacterId') || 'squirrel';
+        // Accessing this.selectedCharacterId is the source of truth set by main.ts
+        const charId = this.selectedCharacterId || 'squirrel';
 
         // Parse current selection
         let current: Record<string, string> = {};
