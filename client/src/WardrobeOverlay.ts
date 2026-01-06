@@ -1,23 +1,23 @@
-import { AccessoryRegistry, AccessoryDefinition } from './services/AccessoryRegistry';
-import { TouchControls } from './TouchControls';
+import { AccessoryRegistry } from './services/AccessoryRegistry';
+
 
 export class WardrobeOverlay {
-    private container: HTMLElement;
-    private onSelect: (accessoryId: string) => void;
-    private onClose: () => void;
-    private characterId: string = 'squirrel';
-    private currentAccessoryId: string = 'none';
+  private container: HTMLElement;
+  private onSelect: (accessoryId: string) => void;
+  private onClose: () => void;
+  private characterId: string = 'squirrel';
+  private currentAccessoryId: string = 'none';
 
-    constructor(onSelect: (accessoryId: string) => void, onClose: () => void) {
-        this.onSelect = onSelect;
-        this.onClose = onClose;
+  constructor(onSelect: (accessoryId: string) => void, onClose: () => void) {
+    this.onSelect = onSelect;
+    this.onClose = onClose;
 
-        this.container = document.createElement('div');
-        this.container.id = 'wardrobe-overlay';
+    this.container = document.createElement('div');
+    this.container.id = 'wardrobe-overlay';
 
-        // Styles
-        const style = document.createElement('style');
-        style.textContent = `
+    // Styles
+    const style = document.createElement('style');
+    style.textContent = `
       #wardrobe-overlay {
         position: absolute;
         top: 0;
@@ -131,14 +131,14 @@ export class WardrobeOverlay {
         font-style: italic;
       }
     `;
-        document.head.appendChild(style);
+    document.head.appendChild(style);
 
-        this.renderStructure();
-        document.body.appendChild(this.container);
-    }
+    this.renderStructure();
+    document.body.appendChild(this.container);
+  }
 
-    private renderStructure(): void {
-        this.container.innerHTML = `
+  private renderStructure(): void {
+    this.container.innerHTML = `
       <div class="wardrobe-content">
         <div class="wardrobe-header">
           <h2 class="wardrobe-title">Wardrobe</h2>
@@ -150,59 +150,59 @@ export class WardrobeOverlay {
       </div>
     `;
 
-        this.container.querySelector('.close-btn')?.addEventListener('click', () => {
-            this.hide();
-            this.onClose();
-        });
+    this.container.querySelector('.close-btn')?.addEventListener('click', () => {
+      this.hide();
+      this.onClose();
+    });
 
-        // Close on click outside
-        this.container.addEventListener('click', (e) => {
-            if (e.target === this.container) {
-                this.hide();
-                this.onClose();
-            }
-        });
+    // Close on click outside
+    this.container.addEventListener('click', (e) => {
+      if (e.target === this.container) {
+        this.hide();
+        this.onClose();
+      }
+    });
+  }
+
+  public show(characterId: string, currentAccessoryId: string): void {
+    this.characterId = characterId;
+    this.currentAccessoryId = currentAccessoryId;
+    this.renderItems();
+    this.container.style.display = 'flex';
+  }
+
+  public hide(): void {
+    this.container.style.display = 'none';
+  }
+
+  private renderItems(): void {
+    const grid = this.container.querySelector('#wardrobe-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const items = AccessoryRegistry.getAvailableForCharacter(this.characterId);
+
+    if (items.length === 0 || (items.length === 1 && items[0].id === 'none')) {
+      grid.innerHTML = `<div class="empty-state">No accessories fit this character yet!</div>`;
+      return;
     }
 
-    public show(characterId: string, currentAccessoryId: string): void {
-        this.characterId = characterId;
-        this.currentAccessoryId = currentAccessoryId;
-        this.renderItems();
-        this.container.style.display = 'flex';
-    }
+    items.forEach(item => {
+      const card = document.createElement('div');
+      card.className = `accessory-card ${item.id === this.currentAccessoryId ? 'active' : ''}`;
 
-    public hide(): void {
-        this.container.style.display = 'none';
-    }
-
-    private renderItems(): void {
-        const grid = this.container.querySelector('#wardrobe-grid');
-        if (!grid) return;
-        grid.innerHTML = '';
-
-        const items = AccessoryRegistry.getAvailableForCharacter(this.characterId);
-
-        if (items.length === 0 || (items.length === 1 && items[0].id === 'none')) {
-            grid.innerHTML = `<div class="empty-state">No accessories fit this character yet!</div>`;
-            return;
-        }
-
-        items.forEach(item => {
-            const card = document.createElement('div');
-            card.className = `accessory-card ${item.id === this.currentAccessoryId ? 'active' : ''}`;
-
-            card.innerHTML = `
+      card.innerHTML = `
         <div class="acc-icon">${item.icon}</div>
         <div class="acc-name">${item.name}</div>
       `;
 
-            card.onclick = () => {
-                this.currentAccessoryId = item.id;
-                this.onSelect(item.id);
-                this.renderItems(); // Re-render to update active state
-            };
+      card.onclick = () => {
+        this.currentAccessoryId = item.id;
+        this.onSelect(item.id);
+        this.renderItems(); // Re-render to update active state
+      };
 
-            grid.appendChild(card);
-        });
-    }
+      grid.appendChild(card);
+    });
+  }
 }

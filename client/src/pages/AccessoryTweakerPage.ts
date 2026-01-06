@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { CharacterRegistry } from '../services/CharacterRegistry';
 import { AccessoryFactory } from '../services/AccessoryFactory';
-import { AccessoryRegistry, AccessoryDefinition, DEFAULT_OFFSET } from '../services/AccessoryRegistry';
+import { AccessoryRegistry, DEFAULT_OFFSET } from '../services/AccessoryRegistry';
 
 interface AccessoryConfig {
     scale: number;
