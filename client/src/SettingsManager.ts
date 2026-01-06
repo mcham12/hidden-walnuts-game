@@ -460,29 +460,6 @@ export class SettingsManager {
     header.appendChild(guestTitle);
     header.appendChild(guestUsername);
 
-    // Simplified Benefits section
-    const benefitsTitle = document.createElement('div');
-    benefitsTitle.style.cssText = `
-      font-size: 16px;
-      font-weight: 700;
-      color: #FFD700;
-      margin-bottom: 12px;
-      text-align: center;
-    `;
-    benefitsTitle.textContent = '☁️ Save Your Progress';
-
-    const benefitsList = document.createElement('div');
-    benefitsList.style.cssText = `
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-bottom: 20px;
-      text-align: center;
-      color: #ccc;
-      font-size: 14px;
-    `;
-    benefitsList.textContent = 'Create an account to sync your progress across devices and never lose your stats.';
-
     // CTA buttons
     const buttonsContainer = document.createElement('div');
     buttonsContainer.style.cssText = `
@@ -507,7 +484,7 @@ export class SettingsManager {
       transition: transform 0.2s, box-shadow 0.2s;
       box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
     `;
-    signupButton.textContent = '🔐 Sign Up';
+    signupButton.textContent = 'Sign Up';
     signupButton.addEventListener('click', () => {
       this.close();
       this.onSignUpClick?.();
@@ -539,8 +516,6 @@ export class SettingsManager {
 
     // Assemble
     this.accountContainer.appendChild(header);
-    this.accountContainer.appendChild(benefitsTitle);
-    this.accountContainer.appendChild(benefitsList);
     this.accountContainer.appendChild(buttonsContainer);
   }
 
