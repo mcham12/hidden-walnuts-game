@@ -774,11 +774,9 @@
     }
 
     #leaderboard-toggle {
-      position: fixed;
-      /* Must be fixed like canvas for proper iPad stacking */
-      top: 10px;
-      right: 220px;
-      /* Next to minimap (200px + 10px margin + 10px gap) */
+      /* Now managed by #hud-top-left flex container */
+      position: static !important;
+      margin: 0 !important;
       background: rgba(44, 95, 45, 0.9);
       color: white;
       border: none;
@@ -788,7 +786,6 @@
       font-family: 'Arial', sans-serif;
       font-size: 14px;
       font-weight: bold;
-      z-index: 1001;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
       transition: all 0.2s;
       pointer-events: auto;
@@ -2409,53 +2406,15 @@
         right: 5px;
       }
 
-      /* Mobile-friendly buttons - consistent base styles */
-      #settings-toggle,
-      #leaderboard-toggle,
-      #help-toggle {
+      /* Mobile-friendly buttons - now managed by #hud-top-left flex container */
+      #hud-top-left button {
         padding: 10px 14px;
         font-size: 14px;
-        min-height: 48px;
-        min-width: 120px;
-        /* Ensure uniform width in stack */
+        min-height: 44px;
         width: auto;
-        right: auto;
-        left: 5px;
       }
 
-      /* Mobile: Settings button - below HUD on left */
-      #settings-toggle {
-        top: 105px;
-        /* Below mobile HUD */
-      }
 
-      /* Leaderboard button - below Settings on left */
-      #leaderboard-toggle {
-        top: 158px;
-        /* 105px + 48px + 5px gap */
-        bottom: auto;
-      }
-
-      /* Help button - below Leaderboard on left */
-      #help-toggle {
-        top: 211px;
-        /* 158px + 48px + 5px gap */
-        bottom: auto;
-        background: rgba(44, 95, 45, 0.9);
-        color: white;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-family: 'Arial', sans-serif;
-        font-weight: bold;
-        z-index: 1001;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        transition: all 0.2s;
-        pointer-events: auto;
-        touch-action: manipulation;
-        -webkit-appearance: none;
-        appearance: none;
-      }
 
       #help-toggle:active {
         background: rgba(44, 95, 45, 1);
@@ -2641,57 +2600,18 @@
         min-height: 24px;
       }
 
-      /* Settings button - TOP row after HUD */
-      #settings-toggle {
+      /* Landscape: compact row of buttons */
+      #hud-top-left {
+        flex-direction: row;
         top: max(5px, env(safe-area-inset-top));
-        left: calc(max(5px, env(safe-area-inset-left)) + 210px);
-        right: auto;
-        padding: 4px 8px;
-        font-size: 10px;
-        min-width: 85px;
-        /* Increased from 70px to match text width */
-        min-height: 24px;
+        left: calc(max(5px, env(safe-area-inset-left)) + 180px);
+        gap: 6px;
       }
 
-      /* Leaderboard button - TOP row after Settings */
-      #leaderboard-toggle {
-        top: max(5px, env(safe-area-inset-top));
-        left: calc(max(5px, env(safe-area-inset-left)) + 210px + 90px);
-        /* Increased gap */
-        right: auto;
-        bottom: auto;
+      #hud-top-left button {
         padding: 4px 8px;
         font-size: 10px;
-        min-width: 100px;
-        /* Increased from 70px */
-        min-height: 24px;
-      }
-
-      /* Help button - TOP row after Leaderboard */
-      #help-toggle {
-        top: max(5px, env(safe-area-inset-top));
-        left: calc(max(5px, env(safe-area-inset-left)) + 210px + 90px + 105px);
-        /* Increased gap */
-        right: auto;
-        bottom: auto;
-        padding: 4px 8px;
-        font-size: 10px;
-        min-width: 60px;
-        min-height: 24px;
-        background: rgba(44, 95, 45, 0.9);
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-family: 'Arial', sans-serif;
-        font-weight: bold;
-        z-index: 1001;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        transition: all 0.2s;
-        pointer-events: auto;
-        touch-action: manipulation;
-        -webkit-appearance: none;
-        appearance: none;
+        min-height: 28px;
       }
 
       /* Hide/Throw/Eat buttons - moved lower and more left per user request */
@@ -3268,7 +3188,7 @@
   <div id="minimap">
     <canvas id="minimap-canvas" width="200" height="200"></canvas>
   </div>
-  <button id="leaderboard-toggle" class="hidden">🏆 Leaderboard</button>
+
   <div id="leaderboard" class="hidden">
     <h3>🏆 Top Players</h3>
     <!-- MVP 9: Tabs for All-Time vs Weekly -->
@@ -3401,6 +3321,7 @@
   <!-- MVP 5: Settings Menu -->
   <div id="hud-top-left">
     <button id="settings-toggle" class="hidden">⚙️ Settings</button>
+    <button id="leaderboard-toggle" class="hidden">🏆 Leaderboard</button>
     <button id="help-toggle" class="hidden">❓ Help</button>
     <button id="wardrobe-toggle" class="hidden">🎒 Wardrobe</button>
   </div>
