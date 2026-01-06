@@ -84,11 +84,8 @@ MVP 16 implements full email/password authentication while maintaining the no-au
 - **Duration**: 1-2 weeks
 - **Status**: ⏳ PENDING
 
-### Phase 4: Monetization Hooks ⏳ **NOT STARTED** (1 day)
-- **Estimated Start**: 2025-12-18
-- **Estimated Completion**: 2025-12-20
-- **Duration**: 1 day
-- **Status**: ⏳ PENDING
+### Phase 4: Monetization Hooks 🚫 **CANCELLED**
+- **Status**: 🚫 CANCELLED - Game is now 100% Free-to-Play
 
 ---
 
@@ -119,8 +116,8 @@ MVP 16 implements full email/password authentication while maintaining the no-au
 - **Actual Characters** (from characters.json):
   - **No-Auth (1)**: Squirrel
   - **Authenticated Free (6)**: Squirrel, Hare, Goat, Chipmunk, Turkey, Mallard
-  - **Premium (4)**: Lynx, Bear, Moose, Badger
-  - **Future Premium (1)**: Skunk (seasonal/event)
+  - **Unlockable (4)**: Lynx, Bear, Moose, Badger (Unlockable via future updates)
+  - **Future (1)**: Skunk (seasonal/event)
 
 ### Task 0.4: Leaderboard Strategy ✅
 - **Status**: ✅ COMPLETE
@@ -464,7 +461,7 @@ Add `tier` field to each character:
 ```json
 { "id": "squirrel", "tier": "no-auth", ... }
 { "id": "hare", "tier": "free", ... }
-{ "id": "lynx", "tier": "premium", "price": 1.99, ... }
+{ "id": "lynx", "tier": "unlockable", ... }
 ```
 
 **Task 1C.3: Enhance CharacterRegistry (Client-Side)** (2 hours)
@@ -505,13 +502,13 @@ Update ForestManager or character selection handler:
    - `isCharacterAvailable()` - Validates character availability based on auth status
    - `getAvailableCharacters()` - Returns all available characters for user
    - `getCharacterTier()` - Returns tier for a character
-   - `getCharacterPrice()` - Returns price for premium characters ($1.99)
+   - `getCharacterPrice()` - Returns 0 (Free)
 
 2. **Character Metadata Updates**
    - Updated `/client/public/characters.json` with tier and price fields
    - 1 no-auth character: Squirrel
    - 6 free characters: Squirrel, Hare, Goat, Chipmunk, Turkey, Mallard
-   - 4 premium characters: Lynx, Bear, Moose, Badger ($1.99 each)
+   - 4 unlockable characters: Lynx, Bear, Moose, Badger
    - 1 future character: Skunk (seasonal/event)
 
 3. **Client-Side CharacterRegistry Enhancement**
@@ -955,7 +952,7 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 - ✅ Visual states:
   - **Available**: Full color, ✅ checkmark, clickable, hover scale 1.05
   - **Locked Free**: 60% opacity, 🔒 icon, tooltip "Sign Up to Unlock"
-  - **Locked Premium**: Full color, gold border, 💎 icon + "$1.99"
+  - **Locked Future**: Locked character placeholder
 - ✅ Grid layout with CSS Grid: Responsive across all 6 breakpoints
 
 **Task 2C.2: Add Authentication Status Check** ✅ COMPLETE (3 hours)

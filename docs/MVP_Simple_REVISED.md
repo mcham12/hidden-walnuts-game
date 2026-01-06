@@ -474,7 +474,8 @@ DEFERRED **1. Voiceover Work** (1-2 hours)
 
 ## 🔐 MVP 16: Full Authentication and corresponding UX changes.
 
-**Goal**: Continue to provide the existing quick, no-authentication option for low friction play, but also offer a new authenticated player accounts with passwords, email, cross-device sync. Authenticated player accounts get access to full player list of characters, and the ability to appear on specific leaderboards (TBD).  "No authentication" players should now be limited to just the Squirrel character.  The new authenticated player functionality should be built with montetization features in mind (per the Monetization design md doc). Immediate benefit to authentication users is a selection of several characters (but not the full list, some existing characters will now be moved to pay-for only status). Where appropriate and practical, build hooks or comments indicating placeholders where the new authenticated user functionality will likely integrate with monetization features which will come later.  Examples: authenticated players can optionally pay for access to additional characters, and have more capabilities (See monetization md doc)
+**Goal**: Continue to provide the existing quick, no-authentication option for low friction play, but also offer a new authenticated player accounts with passwords, email, cross-device sync. Authenticated player accounts get access to full player list of characters (unlock all characters for free) and the ability to appear on specific leaderboards. "No authentication" players are limited to just the Squirrel character. This provides immediate value for signing up without any paywalls.
+
 
 ### Features
 
@@ -530,16 +531,16 @@ TBD
 ---
 
 
-## 🧹 MVP 17: Monetization phase 1
+## 🚫 MVP 17: Monetization phase 1 (CANCELLED)
 
-**Goal**: Monetize the game
+**Goal**: ~~Monetize the game~~ **CANCELLED** - Game will remain 100% Free-to-Play.
 
 ### Tasks
-- Research technical options and perform recommendation (e.g. Stripe, etc)
-- Prioritize monetization options in the Monetization md doc
-- develop a detailed monetization implementation plan and document in the monetization md doc
-- implement top x options, based on feasibility
-- remove any debug logging, both client and server
+- ~~Research technical options and perform recommendation (e.g. Stripe, etc)~~
+- ~~Prioritize monetization options in the Monetization md doc~~
+- ~~develop a detailed monetization implementation plan and document in the monetization md doc~~
+- ~~implement top x options, based on feasibility~~
+
 
 ## 🧹 MVP 18: Code Cleanup & Optimization
 

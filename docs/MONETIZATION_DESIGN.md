@@ -1,3 +1,7 @@
+# 🚫 [DEPRECATED] Monetization Design Document (CANCELLED)
+
+> **NOTE:** This document is **DEPRECATED**. The game has been pivoted to a 100% Free-to-Play model. All monetization strategies described below (Ads, IAP, Premium Characters) have been **CANCELLED** and will not be implemented. This document is preserved only for historical reference of the design process.
+
 # Hidden Walnuts - Monetization Design Document
 
 **Created**: 2025-11-04

@@ -15,8 +15,8 @@ A production-ready **multiplayer 3D game** where players explore a procedurally 
 
 ### Core Gameplay
 - **Walnut Mechanics**: Hide walnuts for future discovery, find golden walnuts for points
-- **Tree Growth System**: Hidden walnuts grow into trees after 15-20 minutes, spawning 5 new walnuts
-- **Combat System**: Use walnuts as projectiles (30 HP damage), 100 HP health system
+- **Tree Growth System**: Hidden walnuts grow into trees after 60 seconds, spawning 5 new walnuts
+- **Combat System**: Use walnuts as projectiles (20 HP damage), 100 HP health system
 - **Survival**: Manage health through walnut consumption, defend against predators
 - **Progression**: 7-tier rank system (Rookie → Legend) based on score
 
@@ -30,8 +30,8 @@ A production-ready **multiplayer 3D game** where players explore a procedurally 
 ### Character System (MVP 16)
 - **Guest players**: Single character (Squirrel) with full gameplay access
 - **Authenticated players**: 6 free characters (Squirrel, Hare, Goat, Chipmunk, Turkey, Mallard)
-- **Premium characters**: 4 characters (Lynx, Bear, Moose, Badger) at $1.99 each
-- **Character tiers**: Visual progression and status display
+- **Authenticated players**: Unlock additional characters (Hare, Goat, Chipmunk, Turkey, Mallard)
+- **All Characters Free**: No purchases required, simply play or sign in to unlock
 
 ### PvE Content
 - **NPCs**: Up to 2 AI squirrels that wander, gather walnuts, and throw at players
@@ -44,7 +44,7 @@ A production-ready **multiplayer 3D game** where players explore a procedurally 
 - **Email verification**: Optional email verification for enhanced features
 - **Password reset**: Forgot password flow with email recovery
 - **Session persistence**: 30-day access tokens, 90-day refresh tokens
-- **Character unlocking**: Premium character purchases tied to account
+- **Character unlocking**: Sign in to unlock additional characters
 
 ### Technical Features
 - **Bot protection**: Cloudflare Turnstile verification on all connections
@@ -276,7 +276,7 @@ Push to mvp-* → Preview deployment
 - **Mobile optimization**: Improve touch controls and performance
 - **Social features**: Friend system, private messages
 - **Seasonal content**: Limited-time characters and events
-- **Monetization**: Premium character sales ($1.99 each)
+- **No Monetization**: 100% Free-to-play experience
 - **Analytics**: Player behavior tracking and insights
 
 ## Architecture Philosophy

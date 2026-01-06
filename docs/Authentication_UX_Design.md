@@ -362,15 +362,7 @@ Option B: User clicks verification link (in email)
 │  │✅   │ │     │ │     │ │     │                              │
 │  └─────┘ └─────┘ └─────┘ └─────┘                              │
 │                                                                 │
-│  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐                              │
-│  │🦃🔒│ │🦆🔒│ │🐈💎│ │🐻💎│  ← Premium ($1.99 each)      │
-│  │Turk │ │Mall │ │Lynx │ │Bear │                              │
-│  └─────┘ └─────┘ └─────┘ └─────┘                              │
-│                                                                 │
-│  ┌─────┐ ┌─────┐ ┌─────┐                                      │
-│  │🫎💎│ │🦡💎│ │🦨💎│                                        │
-│  │Moos │ │Badg │ │Skun │                                      │
-│  └─────┘ └─────┘ └─────┘                                      │
+
 │                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐ │
 │  │  🔐 Sign Up Free to Unlock 6 Characters!                 │ │
@@ -383,7 +375,7 @@ Option B: User clicks verification link (in email)
 **Legend**:
 - ✅ = Available (green checkmark)
 - 🔒 = Locked (free for authenticated users)
-- 💎 = Premium (purchase required)
+
 
 **Authenticated User** (Desktop):
 ```
@@ -395,17 +387,9 @@ Option B: User clicks verification link (in email)
 │  │Squi │ │Hare │ │Goat │ │Chip │                              │
 │  └─────┘ └─────┘ └─────┘ └─────┘                              │
 │                                                                 │
-│  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐                              │
-│  │🦃✅│ │🦆✅│ │🐈💎│ │🐻💎│  ← Premium ($1.99)           │
-│  │Turk │ │Mall │ │Lynx │ │Bear │                              │
-│  └─────┘ └─────┘ └─────┘ └─────┘                              │
+
 │                                                                 │
-│  ┌─────┐ ┌─────┐ ┌─────┐                                      │
-│  │🫎💎│ │🦡💎│ │🦨💎│                                        │
-│  │Moos │ │Badg │ │Skun │                                      │
-│  └─────┘ └─────┘ └─────┘                                      │
-│                                                                 │
-│  Premium characters coming in MVP 17!                           │
+│  (All characters are free for authenticated users!)                           │
 │                                                                 │
 │  [SELECT CHARACTER]                                  [Settings]│
 └────────────────────────────────────────────────────────────────┘
@@ -742,20 +726,16 @@ padding-bottom: env(safe-area-inset-bottom);
    - "Sign Up to Unlock" on hover/tap
    - Shows character preview on click
 
-3. **Premium Characters** (Gold border, 💎 icon)
-   - Full color (aspirational)
-   - Gold/yellow border (premium feel)
-   - 💎 diamond icon + "$1.99" label
-   - "Coming in MVP 17!" tooltip
+
 
 **Click Behavior**:
 - Available character → Select and start game
 - Locked free character → Show "Sign Up to Unlock 6 Characters" modal
-- Premium character → Show "Premium Character - Coming Soon!" modal
+
 
 **Messaging**:
 - No-auth user: "Sign Up Free to Unlock 6 Characters!" (bottom CTA)
-- Authenticated user: "Premium characters coming in MVP 17!" (info text)
+
 
 ---
 

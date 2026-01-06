@@ -290,7 +290,7 @@ Phase 2 implements the client-side authentication user experience for Hidden Wal
 - Visual states:
   - **Available**: Full color, ✅ checkmark, clickable, hover scale 1.05
   - **Locked Free**: 80% opacity, 🔒 icon, tooltip "Sign Up to Unlock"
-  - **Locked Premium**: Full color, gold border, 💎 icon + "$1.99"
+  - **Locked**: Character preview available
 
 **Responsive Breakpoints**:
 - **Desktop (1025px+)**: 4x3 grid layout (11 characters + 1 empty), 120px card size, 12px gap, hover scale 1.05

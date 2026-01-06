@@ -505,7 +505,7 @@ Based on actual `characters.json` file (11 characters total):
 5. **Turkey** 🦃 - "Proud woodland bird"
 6. **Mallard** 🦆 - "Graceful waterfowl"
 
-**Premium Characters** (4 characters - $1.99-2.99 each):
+**Unlockable Characters** (4 characters):
 1. **Lynx** 🐈 - "Stealthy wildcat" (predator, exotic)
 2. **Bear** 🐻 - "Powerful forest guardian" (large, impressive)
 3. **Moose** 🫎 - "Majestic forest giant" (largest character)
@@ -580,7 +580,7 @@ export class CharacterRegistry {
   static getCharacterPrice(characterId: string): number | null {
     // MVP 17 TODO: Implement dynamic pricing
     if (!this.PREMIUM_CHARACTERS.includes(characterId)) return null;
-    return 1.99; // Base price for MVP 16 planning
+    return 0; // Free
   }
 }
 ```

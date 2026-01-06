@@ -255,7 +255,7 @@ Responsive grid showing all available characters:
 - Character cards with name, tier (Guest/Free/Premium), price
 - Click card → 3D preview modal → Select button
 - CTA banner for unauthenticated users ("Sign up for 6 FREE characters!")
-- Premium character purchase flow (future: $1.99 per character)
+- Unlockable character flow (Future free updates)
 
 #### **`NetworkSystem.ts`** - Multiplayer (1,200+ lines)
 **Path**: `/client/src/systems/NetworkSystem.ts`
@@ -323,7 +323,7 @@ Centralized character data:
 **Character Tiers**:
 - `no-auth`: Squirrel (guest only)
 - `free`: Squirrel, Hare, Goat, Chipmunk, Turkey, Mallard (authenticated)
-- `premium`: Lynx, Bear, Moose, Badger ($1.99 each)
+- `unlockable`: Lynx, Bear, Moose, Badger
 - `future`: Skunk (seasonal, not yet released)
 
 **Character Definition**:
