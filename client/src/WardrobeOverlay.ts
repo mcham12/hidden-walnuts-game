@@ -218,11 +218,6 @@ export class WardrobeOverlay {
     allItems.forEach(item => {
       if (categories[item.type]) {
         categories[item.type].push(item);
-      } else if (item.id === 'none') {
-        // Add 'none' to all categories
-        categories['hat'].push({ ...item, type: 'hat' });
-        categories['glasses'].push({ ...item, type: 'glasses' });
-        categories['backpack'].push({ ...item, type: 'backpack' });
       }
     });
 

@@ -108,6 +108,66 @@
       display: none;
     }
 
+    /* MVP 17: Container for top-left HUD buttons */
+    #hud-top-left {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      /* Aligned with walnut HUD? Walnut HUD is top:10, left:10. Overlap? */
+      /* Actually Walnut HUD is at top:10, left:10. We should position this BELOW it or TO THE RIGHT. */
+      /* Walnut HUD is about 200px wide? Or fluid. Let's stack them below Walnut HUD for safety, or check line 524 */
+      /* Line 524 says: #walnut-hud { top: 10px; left: 10px; ... } */
+      /* So we should push this down. Let's say top 70px */
+      top: 70px;
+      left: 10px;
+      display: flex;
+      flex-direction: row;
+      /* Default desktop row */
+      gap: 10px;
+      z-index: 1001;
+    }
+
+    #hud-top-left button {
+      background: rgba(44, 95, 45, 0.9);
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Arial', sans-serif;
+      font-size: 14px;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      transition: all 0.2s;
+      pointer-events: auto;
+      touch-action: manipulation;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #hud-top-left button:hover {
+      background: rgba(44, 95, 45, 1);
+      transform: translateY(-1px);
+    }
+
+    #hud-top-left button:active {
+      transform: translateY(1px);
+    }
+
+    #hud-top-left button.hidden {
+      display: none !important;
+    }
+
+    /* Remove old individual positioning styles */
+    #settings-toggle,
+    #help-toggle,
+    #wardrobe-toggle {
+      position: static !important;
+      /* Managed by flex container */
+      margin: 0 !important;
+    }
+
     /* MVP 5.8: Updated Settings Overlay - Forest Dark Theme */
     #settings-overlay {
       position: fixed;
@@ -3338,9 +3398,11 @@
 
   </div>
   <!-- MVP 5: Settings Menu -->
-  <button id="settings-toggle" class="hidden">⚙️ Settings</button>
-  <button id="help-toggle" class="hidden">❓ Help</button>
-  <button id="wardrobe-toggle" class="hidden">🎒 Wardrobe</button>
+  <div id="hud-top-left">
+    <button id="settings-toggle" class="hidden">⚙️ Settings</button>
+    <button id="help-toggle" class="hidden">❓ Help</button>
+    <button id="wardrobe-toggle" class="hidden">🎒 Wardrobe</button>
+  </div>
   <!-- MVP 5: Settings Menu Overlay -->
   <div id="settings-overlay" class="hidden">
     <div id="settings-menu">

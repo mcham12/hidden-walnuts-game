@@ -189,6 +189,15 @@ export class AccessoryTweakerPage {
         output.style.cssText = "width: 100%; height: 100px; background: #111; color: #0f0; border: 1px solid #333; font-family: monospace; font-size: 11px; padding: 5px;";
         sidebar.appendChild(output);
 
+        // Save Button
+        const saveBtn = document.createElement('button');
+        saveBtn.innerText = "💾 Save to LocalStorage";
+        saveBtn.style.cssText = "width: 100%; padding: 10px; margin-top: 10px; background: #4ECDC4; color: black; border: none; font-weight: bold; cursor: pointer;";
+        saveBtn.onclick = () => {
+            this.saveToLocaleStorage();
+        };
+        sidebar.appendChild(saveBtn);
+
         // Game Area
         const gameArea = document.createElement('div');
         gameArea.style.flex = '1';
@@ -247,6 +256,25 @@ export class AccessoryTweakerPage {
         const out = document.getElementById('tweaker-output') as HTMLTextAreaElement;
         if (out) {
             out.value = JSON.stringify(this.config, null, 2);
+        }
+    }
+
+    private saveToLocaleStorage() {
+        try {
+            const raw = localStorage.getItem('accessory_offsets');
+            let data: Record<string, Record<string, AccessoryConfig>> = {};
+            if (raw) {
+                data = JSON.parse(raw);
+            }
+            if (!data[this.currentCharacterId]) {
+                data[this.currentCharacterId] = {};
+            }
+            data[this.currentCharacterId][this.currentAccessoryId] = this.config;
+            localStorage.setItem('accessory_offsets', JSON.stringify(data));
+            alert(`Saved offset for ${this.currentCharacterId} / ${this.currentAccessoryId}`);
+        } catch (e) {
+            console.error(e);
+            alert('Failed to save');
         }
     }
 
