@@ -78,6 +78,19 @@ export class AccessoryRegistry {
     }
 
     static getOffset(characterId: string, accessoryId: string): AccessoryOffset {
+        // Check local storage for dev overrides
+        try {
+            const stored = localStorage.getItem('accessory_offsets');
+            if (stored) {
+                const overrides = JSON.parse(stored);
+                if (overrides[characterId] && overrides[characterId][accessoryId]) {
+                    return overrides[characterId][accessoryId];
+                }
+            }
+        } catch (e) {
+            // Ignore json parse errors
+        }
+
         const charOffsets = ACCESSORY_OFFSETS[characterId];
         if (charOffsets && charOffsets[accessoryId]) {
             return charOffsets[accessoryId];

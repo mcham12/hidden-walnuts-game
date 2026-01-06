@@ -263,7 +263,12 @@ export class WardrobeOverlay {
   }
 
   private selectItem(type: string, id: string) {
-    this.activeAccessories[type] = id;
+    // Toggle logic: If clicking the active item, set to 'none' (unless it's already none)
+    if (this.activeAccessories[type] === id && id !== 'none') {
+      this.activeAccessories[type] = 'none';
+    } else {
+      this.activeAccessories[type] = id;
+    }
     this.onSelect(this.activeAccessories);
     this.renderItems();
   }
