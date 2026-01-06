@@ -3141,7 +3141,8 @@ export default class ForestManager extends DurableObject {
             username: npc.username,
             position: npc.position,
             rotationY: npc.rotationY,
-            animation: npc.animation
+            animation: npc.animation,
+            accessoryId: npc.accessoryId
           }
         });
       }

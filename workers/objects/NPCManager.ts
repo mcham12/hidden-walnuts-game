@@ -1017,7 +1017,8 @@ export class NPCManager {
         username: npc.username,
         position: npc.position,
         rotationY: npc.rotationY,
-        animation: npc.animation
+        animation: npc.animation,
+        accessoryId: npc.accessoryId
       }
     });
   }

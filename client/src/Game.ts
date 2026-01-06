@@ -2400,7 +2400,7 @@ export class Game {
       case 'npc_spawned':
         // MVP 7: NPC spawned on server, create NPC entity on client
         if (data.npc && data.npc.id) {
-          this.createNPC(data.npc.id, data.npc.position, data.npc.rotationY, data.npc.characterId, data.npc.username, data.npc.animation);
+          this.createNPC(data.npc.id, data.npc.position, data.npc.rotationY, data.npc.characterId, data.npc.username, data.npc.animation, data.npc.accessoryId);
         } else {
         }
         break;
