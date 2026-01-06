@@ -3,12 +3,18 @@ import { AccessoryRegistry } from './services/AccessoryRegistry';
 
 export class WardrobeOverlay {
   private container: HTMLElement;
-  private onSelect: (accessoryId: string) => void;
+  private onSelect: (accessories: Record<string, string>) => void;
   private onClose: () => void;
   private characterId: string = 'squirrel';
-  private currentAccessoryId: string = 'none';
+  // active items per category
+  private activeAccessories: Record<string, string> = {
+    'hat': 'none',
+    'glasses': 'none',
+    'backpack': 'none',
+    'mask': 'none'
+  };
 
-  constructor(onSelect: (accessoryId: string) => void, onClose: () => void) {
+  constructor(onSelect: (accessories: Record<string, string>) => void, onClose: () => void) {
     this.onSelect = onSelect;
     this.onClose = onClose;
 
@@ -39,8 +45,8 @@ export class WardrobeOverlay {
         border-radius: 20px;
         padding: 30px;
         width: 90%;
-        max-width: 600px;
-        max-height: 80vh;
+        max-width: 700px;
+        max-height: 85vh;
         display: flex;
         flex-direction: column;
         color: white;
@@ -82,19 +88,37 @@ export class WardrobeOverlay {
         border-color: white;
       }
 
+      .wardrobe-body {
+        overflow-y: auto;
+        flex: 1;
+        padding-right: 10px;
+      }
+
+      .category-section {
+        margin-bottom: 30px;
+      }
+
+      .category-title {
+        font-size: 1.2rem;
+        color: #FFE4B5;
+        margin-bottom: 15px;
+        border-bottom: 1px solid rgba(139, 69, 19, 0.5);
+        padding-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
       .accessory-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-        gap: 15px;
-        overflow-y: auto;
-        padding: 10px;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 12px;
       }
 
       .accessory-card {
         background: rgba(255, 255, 255, 0.05);
         border: 2px solid rgba(255, 255, 255, 0.1);
         border-radius: 12px;
-        padding: 15px;
+        padding: 12px;
         cursor: pointer;
         display: flex;
         flex-direction: column;
@@ -114,21 +138,17 @@ export class WardrobeOverlay {
         box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
       }
 
-      .acc-icon {
-        font-size: 3rem;
-        margin-bottom: 10px;
-      }
-
       .acc-name {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         font-weight: bold;
       }
 
       .empty-state {
         text-align: center;
         color: rgba(255, 255, 255, 0.5);
-        padding: 40px;
+        padding: 20px;
         font-style: italic;
+        font-size: 0.9rem;
       }
     `;
     document.head.appendChild(style);
@@ -144,8 +164,8 @@ export class WardrobeOverlay {
           <h2 class="wardrobe-title">Wardrobe</h2>
           <button class="close-btn">×</button>
         </div>
-        <div class="accessory-grid" id="wardrobe-grid">
-          <!-- Items injected here -->
+        <div class="wardrobe-body" id="wardrobe-body">
+          <!-- Categories injected here -->
         </div>
       </div>
     `;
@@ -155,7 +175,6 @@ export class WardrobeOverlay {
       this.onClose();
     });
 
-    // Close on click outside
     this.container.addEventListener('click', (e) => {
       if (e.target === this.container) {
         this.hide();
@@ -164,9 +183,15 @@ export class WardrobeOverlay {
     });
   }
 
-  public show(characterId: string, currentAccessoryId: string): void {
+  // Accepts map of type -> id, e.g. { hat: 'propeller', glasses: 'none' }
+  public show(characterId: string, currentAccessories: Record<string, string>): void {
     this.characterId = characterId;
-    this.currentAccessoryId = currentAccessoryId;
+    this.activeAccessories = { ...currentAccessories };
+    // Ensure defaults
+    ['hat', 'glasses', 'backpack'].forEach(t => {
+      if (!this.activeAccessories[t]) this.activeAccessories[t] = 'none';
+    });
+
     this.renderItems();
     this.container.style.display = 'flex';
   }
@@ -176,33 +201,70 @@ export class WardrobeOverlay {
   }
 
   private renderItems(): void {
-    const grid = this.container.querySelector('#wardrobe-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
+    const body = this.container.querySelector('#wardrobe-body');
+    if (!body) return;
+    body.innerHTML = '';
 
-    const items = AccessoryRegistry.getAvailableForCharacter(this.characterId);
+    const allItems = AccessoryRegistry.getAvailableForCharacter(this.characterId);
 
-    if (items.length === 0 || (items.length === 1 && items[0].id === 'none')) {
-      grid.innerHTML = `<div class="empty-state">No accessories fit this character yet!</div>`;
-      return;
-    }
+    // Group by type
+    const categories: Record<string, any[]> = {
+      'hat': [],
+      'glasses': [],
+      'backpack': [],
+      'mask': []
+    };
 
-    items.forEach(item => {
-      const card = document.createElement('div');
-      card.className = `accessory-card ${item.id === this.currentAccessoryId ? 'active' : ''}`;
+    allItems.forEach(item => {
+      if (categories[item.type]) {
+        categories[item.type].push(item);
+      } else if (item.id === 'none') {
+        // Add 'none' to all categories
+        categories['hat'].push({ ...item, type: 'hat' });
+        categories['glasses'].push({ ...item, type: 'glasses' });
+        categories['backpack'].push({ ...item, type: 'backpack' });
+      }
+    });
 
-      card.innerHTML = `
-        <div class="acc-icon">${item.icon}</div>
-        <div class="acc-name">${item.name}</div>
+    // Render each category
+    Object.keys(categories).forEach(type => {
+      const section = document.createElement('div');
+      section.className = 'category-section';
+
+      const title = type.charAt(0).toUpperCase() + type.slice(1) + (type === 'glasses' ? '' : 's');
+
+      const itemsHtml = categories[type].length > 0 ? '' : '<div class="empty-state">No items available</div>';
+
+      section.innerHTML = `
+        <div class="category-title">${title}</div>
+        <div class="accessory-grid" id="grid-${type}">
+          ${itemsHtml}
+        </div>
       `;
 
-      card.onclick = () => {
-        this.currentAccessoryId = item.id;
-        this.onSelect(item.id);
-        this.renderItems(); // Re-render to update active state
-      };
+      body.appendChild(section);
 
-      grid.appendChild(card);
+      const grid = section.querySelector(`#grid-${type}`);
+      if (grid && categories[type].length > 0) {
+        categories[type].forEach(item => {
+          const card = document.createElement('div');
+          const isActive = this.activeAccessories[type] === item.id || (item.id === 'none' && (!this.activeAccessories[type] || this.activeAccessories[type] === 'none'));
+
+          card.className = `accessory-card ${isActive ? 'active' : ''}`;
+          card.innerHTML = `<div class="acc-name">${item.name}</div>`;
+
+          card.onclick = () => {
+            this.selectItem(type, item.id);
+          };
+          grid.appendChild(card);
+        });
+      }
     });
+  }
+
+  private selectItem(type: string, id: string) {
+    this.activeAccessories[type] = id;
+    this.onSelect(this.activeAccessories);
+    this.renderItems();
   }
 }

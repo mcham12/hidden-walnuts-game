@@ -120,6 +120,7 @@ interface NPC {
   walnutInventory: number;       // Walnuts carried (for throwing)
   lastThrowTime: number;         // Cooldown tracking (timestamp)
   aggressionLevel: number;       // 0-1 personality trait (0.3=passive, 0.7=aggressive)
+  accessoryId?: string;          // MVP 17: Visual accessory (optional)
 }
 
 export default class ForestManager extends DurableObject {

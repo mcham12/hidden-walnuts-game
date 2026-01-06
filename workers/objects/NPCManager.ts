@@ -54,6 +54,7 @@ interface NPC {
   maxHealth: number; // MVP 9: Maximum health
   lastCollisionDamageTime: number; // Cooldown for collision damage
   spawnTime: number; // MVP 12: Timestamp when NPC spawned (for predator targeting)
+  accessoryId?: string; // MVP 17: Randomly assigned accessory
 }
 
 interface PlayerConnection {
@@ -164,6 +165,21 @@ export class NPCManager {
     this.npcs.clear();
   }
 
+  // MVP 17: NPC Accessories (mirrors client-side Registry)
+  private readonly NPC_ACCESSORIES: Record<string, string[]> = {
+    'squirrel': ['hat_propeller_98', 'hat_viking_71', 'glasses_goggles_56', 'backpack_jetpack_10'],
+    'moose': ['top_hat', 'hat_propeller_98'],
+    'lynx': ['hat_propeller_98', 'glasses_goggles_56'],
+    'goat': ['hat_propeller_98'],
+    'hare': ['hat_propeller_98'],
+    'bear': ['hat_propeller_98'],
+    'skunk': ['hat_propeller_98'],
+    'badger': ['hat_propeller_98'],
+    'chipmunk': ['hat_propeller_98'],
+    'turkey': ['hat_propeller_98'],
+    'mallard': ['hat_propeller_98']
+  };
+
   /**
    * Create a new NPC with random properties
    */
@@ -200,6 +216,14 @@ export class NPCManager {
       aggressionLevel = 0.85 + Math.random() * 0.15; // Very Aggressive - MOST NPCs
     }
 
+    // MVP 17: Random Accessory
+    // 50% chance to have an accessory if one is available
+    let accessoryId = 'none';
+    const possibleAccessories = this.NPC_ACCESSORIES[characterId];
+    if (possibleAccessories && possibleAccessories.length > 0 && Math.random() < 0.5) {
+      accessoryId = possibleAccessories[Math.floor(Math.random() * possibleAccessories.length)];
+    }
+
     return {
       id,
       characterId,
@@ -217,7 +241,8 @@ export class NPCManager {
       health: 100, // MVP 9: NPCs start with full health
       maxHealth: 100,
       lastCollisionDamageTime: 0, // No collision damage cooldown initially
-      spawnTime: Date.now() // MVP 12: Track spawn time for predator targeting
+      spawnTime: Date.now(), // MVP 12: Track spawn time for predator targeting
+      accessoryId: accessoryId
     };
   }
 
@@ -275,7 +300,8 @@ export class NPCManager {
         velocity: npc.velocity,
         animation: npc.animation,
         behavior: npc.currentBehavior,
-        health: npc.health // MVP 9: Include health for client health bars
+        health: npc.health, // MVP 9: Include health for client health bars
+        accessoryId: npc.accessoryId // MVP 17: Visual accessory
       });
     }
 

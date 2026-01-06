@@ -1872,6 +1872,8 @@ export class Game {
     await this.connectWebSocket();
   }
 
+
+
   private async connectWebSocket(): Promise<void> {
     if (this.connectionAttempts >= this.maxConnectionAttempts) {
       console.warn('⚠️ Max connection attempts reached. Multiplayer disabled.');
@@ -2340,7 +2342,7 @@ export class Game {
             }
           } else {
             // Remote player update
-            this.updateRemotePlayer(data.squirrelId, data.position, data.rotationY, data.animation, data.velocity, data.animationStartTime, data.moveType, data.characterId, data.health);
+            this.updateRemotePlayer(data.squirrelId, data.position, data.rotationY, data.animation, data.velocity, data.animationStartTime, data.moveType, data.characterId, data.health, data.accessoryId);
           }
         }
         break;
@@ -2405,7 +2407,7 @@ export class Game {
       case 'npc_update':
         // MVP 7: NPC position/animation update from server (legacy single update)
         if (data.npcId) {
-          this.updateNPC(data.npcId, data.position, data.rotationY, data.animation, data.velocity, data.behavior, data.health);
+          this.updateNPC(data.npcId, data.position, data.rotationY, data.animation, data.velocity, data.behavior, data.health, data.accessoryId);
         }
         break;
 
@@ -2413,7 +2415,7 @@ export class Game {
         // MVP 7.1: Batched NPC updates (all NPCs in single message for efficiency)
         if (data.npcs && Array.isArray(data.npcs)) {
           for (const npcData of data.npcs) {
-            this.updateNPC(npcData.npcId, npcData.position, npcData.rotationY, npcData.animation, npcData.velocity, npcData.behavior, npcData.health);
+            this.updateNPC(npcData.npcId, npcData.position, npcData.rotationY, npcData.animation, npcData.velocity, npcData.behavior, npcData.health, npcData.accessoryId);
           }
         }
         break;
@@ -2740,8 +2742,25 @@ export class Game {
 
   // MVP 17: Helper to attach accessories to characters
   // MVP 17: Helper to attach accessories to characters
-  private async attachAccessory(model: THREE.Group, characterId: string, accessoryId: string = 'none') {
-    if (!accessoryId || accessoryId === 'none') return;
+  private async attachAccessory(model: THREE.Group, characterId: string, accessoryIdOrJson: string = 'none') {
+    // Determine what we're equipping
+    let accessoriesToEquip: Record<string, string> = {};
+
+    try {
+      if (accessoryIdOrJson && accessoryIdOrJson !== 'none') {
+        if (accessoryIdOrJson.startsWith('{')) {
+          accessoriesToEquip = JSON.parse(accessoryIdOrJson);
+        } else {
+          // Single legacy ID - assume hat for now, or look up type
+          const def = AccessoryRegistry.getAccessory(accessoryIdOrJson);
+          if (def) {
+            accessoriesToEquip[def.type] = accessoryIdOrJson;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse accessory JSON', e);
+    }
 
     // Improved Head Bone finding logic
     let headBone: THREE.Object3D | undefined;
@@ -2767,14 +2786,40 @@ export class Game {
       return;
     }
 
-    const accessory = await AccessoryFactory.createAccessory(accessoryId);
-    if (accessory) {
-      const offsets = AccessoryRegistry.getOffset(characterId, accessoryId);
-      accessory.position.set(offsets.position.x, offsets.position.y, offsets.position.z);
-      accessory.rotation.set(offsets.rotation.x, offsets.rotation.y, offsets.rotation.z);
-      accessory.scale.setScalar(offsets.scale);
+    // Process each category we know about
+    // const categories = ['hat', 'glasses', 'backpack', 'mask'];
 
-      headBone.add(accessory);
+    // 1. Remove obsolete items or items we are about to replace
+    // We iterate backwards to safely remove children
+    for (let i = headBone.children.length - 1; i >= 0; i--) {
+      const child = headBone.children[i];
+      if (child.name.startsWith('equipped_accessory_')) {
+        const type = child.name.replace('equipped_accessory_', '');
+
+        // If we have a new setting for this type, remove the old one
+        // Or if existing setup is different (this handles the "None" case naturally if we pass {hat: 'none'})
+        if (accessoriesToEquip[type] !== undefined) {
+          headBone.remove(child);
+        }
+      } else if (child.name === 'equipped_accessory') {
+        // Legacy cleanup
+        headBone.remove(child);
+      }
+    }
+
+    // 2. Add new items
+    for (const [type, id] of Object.entries(accessoriesToEquip)) {
+      if (id === 'none') continue;
+
+      const accessory = await AccessoryFactory.createAccessory(id);
+      if (accessory) {
+        accessory.name = `equipped_accessory_${type}`;
+        const offsets = AccessoryRegistry.getOffset(characterId, id);
+        accessory.position.set(offsets.position.x, offsets.position.y, offsets.position.z);
+        accessory.rotation.set(offsets.rotation.x, offsets.rotation.y, offsets.rotation.z);
+        accessory.scale.setScalar(offsets.scale);
+        headBone.add(accessory);
+      }
     }
   }
 
@@ -2939,7 +2984,7 @@ export class Game {
     }
   }
 
-  private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, _moveType?: string, _characterId?: string, health?: number): void {
+  private updateRemotePlayer(playerId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; y: number; z: number }, animationStartTime?: number, _moveType?: string, _characterId?: string, health?: number, accessoryId?: string): void {
     const remotePlayer = this.remotePlayers.get(playerId);
     if (remotePlayer) {
       // MVP 9 FIX: Only update health if no recent combat event (prevents stale data from overwriting fresh combat data)
@@ -2953,6 +2998,13 @@ export class Game {
           remotePlayer.userData.health = health;
         }
         // Otherwise ignore stale health data from player_update
+      }
+
+      // MVP 17: Update accessory if changed
+      if (accessoryId && accessoryId !== 'none' && remotePlayer.userData.accessoryId !== accessoryId) {
+        remotePlayer.userData.accessoryId = accessoryId;
+        const cId = remotePlayer.userData.characterId || this.selectedCharacterId;
+        this.attachAccessory(remotePlayer, cId, accessoryId);
       }
 
       // STANDARD: Calculate ground position using raycasting
@@ -3404,7 +3456,7 @@ export class Game {
    * MVP 7: Create NPC entity on client (server-spawned AI character)
    * MVP 8: Fixed race condition that caused ghost NPCs
    */
-  private async createNPC(npcId: string, position: { x: number; y: number; z: number }, rotationY: number, characterId: string, username: string, animation: string): Promise<void> {
+  private async createNPC(npcId: string, position: { x: number; y: number; z: number }, rotationY: number, characterId: string, username: string, animation: string, accessoryId?: string): Promise<void> {
     if (this.npcs.has(npcId)) {
       // NPC already exists, just update position
       this.updateNPC(npcId, position, rotationY, animation, undefined, undefined, undefined);
@@ -3526,6 +3578,11 @@ export class Game {
         );
       }
 
+      // MVP 17: Attach random accessory if provided
+      if (accessoryId && accessoryId !== 'none') {
+        await this.attachAccessory(npcCharacter, characterId, accessoryId);
+      }
+
       // MVP 7: Create NPC name label with cyan/yellow color + italic styling
       const npcNameLabel = this.createLabel(username, '#000000'); // Black text for readability
       npcNameLabel.style.background = 'linear-gradient(90deg, rgba(0,255,255,0.9), rgba(255,255,0,0.9))'; // Cyan to yellow gradient
@@ -3577,7 +3634,7 @@ export class Game {
   /**
    * MVP 7: Update NPC position and animation from server
    */
-  private updateNPC(npcId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; z: number }, behavior?: string, health?: number): void {
+  private updateNPC(npcId: string, position: { x: number; y: number; z: number }, rotationY: number, animation?: string, velocity?: { x: number; z: number }, behavior?: string, health?: number, accessoryId?: string): void {
     const npc = this.npcs.get(npcId);
     if (npc) {
       // MVP 9 FIX: Only update health if no recent combat event (prevents stale data from overwriting fresh combat data)
@@ -3591,6 +3648,15 @@ export class Game {
           npc.userData.health = health;
         }
         // Otherwise ignore stale health data from npc_updates_batch
+      }
+
+      // MVP 17: Handle accessory updates
+      // Check if accessory changed (or if we never set it)
+      if (accessoryId && accessoryId !== 'none' && npc.userData.accessoryId !== accessoryId) {
+        npc.userData.accessoryId = accessoryId;
+        const charId = npc.userData.characterId || 'squirrel';
+        // Fire and forget (it handles async internally)
+        this.attachAccessory(npc, charId, accessoryId);
       }
 
       // Calculate ground position
@@ -8586,16 +8652,23 @@ export class Game {
     toggleBtn.classList.remove('hidden');
 
     this.wardrobeOverlay = new WardrobeOverlay(
-      (accessoryId) => {
-        console.log('Selected accessory:', accessoryId);
-        this.selectedAccessoryId = accessoryId;
+      async (accessories) => {
+        console.log('Selected accessories:', accessories);
+        // Serialize to JSON for storage/network
+        const json = JSON.stringify(accessories);
+        this.selectedAccessoryId = json;
         // Save to local storage
-        localStorage.setItem('selectedAccessoryId', accessoryId);
+        localStorage.setItem('selectedAccessoryId', json);
+
+        // Visual update
+        if (this.character) {
+          await this.attachAccessory(this.character, this.selectedCharacterId, json);
+        }
 
         // Send to server
         this.sendMessage({
           type: 'update_accessory',
-          accessoryId: accessoryId
+          accessoryId: json // Server treats as opaque string
         });
 
         // Play sound
@@ -8613,7 +8686,19 @@ export class Game {
         // determine character ID (fallback to squirrel if needed)
         // Accessing private/local storage is safest for MVP
         const charId = localStorage.getItem('selectedCharacterId') || 'squirrel';
-        this.wardrobeOverlay.show(charId, this.selectedAccessoryId);
+
+        // Parse current selection
+        let current: Record<string, string> = {};
+        try {
+          if (this.selectedAccessoryId && this.selectedAccessoryId !== 'none') {
+            current = JSON.parse(this.selectedAccessoryId);
+          }
+        } catch (e) {
+          // Legacy or single item
+          current = { 'hat': this.selectedAccessoryId };
+        }
+
+        this.wardrobeOverlay.show(charId, current);
         this.audioManager.playSound('ui', 'button_click');
       }
     });
@@ -8622,9 +8707,10 @@ export class Game {
   private initSettingsMenu(): void {
     // MVP 16: Guard against double-initialization (prevents duplicate event listeners)
     if (this.settingsInitialized) {
-
       return;
     }
+
+    // Original implementation continues...
 
     const settingsToggle = document.getElementById('settings-toggle') as HTMLButtonElement;
     const settingsOverlay = document.getElementById('settings-overlay') as HTMLDivElement;
