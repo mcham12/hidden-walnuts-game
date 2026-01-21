@@ -13,6 +13,8 @@ export class WardrobeOverlay {
     'backpack': 'none',
     'mask': 'none'
   };
+  // Track which categories are expanded to show all items
+  private expandedCategories: Set<string> = new Set();
 
   constructor(onSelect: (accessories: Record<string, string>) => void, onClose: () => void) {
     this.onSelect = onSelect;
@@ -150,6 +152,33 @@ export class WardrobeOverlay {
         font-style: italic;
         font-size: 0.9rem;
       }
+
+      .category-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+
+      .see-all-btn {
+        background: transparent;
+        border: 1px solid rgba(255, 215, 0, 0.5);
+        color: #FFD700;
+        padding: 4px 12px;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .see-all-btn:hover {
+        background: rgba(255, 215, 0, 0.1);
+        border-color: #FFD700;
+      }
+
+      .acc-icon {
+        font-size: 1.8rem;
+        margin-bottom: 5px;
+      }
     `;
     document.head.appendChild(style);
 
@@ -205,48 +234,67 @@ export class WardrobeOverlay {
     if (!body) return;
     body.innerHTML = '';
 
-    const allItems = AccessoryRegistry.getAvailableForCharacter(this.characterId);
-
-    // Group by type
-    const categories: Record<string, any[]> = {
-      'hat': [],
-      'glasses': [],
-      'backpack': [],
-      'mask': []
-    };
-
-    allItems.forEach(item => {
-      if (categories[item.type]) {
-        categories[item.type].push(item);
-      }
-    });
+    const categories: ('hat' | 'glasses' | 'backpack')[] = ['hat', 'glasses', 'backpack'];
 
     // Render each category
-    Object.keys(categories).forEach(type => {
+    categories.forEach(type => {
+      const showAll = this.expandedCategories.has(type);
+      let items: any[];
+      let hasMore = false;
+
+      if (showAll) {
+        // Show all available items
+        const allItems = AccessoryRegistry.getAvailableForCharacter(this.characterId);
+        items = allItems.filter(a => a.type === type);
+      } else {
+        // Show daily picks
+        const result = AccessoryRegistry.getDailyPicks(this.characterId, type);
+        items = result.picks;
+        hasMore = result.hasMore;
+      }
+
       const section = document.createElement('div');
       section.className = 'category-section';
 
       const title = type.charAt(0).toUpperCase() + type.slice(1) + (type === 'glasses' ? '' : 's');
-
-      const itemsHtml = categories[type].length > 0 ? '' : '<div class="empty-state">No items available</div>';
+      const toggleText = showAll ? '← Show Less' : (hasMore ? 'See All →' : '');
 
       section.innerHTML = `
-        <div class="category-title">${title}</div>
+        <div class="category-header">
+          <div class="category-title">${title}</div>
+          ${toggleText ? `<button class="see-all-btn" data-category="${type}">${toggleText}</button>` : ''}
+        </div>
         <div class="accessory-grid" id="grid-${type}">
-          ${itemsHtml}
+          ${items.length === 0 ? '<div class="empty-state">No items available</div>' : ''}
         </div>
       `;
 
       body.appendChild(section);
 
+      // Add See All button handler
+      const seeAllBtn = section.querySelector('.see-all-btn');
+      if (seeAllBtn) {
+        seeAllBtn.addEventListener('click', () => {
+          if (this.expandedCategories.has(type)) {
+            this.expandedCategories.delete(type);
+          } else {
+            this.expandedCategories.add(type);
+          }
+          this.renderItems();
+        });
+      }
+
       const grid = section.querySelector(`#grid-${type}`);
-      if (grid && categories[type].length > 0) {
-        categories[type].forEach(item => {
+      if (grid && items.length > 0) {
+        items.forEach(item => {
           const card = document.createElement('div');
           const isActive = this.activeAccessories[type] === item.id || (item.id === 'none' && (!this.activeAccessories[type] || this.activeAccessories[type] === 'none'));
 
           card.className = `accessory-card ${isActive ? 'active' : ''}`;
-          card.innerHTML = `<div class="acc-name">${item.name}</div>`;
+          card.innerHTML = `
+            <div class="acc-icon">${item.icon || ''}</div>
+            <div class="acc-name">${item.name}</div>
+          `;
 
           card.onclick = () => {
             this.selectItem(type, item.id);
@@ -263,6 +311,10 @@ export class WardrobeOverlay {
       this.activeAccessories[type] = 'none';
     } else {
       this.activeAccessories[type] = id;
+      // Record usage for "recently used" feature
+      if (type === 'hat' || type === 'glasses' || type === 'backpack') {
+        AccessoryRegistry.recordAccessoryUsage(id, type);
+      }
     }
     this.onSelect(this.activeAccessories);
     this.renderItems();

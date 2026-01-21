@@ -1,0 +1,4301 @@
+{
+    "squirrel": {
+        "hat_antenna_91": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_anti_cog_control_83": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_archer_76": {
+            "scale": 1.4,
+            "position": {
+                "x": 0,
+                "y": -0.04,
+                "z": 0.77
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_baseball_113": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_bird_112": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_boby_89": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_bow_97": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_bowler_88": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_chef_87": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_conquistador_helmet_86": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_cop_100": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_cowboy_111": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_crown_110": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_detective_85": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_feather_headband_78": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_fedora_84": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_fez_108": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_firefighter_helmet_107": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_fishing_106": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_golf_105": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_heart_104": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_jamboree_90": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_jester_82": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_mickeys_band_81": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_miner_80": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_napoleon_79": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_party_103": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_pilot_102": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_pirate_101": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_princess_99": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_propeller_98": {
+            "scale": 1.7,
+            "position": {
+                "x": 0.01,
+                "y": 0.06,
+                "z": 0.69
+            },
+            "rotation": {
+                "x": 0.058,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_rainbow_afro_77": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_roman_helmet_96": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_safari_beige_95": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_sailor_75": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_samba_94": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_sombrero_74": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_straw_73": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_sun_72": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_tiara_93": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_toonosaur_109": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_top_92": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_viking_71": {
+            "scale": 1.4,
+            "position": {
+                "x": 0,
+                "y": 0.08,
+                "z": 0.77
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_winter_68": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_witch_70": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_wizard_69": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.13,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_goggles_56": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.2,
+                "z": 0.48
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "backpack_jetpack_10": {
+            "scale": 3.8,
+            "position": {
+                "x": 0,
+                "y": 0.26,
+                "z": 0.32
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_heart_54": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.26,
+                "z": 0.51
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_alien_eyes_67": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.26,
+                "z": 0.51
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_aviator_58": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.26,
+                "z": 0.51
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_bug_eye_53": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.26,
+                "z": 0.51
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_cat_eye_57": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.26,
+                "z": 0.51
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_celebrity_62": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.26,
+                "z": 0.51
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_groucho_55": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.26,
+                "z": 0.51
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_movie_66": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.26,
+                "z": 0.51
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_nerd_63": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.26,
+                "z": 0.51
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_scuba_mask_60": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.26,
+                "z": 0.51
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_secret_id_52": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.26,
+                "z": 0.51
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_square_frame_59": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.26,
+                "z": 0.51
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_white_mini_blinds_61": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.26,
+                "z": 0.51
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_yellow_star_50": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.26,
+                "z": 0.51
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        }
+    },
+    "moose": {
+        "hat_antenna_91": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_anti_cog_control_83": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_archer_76": {
+            "scale": 1.6,
+            "position": {
+                "x": 0,
+                "y": 0.28,
+                "z": 1.29
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_baseball_113": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_bird_112": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_boby_89": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_bow_97": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_bowler_88": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_chef_87": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_conquistador_helmet_86": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_cop_100": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_cowboy_111": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_crown_110": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_detective_85": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_feather_headband_78": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_fedora_84": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_fez_108": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_firefighter_helmet_107": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_fishing_106": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_golf_105": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_heart_104": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_jamboree_90": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_jester_82": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_mickeys_band_81": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_miner_80": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_napoleon_79": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_party_103": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_pilot_102": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_pirate_101": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_princess_99": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_propeller_98": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": 0.41,
+                "z": 1.24
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_rainbow_afro_77": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_roman_helmet_96": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_safari_beige_95": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_sailor_75": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_samba_94": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_sombrero_74": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_straw_73": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_sun_72": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_tiara_93": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_toonosaur_109": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_top_92": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_viking_71": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_winter_68": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_witch_70": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_wizard_69": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.45,
+                "z": 1.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_goggles_56": {
+            "scale": 3.8,
+            "position": {
+                "x": 0,
+                "y": -0.5,
+                "z": 0.86
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_heart_54": {
+            "scale": 3.8,
+            "position": {
+                "x": 0,
+                "y": 0.06,
+                "z": 0.98
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_alien_eyes_67": {
+            "scale": 3.8,
+            "position": {
+                "x": 0,
+                "y": 0.06,
+                "z": 0.98
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_aviator_58": {
+            "scale": 3.8,
+            "position": {
+                "x": 0,
+                "y": 0.06,
+                "z": 0.98
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_bug_eye_53": {
+            "scale": 3.8,
+            "position": {
+                "x": 0,
+                "y": 0.06,
+                "z": 0.98
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_cat_eye_57": {
+            "scale": 3.8,
+            "position": {
+                "x": 0,
+                "y": 0.06,
+                "z": 0.98
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_celebrity_62": {
+            "scale": 3.8,
+            "position": {
+                "x": 0,
+                "y": 0.06,
+                "z": 0.98
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_groucho_55": {
+            "scale": 3.8,
+            "position": {
+                "x": 0,
+                "y": 0.06,
+                "z": 0.98
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_movie_66": {
+            "scale": 3.8,
+            "position": {
+                "x": 0,
+                "y": 0.06,
+                "z": 0.98
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_nerd_63": {
+            "scale": 3.8,
+            "position": {
+                "x": 0,
+                "y": 0.06,
+                "z": 0.98
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_scuba_mask_60": {
+            "scale": 3.8,
+            "position": {
+                "x": 0,
+                "y": 0.06,
+                "z": 0.98
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_secret_id_52": {
+            "scale": 3.8,
+            "position": {
+                "x": 0,
+                "y": 0.06,
+                "z": 0.98
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_square_frame_59": {
+            "scale": 3.8,
+            "position": {
+                "x": 0,
+                "y": 0.06,
+                "z": 0.98
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_white_mini_blinds_61": {
+            "scale": 3.8,
+            "position": {
+                "x": 0,
+                "y": 0.06,
+                "z": 0.98
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_yellow_star_50": {
+            "scale": 3.8,
+            "position": {
+                "x": 0,
+                "y": 0.06,
+                "z": 0.98
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        }
+    },
+    "lynx": {
+        "hat_antenna_91": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_anti_cog_control_83": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_archer_76": {
+            "scale": 2.4,
+            "position": {
+                "x": 0,
+                "y": 0.3,
+                "z": 1.07
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_baseball_113": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_bird_112": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_boby_89": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_bow_97": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_bowler_88": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_chef_87": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_conquistador_helmet_86": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_cop_100": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_cowboy_111": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_crown_110": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_detective_85": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_feather_headband_78": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_fedora_84": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_fez_108": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_firefighter_helmet_107": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_fishing_106": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_golf_105": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_heart_104": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_jamboree_90": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_jester_82": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_mickeys_band_81": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_miner_80": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_napoleon_79": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_party_103": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_pilot_102": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_pirate_101": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_princess_99": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_propeller_98": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": 0.65,
+                "z": 0.92
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_rainbow_afro_77": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_roman_helmet_96": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_safari_beige_95": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_sailor_75": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_samba_94": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_sombrero_74": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_straw_73": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_sun_72": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_tiara_93": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_toonosaur_109": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_top_92": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_viking_71": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_winter_68": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_witch_70": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_wizard_69": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.58,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_goggles_56": {
+            "scale": 3.4,
+            "position": {
+                "x": 0,
+                "y": -0.4,
+                "z": 0.65
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_heart_54": {
+            "scale": 3.4,
+            "position": {
+                "x": 0,
+                "y": 0.31,
+                "z": 0.75
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_alien_eyes_67": {
+            "scale": 3.4,
+            "position": {
+                "x": 0,
+                "y": 0.31,
+                "z": 0.75
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_aviator_58": {
+            "scale": 3.4,
+            "position": {
+                "x": 0,
+                "y": 0.31,
+                "z": 0.75
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_bug_eye_53": {
+            "scale": 3.4,
+            "position": {
+                "x": 0,
+                "y": 0.31,
+                "z": 0.75
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_cat_eye_57": {
+            "scale": 3.4,
+            "position": {
+                "x": 0,
+                "y": 0.31,
+                "z": 0.75
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_celebrity_62": {
+            "scale": 3.4,
+            "position": {
+                "x": 0,
+                "y": 0.31,
+                "z": 0.75
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_groucho_55": {
+            "scale": 3.4,
+            "position": {
+                "x": 0,
+                "y": 0.31,
+                "z": 0.75
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_movie_66": {
+            "scale": 3.4,
+            "position": {
+                "x": 0,
+                "y": 0.31,
+                "z": 0.75
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_nerd_63": {
+            "scale": 3.4,
+            "position": {
+                "x": 0,
+                "y": 0.31,
+                "z": 0.75
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_scuba_mask_60": {
+            "scale": 3.4,
+            "position": {
+                "x": 0,
+                "y": 0.31,
+                "z": 0.75
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_secret_id_52": {
+            "scale": 3.4,
+            "position": {
+                "x": 0,
+                "y": 0.31,
+                "z": 0.75
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_square_frame_59": {
+            "scale": 3.4,
+            "position": {
+                "x": 0,
+                "y": 0.31,
+                "z": 0.75
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_white_mini_blinds_61": {
+            "scale": 3.4,
+            "position": {
+                "x": 0,
+                "y": 0.31,
+                "z": 0.75
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_yellow_star_50": {
+            "scale": 3.4,
+            "position": {
+                "x": 0,
+                "y": 0.31,
+                "z": 0.75
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        }
+    },
+    "goat": {
+        "hat_antenna_91": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.85,
+                "z": 0.94
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_anti_cog_control_83": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": 0.85,
+                "z": 0.94
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_archer_76": {
+            "scale": 1.9,
+            "position": {
+                "x": 0,
+                "y": 0.69,
+                "z": 0.98
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_propeller_98": {
+            "scale": 2.7,
+            "position": {
+                "x": 0,
+                "y": 0.8,
+                "z": 0.89
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_goggles_56": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": -0.7,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_heart_54": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": 0.39,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_alien_eyes_67": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": 0.39,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_aviator_58": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": 0.39,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_bug_eye_53": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": 0.39,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_cat_eye_57": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": 0.39,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_celebrity_62": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": 0.39,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_groucho_55": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": 0.39,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_movie_66": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": 0.39,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_nerd_63": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": 0.39,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_scuba_mask_60": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": 0.39,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_secret_id_52": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": 0.39,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_square_frame_59": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": 0.39,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_white_mini_blinds_61": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": 0.39,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_yellow_star_50": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": 0.39,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        }
+    },
+    "hare": {
+        "hat_antenna_91": {
+            "scale": 1.9,
+            "position": {
+                "x": 0,
+                "y": 0.12,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_archer_76": {
+            "scale": 1.6,
+            "position": {
+                "x": 0,
+                "y": -0.08,
+                "z": 0.75
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_propeller_98": {
+            "scale": 2.1,
+            "position": {
+                "x": 0,
+                "y": 0.11,
+                "z": 0.68
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_goggles_56": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.12,
+                "z": 0.53
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_heart_54": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.28,
+                "z": 0.5
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_alien_eyes_67": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.28,
+                "z": 0.5
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_aviator_58": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.28,
+                "z": 0.5
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_bug_eye_53": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.28,
+                "z": 0.5
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_cat_eye_57": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.28,
+                "z": 0.5
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_celebrity_62": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.28,
+                "z": 0.5
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_groucho_55": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.28,
+                "z": 0.5
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_movie_66": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.28,
+                "z": 0.5
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_nerd_63": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.28,
+                "z": 0.5
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_scuba_mask_60": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.28,
+                "z": 0.5
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_secret_id_52": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.28,
+                "z": 0.5
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_square_frame_59": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.28,
+                "z": 0.5
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_white_mini_blinds_61": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.28,
+                "z": 0.5
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_yellow_star_50": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.28,
+                "z": 0.5
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        }
+    },
+    "bear": {
+        "hat_antenna_91": {
+            "scale": 2.5,
+            "position": {
+                "x": 0,
+                "y": 0.46,
+                "z": 1
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_archer_76": {
+            "scale": 2.1,
+            "position": {
+                "x": 0,
+                "y": 0.31,
+                "z": 1.02
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_propeller_98": {
+            "scale": 2.8,
+            "position": {
+                "x": 0,
+                "y": 0.4,
+                "z": 0.99
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_goggles_56": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": -0.4,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_heart_54": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": -0.04,
+                "z": 0.87
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_alien_eyes_67": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": -0.04,
+                "z": 0.87
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_aviator_58": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": -0.04,
+                "z": 0.87
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_bug_eye_53": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": -0.04,
+                "z": 0.87
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_cat_eye_57": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": -0.04,
+                "z": 0.87
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_celebrity_62": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": -0.04,
+                "z": 0.87
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_groucho_55": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": -0.04,
+                "z": 0.87
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_movie_66": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": -0.04,
+                "z": 0.87
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_nerd_63": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": -0.04,
+                "z": 0.87
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_scuba_mask_60": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": -0.04,
+                "z": 0.87
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_secret_id_52": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": -0.04,
+                "z": 0.87
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_square_frame_59": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": -0.04,
+                "z": 0.87
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_white_mini_blinds_61": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": -0.04,
+                "z": 0.87
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_yellow_star_50": {
+            "scale": 3.5,
+            "position": {
+                "x": 0,
+                "y": -0.04,
+                "z": 0.87
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        }
+    },
+    "skunk": {
+        "hat_antenna_91": {
+            "scale": 2.1,
+            "position": {
+                "x": 0,
+                "y": 0.28,
+                "z": 0.87
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_archer_76": {
+            "scale": 1.9,
+            "position": {
+                "x": 0,
+                "y": 0.1,
+                "z": 0.89
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_propeller_98": {
+            "scale": 2.2,
+            "position": {
+                "x": 0,
+                "y": 0.25,
+                "z": 0.84
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_goggles_56": {
+            "scale": 3.2,
+            "position": {
+                "x": 0,
+                "y": -0.2,
+                "z": 0.62
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_heart_54": {
+            "scale": 3.2,
+            "position": {
+                "x": 0,
+                "y": -0.11,
+                "z": 0.64
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_alien_eyes_67": {
+            "scale": 3.2,
+            "position": {
+                "x": 0,
+                "y": -0.11,
+                "z": 0.64
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_aviator_58": {
+            "scale": 3.2,
+            "position": {
+                "x": 0,
+                "y": -0.11,
+                "z": 0.64
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_bug_eye_53": {
+            "scale": 3.2,
+            "position": {
+                "x": 0,
+                "y": -0.11,
+                "z": 0.64
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_cat_eye_57": {
+            "scale": 3.2,
+            "position": {
+                "x": 0,
+                "y": -0.11,
+                "z": 0.64
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_celebrity_62": {
+            "scale": 3.2,
+            "position": {
+                "x": 0,
+                "y": -0.11,
+                "z": 0.64
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_groucho_55": {
+            "scale": 3.2,
+            "position": {
+                "x": 0,
+                "y": -0.11,
+                "z": 0.64
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_movie_66": {
+            "scale": 3.2,
+            "position": {
+                "x": 0,
+                "y": -0.11,
+                "z": 0.64
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_nerd_63": {
+            "scale": 3.2,
+            "position": {
+                "x": 0,
+                "y": -0.11,
+                "z": 0.64
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_scuba_mask_60": {
+            "scale": 3.2,
+            "position": {
+                "x": 0,
+                "y": -0.11,
+                "z": 0.64
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_secret_id_52": {
+            "scale": 3.2,
+            "position": {
+                "x": 0,
+                "y": -0.11,
+                "z": 0.64
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_square_frame_59": {
+            "scale": 3.2,
+            "position": {
+                "x": 0,
+                "y": -0.11,
+                "z": 0.64
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_white_mini_blinds_61": {
+            "scale": 3.2,
+            "position": {
+                "x": 0,
+                "y": -0.11,
+                "z": 0.64
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_yellow_star_50": {
+            "scale": 3.2,
+            "position": {
+                "x": 0,
+                "y": -0.11,
+                "z": 0.64
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        }
+    },
+    "badger": {
+        "hat_antenna_91": {
+            "scale": 1.8,
+            "position": {
+                "x": 0,
+                "y": 0.37,
+                "z": 0.72
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_archer_76": {
+            "scale": 1.6,
+            "position": {
+                "x": 0,
+                "y": 0.18,
+                "z": 0.74
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_propeller_98": {
+            "scale": 2,
+            "position": {
+                "x": 0,
+                "y": 0.36,
+                "z": 0.69
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_goggles_56": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.3,
+                "z": 0.53
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_heart_54": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.09,
+                "z": 0.57
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_alien_eyes_67": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.09,
+                "z": 0.57
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_aviator_58": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.09,
+                "z": 0.57
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_bug_eye_53": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.09,
+                "z": 0.57
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_cat_eye_57": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.09,
+                "z": 0.57
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_celebrity_62": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.09,
+                "z": 0.57
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_groucho_55": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.09,
+                "z": 0.57
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_movie_66": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.09,
+                "z": 0.57
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_nerd_63": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.09,
+                "z": 0.57
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_scuba_mask_60": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.09,
+                "z": 0.57
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_secret_id_52": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.09,
+                "z": 0.57
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_square_frame_59": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.09,
+                "z": 0.57
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_white_mini_blinds_61": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.09,
+                "z": 0.57
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_yellow_star_50": {
+            "scale": 2.9,
+            "position": {
+                "x": 0,
+                "y": -0.09,
+                "z": 0.57
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        }
+    },
+    "chipmunk": {
+        "hat_antenna_91": {
+            "scale": 1.4,
+            "position": {
+                "x": 0,
+                "y": 0.14,
+                "z": 0.8
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_archer_76": {
+            "scale": 1.3,
+            "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0.81
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_propeller_98": {
+            "scale": 1.5,
+            "position": {
+                "x": 0,
+                "y": 0.07,
+                "z": 0.79
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_goggles_56": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": -0.1,
+                "z": 0.58
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_heart_54": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": -0.24,
+                "z": 0.59
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_alien_eyes_67": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": -0.24,
+                "z": 0.59
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_aviator_58": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": -0.24,
+                "z": 0.59
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_bug_eye_53": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": -0.24,
+                "z": 0.59
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_cat_eye_57": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": -0.24,
+                "z": 0.59
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_celebrity_62": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": -0.24,
+                "z": 0.59
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_groucho_55": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": -0.24,
+                "z": 0.59
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_movie_66": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": -0.24,
+                "z": 0.59
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_nerd_63": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": -0.24,
+                "z": 0.59
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_scuba_mask_60": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": -0.24,
+                "z": 0.59
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_secret_id_52": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": -0.24,
+                "z": 0.59
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_square_frame_59": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": -0.24,
+                "z": 0.59
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_white_mini_blinds_61": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": -0.24,
+                "z": 0.59
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_yellow_star_50": {
+            "scale": 2.3,
+            "position": {
+                "x": 0,
+                "y": -0.24,
+                "z": 0.59
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        }
+    },
+    "turkey": {
+        "hat_antenna_91": {
+            "scale": 1.5,
+            "position": {
+                "x": 0,
+                "y": 1.08,
+                "z": 0.31
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_archer_76": {
+            "scale": 1.4,
+            "position": {
+                "x": 0,
+                "y": 0.9,
+                "z": 0.34
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_propeller_98": {
+            "scale": 1.7,
+            "position": {
+                "x": 0,
+                "y": 1.06,
+                "z": 0.27
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_goggles_56": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": -1,
+                "z": 0.24
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_heart_54": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.69,
+                "z": 0.07
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_alien_eyes_67": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.69,
+                "z": 0.07
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_aviator_58": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.69,
+                "z": 0.07
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_bug_eye_53": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.69,
+                "z": 0.07
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_cat_eye_57": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.69,
+                "z": 0.07
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_celebrity_62": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.69,
+                "z": 0.07
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_groucho_55": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.69,
+                "z": 0.07
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_movie_66": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.69,
+                "z": 0.07
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_nerd_63": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.69,
+                "z": 0.07
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_scuba_mask_60": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.69,
+                "z": 0.07
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_secret_id_52": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.69,
+                "z": 0.07
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_square_frame_59": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.69,
+                "z": 0.07
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_white_mini_blinds_61": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.69,
+                "z": 0.07
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_yellow_star_50": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.69,
+                "z": 0.07
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        }
+    },
+    "mallard": {
+        "hat_antenna_91": {
+            "scale": 1.5,
+            "position": {
+                "x": 0,
+                "y": 1.17,
+                "z": 0.34
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_archer_76": {
+            "scale": 1.3,
+            "position": {
+                "x": 0,
+                "y": 1.02,
+                "z": 0.38
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "hat_propeller_98": {
+            "scale": 1.7,
+            "position": {
+                "x": 0,
+                "y": 1.12,
+                "z": 0.29
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_goggles_56": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": -1.1,
+                "z": 0.26
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_heart_54": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.75,
+                "z": 0.18
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_alien_eyes_67": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.75,
+                "z": 0.18
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_aviator_58": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.75,
+                "z": 0.18
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_bug_eye_53": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.75,
+                "z": 0.18
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_cat_eye_57": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.75,
+                "z": 0.18
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_celebrity_62": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.75,
+                "z": 0.18
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_groucho_55": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.75,
+                "z": 0.18
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_movie_66": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.75,
+                "z": 0.18
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_nerd_63": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.75,
+                "z": 0.18
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_scuba_mask_60": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.75,
+                "z": 0.18
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_secret_id_52": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.75,
+                "z": 0.18
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_square_frame_59": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.75,
+                "z": 0.18
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_white_mini_blinds_61": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.75,
+                "z": 0.18
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        "glasses_yellow_star_50": {
+            "scale": 2.6,
+            "position": {
+                "x": 0,
+                "y": 0.75,
+                "z": 0.18
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        }
+    }
+}
