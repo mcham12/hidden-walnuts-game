@@ -159,6 +159,12 @@ export class TipsManager {
         category: 'basics',
         text: 'Use quick chat to communicate with other players - tap the chat bubble icon',
         emoji: '💬'
+      },
+      {
+        id: 'basics_wardrobe',
+        category: 'basics',
+        text: 'Use Wardrobe to add some style to your character!',
+        emoji: '👕'
       }
     ];
   }
