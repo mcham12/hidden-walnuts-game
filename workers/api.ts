@@ -1,3 +1,7 @@
+/**
+ * API Worker Entry Point
+ * (VERIFIED: CI/CD flow proof-of-work on main branch)
+ */
 // API entry point for Hidden Walnuts game - Simplified
 // MVP 7.1: Bot protection with Turnstile and rate limiting
 // MVP 16: Authentication system with JWT sessions

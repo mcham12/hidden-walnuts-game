@@ -86,6 +86,10 @@ async function saveUsername(username: string, sessionToken: string): Promise<voi
 }
 
 /**
+ * Main Entry Point - Hidden Walnuts Game
+ * (VERIFIED: CI/CD flow proof-of-work on main branch)
+ */
+/**
  * MVP 6: Try to load username from localStorage
  * Returns null if not available (private browsing or new user)
  */
