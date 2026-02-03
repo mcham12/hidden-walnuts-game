@@ -633,8 +633,6 @@ export default class ForestManager extends DurableObject {
       const [client, server] = Object.values(webSocketPair);
 
       server.accept();
-      server.accept();
-      server.accept();
       await this.setupPlayerConnection(squirrelId, characterId, server, sessionToken, username, isAuthenticated, emailVerified, persistedStats, accessoryId);
 
       return new Response(null, {
