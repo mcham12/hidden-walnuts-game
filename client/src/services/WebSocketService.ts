@@ -62,10 +62,14 @@ export class WebSocketService {
 
 
       try {
-        let url = `${this.serverUrl}/ws?squirrelId=${this.squirrelId}&characterId=${this.characterId}`;
+        const wsParams = new URLSearchParams();
+        wsParams.set('squirrelId', this.squirrelId);
+        wsParams.set('characterId', this.characterId);
         if (this.accessToken) {
-          url += `&accessToken=${this.accessToken}`;
+          wsParams.set('accessToken', this.accessToken);
         }
+
+        const url = `${this.serverUrl.replace('http:', 'ws:').replace('https:', 'wss:')}/ws?${wsParams.toString()}`;
         this.socket = new WebSocket(url);
 
         this.socket.onopen = () => {

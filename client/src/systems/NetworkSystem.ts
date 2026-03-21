@@ -217,7 +217,13 @@ export class NetworkSystem extends System {
       
       const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8787';
       // MVP 7 Task 7: Include client version and protocol in WebSocket URL
-      const wsUrl = `${apiBase.replace('http', 'ws')}/ws?squirrelId=${authData.squirrelId}&token=${authData.token}&version=${CLIENT_VERSION}&protocol=${PROTOCOL_VERSION}`;
+      const wsParams = new URLSearchParams();
+      wsParams.set('squirrelId', authData.squirrelId);
+      wsParams.set('token', authData.token);
+      wsParams.set('version', CLIENT_VERSION);
+      wsParams.set('protocol', PROTOCOL_VERSION);
+      
+      const wsUrl = `${apiBase.replace('http:', 'ws:').replace('https:', 'wss:')}/ws?${wsParams.toString()}`;
       
       Logger.debug(LogCategory.NETWORK, `🌐 API Base URL: ${apiBase}`);
       Logger.debug(LogCategory.NETWORK, `🌐 WebSocket URL: ${wsUrl}`);

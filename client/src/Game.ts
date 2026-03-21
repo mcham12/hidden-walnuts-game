@@ -1887,16 +1887,26 @@ export class Game {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:50569';
 
 
-    // MVP 7.1: Include Turnstile token for bot protection (optional parameter - null if not verified)
-    const turnstileParam = this.turnstileToken ? `&turnstileToken=${this.turnstileToken}` : '';
-
     // MVP 16: Include JWT access token for authenticated users (character gating validation)
     const accessToken = localStorage.getItem('auth_access_token');
-    const accessTokenParam = accessToken ? `&accessToken=${accessToken}` : '';
 
     // MVP 6: Include sessionToken and username in WebSocket URL
+    const wsParams = new URLSearchParams();
+    wsParams.set('squirrelId', this.playerId);
+    wsParams.set('characterId', this.selectedCharacterId);
+    wsParams.set('accessoryId', this.selectedAccessoryId);
+    wsParams.set('sessionToken', this.sessionToken);
+    wsParams.set('username', this.username);
+    
+    if (accessToken) {
+      wsParams.set('accessToken', accessToken);
+    }
+    if (this.turnstileToken) {
+      wsParams.set('turnstileToken', this.turnstileToken);
+    }
+
     const wsUrl = apiUrl.replace('http:', 'ws:').replace('https:', 'wss:') +
-      `/ws?squirrelId=${this.playerId}&characterId=${this.selectedCharacterId}&accessoryId=${this.selectedAccessoryId}&sessionToken=${this.sessionToken}&username=${encodeURIComponent(this.username)}${accessTokenParam}${turnstileParam}`;
+      `/ws?${wsParams.toString()}`;
 
 
     try {
