@@ -514,24 +514,29 @@ export class WelcomeScreen {
       }
     });
 
-    // Make the welcome card invisible while Turnstile completes in background
-    const welcomeCard = this.container.querySelector('.welcome-card') as HTMLElement;
-    if (welcomeCard) {
-      welcomeCard.style.opacity = '0';
-      welcomeCard.style.pointerEvents = 'none';
+    // If Turnstile is already complete, we can skip the wait!
+    const isVerified = this.turnstileToken !== null;
+
+    if (!isVerified) {
+      console.log('⏳ [WelcomeScreen] Waiting for Turnstile verification...');
+      
+      // Make sure Turnstile is visible if it needs user interaction
+      if (this.container) {
+        this.container.style.opacity = '1';
+        this.container.style.display = 'flex';
+        this.container.style.pointerEvents = 'auto'; // Must allow interaction!
+      }
+
+      // Wait for Turnstile verification to complete (don't destroy the widget!)
+      // Add timeout to prevent hanging forever, but keep it generous (20s)
+      await Promise.race([
+        this.turnstileComplete,
+        new Promise((resolve) => setTimeout(() => {
+          console.warn('⚠️ [WelcomeScreen] Turnstile verification timed out after 20s');
+          resolve(undefined);
+        }, 20000))
+      ]);
     }
-
-    console.log('⏳ [WelcomeScreen] Waiting for Turnstile verification...');
-
-    // Wait for Turnstile verification to complete (don't destroy the widget!)
-    // Add timeout to prevent hanging forever
-    await Promise.race([
-      this.turnstileComplete,
-      new Promise((resolve) => setTimeout(() => {
-        console.warn('⚠️ [WelcomeScreen] Turnstile verification timed out after 10s');
-        resolve(undefined);
-      }, 10000))
-    ]);
 
     console.log('✅ [WelcomeScreen] Turnstile verified, showing welcome back message');
 
