@@ -244,7 +244,7 @@ export class WelcomeScreen {
   /**
    * Handle Play as Guest click - resolves promise to start game loading
    */
-  private onPlayAsGuestClick(): void {
+  private async onPlayAsGuestClick(): Promise<void> {
     const input = document.getElementById('welcome-username-input') as HTMLInputElement;
     const username = input?.value.trim() || '';
 
@@ -253,12 +253,11 @@ export class WelcomeScreen {
       return;
     }
 
-    // Disable button to prevent double-click
-    const playButton = document.getElementById('welcome-play-button') as HTMLButtonElement;
-    if (playButton) {
-      playButton.disabled = true;
-      playButton.style.opacity = '0.5';
-    }
+    // MVP 16 FIX: Wait for Turnstile verification to complete before allowing play
+    // This ensures we always have a token for the WebSocket connection
+    console.log('⏳ [WelcomeScreen] Waiting for Turnstile before proceeding as guest...');
+    await this.turnstileComplete;
+    console.log('✅ [WelcomeScreen] Turnstile ready, proceeding as guest');
 
     // Resolve with username - main.ts will handle transition to loading overlay
     if (this.resolvePromise) {
@@ -308,6 +307,12 @@ export class WelcomeScreen {
    */
   private async handleAuthSuccess(userData: any): Promise<void> {
     console.log('Authentication successful:', userData);
+
+    // MVP 16 FIX: Wait for Turnstile verification to complete before allowing login
+    // This ensures we always have a token for the WebSocket connection
+    console.log('⏳ [WelcomeScreen] Waiting for Turnstile before proceeding with auth...');
+    await this.turnstileComplete;
+    console.log('✅ [WelcomeScreen] Turnstile ready, proceeding with auth');
 
     // Resolve with username to start game loading
     if (this.resolvePromise && userData.username) {
